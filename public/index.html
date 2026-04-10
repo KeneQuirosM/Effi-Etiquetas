@@ -2326,29 +2326,64 @@ function exportJSON() {
   showToast('✅ JSON exportado', 'success');
 }
 
-function handleJSONImport(input) {
+async function handleJSONImport(input) {
   const file = input.files[0];
   if (!file) return;
+  input.value = '';
+
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
       const parsed = JSON.parse(e.target.result);
       if (!parsed.tiendas || !Array.isArray(parsed.tiendas))
         return showToast('JSON inválido: falta "tiendas"', 'danger');
-      appData = parsed;
-      saveData();
+
+      if (!coordToken)
+        return showToast('Debés estar en modo Coordinador para importar', 'danger');
+
+      showToast('Importando... espere', '');
+
+      let tiendasOk = 0, productosOk = 0, errores = 0;
+
+      for (const tienda of parsed.tiendas) {
+        try {
+          const t = await apiPost('/api/tiendas', { nombre: tienda.nombre });
+          for (const item of (tienda.inventario || [])) {
+            try {
+              await apiPost('/api/productos', {
+                tienda_id: t.id,
+                codigo: String(item.id),
+                nombre: item.producto,
+                ubicacion: item.ubicacion || null
+              });
+              productosOk++;
+            } catch (err) {
+              errores++;
+              console.warn('Producto omitido:', item, err.message);
+            }
+          }
+          tiendasOk++;
+        } catch (err) {
+          errores++;
+          console.warn('Tienda omitida:', tienda.nombre, err.message);
+        }
+      }
+
+      await loadData();
       populateTiendas();
       renderManageList();
-      // reset main selects
       document.getElementById('select-producto').innerHTML = '<option value="">-- Producto --</option>';
       document.getElementById('select-id').innerHTML = '<option value="">-- ID --</option>';
-      showToast(`✅ Importado: ${appData.tiendas.length} tiendas`, 'success');
+
+      const msg = `✅ ${tiendasOk} tiendas, ${productosOk} productos importados` +
+                  (errores ? ` (${errores} omitidos por duplicado)` : '');
+      showToast(msg, 'success');
+
     } catch(err) {
       showToast('Error al leer el archivo JSON', 'danger');
     }
   };
   reader.readAsText(file);
-  input.value = '';
 }
 
 /* ── BULK PRINT ─────────────────────────────────────── */
