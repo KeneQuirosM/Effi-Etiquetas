@@ -1,0 +1,2712 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efficommerce — Generador de Etiquetas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+
+  :root {
+    --primary: #1a2a6c;
+    --primary-light: #243580;
+    --accent: #f2a900;
+    --accent-dark: #c98e00;
+    --bg: #f0f2f7;
+    --panel: #ffffff;
+    --border: #dde1ec;
+    --text: #1c1f2e;
+    --muted: #7a80a0;
+    --danger: #d63030;
+    --success: #1e8f4e;
+    --sidebar-w: 310px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ─────────────────────────────── */
+  .sidebar {
+    width: var(--sidebar-w);
+    min-height: 100vh;
+    background: var(--primary);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(242,169,0,0.12);
+    pointer-events: none;
+  }
+
+  .brand {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .brand h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+
+  .brand span { color: var(--accent); }
+
+  .brand p {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    margin-top: 3px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .sidebar-body { padding: 20px 20px 0; flex-grow: 1; }
+
+  .field { margin-bottom: 16px; }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .field select, .field input[type="text"] {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.4)'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  .field select:focus, .field input[type="text"]:focus {
+    border-color: var(--accent);
+    background: rgba(255,255,255,0.13);
+  }
+
+  .field select option { background: #1a2a6c; color: #fff; }
+
+  .btn-print {
+    display: block;
+    width: calc(100% - 40px);
+    margin: 12px 20px 6px;
+    padding: 13px;
+    background: var(--accent);
+    color: #1a1a1a;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .btn-bulk {
+    display: block;
+    width: calc(100% - 40px);
+    margin: 0 20px 12px;
+    padding: 10px;
+    background: transparent;
+    color: rgba(255,255,255,0.6);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-bulk:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+  .btn-print:hover { background: var(--accent-dark); }
+  .btn-print:active { transform: scale(0.98); }
+
+  /* ── COORDINATOR MODE ─────────────────────── */
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: auto;
+  }
+
+  .btn-coord {
+    width: 100%;
+    padding: 9px;
+    background: transparent;
+    color: rgba(255,255,255,0.4);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+
+  .btn-coord:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+  .btn-coord.active { color: var(--accent); border-color: var(--accent); background: rgba(242,169,0,0.1); }
+
+  /* ── MAIN / PREVIEW ──────────────────────── */
+  .main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    gap: 20px;
+  }
+
+  /* ── LABEL ───────────────────────────────── */
+  #etiqueta {
+    width: 4in;
+    height: 6in;
+    background: white;
+    border: 1.5px dashed #bcc2d4;
+    padding: 0.3in;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 30px rgba(26,42,108,0.12);
+    border-radius: 4px;
+    transition: box-shadow 0.2s;
+    position: relative;
+  }
+
+  #etiqueta:hover { box-shadow: 0 8px 40px rgba(26,42,108,0.18); }
+
+  .label-header { text-align: center; margin-bottom: 10px; flex-shrink: 0; }
+  .label-header img { max-width: 80%; max-height: 1in; display: block; margin: 0 auto; }
+
+  .label-body { flex-grow: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .label-body h1 { margin: 0; font-family: 'Inter', sans-serif; line-height: 1.1; }
+
+  .label-footer { border-top: 4px solid #000; position: relative; text-align: center; flex-shrink: 0; }
+  .label-footer p { font-size: 50pt; font-weight: bold; margin: 0; font-family: 'Inter', sans-serif; }
+
+  .shop-corner {
+    position: absolute; top: 85px; right: 0;
+    font-size: 12pt;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Solo notas */
+  .label-notes { display: none; }
+
+  /* QR ubicación — estándar GS1: arriba derecha, absoluto */
+  .label-qr {
+    display: none;
+    position: absolute;
+    top: 0.25in;
+    right: 0.25in;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 3px;
+    background: white;
+  }
+  .label-qr.visible { display: flex; }
+  .label-qr svg { width: 52px; height: 52px; }
+  .label-qr span {
+    font-family: 'Inter', sans-serif;
+    font-size: 6pt;
+    font-weight: 700;
+    color: #000;
+    letter-spacing: 1.5px;
+    text-align: center;
+  }
+
+  .solo-notas .label-body,
+  .solo-notas .label-footer { display: none !important; }
+
+  .solo-notas .label-notes {
+    display: block;
+    margin-top: 16px;
+    flex-grow: 1;
+  }
+
+  .notes-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .notes-table th {
+    font-family: 'Inter', sans-serif;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 3px;
+    text-align: left;
+  }
+
+  .notes-table th.col-obs { width: 75%; padding-right: 8px; }
+  .notes-table th.col-fecha { width: 25%; padding-left: 8px; border-left: 1px solid #000; }
+
+  .notes-table td {
+    height: 32px;
+    border-bottom: 1px solid #000;
+    vertical-align: bottom;
+    padding: 0;
+  }
+
+  .notes-table td.col-fecha { border-left: 1px solid #000; padding-left: 8px; }
+
+  /* ── COORDINATOR PANEL ───────────────────── */
+  #coord-panel {
+    display: none;
+    width: 100%;
+    max-width: 700px;
+    background: white;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 28px;
+    box-shadow: 0 4px 20px rgba(26,42,108,0.08);
+  }
+
+  #coord-panel.visible { display: block; }
+
+  .coord-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .coord-header h2 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .coord-badge {
+    font-size: 10px;
+    background: var(--accent);
+    color: #1a1a1a;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .coord-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+  }
+
+  .tab-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .tab-btn:hover:not(.active) { color: var(--text); background: var(--bg); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .form-row.single { grid-template-columns: 1fr; }
+
+  .form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+    background: white;
+  }
+
+  .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+
+  .btn-action {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-light); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-danger:hover { background: #b52828; }
+  .btn-ghost { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: #e2e6f0; }
+
+  .toast {
+    position: fixed;
+    bottom: 28px; right: 28px;
+    background: var(--primary);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 9999;
+    max-width: 300px;
+  }
+
+  .toast.success { background: var(--success); }
+  .toast.danger { background: var(--danger); }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Inventory list in coord panel */
+  .inv-list {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 14px;
+  }
+
+  .inv-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    transition: background 0.1s;
+  }
+
+  .inv-item:last-child { border-bottom: none; }
+  .inv-item:hover { background: var(--bg); }
+
+  .inv-item .item-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 40px;
+  }
+
+  .inv-item .item-name { flex-grow: 1; padding: 0 10px; }
+
+  .inv-item button {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+  }
+
+  .inv-item button:hover { opacity: 1; }
+
+  .inv-item input {
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    padding: 1px 2px;
+    transition: border-color 0.15s;
+  }
+
+  .inv-item input:focus { border-bottom-color: var(--primary); }
+
+  .inv-item input.input-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    width: 44px;
+    text-align: center;
+  }
+
+  .inv-item input.input-name { flex-grow: 1; margin: 0 8px; }
+
+  .inv-item input.input-ubic {
+    width: 72px;
+    font-size: 11px;
+    color: var(--primary);
+    font-weight: 600;
+    text-align: center;
+    margin: 0 4px;
+  }
+
+  .btn-save-item {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+    opacity: 0.4;
+    transition: opacity 0.15s;
+    color: var(--success);
+  }
+  .btn-save-item:hover { opacity: 1 !important; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 8px;
+    margin-top: 4px;
+  }
+
+  /* ── PIN MODAL ───────────────────────────── */
+  #pin-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,20,45,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #pin-overlay.show { display: flex; }
+
+  .pin-modal {
+    background: white;
+    border-radius: 16px;
+    padding: 36px 32px;
+    width: 320px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: popIn 0.2s ease;
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .pin-modal h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 6px;
+  }
+
+  .pin-modal p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  .pin-dots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .pin-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.15s;
+  }
+
+  .pin-dot.filled { background: var(--primary); }
+
+  .pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .pin-key {
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.1s;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+  }
+
+  .pin-key:hover { background: var(--bg); border-color: var(--primary); }
+  .pin-key:active { transform: scale(0.94); }
+
+  .pin-key.del { color: var(--danger); }
+
+  .pin-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-top: 6px;
+    height: 16px;
+  }
+
+  .btn-cancel-pin {
+    margin-top: 8px;
+    width: 100%;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .btn-cancel-pin:hover { color: var(--text); }
+
+  /* ── BULK PRINT MODAL ────────────────────── */
+  #bulk-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,20,45,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+  }
+  #bulk-overlay.show { display: flex; }
+
+  .bulk-modal {
+    background: white;
+    border-radius: 16px;
+    width: 480px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: popIn 0.2s ease;
+    overflow: hidden;
+  }
+
+  .bulk-modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .bulk-modal-header h3 { font-size: 15px; font-weight: 700; color: var(--primary); }
+
+  .bulk-modal-body { padding: 16px 24px; overflow-y: auto; flex-grow: 1; }
+
+  .bulk-tienda-select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    margin-bottom: 14px;
+  }
+  .bulk-tienda-select:focus { border-color: var(--primary); }
+
+  .bulk-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .bulk-actions-bar span { font-size: 12px; color: var(--muted); flex-grow: 1; }
+
+  .bulk-list {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-y: auto;
+    max-height: 260px;
+  }
+
+  .bulk-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 13px;
+    user-select: none;
+  }
+  .bulk-item:last-child { border-bottom: none; }
+  .bulk-item:hover { background: var(--bg); }
+  .bulk-item.selected { background: #eef1fb; }
+
+  .bulk-item input[type="checkbox"] {
+    width: 15px; height: 15px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .bulk-item .b-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 36px;
+  }
+
+  .bulk-modal-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .bulk-count { font-size: 12px; color: var(--muted); flex-grow: 1; }
+
+  #bulk-print-area { display: none; }
+
+  /* ── RÓTULO MODAL ────────────────────────── */
+  #rotulo-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,20,45,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+  }
+  #rotulo-overlay.show { display: flex; }
+
+  .rotulo-modal {
+    background: white;
+    border-radius: 16px;
+    width: 440px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: popIn 0.2s ease;
+    overflow: hidden;
+  }
+
+  .rotulo-modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .rotulo-modal-header h3 { font-size: 15px; font-weight: 700; color: var(--primary); }
+
+  .rotulo-modal-body { padding: 20px 24px; }
+  .rotulo-modal-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  /* Preview del rótulo dentro del modal */
+  .rotulo-preview {
+    width: 100%;
+    aspect-ratio: 11 / 8.5;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    position: relative;
+    margin-top: 16px;
+    overflow: hidden;
+  }
+
+  .rotulo-preview-border {
+    position: absolute;
+    top: 4%;
+    left: 3%;
+    right: 3%;
+    bottom: 4%;
+    border: 2px solid #000;
+  }
+
+  .rotulo-preview-logo {
+    position: absolute;
+    top: 7%;
+    left: 5%;
+    height: 14%;
+    display: flex;
+    align-items: center;
+  }
+
+  .rotulo-preview-logo img { height: 100%; object-fit: contain; }
+
+  .rotulo-preview-logo .brand-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: #1a2a6c;
+    white-space: nowrap;
+  }
+
+  .rotulo-preview-logo .brand-text span { color: #f2a900; }
+
+  .rotulo-preview-name {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: #000;
+    text-align: center;
+    padding: 0 8%;
+    word-break: break-word;
+    line-height: 1;
+  }
+
+  .rotulo-preview-id {
+    position: absolute;
+    bottom: 7%;
+    right: 6%;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: #000;
+  }
+
+  #rotulo-print-area { display: none; }
+
+  /* ── PRINT ───────────────────────────────── */
+  @media print {
+    /* Single label mode */
+    body.print-single .sidebar,
+    body.print-single #coord-panel,
+    body.print-single #bulk-overlay,
+    body.print-single .no-print { display: none !important; }
+    body.print-single .main { padding: 0; }
+    body.print-single #etiqueta {
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      width: 4in !important;
+      height: 6in !important;
+      margin: 0 auto;
+    }
+
+    /* Bulk mode */
+    body.print-bulk .sidebar,
+    body.print-bulk .main,
+    body.print-bulk #coord-panel,
+    body.print-bulk #bulk-overlay,
+    body.print-bulk .no-print { display: none !important; }
+    body.print-bulk #bulk-print-area { display: block !important; }
+
+    #bulk-print-area .bulk-label {
+      width: 4in;
+      height: 6in;
+      padding: 0.3in;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      page-break-after: always;
+      break-after: page;
+    }
+    #bulk-print-area .bulk-label:last-child {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    /* Rótulo mode */
+    body.print-rotulo .sidebar,
+    body.print-rotulo .main,
+    body.print-rotulo #coord-panel,
+    body.print-rotulo #bulk-overlay,
+    body.print-rotulo #rotulo-overlay,
+    body.print-rotulo .no-print { display: none !important; }
+    body.print-rotulo #rotulo-print-area { display: block !important; }
+
+    #rotulo-print-area .rotulo-page {
+      width: 11in;
+      height: 8.5in;
+      margin: 0;
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+    }
+    #rotulo-print-area .rotulo-page:last-child {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    /* Borde rectángulo — cubre casi toda la hoja igual que el Word */
+    #rotulo-print-area .rotulo-border {
+      position: absolute;
+      top: 0.35in;
+      left: 0.3in;
+      right: 0.3in;
+      bottom: 0.35in;
+      border: 4.5pt solid #000;
+    }
+    /* Logo arriba izquierda */
+    #rotulo-print-area .rotulo-logo-area {
+      position: absolute;
+      top: 0.5in;
+      left: 0.5in;
+      height: 1in;
+      max-width: 2.5in;
+    }
+    #rotulo-print-area .rotulo-logo-area img {
+      height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+    }
+    #rotulo-print-area .rotulo-logo-area .rlogo-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 22pt;
+      font-weight: 700;
+      color: #1a2a6c;
+      letter-spacing: -0.5px;
+      white-space: nowrap;
+    }
+    #rotulo-print-area .rotulo-logo-area .rlogo-text span { color: #f2a900; }
+    /* Nombre centrado en la hoja — 140pt como en el Word */
+    #rotulo-print-area .rotulo-name {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      font-size: 140pt;
+      font-weight: 900;
+      color: #000;
+      text-align: center;
+      line-height: 1;
+      padding: 0 0.5in;
+      word-break: break-word;
+    }
+    /* ID esquina inferior derecha — 28pt como en el Word */
+    #rotulo-print-area .rotulo-id {
+      position: absolute;
+      bottom: 0.55in;
+      right: 0.6in;
+      font-family: 'Inter', sans-serif;
+      font-size: 28pt;
+      font-weight: 700;
+      color: #000;
+      text-align: right;
+    }
+
+    @page { size: 4in 6in; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY (Coordinador) -->
+<div id="pin-overlay">
+  <div class="pin-modal">
+    <h3>🔒 Modo Coordinador</h3>
+    <p>Inicia sesión para acceder</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">EMAIL</label>
+        <input id="coord-email" type="email" placeholder="coordinador@efficommerce.com"
+          style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none"
+          onkeydown="if(event.key==='Enter') document.getElementById('coord-password').focus()">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">CONTRASEÑA</label>
+        <input id="coord-password" type="password" placeholder="••••••••"
+          style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none"
+          onkeydown="if(event.key==='Enter') checkPin()">
+      </div>
+    </div>
+    <button class="btn-action btn-primary" onclick="checkPin()" style="width:100%;padding:11px;font-size:14px">
+      Iniciar Sesión
+    </button>
+    <div class="pin-error" id="pin-error"></div>
+    <button class="btn-cancel-pin" onclick="closePinModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="brand">
+    <img id="brand-logo-img" style="max-height:44px;max-width:200px;display:none;margin-bottom:6px;object-fit:contain;filter:brightness(0) invert(1)">
+    <div id="brand-logo-text">
+      <h1>Effi<span>commerce</span></h1>
+      <p>Generador de Etiquetas</p>
+    </div>
+  </div>
+
+  <div class="sidebar-body">
+    <div class="field">
+      <label>Tienda</label>
+      <select id="select-tienda"><option value="">-- Seleccione --</option></select>
+    </div>
+
+    <div class="field">
+      <label>Producto</label>
+      <select id="select-producto"><option value="">-- Seleccione --</option></select>
+    </div>
+
+    <div class="field">
+      <label>ID</label>
+      <select id="select-id"><option value="">-- ID --</option></select>
+    </div>
+
+    <div class="field">
+      <label>Formato</label>
+      <select id="select-formato">
+        <option value="estandar">Estándar (Normal)</option>
+        <option value="solo-notas">Solo Observaciones (Renglones)</option>
+      </select>
+    </div>
+
+    <button class="btn-print" id="btn-print">🖨 Imprimir Etiqueta</button>
+    <button class="btn-bulk" id="btn-bulk" onclick="openBulk()">📋 Impresión Masiva</button>
+  </div>
+
+  <div class="sidebar-footer">
+    <button class="btn-coord" id="btn-coord-toggle" onclick="toggleCoordMode()">
+      <span id="coord-icon">🔒</span>
+      <span id="coord-label">Modo Coordinador</span>
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN AREA -->
+<main class="main">
+
+  <!-- COORDINATOR PANEL -->
+  <div id="coord-panel">
+    <div class="coord-header">
+      <h2>⚙️ Panel de Coordinador <span class="coord-badge">ADMIN</span></h2>
+      <button class="btn-action btn-ghost" onclick="lockCoord()">🔒 Cerrar sesión</button>
+    </div>
+
+    <div class="coord-tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-add-item')">Agregar Producto</button>
+      <button class="tab-btn" onclick="switchTab('tab-add-tienda')">Nueva Tienda</button>
+      <button class="tab-btn" onclick="switchTab('tab-manage')">Gestionar Inventario</button>
+      <button class="tab-btn" onclick="switchTab('tab-config')">Configuración</button>
+    </div>
+
+    <!-- TAB: Agregar Producto -->
+    <div id="tab-add-item" class="tab-content active">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tienda</label>
+          <select id="c-select-tienda"></select>
+        </div>
+        <div class="form-group">
+          <label>ID del Producto</label>
+          <input type="text" id="c-new-id" placeholder="Ej: 72">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Nombre del Producto</label>
+          <input type="text" id="c-new-nombre" placeholder="Ej: CEPILLO ELÉCTRICO FACIAL">
+        </div>
+      </div>
+      <button class="btn-action btn-primary" onclick="addProducto()">+ Agregar Producto</button>
+    </div>
+
+    <!-- TAB: Nueva Tienda -->
+    <div id="tab-add-tienda" class="tab-content">
+      <div class="form-row single" style="margin-bottom:16px">
+        <div class="form-group">
+          <label>Nombre de la Tienda Nueva</label>
+          <input type="text" id="c-tienda-nombre" placeholder="Ej: Mi Nueva Tienda">
+        </div>
+      </div>
+      <button class="btn-action btn-primary" onclick="addTienda()">+ Crear Tienda</button>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+
+      <p class="section-label" style="margin-bottom:10px">Renombrar Tienda Existente</p>
+      <div class="form-row" style="margin-bottom:14px">
+        <div class="form-group">
+          <label>Tienda</label>
+          <select id="c-rename-tienda-select"></select>
+        </div>
+        <div class="form-group">
+          <label>Nombre Nuevo</label>
+          <input type="text" id="c-rename-tienda-nombre" placeholder="Ej: SICOMMER 2">
+        </div>
+      </div>
+      <button class="btn-action btn-primary" onclick="renameTienda()">✏️ Renombrar</button>
+    </div>
+
+    <!-- TAB: Gestionar Inventario -->
+    <div id="tab-manage" class="tab-content">
+      <div class="form-row single" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Selecciona Tienda</label>
+          <select id="m-select-tienda" onchange="renderManageList()"></select>
+        </div>
+      </div>
+      <p class="section-label">Inventario actual</p>
+      <div class="inv-list" id="manage-inv-list">
+        <div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona una tienda</span></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-action btn-danger" onclick="deleteTienda()" style="margin-left:auto">🗑 Eliminar Tienda</button>
+      </div>
+    </div>
+    <!-- TAB: Configuración -->
+    <div id="tab-config" class="tab-content">
+
+      <!-- LOGO ETIQUETA -->
+      <p class="section-label" style="margin-bottom:10px">Logo de la Etiqueta</p>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+        <div id="logo-preview-box" style="width:90px;height:60px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);flex-shrink:0">
+          <span id="logo-preview-placeholder" style="font-size:11px;color:var(--muted);text-align:center;padding:4px">Sin logo</span>
+          <img id="logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
+            📁 Subir imagen
+            <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
+          </label>
+          <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeLogo()">✕ Quitar logo</button>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:22px">PNG, JPG o SVG. Se guarda en el navegador automáticamente.</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
+
+      <!-- LOGO RÓTULO -->
+      <p class="section-label" style="margin-bottom:10px">Logo del Rótulo A4</p>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+        <div id="rotulo-logo-preview-box" style="width:90px;height:60px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);flex-shrink:0">
+          <span id="rotulo-logo-preview-placeholder" style="font-size:11px;color:var(--muted);text-align:center;padding:4px">Sin logo</span>
+          <img id="rotulo-logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
+            📁 Subir imagen
+            <input type="file" id="rotulo-logo-file-input" accept="image/*" style="display:none" onchange="handleRotuloLogoUpload(this)">
+          </label>
+          <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeRotuloLogo()">✕ Quitar logo</button>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Logo independiente del rótulo. Si no se sube, usa el mismo que la etiqueta.</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
+
+      <!-- PIN -->
+      <p class="section-label" style="margin-bottom:10px">Cambiar PIN</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>PIN Actual</label>
+          <input type="password" id="c-pin-actual" maxlength="4" placeholder="••••" inputmode="numeric" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>PIN Nuevo</label>
+          <input type="password" id="c-pin-nuevo" maxlength="4" placeholder="••••" inputmode="numeric" autocomplete="new-password">
+        </div>
+      </div>
+      <div class="form-row single" style="margin-bottom:14px">
+        <div class="form-group">
+          <label>Confirmar PIN Nuevo</label>
+          <input type="password" id="c-pin-confirm" maxlength="4" placeholder="••••" inputmode="numeric" autocomplete="new-password">
+        </div>
+      </div>
+      <button class="btn-action btn-primary" onclick="changePin()" style="margin-bottom:8px">🔑 Cambiar PIN</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">El PIN debe ser de 4 dígitos numéricos.</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
+
+      <!-- JSON -->
+      <p class="section-label" style="margin-bottom:10px">Datos de Inventario (JSON)</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn-action btn-primary" onclick="exportJSON()" style="font-size:12px">⬇ Exportar JSON</button>
+        <label class="btn-action btn-ghost" style="cursor:pointer;font-size:12px">
+          ⬆ Importar JSON
+          <input type="file" id="json-file-input" accept=".json" style="display:none" onchange="handleJSONImport(this)">
+        </label>
+      </div>
+      <p style="font-size:11px;color:var(--muted)">Exporta para editar en Excel/Notepad. Importa para aplicar cambios masivos.</p>
+
+    </div>
+  </div>
+
+  <!-- LABEL PREVIEW -->
+  <div id="etiqueta" class="label-4x6">
+    <div class="label-header">
+      <img id="label-logo-img" style="max-width:80%;max-height:1in;display:none;margin:0 auto">
+      <div id="label-logo-text">
+        <div style="font-family:'Space Mono',monospace;font-size:22pt;font-weight:700;color:#1a2a6c;letter-spacing:-1px;padding:14px 0 4px">Effi<span style="color:#f2a900">commerce</span></div>
+        <div style="font-size:9pt;letter-spacing:2px;color:#7a80a0;text-transform:uppercase;margin-bottom:4px">Logística Interna</div>
+      </div>
+      <!-- QR GS1: arriba derecha, absoluto para no afectar layout -->
+      <div class="label-qr" id="label-qr-area">
+        <div id="label-qr-code"></div>
+        <span id="label-qr-text"></span>
+      </div>
+    </div>
+
+    <div class="label-body">
+      <h1 id="view-name">PRODUCTO</h1>
+    </div>
+
+    <div class="label-notes">
+      <table class="notes-table">
+        <thead>
+          <tr>
+            <th class="col-obs">Observación</th>
+            <th class="col-fecha">Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="label-footer">
+      <span id="view-tienda" class="shop-corner">TIENDA</span>
+      <p>ID: <span id="view-id">0000</span></p>
+    </div>
+  </div>
+</main>
+
+<!-- RÓTULO MODAL -->
+<div id="rotulo-overlay">
+  <div class="rotulo-modal">
+    <div class="rotulo-modal-header">
+      <h3>🪧 Rótulo A4 Horizontal</h3>
+      <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px" onclick="closeRotulo()">✕</button>
+    </div>
+    <div class="rotulo-modal-body">
+      <div class="form-row single" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Nombre (texto grande)</label>
+          <input type="text" id="rotulo-input-name" placeholder="Ej: SICOMMER"
+            oninput="updateRotuloPreview()"
+            style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;text-transform:uppercase">
+        </div>
+      </div>
+      <div class="form-row single" style="margin-bottom:4px">
+        <div class="form-group">
+          <label>ID <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+          <input type="text" id="rotulo-input-id" placeholder="Ej: 39753"
+            oninput="updateRotuloPreview()"
+            style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none">
+        </div>
+      </div>
+      <!-- Vista previa -->
+      <div class="rotulo-preview" id="rotulo-preview-box">
+        <div class="rotulo-preview-border"></div>
+        <div class="rotulo-preview-logo" id="rotulo-prev-logo">
+          <div class="brand-text">Effi<span>commerce</span></div>
+        </div>
+        <div class="rotulo-preview-name" id="rotulo-prev-name">NOMBRE</div>
+        <div class="rotulo-preview-id" id="rotulo-prev-id" style="display:none"></div>
+      </div>
+    </div>
+    <div class="rotulo-modal-footer">
+      <button class="btn-action btn-ghost" onclick="closeRotulo()">Cancelar</button>
+      <button class="btn-action btn-primary" onclick="printRotulo()">🖨 Imprimir A4</button>
+    </div>
+  </div>
+</div>
+
+<!-- RÓTULO PRINT AREA -->
+<div id="rotulo-print-area"></div>
+
+<!-- BULK PRINT MODAL -->
+<div id="bulk-overlay">
+  <div class="bulk-modal">
+    <div class="bulk-modal-header">
+      <h3>📋 Impresión Masiva</h3>
+      <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px" onclick="closeBulk()">✕ Cerrar</button>
+    </div>
+    <div class="bulk-modal-body">
+      <select class="bulk-tienda-select" id="bulk-select-tienda" onchange="renderBulkList()">
+        <option value="">-- Selecciona una tienda --</option>
+      </select>
+      <div class="bulk-actions-bar">
+        <span id="bulk-selected-count">0 seleccionados</span>
+        <button class="btn-action btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkSelectAll()">Seleccionar todo</button>
+        <button class="btn-action btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkSelectNone()">Limpiar</button>
+      </div>
+      <div class="bulk-list" id="bulk-list">
+        <div class="bulk-item"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>
+      </div>
+    </div>
+    <div class="bulk-modal-footer">
+      <span class="bulk-count" id="bulk-footer-count">Selecciona productos para imprimir</span>
+      <button class="btn-action btn-ghost" onclick="closeBulk()">Cancelar</button>
+      <button class="btn-action btn-primary" onclick="printBulk()">🖨 Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK PRINT AREA (hidden, shown only when printing) -->
+<div id="bulk-print-area"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── DEFAULT DATA ──────────────────────────────────────────────────── */
+const DEFAULT_DATA = {
+  "tiendas": [
+    {
+      "nombre": "Hoshi",
+
+      "inventario": [
+        {"id": "2", "producto": "REPELENTE TRAMPA DE MOSQUITOS"},
+        {"id": "3", "producto": "Masajeador EMS de Pies"},
+        {"id": "4", "producto": "CHAMPÚ ANTICANAS NEGRO MILAGRO"},
+        {"id": "5", "producto": "LUZ SOLAR EXTERIOR INTELIGENTE"},
+        {"id": "6", "producto": "AUDIFONOS PRO BLUETOOTH"},
+        {"id": "7", "producto": "Proyector de Luces LaserScape RGB"},
+        {"id": "8", "producto": "MINI MÁQUINA DE COSER PORTÁTIL"},
+        {"id": "9", "producto": "DRON CON CÁMARA HD 4K"},
+        {"id": "10", "producto": "LINTERNA SÚPER BRILLANTE PLUS"},
+        {"id": "11", "producto": "Timbre inteligente con Cámara HD"},
+        {"id": "12", "producto": "Aspiradora Portátil"},
+        {"id": "13", "producto": "Crema mágica para Cicatrices"},
+        {"id": "14", "producto": "Peluche de Sueños para Bebés"},
+        {"id": "15", "producto": "Mini Plancha de Vapor Portátil"},
+        {"id": "16", "producto": "Plancha de Vapor Pro Sin Arrugas"},
+        {"id": "17", "producto": "Exprimidor Portátil Recargable"},
+        {"id": "18", "producto": "Masajeador Facial Lifting"},
+        {"id": "19", "producto": "Linterna Frontal Todo Terreno"},
+        {"id": "20", "producto": "Auriculares Inalámbricos Inteligentes"},
+        {"id": "21", "producto": "Motosierra Eléctrica Portátil"},
+        {"id": "22", "producto": "Parlante Bluetooth JBL Charge"},
+        {"id": "23", "producto": "JBL Xtreme Sonido Potente"},
+        {"id": "24", "producto": "Parlante Boombox Mini Led"},
+        {"id": "25", "producto": "JBL Boombox: Sonido Portátil"},
+        {"id": "26", "producto": "Corrector de Postura Ortopédico"},
+        {"id": "27", "producto": "Secador de Calzado Inteligente"},
+        {"id": "28", "producto": "Compresor Rápido Portátil"},
+        {"id": "29", "producto": "Amplificador WiFi Hogar Total"},
+        {"id": "30", "producto": "Impresora Bolsillo Magic Print"},
+        {"id": "31", "producto": "Mini Ventilador Plegable Verde"},
+        {"id": "34", "producto": "Secadora Portátil para Ropa"},
+        {"id": "36", "producto": "Crema Milagrosa para Manchas"},
+        {"id": "37", "producto": "Serum Antiedad Colágeno Radiante"},
+        {"id": "43", "producto": "Base de Maquillaje CC Cream"},
+        {"id": "46", "producto": "Wild Tornado Polvo Destapador"},
+        {"id": "47", "producto": "Compresor de Aire Portátil Deluxe"}
+      ]
+    },
+    {
+      "nombre": "SICOMMER",
+      "inventario": [
+        {"id": "1", "producto": "SOPORTE DE CELULAR"},
+        {"id": "2", "producto": "MOLINO DE CAFE"},
+        {"id": "3", "producto": "SARTEN 4 PUESTOS"},
+        {"id": "4", "producto": "CARGADOR DE BEBE"},
+        {"id": "5", "producto": "MINI ASPIRADORA"},
+        {"id": "6", "producto": "CINTA DOBLE FAZ"},
+        {"id": "7", "producto": "BASE ALTA COBERTURA"},
+        {"id": "8", "producto": "CORRECTOR DE JUANETES"},
+        {"id": "9", "producto": "LIMPIADOR DE OIDOS"},
+        {"id": "10", "producto": "CINTA IMPERMEABILIZANTE"},
+        {"id": "11", "producto": "BOMBA DE SUCCION"},
+        {"id": "12", "producto": "BOLSO ANTIRROBO"},
+        {"id": "13", "producto": "SERUM HIDRATANTE"},
+        {"id": "14", "producto": "SERUM DESPIGMENTANTE"},
+        {"id": "15", "producto": "TONICO CAPILAR PARA EL CRECIMIENTO DEL CABELLO"},
+        {"id": "16", "producto": "CREMA ALISADORA TERMOPROTECTOR SECRETOS"},
+        {"id": "19", "producto": "DC"},
+        {"id": "21", "producto": "AFILADOR DE CUCHILLO VERDE"},
+        {"id": "22", "producto": "LLAVE INGLESA"},
+        {"id": "23", "producto": "LEVANTA PARPADOS"},
+        {"id": "24", "producto": "SHAMPOO CUBRE CANAS"},
+        {"id": "25", "producto": "SCN"},
+        {"id": "26", "producto": "PAC"},
+        {"id": "27", "producto": "MASCARILLA FACIAL"},
+        {"id": "28", "producto": "SPRAY IMPERMEABILIZANTE"},
+        {"id": "29", "producto": "AG"},
+        {"id": "30", "producto": "GEL CI"},
+        {"id": "31", "producto": "LABIAL GELATINA"},
+        {"id": "32", "producto": "GAFLEC"},
+        {"id": "33", "producto": "CREMA LIMPIADORA MULTIUSOS"},
+        {"id": "34", "producto": "SI"},
+        {"id": "35", "producto": "TARJETERO"},
+        {"id": "36", "producto": "CEPILLO VAPOR PARA MASCOTAS"},
+        {"id": "37", "producto": "SP"},
+        {"id": "38", "producto": "CAMISA REDUCTORA PARA MUJER"},
+        {"id": "39", "producto": "BOQUILLA DE ALTA PRESION"},
+        {"id": "40", "producto": "MC"},
+        {"id": "41", "producto": "LIMPIA VIDRIOS"},
+        {"id": "42", "producto": "CREMA ALISADORA"},
+        {"id": "43", "producto": "MINI LAVADORA"},
+        {"id": "44", "producto": "CREMA PARA EL TRATAMIENTO DE HEMORROIDES"},
+        {"id": "45", "producto": "PARCHE PARA EL ACNE"},
+        {"id": "46", "producto": "PARCHE KINOKI"},
+        {"id": "47", "producto": "PELOTA PARA MASCOTAS"},
+        {"id": "48", "producto": "LOCION CON FERMONAS"},
+        {"id": "49", "producto": "VENTILADOR PARA CARRO"},
+        {"id": "50", "producto": "CASA PARA PINTAR"},
+        {"id": "51", "producto": "JUEGO DE BOTONES CON ALICATE"},
+        {"id": "52", "producto": "OBSEQUIO"},
+        {"id": "53", "producto": "PRODUCTO SORPRESA"},
+        {"id": "54", "producto": "LAMPARAL"},
+        {"id": "55", "producto": "PARCHE PARA DIABETES"},
+        {"id": "56", "producto": "SLIM PATH"},
+        {"id": "57", "producto": "CPC"},
+        {"id": "58", "producto": "CEPILLO LIMPIADOR DE VIDRIO"},
+        {"id": "59", "producto": "CLC"},
+        {"id": "60", "producto": "BASTA YA"},
+        {"id": "61", "producto": "SCI"},
+        {"id": "62", "producto": "TAPA CUCARACHA PARA PUERTAS"},
+        {"id": "63", "producto": "GT"},
+        {"id": "66", "producto": "SOPORTE DE CELULAR CON IMAN"},
+        {"id": "69", "producto": "LAMPARA LED"},
+        {"id": "70", "producto": "GAFAS DE LECTURA BIFOCALES"},
+        {"id": "71", "producto": "PAPEL ALUMINIO PARA COCINA"}
+      ]
+    },
+    {
+      "nombre": "Bambu",
+      "inventario": [
+        {"id": "2", "producto": "Tarjetero"},
+        {"id": "3", "producto": "Máquina Masajeadora de Cadera"},
+        {"id": "4", "producto": "BQ CP"},
+        {"id": "5", "producto": "Kit Limpia Oidos"},
+        {"id": "6", "producto": "Ejercitador de Antebrazo"},
+        {"id": "7", "producto": "Cepillo Corporal de Silicona para Ducha"},
+        {"id": "8", "producto": "Boquilla De Alta Presión Para Manguera"},
+        {"id": "9", "producto": "Papel Aluminio cocina"},
+        {"id": "10", "producto": "Tabletas Limpiadoras Para Lavadora"},
+        {"id": "11", "producto": "Llave para fregadero"},
+        {"id": "12", "producto": "Face Serum Extra White Chelito"},
+        {"id": "13", "producto": "Papel Autoadhesivo Tipo Marmol"},
+        {"id": "14", "producto": "Linterna De Emergencia 360°"},
+        {"id": "15", "producto": "Corrector De Postura Con Sensor Inteligente"},
+        {"id": "16", "producto": "Cepillo Magic Brush"},
+        {"id": "17", "producto": "Mini Localizador GPS magnético Fulfillment Incluido"},
+        {"id": "18", "producto": "Soporte De Telefono Para Auto"},
+        {"id": "19", "producto": "Lápiz Mágico de Belleza"},
+        {"id": "20", "producto": "Hidrata Tus Labios Y Rostro"},
+        {"id": "21", "producto": "Irrigador Bucal"},
+        {"id": "22", "producto": "Organizador de Maquillaje Acrílico 360° Rotatorio"},
+        {"id": "23", "producto": "Afeitadora Inteligente"},
+        {"id": "24", "producto": "Tira de Sellado para Puertas"},
+        {"id": "25", "producto": "Amplificador De Pantalla"},
+        {"id": "26", "producto": "Cable Multiuso 4 En 1 Carga Rapida"},
+        {"id": "27", "producto": "Sop Magnético"},
+        {"id": "28", "producto": "Cangurera Fular para Bebés"},
+        {"id": "29", "producto": "Extractor De Puntos Negros"},
+        {"id": "30", "producto": "Cinta Doble Contacto | Doble Faz Ultraresistente"},
+        {"id": "31", "producto": "Kit de Pestañas Magneticas 4D"},
+        {"id": "32", "producto": "Lámpara Mágica de Colores"},
+        {"id": "33", "producto": "Rizador Eléctrico"},
+        {"id": "34", "producto": "Boob Tape Cinta Levanta Busto"},
+        {"id": "35", "producto": "Llave Multiusos 48 En 1"},
+        {"id": "36", "producto": "Gorro Terapéutico Para Migraña Con Gel"},
+        {"id": "37", "producto": "Espuma Pol Impermeable"},
+        {"id": "38", "producto": "Cinta De Sellado Impermeable De Butillo Para Techos"},
+        {"id": "39", "producto": "Mini motosierra de mano"},
+        {"id": "40", "producto": "Cinta Lifting Invisible | Rejuvenece Tu Rostro"},
+        {"id": "41", "producto": "Brillo Labial Voluminizador"},
+        {"id": "42", "producto": "Auto Antigravedad con Control Remoto"},
+        {"id": "43", "producto": "Espuma Limp Mult"},
+        {"id": "44", "producto": "Corrector De Juanetes | Elimina Dolor En Pies"},
+        {"id": "45", "producto": "Corrector De Juanetes Pro blanco"},
+        {"id": "46", "producto": "Depilador Corporal - Micro Touch Yes"},
+        {"id": "47", "producto": "pizarra luminosa led"},
+        {"id": "48", "producto": "Paños mágicos Americanos"},
+        {"id": "49", "producto": "Depilador Sin Dolor"},
+        {"id": "50", "producto": "Removedor Con Esponja"},
+        {"id": "51", "producto": "Mini Cámara Espía A9"},
+        {"id": "52", "producto": "Plantillas Acupuntura"},
+        {"id": "53", "producto": "Parches para Pies"},
+        {"id": "54", "producto": "Crema Aclarante"},
+        {"id": "55", "producto": "Cepillo de Dientes 360° Para Niños 4x1"},
+        {"id": "56", "producto": "Cinta Invisible Levanta Parpados"},
+        {"id": "57", "producto": "Recortador de callos. Piel Muerta"},
+        {"id": "58", "producto": "DEPILADOR MAGICO AFEITADO FACIL"},
+        {"id": "59", "producto": "Elimina Canas | Shampoo Negro Instantaneo"},
+        {"id": "60", "producto": "Rubor en Barra de Pixi Beauty"},
+        {"id": "61", "producto": "Destornillador 18 en 1"},
+        {"id": "62", "producto": "Gafas de Lectura"},
+        {"id": "63", "producto": "Super Linterna De Alta Potencia 3.7 Voltios Recargable De 50W"},
+        {"id": "64", "producto": "Almohada ortopédica cervical"},
+        {"id": "65", "producto": "Polvo Destapador de Cañerías Mágico"},
+        {"id": "66", "producto": "Trenzadora Automática para Niñas"},
+        {"id": "67", "producto": "Proyector Mágico | Niños Creativos"},
+        {"id": "68", "producto": "Juego de Mesa Lógica y Colores"},
+        {"id": "69", "producto": "Rodillo Masajeador Facial"},
+        {"id": "70", "producto": "Descanso sin ronquidos"},
+        {"id": "71", "producto": "Eliminador de Pulgas"},
+        {"id": "72", "producto": "Producto Sorpresa"},
+        {"id": "73", "producto": "Cinturón Calefactor para Cólicos"},
+        {"id": "74", "producto": "Limpiavidrios Antiempañante Hidrofóbico para Autos"},
+        {"id": "75", "producto": "Máquina Depiladora Facial Portátil"},
+        {"id": "76", "producto": "Afeitadora Corporal 2 en 1 Recargable Portátil"},
+        {"id": "77", "producto": "Soporte de Celular Magnético"},
+        {"id": "78", "producto": "Lápiz de Dientes"},
+        {"id": "79", "producto": "QUITA RAYAS"},
+        {"id": "80", "producto": "collagen air"},
+        {"id": "81", "producto": "spray sellador"},
+        {"id": "82", "producto": "Plantilla Invisible"},
+        {"id": "83", "producto": "Limpiador Ultrasónico Multiusos"},
+        {"id": "84", "producto": "Alfombra"},
+        {"id": "85", "producto": "imper 1 litro"},
+        {"id": "86", "producto": "Muebles"},
+        {"id": "87", "producto": "medias"},
+        {"id": "88", "producto": "cojin"},
+        {"id": "89", "producto": "Lámparas Exteriores"},
+        {"id": "90", "producto": "Depilador Piedra"},
+        {"id": "91", "producto": "Porta vasos Universal"},
+        {"id": "92", "producto": "Audifonos"},
+        {"id": "93", "producto": "Parche Perder Peso"},
+        {"id": "94", "producto": "Lámpara UV Mata Mosquitos"},
+        {"id": "95", "producto": "Lima Eléctrica Profesional para Pies"},
+        {"id": "97", "producto": "Crema anti acné"},
+        {"id": "98", "producto": "Báscula para maleta"},
+        {"id": "99", "producto": "aspiradora 3 en 1"},
+        {"id": "100", "producto": "luces para bicicleta"},
+        {"id": "101", "producto": "Labiales de flor"},
+        {"id": "102", "producto": "Selfie stick"},
+        {"id": "103", "producto": "Rodillo Masajeador"},
+        {"id": "104", "producto": "kit antiacné"},
+        {"id": "106", "producto": "REPELENTE ELECTRÓNICO ULTRASÓNICO"},
+        {"id": "107", "producto": "ROBOT LIMPIADOR INTELIGENTE 2 EN 1"},
+        {"id": "108", "producto": "SELLANTE TRANSPARENTE"},
+        {"id": "109", "producto": "Luz solar LED"},
+        {"id": "110", "producto": "Par de espejos"},
+        {"id": "111", "producto": "Green mask"},
+        {"id": "112", "producto": "Sonrisa perfecta"}
+      ]
+    },
+    {
+      "nombre": "Compronat",
+      "inventario": [
+        {"id": "1", "producto": "PROSTATE PLUS"},
+        {"id": "2", "producto": "SHILAJIT"},
+        {"id": "3", "producto": "VIGUP"},
+        {"id": "4", "producto": "MACA (AUMENTA ENERGÍA)"},
+        {"id": "5", "producto": "ASHWAGANDHA"},
+        {"id": "6", "producto": "VIRIL MEN"},
+        {"id": "7", "producto": "TESTOGEN ULTRA"},
+        {"id": "8", "producto": "TRIBULUS TERRESTRIS"},
+        {"id": "9", "producto": "MELENA DE LEÓN"},
+        {"id": "10", "producto": "NAD RESVERATROL"},
+        {"id": "11", "producto": "OMEGA 3"},
+        {"id": "12", "producto": "SAW PALMETO"},
+        {"id": "13", "producto": "PYTHON GEL"},
+        {"id": "14", "producto": "URO (PROBIÓTICOS VAGINALES)"},
+        {"id": "15", "producto": "OMEGA 3 LEMON"},
+        {"id": "16", "producto": "MELATONIN 10MG"},
+        {"id": "17", "producto": "MOBIFLEX"},
+        {"id": "18", "producto": "TOTAL SLEEP"},
+        {"id": "19", "producto": "LIVER DETOX (LIMPIADOR HEPATICO)"},
+        {"id": "20", "producto": "MAGNESIO PLUS"},
+        {"id": "21", "producto": "COLAGENO HIDROLIZADO"},
+        {"id": "22", "producto": "ARTERIAL CLEANSE"},
+        {"id": "23", "producto": "SLIM"},
+        {"id": "25", "producto": "SERUM BIOAQUA"},
+        {"id": "27", "producto": "CARBLOCK"},
+        {"id": "28", "producto": "MEGA FRUIT X 4 TABLETAS"},
+        {"id": "29", "producto": "NAD RESVERATROL NUTRA X 60 Capsulas"},
+        {"id": "30", "producto": "NUTRA (ASHWAGANDHA) X 60 Capsulas"},
+        {"id": "31", "producto": "GLUCOMETRO"},
+        {"id": "32", "producto": "TÉ DE LOS DIOSES"},
+        {"id": "34", "producto": "GREEN FUSSION"},
+        {"id": "35", "producto": "TE SOURSOP TEA (GUANABANA GAVIOLA)"},
+        {"id": "36", "producto": "TURKESTERONE"}
+      ]
+    },
+    {
+      "nombre": "Distri",
+      "inventario": [
+        {"id": "3", "producto": "HIDROLAVADORA"},
+        {"id": "4", "producto": "LOCALIZADOR GPS"},
+        {"id": "5", "producto": "AUDIFONO AMPLIFICADOR DE SONIDO"},
+        {"id": "6", "producto": "KIT DE CALIGRAFIA PARA NIÑOS"},
+        {"id": "7", "producto": "LAPIZ ACUPUNTURA"},
+        {"id": "8", "producto": "CEPILLO GIRATORIO PARA LAVAR AUTO"},
+        {"id": "9", "producto": "ATOMIZADORA"},
+        {"id": "10", "producto": "BLANQUEADOR DENTAL DE LUZ LED"},
+        {"id": "11", "producto": "CB"},
+        {"id": "12", "producto": "SET DE MANICURE"},
+        {"id": "13", "producto": "TRITURADOR DE CAFE"},
+        {"id": "14", "producto": "MASAJEADOR COLICOS"},
+        {"id": "15", "producto": "CINTA DOBLE CARA 3 METROS"},
+        {"id": "16", "producto": "MINI AFEITADORA"},
+        {"id": "17", "producto": "ASPIRADORA 3 EN 1"},
+        {"id": "18", "producto": "TRAPOS DE ALAMBRE X 5"},
+        {"id": "19", "producto": "MEGA SET DE ARTE ROSADO"},
+        {"id": "20", "producto": "MEGA SET DE ARTE AZUL"},
+        {"id": "21", "producto": "KITCHEN RAK GRANDE"},
+        {"id": "22", "producto": "CORRECTOR DE POSTURA"},
+        {"id": "23", "producto": "CARGADOR DE BATERIA"},
+        {"id": "24", "producto": "POTAZA DESTAPA CAÑOS"},
+        {"id": "25", "producto": "DEPILADORA FLAWLESS"},
+        {"id": "26", "producto": "SPRAY IMPERMEABILIZANTE"},
+        {"id": "27", "producto": "REMOVEDOR DE RAYONES"},
+        {"id": "28", "producto": "GORRO PARA MIGRAÑA"},
+        {"id": "29", "producto": "AISLAMIENTO BAJO PUERTA"},
+        {"id": "30", "producto": "GRIFO ADAPTADOR 360"},
+        {"id": "31", "producto": "COMPRESOR"},
+        {"id": "32", "producto": "CARGADOR MULTIFUNCIONAL CARRO"},
+        {"id": "33", "producto": "HACHA"},
+        {"id": "34", "producto": "CARILLAS DENTALES"},
+        {"id": "35", "producto": "LAPIZ TESTER"},
+        {"id": "36", "producto": "KIT LIMPIA OIDOS"},
+        {"id": "37", "producto": "CORREJUGO"},
+        {"id": "38", "producto": "ANTIRONQUIDO PLASTICO"},
+        {"id": "39", "producto": "NN BLUE"},
+        {"id": "40", "producto": "CLICK NASAL ANTIRONQUIDO"},
+        {"id": "41", "producto": "LAPIZ BLANQUEADOR DE DIENTES"},
+        {"id": "42", "producto": "DILANA"},
+        {"id": "43", "producto": "RDV"},
+        {"id": "44", "producto": "PURIFICADOR DE AGUA"},
+        {"id": "45", "producto": "PROTECTOR SALPICADURAS PARA GRIFO"},
+        {"id": "46", "producto": "RUEDA ABDOMINAL"},
+        {"id": "47", "producto": "PARCHE KINOKI"},
+        {"id": "48", "producto": "SOPORTE LAVADORA"},
+        {"id": "49", "producto": "PASTA REPARADORA DE DIENTES"},
+        {"id": "50", "producto": "SOPOHO"},
+        {"id": "51", "producto": "HOT SWEAT CREAM"},
+        {"id": "52", "producto": "BALINES ACUPUNTURA"},
+        {"id": "53", "producto": "JUEGO DE BOTONES CON ALICATES"},
+        {"id": "54", "producto": "BLACK SOAP CUBRE CANAS"},
+        {"id": "55", "producto": "REPARADOR DE METALES"},
+        {"id": "56", "producto": "REPELENTE"},
+        {"id": "57", "producto": "CA21"},
+        {"id": "58", "producto": "RIZADOR DE PESTAÑAS CON PINZA"},
+        {"id": "59", "producto": "CREMA BLANQUEAMIENTO DENTAL MORADA"},
+        {"id": "60", "producto": "CEPILLO A VAPOR DE MASCOTAS"},
+        {"id": "61", "producto": "SUERO CAPILAR"},
+        {"id": "62", "producto": "MOLDE DE EMPANADAS"},
+        {"id": "63", "producto": "BOQUILLA DE ALTA PRESION"},
+        {"id": "64", "producto": "DC"},
+        {"id": "65", "producto": "ASPIRADOR DE PIOJOS"},
+        {"id": "66", "producto": "CEPILLO ELECTRICO MASAJE"},
+        {"id": "67", "producto": "POLVO DESTAPA CAÑOS"},
+        {"id": "68", "producto": "ACA"},
+        {"id": "69", "producto": "MASILLA"},
+        {"id": "70", "producto": "PLANTILLAS ORTOPEDICAS 35-40"},
+        {"id": "71", "producto": "PLANTILLAS ORTOPEDICAS 41-44"},
+        {"id": "72", "producto": "KIT QUITA RAYONES"},
+        {"id": "73", "producto": "ROLLO CONTA LEVANTA PARPADOS"},
+        {"id": "74", "producto": "BALSAMO HIDRATANTE SEBO RES"},
+        {"id": "76", "producto": "BANDA DE SILICONA"},
+        {"id": "78", "producto": "LIMPIADOR MULTIUSOS"},
+        {"id": "79", "producto": "IMPERMEABILIZANTE TERREL 500GR"},
+        {"id": "81", "producto": "CEPILLO ALISADOR 2EN1"},
+        {"id": "82", "producto": "DILATADOR NASAL 15 TIRAS"},
+        {"id": "83", "producto": "SELLADOR Y PEGAMENTO DE RELLENO PARA GRIETAS 500GR"},
+        {"id": "86", "producto": "BIFOCAL"},
+        {"id": "87", "producto": "BANDA ELASTICA"}
+      ]
+    },
+    {
+      "nombre": "VIVE",
+      "inventario": [
+        {"id": "3", "producto": "STITCH QUE RESPIRA AZUL"},
+        {"id": "4", "producto": "STITCH QUE RESPIRA ROSADO"},
+        {"id": "5", "producto": "CR GLOSS"},
+        {"id": "6", "producto": "PERFUME LIBIDHOT DE FEROMONAS"},
+        {"id": "7", "producto": "CORRECTOR DE POSTURA ELECTRICO"},
+        {"id": "8", "producto": "LIMPIADOR ULTRASONICO PUNTOS NEGROS"},
+        {"id": "9", "producto": "IRR DENT"},
+        {"id": "11", "producto": "KIT DE MANICURE"},
+        {"id": "15", "producto": "CEPILLOS DE DIENTES DE BEBE"},
+        {"id": "17", "producto": "MINI LAVADORA PORTATIL"},
+        {"id": "40", "producto": "ESPUMA MULTIUSOS"},
+        {"id": "42", "producto": "ESTIRADOR LUMBAR"},
+        {"id": "43", "producto": "RUEDA ABDOMINAL"},
+        {"id": "45", "producto": "PIZARRAS LED"},
+        {"id": "46", "producto": "QUITA MANCHAS"},
+        {"id": "50", "producto": "CEPILLO ANTI EMPAÑANTE CARRO"},
+        {"id": "55", "producto": "MINI MASAJEADOR ELECTRICO"},
+        {"id": "56", "producto": "KERATINA ALISADORA KARSELL"},
+        {"id": "58", "producto": "GORRO ANTICAIDAS BEBE"},
+        {"id": "64", "producto": "CREMA 24K ACLARANTE DR RASHEL"},
+        {"id": "65", "producto": "SET X5 CONTENEDORES HERMETICOS"},
+        {"id": "66", "producto": "ANTIRAYONES PARA CARRO"},
+        {"id": "67", "producto": "LIMPIADOR AUTOMATICO DE VASOS"},
+        {"id": "69", "producto": "LIMPIADOR DE OIDOS"},
+        {"id": "70", "producto": "LAMPARA POKE BOLA"},
+        {"id": "71", "producto": "SET DE TUBOS TERMOENCOGIBLES"},
+        {"id": "72", "producto": "CORRECTOR DE POSTURA SENCILLO"},
+        {"id": "73", "producto": "MIN.AF"},
+        {"id": "74", "producto": "MALETIN DE VIAJE MUJER"},
+        {"id": "75", "producto": "REMOVEDOR DE C"},
+        {"id": "76", "producto": "REMOVEDOR DE C PRO"},
+        {"id": "78", "producto": "SHORT ADELGAZANTE BEIGE XL"},
+        {"id": "79", "producto": "SHORT ADELGAZANTE NEGRO XL"},
+        {"id": "80", "producto": "SHORT ADELGAZANTE NEGRO L"},
+        {"id": "81", "producto": "CORRECTOR DE POSTURA PRO"},
+        {"id": "82", "producto": "FAJA DEPORTIVA PRETTY GRILL"},
+        {"id": "83", "producto": "CEPILLO ALIS"},
+        {"id": "84", "producto": "CEPILLO PARA LIMPIAR ZAPATOS"},
+        {"id": "85", "producto": "b electronico"},
+        {"id": "86", "producto": "DESMANCHADOR DE VIDRIOS"},
+        {"id": "87", "producto": "SHORT ADELGAZANTE BEIGE L"},
+        {"id": "88", "producto": "Proyector USB"},
+        {"id": "89", "producto": "Holder magne Celular"},
+        {"id": "90", "producto": "Lampara Proyector estrellas niños"},
+        {"id": "91", "producto": "Juego basta tradicional"},
+        {"id": "92", "producto": "Tapasol chofer"},
+        {"id": "93", "producto": "Quitapelusas pro"},
+        {"id": "95", "producto": "CACP"}
+      ]
+    },
+    {
+      "nombre": "Deluxe",
+      "inventario": [
+        {"id": "3", "producto": "Crema Anti Acné"},
+        {"id": "4", "producto": "Serum para Cejas y Pestañas Bioaqua"},
+        {"id": "5", "producto": "Kit Limpiador de Oidos"},
+        {"id": "6", "producto": "Crema Aclarante (Whitening Cream)"}
+      ]
+    },
+    {
+      "nombre": "Belvie",
+      "inventario": [
+        {"id": "1", "producto": "Aspiradora Para Colchones de BedBreeze"}
+      ]
+    },
+    {
+      "nombre": "UNMERCO",
+      "inventario": [
+        {"id": "2", "producto": "Mammoth"},
+        {"id": "3", "producto": "Derman"},
+        {"id": "4", "producto": "Insta Virgin"},
+        {"id": "5", "producto": "Hemo Cream"},
+        {"id": "6", "producto": "Coli Plus"}
+      ]
+    },
+    {
+      "nombre": "MARFIL",
+      "inventario": [
+        {"id": "1", "producto": "GAFAS DE SOL MARFIL ORION"}
+      ]
+    },
+    {
+      "nombre": "BOLSAS",
+      "inventario": [
+        {"id": "1", "producto": "BOLSA 20X30"},
+        {"id": "2", "producto": "BOLSA 25X35"},
+        {"id": "3", "producto": "BOLSA 30X22"},
+        {"id": "4", "producto": "BOLSA 36X53"},
+        {"id": "5", "producto": "BOLSA 60X60"},
+        {"id": "6", "producto": "BOLSA D'ANGELES"}
+      ]
+    },
+    {
+      "nombre": "Camila",
+      "inventario": [
+        {"id": "1", "producto": "POSBION"},
+        {"id": "3", "producto": "POSBION POR 3"},
+        {"id": "4", "producto": "NER MAS"},
+        {"id": "6", "producto": "POSBION BPL1"},
+        {"id": "7", "producto": "HEALENA"}
+      ]
+    },
+    {
+      "nombre": "Dangeles Jeans",
+      "inventario": [
+        {"id": "1", "producto": "Wide leg doblado ref: 9202516"},
+        {"id": "2", "producto": "Wide leg doblado ref: 9202518"},
+        {"id": "3", "producto": "Wide leg doblado ref: 9202520"},
+        {"id": "4", "producto": "Wide leg doblado ref: 9202522"},
+        {"id": "5", "producto": "Wide leg doblado ref: 9202524"},
+        {"id": "6", "producto": "Wide leg azul oscuro ref: 9202616"},
+        {"id": "7", "producto": "Wide leg azul oscuro ref: 9202618"},
+        {"id": "8", "producto": "Wide leg azul oscuro ref: 9202620"},
+        {"id": "9", "producto": "Wide leg azul oscuro ref: 9202622"},
+        {"id": "10", "producto": "Wide leg azul oscuro ref: 9202624"},
+        {"id": "11", "producto": "Jean skinny oscuro ref: 91027-116"},
+        {"id": "12", "producto": "Jean skinny oscuro ref: 91027-118"},
+        {"id": "13", "producto": "Jean skinny oscuro ref: 91027-120"},
+        {"id": "14", "producto": "Jean skinny oscuro ref: 91027-122"},
+        {"id": "15", "producto": "Jean skinny oscuro ref: 91027-124"},
+        {"id": "16", "producto": "Skinny claro rotos ref: DA-02613"},
+        {"id": "17", "producto": "Skinny claro rotos ref: DA-02615"},
+        {"id": "18", "producto": "Skinny claro rotos ref: DA-02617"},
+        {"id": "19", "producto": "Skinny claro rotos ref: DA-02619"},
+        {"id": "20", "producto": "Skinny claro rotos ref: DA-02621"},
+        {"id": "21", "producto": "Bota recta brillos ref: DA-03313"},
+        {"id": "22", "producto": "Bota recta brillos ref: DA-03315"},
+        {"id": "23", "producto": "Bota recta brillos ref: DA-03317"},
+        {"id": "24", "producto": "Bota recta brillos ref: DA-03319"},
+        {"id": "25", "producto": "Bota recta brillos ref: DA-03321"}
+      ]
+    },
+    {
+      "nombre": "BOGOCLOCK",
+      "inventario": [
+        {"id": "1", "producto": "RAYBAN AVIATOR VERDE-DORADO+ESTUCHE TIPO ORIGINAL"},
+        {"id": "2", "producto": "RAYBAN AVIATOR NEGRO+ESTUCHE TIPO ORIGINAL"},
+        {"id": "3", "producto": "RAYBAN AVIATOR NEGRO-DORADO+ESTUCHE TIPO ORIGINAL"},
+        {"id": "5", "producto": "RAYBAN HEXAGONAL NEGRO +ESTUCHE TIPO ORIGINAL"},
+        {"id": "7", "producto": "ROLEX SUBMARINER PLATEADO-NEGRO"},
+        {"id": "8", "producto": "ROLEX SUBMARINER DORADO-NEGRO"},
+        {"id": "11", "producto": "RAYBAN WAYFARER NEGRO+ESTUCHE TIPO ORIGINAL"},
+        {"id": "12", "producto": "RAYBAN ERIKA NEGRO+ESTUCHE TIPO ORIGINAL"},
+        {"id": "13", "producto": "RAYBAN ERIKA NEGRO-VERDE +ESTUCHE TIPO ORIGINAL"},
+        {"id": "14", "producto": "RAYBAN ROUND VERDE DORADA +ESTUCHE TIPO ORIGINAL"},
+        {"id": "16", "producto": "RAYBAN ROUND NEGRO +ESTUCHE TIPO ORIGINAL"},
+        {"id": "17", "producto": "RAYBAN CLUB MASTER NEGRO-DORADO +ESTUCHE TIPO ORIGINAL"},
+        {"id": "20", "producto": "RAYBAN PD NEGRO-DORADO +ESTUCHE TIPO ORIGINAL"},
+        {"id": "21", "producto": "RAYBAN PD AZUL +ESTUCHE TIPO ORIGINAL"},
+        {"id": "22", "producto": "ROLEX SUBMARINER TRENZADO PLATEADO-NEGRO"},
+        {"id": "23", "producto": "ROLEX SUBMARINER BICOLOR-DORADO"},
+        {"id": "24", "producto": "RAYBAN CHRIS NEGRO +ESTUCHE TIPO ORIGINAL"},
+        {"id": "26", "producto": "RAYBAN ROUND CAFÉ DORADA +ESTUCHE TIPO ORIGINAL"},
+        {"id": "27", "producto": "RAYBAN CLUB MASTER VERDE-DORADO +ESTUCHE TIPO ORIGINAL"},
+        {"id": "28", "producto": "RAYBAN CLUB MASTER CAFE-DORADO +ESTUCHE TIPO ORIGINAL"},
+        {"id": "29", "producto": "RAYBAN PD AZUL +ESTUCHE TIPO ORIGINAL"},
+        {"id": "30", "producto": "RAYBAN PD NEGRO +ESTUCHE TIPO ORIGINAL"},
+        {"id": "33", "producto": "ROLEX SUBMARINER TRENZADO PLATEADO-AZUL"}
+      ]
+    },
+    {
+      "nombre": "Surtidor CR",
+      "inventario": [
+        {"id": "1", "producto": "FLETE"},
+        {"id": "2", "producto": "MASAJEADOR INFRAROJO 7N1"},
+        {"id": "3", "producto": "Ventilador repelente de mosquitos"},
+        {"id": "4", "producto": "Condimento Electrico"},
+        {"id": "5", "producto": "Lonchera Electrica"},
+        {"id": "6", "producto": "Dispensador de granos y cereales(x3)"},
+        {"id": "7", "producto": "Bolso de pierna"},
+        {"id": "8", "producto": "Soporte para baño"},
+        {"id": "9", "producto": "Máquina VGR V-290"},
+        {"id": "10", "producto": "Zapatero grande"},
+        {"id": "11", "producto": "Máquina VGR V-331"},
+        {"id": "12", "producto": "Máquina Geemy GM-1021"},
+        {"id": "13", "producto": "Inflador"},
+        {"id": "14", "producto": "Masajeador con drenaje linfatico"},
+        {"id": "15", "producto": "Cepillo de limpieza"},
+        {"id": "16", "producto": "Videoportero de seguridad"},
+        {"id": "17", "producto": "Waflera"},
+        {"id": "18", "producto": "Vacuum cleaner"},
+        {"id": "19", "producto": "Portacubiertos"},
+        {"id": "20", "producto": "Condimentero x6"},
+        {"id": "21", "producto": "Topper en forma de hamburguesa"},
+        {"id": "22", "producto": "Bombillo camara"},
+        {"id": "23", "producto": "Luces para bicicletas CYGM-2218 X15"}
+      ]
+    }
+  ]
+};
+
+/* ── CONFIG ──────────────────────────────────────── */
+const API = '';  // vacío = mismo dominio en Vercel
+const LOGO_KEY = 'effi_logo_v1';         // localStorage solo para logos (base64)
+const ROTULO_LOGO_KEY = 'effi_rotulo_logo_v1';
+
+/* ── STATE ─────────────────────────────────────────── */
+let appData = { tiendas: [] };
+let coordToken = null;   // JWT del coordinador
+let coordUnlocked = false;
+let pinBuffer = '';
+
+/* ── API HELPERS ───────────────────────────────────── */
+async function apiGet(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function apiPost(path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (coordToken) headers['Authorization'] = 'Bearer ' + coordToken;
+  const r = await fetch(API + path, { method: 'POST', headers, body: JSON.stringify(body) });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
+  return r.json();
+}
+
+async function apiPatch(path, body) {
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + coordToken };
+  const r = await fetch(API + path, { method: 'PATCH', headers, body: JSON.stringify(body) });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
+  return r.json();
+}
+
+async function apiDelete(path, body) {
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + coordToken };
+  const r = await fetch(API + path, { method: 'DELETE', headers, body: JSON.stringify(body) });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
+  return r.json();
+}
+
+/* ── LOAD DATA FROM API ─────────────────────────────── */
+async function loadData() {
+  try {
+    showToast('Cargando inventario...', '');
+    const data = await apiGet('/api/tiendas');
+    appData = data;
+    hideToast();
+  } catch(e) {
+    showToast('Error cargando datos. Verifica conexión.', 'danger');
+    appData = { tiendas: [] };
+  }
+}
+
+function hideToast() {
+  const t = document.getElementById('toast');
+  t.className = 'toast';
+}
+
+/* ── COORDINADOR LOGIN (reemplaza PIN modal) ────────── */
+async function checkPin() {
+  // En versión API el "PIN" es en realidad email/password
+  // Reutilizamos el modal de PIN para mostrar login
+  const email = document.getElementById('coord-email')?.value?.trim();
+  const password = document.getElementById('coord-password')?.value?.trim();
+  if (!email || !password) return;
+
+  try {
+    const data = await apiPost('/api/auth', { email, password });
+    coordToken = data.token;
+    closePinModal();
+    coordUnlocked = true;
+    const btn = document.getElementById('btn-coord-toggle');
+    btn.classList.add('active');
+    document.getElementById('coord-icon').textContent = '⚙️';
+    document.getElementById('coord-label').textContent = 'Coordinador Activo';
+    document.getElementById('coord-panel').classList.add('visible');
+    showToast('✅ Sesión iniciada', 'success');
+  } catch(e) {
+    document.getElementById('pin-error').textContent = 'Credenciales incorrectas';
+  }
+}
+
+function changePin() {
+  showToast('Para cambiar contraseña ve a Supabase Dashboard', '');
+}
+
+/* ── TOAST ─────────────────────────────────────────── */
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.className = 'toast ' + type, 2800);
+}
+
+/* ── POPULATE SELECTS ──────────────────────────────── */
+function populateTiendas() {
+  const selectors = ['select-tienda', 'c-select-tienda', 'm-select-tienda', 'bulk-select-tienda', 'c-rename-tienda-select'];
+  selectors.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">-- Seleccione --</option>';
+    appData.tiendas.forEach((t, i) => {
+      el.add(new Option(t.nombre, i));
+    });
+    if (cur !== '') el.value = cur;
+  });
+}
+
+async function renameTienda() {
+  const idx = document.getElementById('c-rename-tienda-select').value;
+  const nuevoNombre = document.getElementById('c-rename-tienda-nombre').value.trim();
+  if (idx === '') return showToast('Selecciona una tienda', 'danger');
+  if (!nuevoNombre) return showToast('Escribe el nombre nuevo', 'danger');
+  const tienda = appData.tiendas[idx];
+  try {
+    await apiPatch('/api/tiendas', { id: tienda.id, nombre: nuevoNombre });
+    const nombreAnterior = tienda.nombre;
+    await loadData();
+    populateTiendas();
+    document.getElementById('c-rename-tienda-nombre').value = '';
+    showToast(`✅ "${nombreAnterior}" → "${nuevoNombre}"`, 'success');
+  } catch(e) { showToast(e.message, 'danger'); }
+}
+
+function populateInventario(tiendaIdx, prodSel, idSel) {
+  prodSel.innerHTML = '<option value="">-- Producto --</option>';
+  idSel.innerHTML = '<option value="">-- ID --</option>';
+  if (tiendaIdx === '' || !appData.tiendas[tiendaIdx]) return;
+  const inv = [...appData.tiendas[tiendaIdx].inventario]
+    .sort((a,b) => parseInt(a.id) - parseInt(b.id));
+  inv.forEach(item => {
+    prodSel.add(new Option(item.producto, item.id));
+    idSel.add(new Option(item.id, item.id));
+  });
+}
+
+/* ── TAB SWITCH ────────────────────────────────────── */
+function switchTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config'];
+  const idx = tabs.indexOf(id);
+  if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  if (id === 'tab-add-tienda') populateTiendas();
+}
+
+/* ── COORD ACTIONS ─────────────────────────────────── */
+async function addProducto() {
+  const tiendaIdx = document.getElementById('c-select-tienda').value;
+  const newId = document.getElementById('c-new-id').value.trim();
+  const newNombre = document.getElementById('c-new-nombre').value.trim();
+  if (tiendaIdx === '') return showToast('Selecciona una tienda', 'danger');
+  if (!newId) return showToast('El ID es requerido', 'danger');
+  if (!newNombre) return showToast('El nombre es requerido', 'danger');
+  const tienda = appData.tiendas[tiendaIdx];
+  try {
+    await apiPost('/api/productos', { tienda_id: tienda.id, codigo: newId, nombre: newNombre });
+    await loadData();
+    populateTiendas();
+    renderManageList();
+    const mainIdx = document.getElementById('select-tienda').value;
+    if (mainIdx === tiendaIdx) {
+      populateInventario(tiendaIdx, document.getElementById('select-producto'), document.getElementById('select-id'));
+    }
+    document.getElementById('c-new-id').value = '';
+    document.getElementById('c-new-nombre').value = '';
+    showToast(`✅ Producto "${newNombre}" agregado`, 'success');
+  } catch(e) { showToast(e.message, 'danger'); }
+}
+
+async function addTienda() {
+  const nombre = document.getElementById('c-tienda-nombre').value.trim();
+  if (!nombre) return showToast('Escribe un nombre', 'danger');
+  try {
+    await apiPost('/api/tiendas', { nombre });
+    await loadData();
+    populateTiendas();
+    document.getElementById('c-tienda-nombre').value = '';
+    showToast(`✅ Tienda "${nombre}" creada`, 'success');
+  } catch(e) { showToast(e.message, 'danger'); }
+}
+
+async function removeProducto(tiendaIdx, productId) {
+  const inv = appData.tiendas[tiendaIdx].inventario;
+  const item = inv.find(i => i.id === productId);
+  if (!item) return;
+  try {
+    await apiDelete('/api/productos', { id: item._dbId });
+    await loadData();
+    renderManageList();
+    const mainIdx = document.getElementById('select-tienda').value;
+    if (mainIdx == tiendaIdx) {
+      populateInventario(tiendaIdx, document.getElementById('select-producto'), document.getElementById('select-id'));
+      updatePreview();
+    }
+    showToast('Producto eliminado');
+  } catch(e) { showToast(e.message, 'danger'); }
+}
+
+async function deleteTienda() {
+  const idx = document.getElementById('m-select-tienda').value;
+  if (idx === '') return showToast('Selecciona una tienda', 'danger');
+  const tienda = appData.tiendas[idx];
+  if (!confirm(`¿Eliminar la tienda "${tienda.nombre}" y todo su inventario?`)) return;
+  try {
+    await apiDelete('/api/tiendas', { id: tienda.id });
+    await loadData();
+    populateTiendas();
+    document.getElementById('manage-inv-list').innerHTML =
+      '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona una tienda</span></div>';
+    showToast(`Tienda "${tienda.nombre}" eliminada`, 'danger');
+  } catch(e) { showToast(e.message, 'danger'); }
+}
+
+function renderManageList() {
+  const idx = document.getElementById('m-select-tienda').value;
+  const container = document.getElementById('manage-inv-list');
+  if (idx === '' || !appData.tiendas[idx]) {
+    container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona una tienda</span></div>';
+    return;
+  }
+  const inv = [...appData.tiendas[idx].inventario].sort((a,b) => parseInt(a.id) - parseInt(b.id));
+  if (!inv.length) {
+    container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Sin productos</span></div>';
+    return;
+  }
+  container.innerHTML = inv.map(item => `
+    <div class="inv-item" data-original-id="${item.id}" data-db-id="${item._dbId}">
+      <input class="input-id" value="${item.id}" title="ID"
+        onkeydown="if(event.key==='Enter') this.nextElementSibling.focus()">
+      <input class="input-name" value="${item.producto.replace(/"/g,'&quot;')}" title="Nombre"
+        onkeydown="if(event.key==='Enter') this.nextElementSibling.focus()">
+      <input class="input-ubic" value="${item.ubicacion||''}" title="Ubicación (ej: A-3-2)" placeholder="Ubic."
+        onkeydown="if(event.key==='Enter') this.nextElementSibling.click()">
+      <button class="btn-save-item" onclick="saveProductoEdit(${idx}, '${item.id}', this.closest('.inv-item'))" title="Guardar">💾</button>
+      <button onclick="removeProducto(${idx}, '${item.id}')" title="Eliminar">✕</button>
+    </div>
+  `).join('');
+}
+
+async function saveProductoEdit(tiendaIdx, originalId, row) {
+  const newId     = row.querySelector('.input-id').value.replace(/\D/g, '').trim();
+  const newNombre = row.querySelector('.input-name').value.trim();
+  const newUbic   = row.querySelector('.input-ubic').value.trim().toUpperCase();
+  const dbId      = row.dataset.dbId;
+
+  if (!newId) return showToast('El ID no puede estar vacío', 'danger');
+  if (!newNombre) return showToast('El nombre no puede estar vacío', 'danger');
+
+  try {
+    await apiPatch('/api/productos', { id: dbId, codigo: newId, nombre: newNombre, ubicacion: newUbic || null });
+    await loadData();
+    renderManageList();
+    const mainIdx = document.getElementById('select-tienda').value;
+    if (mainIdx == tiendaIdx) {
+      populateInventario(tiendaIdx, document.getElementById('select-producto'), document.getElementById('select-id'));
+      updatePreview();
+    }
+    showToast('✅ Producto actualizado', 'success');
+  } catch(e) { showToast(e.message, 'danger'); }
+}
+
+/* ── LOGIN MODAL ────────────────────────────────────── */
+function openPinModal() {
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('coord-email').value = '';
+  document.getElementById('coord-password').value = '';
+  document.getElementById('pin-overlay').classList.add('show');
+  setTimeout(() => document.getElementById('coord-email').focus(), 150);
+}
+
+function closePinModal() {
+  document.getElementById('pin-overlay').classList.remove('show');
+  pinBuffer = '';
+}
+
+function toggleCoordMode() {
+  if (coordUnlocked) {
+    const panel = document.getElementById('coord-panel');
+    panel.classList.toggle('visible');
+  } else {
+    openPinModal();
+  }
+}
+
+function lockCoord() {
+  coordUnlocked = false;
+  const btn = document.getElementById('btn-coord-toggle');
+  btn.classList.remove('active');
+  document.getElementById('coord-icon').textContent = '🔒';
+  document.getElementById('coord-label').textContent = 'Modo Coordinador';
+  document.getElementById('coord-panel').classList.remove('visible');
+  showToast('Sesión de coordinador cerrada');
+}
+
+/* ── LOGO ───────────────────────────────────────────── */
+function applyLogo(base64) {
+  const labelImg = document.getElementById('label-logo-img');
+  const labelText = document.getElementById('label-logo-text');
+  const brandImg = document.getElementById('brand-logo-img');
+  const brandText = document.getElementById('brand-logo-text');
+  const previewImg = document.getElementById('logo-preview-img');
+  const previewPlaceholder = document.getElementById('logo-preview-placeholder');
+  if (base64) {
+    labelImg.src = base64;
+    labelImg.style.display = 'block';
+    labelText.style.display = 'none';
+    brandImg.src = base64;
+    brandImg.style.display = 'block';
+    brandText.style.display = 'none';
+    previewImg.src = base64;
+    previewImg.style.display = 'block';
+    previewPlaceholder.style.display = 'none';
+  } else {
+    labelImg.style.display = 'none';
+    labelText.style.display = 'block';
+    brandImg.style.display = 'none';
+    brandText.style.display = 'block';
+    previewImg.style.display = 'none';
+    previewPlaceholder.style.display = 'block';
+  }
+}
+
+function handleLogoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const b64 = e.target.result;
+    localStorage.setItem(LOGO_KEY, b64); // cache local
+    if (coordToken) {
+      try { await apiPost('/api/config', { clave: LOGO_KEY, valor: b64 }); } catch(e) {}
+    }
+    applyLogo(b64);
+    showToast('✅ Logo actualizado', 'success');
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+async function removeLogo() {
+  localStorage.removeItem(LOGO_KEY);
+  if (coordToken) {
+    try { await apiPost('/api/config', { clave: LOGO_KEY, valor: '' }); } catch(e) {}
+  }
+  applyLogo(null);
+  showToast('Logo eliminado');
+}
+
+async function loadLogo() {
+  // Intentar desde API primero, caer a localStorage
+  try {
+    const config = await apiGet('/api/config');
+    if (config[LOGO_KEY]) {
+      localStorage.setItem(LOGO_KEY, config[LOGO_KEY]);
+      applyLogo(config[LOGO_KEY]);
+      return;
+    }
+  } catch(e) {}
+  const saved = localStorage.getItem(LOGO_KEY);
+  if (saved) applyLogo(saved);
+}
+
+/* ── RÓTULO LOGO ────────────────────────────────────── */
+function applyRotuloLogo(base64) {
+  const previewImg = document.getElementById('rotulo-logo-preview-img');
+  const previewPlaceholder = document.getElementById('rotulo-logo-preview-placeholder');
+  if (base64) {
+    previewImg.src = base64;
+    previewImg.style.display = 'block';
+    previewPlaceholder.style.display = 'none';
+  } else {
+    previewImg.style.display = 'none';
+    previewPlaceholder.style.display = 'block';
+  }
+  updateRotuloPrevLogo();
+}
+
+function handleRotuloLogoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const b64 = e.target.result;
+    localStorage.setItem(ROTULO_LOGO_KEY, b64);
+    if (coordToken) {
+      try { await apiPost('/api/config', { clave: ROTULO_LOGO_KEY, valor: b64 }); } catch(e) {}
+    }
+    applyRotuloLogo(b64);
+    showToast('✅ Logo del rótulo actualizado', 'success');
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+async function removeRotuloLogo() {
+  localStorage.removeItem(ROTULO_LOGO_KEY);
+  if (coordToken) {
+    try { await apiPost('/api/config', { clave: ROTULO_LOGO_KEY, valor: '' }); } catch(e) {}
+  }
+  applyRotuloLogo(null);
+  showToast('Logo del rótulo eliminado');
+}
+
+async function loadRotuloLogo() {
+  try {
+    const config = await apiGet('/api/config');
+    if (config[ROTULO_LOGO_KEY]) {
+      localStorage.setItem(ROTULO_LOGO_KEY, config[ROTULO_LOGO_KEY]);
+      applyRotuloLogo(config[ROTULO_LOGO_KEY]);
+      return;
+    }
+  } catch(e) {}
+  const saved = localStorage.getItem(ROTULO_LOGO_KEY);
+  if (saved) applyRotuloLogo(saved);
+}
+
+/* ── JSON EXPORT / IMPORT ───────────────────────────── */
+function exportJSON() {
+  const json = JSON.stringify(appData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'etiquetas_inventario.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ JSON exportado', 'success');
+}
+
+function handleJSONImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.tiendas || !Array.isArray(parsed.tiendas))
+        return showToast('JSON inválido: falta "tiendas"', 'danger');
+      appData = parsed;
+      saveData();
+      populateTiendas();
+      renderManageList();
+      // reset main selects
+      document.getElementById('select-producto').innerHTML = '<option value="">-- Producto --</option>';
+      document.getElementById('select-id').innerHTML = '<option value="">-- ID --</option>';
+      showToast(`✅ Importado: ${appData.tiendas.length} tiendas`, 'success');
+    } catch(err) {
+      showToast('Error al leer el archivo JSON', 'danger');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+/* ── BULK PRINT ─────────────────────────────────────── */
+function openBulk() {
+  // Populate tienda select
+  const sel = document.getElementById('bulk-select-tienda');
+  sel.innerHTML = '<option value="">-- Selecciona una tienda --</option>';
+  appData.tiendas.forEach((t, i) => sel.add(new Option(t.nombre, i)));
+  document.getElementById('bulk-list').innerHTML =
+    '<div class="bulk-item"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>';
+  updateBulkCount();
+  document.getElementById('bulk-overlay').classList.add('show');
+}
+
+function closeBulk() {
+  document.getElementById('bulk-overlay').classList.remove('show');
+}
+
+function renderBulkList() {
+  const idx = document.getElementById('bulk-select-tienda').value;
+  const container = document.getElementById('bulk-list');
+  if (idx === '' || !appData.tiendas[idx]) {
+    container.innerHTML = '<div class="bulk-item"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>';
+    updateBulkCount();
+    return;
+  }
+  const inv = [...appData.tiendas[idx].inventario].sort((a,b) => parseInt(a.id) - parseInt(b.id));
+  if (!inv.length) {
+    container.innerHTML = '<div class="bulk-item"><span style="color:var(--muted)">Sin productos</span></div>';
+    return;
+  }
+  container.innerHTML = inv.map(item => `
+    <div class="bulk-item" onclick="toggleBulkItem(this)">
+      <input type="checkbox" onclick="event.stopPropagation();toggleBulkItem(this.closest('.bulk-item'))">
+      <span class="b-id">#${item.id}</span>
+      <span>${item.producto}</span>
+    </div>
+  `).join('');
+  updateBulkCount();
+}
+
+function toggleBulkItem(row) {
+  row.classList.toggle('selected');
+  const cb = row.querySelector('input[type="checkbox"]');
+  cb.checked = row.classList.contains('selected');
+  updateBulkCount();
+}
+
+function bulkSelectAll() {
+  document.querySelectorAll('.bulk-item').forEach(row => {
+    row.classList.add('selected');
+    const cb = row.querySelector('input[type="checkbox"]');
+    if (cb) cb.checked = true;
+  });
+  updateBulkCount();
+}
+
+function bulkSelectNone() {
+  document.querySelectorAll('.bulk-item').forEach(row => {
+    row.classList.remove('selected');
+    const cb = row.querySelector('input[type="checkbox"]');
+    if (cb) cb.checked = false;
+  });
+  updateBulkCount();
+}
+
+function updateBulkCount() {
+  const n = document.querySelectorAll('.bulk-item.selected').length;
+  document.getElementById('bulk-selected-count').textContent = `${n} seleccionado${n !== 1 ? 's' : ''}`;
+  document.getElementById('bulk-footer-count').textContent =
+    n > 0 ? `${n} etiqueta${n !== 1 ? 's' : ''} para imprimir` : 'Selecciona productos para imprimir';
+}
+
+function printBulk() {
+  const tiendaIdx = document.getElementById('bulk-select-tienda').value;
+  const selected = [...document.querySelectorAll('.bulk-item.selected')];
+  if (!selected.length) return showToast('Selecciona al menos un producto', 'danger');
+
+  const tiendaNombre = appData.tiendas[tiendaIdx].nombre.toUpperCase();
+  const logoSrc = localStorage.getItem(LOGO_KEY);
+
+  // Build one label per selected item
+  const logoHTML = logoSrc
+    ? `<img src="${logoSrc}" style="max-width:80%;max-height:1in;display:block;margin:0 auto">`
+    : `<div style="font-family:'Space Mono',monospace;font-size:22pt;font-weight:700;color:#1a2a6c;letter-spacing:-1px;padding:14px 0 4px">Effi<span style="color:#f2a900">commerce</span></div>
+       <div style="font-size:9pt;letter-spacing:2px;color:#7a80a0;text-transform:uppercase;margin-bottom:4px">Logística Interna</div>`;
+
+  const labelsHTML = selected.map(row => {
+    const id = row.querySelector('.b-id').textContent.replace('#', '');
+    const nombre = row.querySelector('span:last-child').textContent.toUpperCase();
+    const len = nombre.length;
+    const size = len <= 12 ? '34pt' : len <= 20 ? '28pt' : len <= 30 ? '22pt' : len <= 45 ? '17pt' : '13pt';
+    return `
+      <div class="bulk-label">
+        <div style="text-align:center;margin-bottom:10px">${logoHTML}</div>
+        <div style="flex-grow:1;display:flex;align-items:center;justify-content:center;text-align:center">
+          <h1 style="font-size:${size};margin:0;font-family:'Inter',sans-serif;line-height:1.1">${nombre}</h1>
+        </div>
+        <div style="border-top:4px solid #000;position:relative;text-align:center">
+          <span style="position:absolute;top:85px;right:0;font-size:12pt;font-family:'Inter',sans-serif">${tiendaNombre}</span>
+          <p style="font-size:50pt;font-weight:bold;margin:0;font-family:'Inter',sans-serif">ID: <span>${id}</span></p>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('bulk-print-area').innerHTML = labelsHTML;
+
+  closeBulk();
+  document.body.classList.add('print-bulk');
+  window.print();
+  document.body.classList.remove('print-bulk');
+  document.getElementById('bulk-print-area').innerHTML = '';
+}
+
+/* ── RÓTULO A4 ──────────────────────────────────────── */
+function openRotulo() {
+  document.getElementById('rotulo-input-name').value = '';
+  document.getElementById('rotulo-input-id').value = '';
+  document.getElementById('rotulo-prev-name').textContent = 'NOMBRE';
+  document.getElementById('rotulo-prev-id').style.display = 'none';
+  updateRotuloPrevLogo();
+  document.getElementById('rotulo-overlay').classList.add('show');
+  setTimeout(() => document.getElementById('rotulo-input-name').focus(), 150);
+}
+
+function closeRotulo() {
+  document.getElementById('rotulo-overlay').classList.remove('show');
+}
+
+function updateRotuloPreview() {
+  const nombre = document.getElementById('rotulo-input-name').value.trim().toUpperCase();
+  const id = document.getElementById('rotulo-input-id').value.trim();
+  const prevName = document.getElementById('rotulo-prev-name');
+  const prevId = document.getElementById('rotulo-prev-id');
+  prevName.textContent = nombre || 'NOMBRE';
+  if (id) {
+    prevId.textContent = id;
+    prevId.style.display = 'block';
+  } else {
+    prevId.style.display = 'none';
+  }
+}
+
+function updateRotuloPrevLogo() {
+  const logo = localStorage.getItem(ROTULO_LOGO_KEY) || localStorage.getItem(LOGO_KEY);
+  const logoDiv = document.getElementById('rotulo-prev-logo');
+  if (logo) {
+    logoDiv.innerHTML = `<img src="${logo}" style="height:100%;object-fit:contain">`;
+  } else {
+    logoDiv.innerHTML = '<div class="brand-text">Effi<span>commerce</span></div>';
+  }
+}
+
+function printRotulo() {
+  const nombre = document.getElementById('rotulo-input-name').value.trim().toUpperCase();
+  const id = document.getElementById('rotulo-input-id').value.trim();
+  if (!nombre) return showToast('Escribe el nombre del rótulo', 'danger');
+
+  const logo = localStorage.getItem(ROTULO_LOGO_KEY) || localStorage.getItem(LOGO_KEY);
+  const logoHTML = logo
+    ? `<img src="${logo}" style="height:100%;max-width:100%;object-fit:contain;display:block">`
+    : `<span style="font-family:monospace;font-size:22pt;font-weight:700;color:#1a2a6c">Effi<span style="color:#f2a900">commerce</span></span>`;
+
+  // All measurements at 96dpi (1in = 96px)
+  // Page: 11 x 8.5in = 1056 x 816px
+  // Rectangle border: pos(0.341in, 0.584in) size(10.413 x 7.378in)
+  //   = pos(33, 56) size(1000 x 709)
+  // Logo (Imagen1): pos(0.430in, ~0.45in) size(1.726 x 1.622in)
+  //   = pos(41, 43) size(166 x 156)
+  // Name textbox: center at 5.53in horiz, vertically centered on page
+  //   textbox x=-1.190in w=13.44in -> left=-114px, width=1290px
+  //   textbox y offset=1.545in from para (MAR_T=1.181in) -> abs_y=2.726in -> 262px
+  //   textbox height=4.024in -> 386px
+  // ID textbox: pos(7.988in, ~6.0in) size(2.56 x 1.54in)
+  //   bottom-right corner: right=0.246in from right edge, bottom=0.538in from bottom
+
+  const idHTML = id
+    ? `<div style="position:absolute;right:24px;bottom:52px;font-family:Arial,sans-serif;font-size:27px;font-weight:700;color:#000;text-align:right">${id}</div>`
+    : '';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Rotulo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  @page { size: letter landscape; margin: 0; }
+  html, body { width:100vw; height:100vh; overflow:hidden; background:white; }
+  .page { width:100vw; height:100vh; position:relative; background:white; }
+  .borde {
+    position:absolute;
+    top:5px; left:5px; right:5px; bottom:5px;
+    border:5px solid #000;
+  }
+  .logo {
+    position:absolute;
+    top:43px; left:41px;
+    height:86px; max-width:200px;
+    display:flex; align-items:center;
+  }
+  .nombre {
+    position:absolute;
+    left:0; right:0;
+    top:0; bottom:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-family:Arial,sans-serif;
+    font-size:140px;
+    font-weight:900;
+    color:#000;
+    line-height:1;
+    padding:0 40px;
+    word-break:break-word;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="borde"></div>
+  <div class="logo">${logoHTML}</div>
+  <div class="nombre">${nombre}</div>
+  ${idHTML}
+</div>
+<script>
+window.onload = function() {
+  window.print();
+  setTimeout(function(){ window.close(); }, 1500);
+};
+<\/script>
+</body>
+</html>`;
+
+  closeRotulo();
+  const win = window.open('', '_blank', 'width=1056,height=816');
+  win.document.write(html);
+  win.document.close();
+}
+
+/* ── QR CODE (minimal, no internet needed) ──────────── */
+// Lightweight QR generator embedded — works offline
+const QRCode = (function(){
+  // Uses qrcode-generator by Kazuhiko Arase (MIT)
+  const d=String,f=Math;function r(a,b){this.typeNumber=a;this.errorCorrectionLevel=b;this.modules=null;this.moduleCount=0;this.dataCache=null;this.dataList=[]}r.prototype={addData:function(a){var b=new p(a);this.dataList.push(b);this.dataCache=null},isDark:function(a,b){if(0>a||this.moduleCount<=a||0>b||this.moduleCount<=b)throw Error(a+","+b);return this.modules[a][b]},getModuleCount:function(){return this.moduleCount},make:function(){if(1>this.typeNumber){for(var a=1,a=1;40>=a;a++){for(var b=s.getRSBlocks(a,this.errorCorrectionLevel),c=new t,e=0,g=0;g<b.length;g++)e+=b[g].dataCount;for(g=0;g<this.dataList.length;g++)b=this.dataList[g],c.put(b.mode,4),c.put(b.getLength(),q.getLengthInBits(b.mode,a)),b.write(c);if(c.getLengthInBits()<=8*e)break}this.typeNumber=a}this.makeImpl(!1,this.getBestMaskPattern())},makeImpl:function(a,b){this.moduleCount=4*this.typeNumber+17;this.modules=function(a){for(var b=[],c=0;c<a;c++){b.push([]);for(var e=0;e<a;e++)b[c].push(null)}return b}(this.moduleCount);this.setupPositionProbePattern(0,0);this.setupPositionProbePattern(this.moduleCount-7,0);this.setupPositionProbePattern(0,this.moduleCount-7);this.setupPositionAdjustPattern();this.setupTimingPattern();this.setupTypeInfo(a,b);6<=this.typeNumber&&this.setupTypeNumber(a);null==this.dataCache&&(this.dataCache=r.createData(this.typeNumber,this.errorCorrectionLevel,this.dataList));this.mapData(this.dataCache,b)},setupPositionProbePattern:function(a,b){for(var c=-1;7>=c;c++)if(!(-1>=a+c||this.moduleCount<=a+c))for(var e=-1;7>=e;e++)-1>=b+e||this.moduleCount<=b+e||(this.modules[a+c][b+e]=0<=c&&6>=c&&(0==e||6==e)||0<=e&&6>=e&&(0==c||6==c)||2<=c&&4>=c&&2<=e&&4>=e?!0:!1)},getBestMaskPattern:function(){for(var a=0,b=0,c=0;8>c;c++){this.makeImpl(!0,c);var e=v.getLostPoint(this);(0==c||a>e)&&(a=e,b=c)}return b},setupTimingPattern:function(){for(var a=8;a<this.moduleCount-8;a++)null==this.modules[a][6]&&(this.modules[a][6]=0==a%2);for(var b=8;b<this.moduleCount-8;b++)null==this.modules[6][b]&&(this.modules[6][b]=0==b%2)},setupPositionAdjustPattern:function(){for(var a=v.getPatternPosition(this.typeNumber),b=0;b<a.length;b++)for(var c=0;c<a.length;c++){var e=a[b],g=a[c];if(null==this.modules[e][g])for(var h=-2;2>=h;h++)for(var k=-2;2>=k;k++)this.modules[e+h][g+k]=-2==h||2==h||-2==k||2==k||0==h&&0==k?!0:!1}},setupTypeNumber:function(a){for(var b=v.getBCHTypeNumber(this.typeNumber),c=0;18>c;c++){var e=!a&&1==(b>>c&1);this.modules[f.floor(c/3)][c%3+this.moduleCount-8-3]=e}for(c=0;18>c;c++)e=!a&&1==(b>>c&1),this.modules[c%3+this.moduleCount-8-3][f.floor(c/3)]=e},setupTypeInfo:function(a,b){for(var c=v.getBCHTypeInfo(this.errorCorrectionLevel.bit<<3|b),e=0;15>e;e++){var g=!a&&1==(c>>e&1);6>e?this.modules[e][8]=g:7>e?this.modules[e+1][8]=g:this.modules[this.moduleCount-15+e][8]=g}for(e=0;15>e;e++)g=!a&&1==(c>>e&1),7>e?this.modules[8][this.moduleCount-e-1]=g:8>e?this.modules[8][15-e-1+1]=g:this.modules[8][15-e-1]=g;this.modules[this.moduleCount-8][8]=!a},mapData:function(a,b){for(var c=-1,e=this.moduleCount-1,g=7,h=0,k=this.moduleCount-1;0<k;k-=2)for(6==k&&k--;;){for(var n=0;2>n;n++)if(null==this.modules[e][k-n]){var l=!1;h<a.length&&(l=1==(a[h]>>>g&1));v.getMask(b,e,k-n)&&(l=!l);this.modules[e][k-n]=l;g--; -1==g&&(h++,g=7)}e+=c;if(0>e||this.moduleCount<=e){e-=c;c=-c;break}}}};r.PAD0=236;r.PAD1=17;r.createData=function(a,b,c){for(var e=s.getRSBlocks(a,b),g=new t,h=0;h<c.length;h++){var k=c[h];g.put(k.mode,4);g.put(k.getLength(),q.getLengthInBits(k.mode,a));k.write(g)}for(h=a=0;h<e.length;h++)a+=e[h].dataCount;if(g.getLengthInBits()>8*a)throw Error("code length overflow. ("+g.getLengthInBits()+">"+8*a+")");for(g.getLengthInBits()+4<=8*a&&g.put(0,4);0!=g.getLengthInBits()%8;)g.putBit(!1);for(;!(g.getLengthInBits()>=8*a);){g.put(r.PAD0,8);if(g.getLengthInBits()>=8*a)break;g.put(r.PAD1,8)}return r.createBytes(g,e)};r.createBytes=function(a,b){for(var c=0,e=0,g=0,h=Array(b.length),k=Array(b.length),n=0;n<b.length;n++){var l=b[n].dataCount,m=b[n].totalCount-l;e=f.max(e,l);g=f.max(g,m);h[n]=Array(l);for(var u=0;u<h[n].length;u++)h[n][u]=255&a.buffer[c++];k[n]=Array(m);for(u=0;u<k[n].length;u++)k[n][u]=0}var t=0,p=Array(b.reduce(function(a,b){return a+b.totalCount},0)),q=0;for(n=0;n<e;n++)for(u=0;u<b.length;u++)n<h[u].length&&(p[t++]=h[u][n]);for(n=0;n<g;n++)for(u=0;u<b.length;u++)n<k[u].length&&(p[t++]=k[u][n]);for(n=0;n<b.length;n++){var v=b[n].totalCount-b[n].dataCount;w.init(v);for(u=0;u<b[n].dataCount;u++)w.set(h[n][u]);for(u=0;u<v;u++)k[n][u]=w.get(u);t=0;for(u=0;u<v;u++)p[q+u]^=k[n][t++];q+=v}return p};var q={MODE_NUMBER:1,MODE_ALPHA_NUM:2,MODE_8BIT_BYTE:4,getLengthInBits:function(a,b){if(1<=b&&9>=b)switch(a){case 1:return 10;case 2:return 9;case 4:return 8;default:throw Error("mode:"+a)}else if(10<=b&&26>=b)switch(a){case 1:return 12;case 2:return 11;case 4:return 16;default:throw Error("mode:"+a)}else if(27<=b&&40>=b)switch(a){case 1:return 14;case 2:return 13;case 4:return 16;default:throw Error("mode:"+a)}else throw Error("type:"+b);}},v={PATTERN_POSITION_TABLE:[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],G18:7973,G15:30197,G15_MASK:21522,getBCHTypeInfo:function(a){for(var b=a<<10;0<=v.getBCHDigit(b)-v.getBCHDigit(v.G15);)b^=v.G15<<v.getBCHDigit(b)-v.getBCHDigit(v.G15);return(a<<10|b)^v.G15_MASK},getBCHTypeNumber:function(a){for(var b=a<<12;0<=v.getBCHDigit(b)-v.getBCHDigit(v.G18);)b^=v.G18<<v.getBCHDigit(b)-v.getBCHDigit(v.G18);return a<<12|b},getBCHDigit:function(a){for(var b=0;0!=a;)b++,a>>>=1;return b},getPatternPosition:function(a){return v.PATTERN_POSITION_TABLE[a-1]},getMask:function(a,b,c){switch(a){case 0:return 0==(b+c)%2;case 1:return 0==b%2;case 2:return 0==c%3;case 3:return 0==(b+c)%3;case 4:return 0==(f.floor(b/2)+f.floor(c/3))%2;case 5:return 0==b*c%2+b*c%3;case 6:return 0==(b*c%2+b*c%3)%2;case 7:return 0==(b*c%3+(b+c)%2)%2;default:throw Error("bad maskPattern:"+a);}},getLostPoint:function(a){for(var b=a.getModuleCount(),c=0,e=0;e<b;e++)for(var g=0;g<b;g++){for(var h=0,k=a.isDark(e,g),n=-1;1>=n;n++)if(!(0>e+n||b<=e+n))for(var l=-1;1>=l;l++)0>g+l||b<=g+l||0==n&&0==l||(a.isDark(e+n,g+l)==k&&h++);5<h&&(c+=3+h-5)}for(e=0;e<b-1;e++)for(g=0;g<b-1;g++)if(h=0,a.isDark(e,g)&&h++,a.isDark(e+1,g)&&h++,a.isDark(e,g+1)&&h++,a.isDark(e+1,g+1)&&h++,0==h||4==h)c+=3;for(e=0;e<b;e++)for(g=0;g<b-6;g++)a.isDark(e,g)&&!a.isDark(e,g+1)&&a.isDark(e,g+2)&&a.isDark(e,g+3)&&a.isDark(e,g+4)&&!a.isDark(e,g+5)&&a.isDark(e,g+6)&&(c+=40);for(g=0;g<b;g++)for(e=0;e<b-6;e++)a.isDark(e,g)&&!a.isDark(e+1,g)&&a.isDark(e+2,g)&&a.isDark(e+3,g)&&a.isDark(e+4,g)&&!a.isDark(e+5,g)&&a.isDark(e+6,g)&&(c+=40);for(var m=0,g=0;g<b;g++)for(e=0;e<b;e++)a.isDark(e,g)&&m++;return c+f.abs(100*m/b/b-50)/5*10},getPatternPosition:function(a){return v.PATTERN_POSITION_TABLE[a-1]}};var s={RS_BLOCK_TABLE:[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],getRSBlocks:function(a,b){var c=s.getRSBlockTable(a,b);if(void 0==c)throw Error("bad rs block @ typeNumber:"+a+"/errorCorrectionLevel:"+b.name);for(var e=c.length/3,g=[],h=0;h<e;h++)for(var k=c[3*h+0],n=c[3*h+1],l=c[3*h+2],m=0;m<k;m++)g.push(new x(n,l));return g},getRSBlockTable:function(a,b){switch(b){case y.L:return s.RS_BLOCK_TABLE[4*(a-1)+0];case y.M:return s.RS_BLOCK_TABLE[4*(a-1)+1];case y.Q:return s.RS_BLOCK_TABLE[4*(a-1)+2];case y.H:return s.RS_BLOCK_TABLE[4*(a-1)+3]}}};var t=function(){this.buffer=[];this.length=0};t.prototype={get:function(a){return 1==(this.buffer[f.floor(a/8)]>>>7-a%8&1)},put:function(a,b){for(var c=0;c<b;c++)this.putBit(1==(a>>>b-c-1&1))},getLengthInBits:function(){return this.length},putBit:function(a){var b=f.floor(this.length/8);this.buffer.length<=b&&this.buffer.push(0);a&&(this.buffer[b]|=128>>>this.length%8);this.length++}};var x=function(a,b){this.totalCount=a;this.dataCount=b};var y={L:{bit:1},M:{bit:0},Q:{bit:3},H:{bit:2}};var w=function(){var a=1,b=[],c={init:function(a){b=Array(a);c.reset()},reset:function(){for(var b=0;b<a;b++)c.set(b)},set:function(c){b[c%a]=c},get:function(c){return b[c%a]}};a=255;return c}();var p=function(a){this.mode=q.MODE_8BIT_BYTE;this.data=a};p.prototype={getLength:function(){return this.data.length},write:function(a){for(var b=0;b<this.data.length;b++)a.put(this.data.charCodeAt(b),8)}};
+  return {
+    generate: function(text, size) {
+      try {
+        var qr = new r(0, y.M);
+        qr.addData(text);
+        qr.make();
+        var n = qr.getModuleCount();
+        var cell = Math.floor(size / n);
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">';
+        svg += '<rect width="' + size + '" height="' + size + '" fill="white"/>';
+        for (var row = 0; row < n; row++) {
+          for (var col = 0; col < n; col++) {
+            if (qr.isDark(row, col)) {
+              svg += '<rect x="' + (col * cell) + '" y="' + (row * cell) + '" width="' + cell + '" height="' + cell + '" fill="black"/>';
+            }
+          }
+        }
+        svg += '</svg>';
+        return svg;
+      } catch(e) { return ''; }
+    }
+  };
+})();
+
+/* ── UPDATE PREVIEW WITH QR ─────────────────────────── */
+function updatePreview() {
+  const selTienda = document.getElementById('select-tienda');
+  const selProd   = document.getElementById('select-producto');
+  const selId     = document.getElementById('select-id');
+  const tiendaName = selTienda.selectedIndex > 0
+    ? selTienda.options[selTienda.selectedIndex].text : 'TIENDA';
+  const prodName = selProd.selectedIndex > 0
+    ? selProd.options[selProd.selectedIndex].text : 'PRODUCTO';
+  const idVal = selId.value || '0000';
+
+  document.getElementById('view-name').textContent = prodName.toUpperCase();
+  document.getElementById('view-id').textContent   = idVal;
+  document.getElementById('view-tienda').textContent = tiendaName.toUpperCase();
+
+  // Tamaño dinámico igual que el masivo
+  const len = prodName.length;
+  const size = len <= 12 ? '34pt' : len <= 20 ? '28pt' : len <= 30 ? '22pt' : len <= 45 ? '17pt' : '13pt';
+  document.getElementById('view-name').style.fontSize = size;
+
+  // QR: buscar ubicacion del producto seleccionado
+  const qrArea  = document.getElementById('label-qr-area');
+  const qrCode  = document.getElementById('label-qr-code');
+  const qrText  = document.getElementById('label-qr-text');
+  const tiendaIdx = selTienda.value;
+
+  let ubicacion = '';
+  if (tiendaIdx !== '' && selId.value && appData.tiendas[tiendaIdx]) {
+    const item = appData.tiendas[tiendaIdx].inventario.find(i => i.id === selId.value);
+    if (item && item.ubicacion) ubicacion = item.ubicacion;
+  }
+
+  if (ubicacion) {
+    qrCode.innerHTML = QRCode.generate(ubicacion, 72);
+    qrText.textContent = ubicacion;
+    qrArea.classList.add('visible');
+  } else {
+    qrCode.innerHTML = '';
+    qrText.textContent = '';
+    qrArea.classList.remove('visible');
+  }
+}
+
+/* ── INIT ──────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadData();
+  await loadLogo();
+  await loadRotuloLogo();
+  populateTiendas();
+
+  const selTienda = document.getElementById('select-tienda');
+  const selProd = document.getElementById('select-producto');
+  const selId = document.getElementById('select-id');
+  const selFormato = document.getElementById('select-formato');
+  const etiqueta = document.getElementById('etiqueta');
+
+  selTienda.addEventListener('change', () => {
+    populateInventario(selTienda.value, selProd, selId);
+    updatePreview();
+  });
+
+  selProd.addEventListener('change', () => {
+    selId.value = selProd.value;
+    updatePreview();
+  });
+
+  selId.addEventListener('change', () => {
+    selProd.value = selId.value;
+    updatePreview();
+  });
+
+  selFormato.addEventListener('change', () => {
+    etiqueta.classList.toggle('solo-notas', selFormato.value === 'solo-notas');
+  });
+
+  document.getElementById('btn-print').addEventListener('click', () => {
+    document.body.classList.add('print-single');
+    window.print();
+    document.body.classList.remove('print-single');
+  });
+
+  // Escape cierra el modal de login
+  document.addEventListener('keydown', e => {
+    const overlay = document.getElementById('pin-overlay');
+    if (!overlay.classList.contains('show')) return;
+    if (e.key === 'Escape') closePinModal();
+  });
+});
+</script>
+</body>
+</html>
