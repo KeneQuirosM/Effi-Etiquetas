@@ -4,62 +4,110 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Todas las rutas de productos requieren auth
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No autorizado' });
+  try {
+    // 🔐 Validar token
+    const token = req.headers.authorization?.replace('Bearer ', '');
 
-  const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-  if (authErr || !user) return res.status(401).json({ error: 'Token inválido' });
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado' });
+    }
 
-  // ── POST: agregar producto ──
-  if (req.method === 'POST') {
-    const { tienda_id, codigo, nombre, ubicacion } = req.body;
-    if (!tienda_id || !codigo?.trim() || !nombre?.trim())
-      return res.status(400).json({ error: 'tienda_id, codigo y nombre son requeridos' });
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
 
-    const { data, error } = await supabaseAdmin
-      .from('productos')
-      .insert({ tienda_id, codigo: codigo.trim(), nombre: nombre.trim(), ubicacion: ubicacion?.trim() || null })
-      .select()
-      .single();
-    if (error) return res.status(400).json({ error: error.message });
-    return res.status(201).json(data);
+    if (authErr || !user) {
+      console.error('Auth error:', authErr);
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+
+    // ── POST: agregar producto ──
+    if (req.method === 'POST') {
+      const { tienda_id, codigo, nombre, ubicacion } = req.body;
+
+      if (!tienda_id || !codigo?.trim() || !nombre?.trim()) {
+        return res.status(400).json({
+          error: 'tienda_id, codigo y nombre son requeridos'
+        });
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('productos')
+        .insert({
+          tienda_id,
+          codigo: codigo.trim(),
+          nombre: nombre.trim(),
+          ubicacion: ubicacion?.trim() || null
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('POST producto error:', error);
+        return res.status(400).json({ error: error.message });
+      }
+
+      return res.status(201).json(data);
+    }
+
+    // ── PATCH: editar producto ──
+    if (req.method === 'PATCH') {
+      const { id, codigo, nombre, ubicacion } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID requerido' });
+      }
+
+      const updates = {};
+
+      if (codigo !== undefined) updates.codigo = codigo.trim();
+      if (nombre !== undefined) updates.nombre = nombre.trim();
+      if (ubicacion !== undefined) updates.ubicacion = ubicacion?.trim() || null;
+
+      const { data, error } = await supabaseAdmin
+        .from('productos')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('PATCH producto error:', error);
+        return res.status(400).json({ error: error.message });
+      }
+
+      return res.status(200).json(data);
+    }
+
+    // ── DELETE: eliminar producto ──
+    if (req.method === 'DELETE') {
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID requerido' });
+      }
+
+      const { error } = await supabaseAdmin
+        .from('productos')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('DELETE producto error:', error);
+        return res.status(400).json({ error: error.message });
+      }
+
+      return res.status(200).json({ ok: true });
+    }
+
+    return res.status(405).json({ error: 'Método no permitido' });
+
+  } catch (err) {
+    console.error('ERROR GENERAL productos:', err);
+
+    return res.status(500).json({
+      error: 'Error interno del servidor'
+    });
   }
-
-  // ── PATCH: editar producto (nombre, codigo, ubicacion) ──
-  if (req.method === 'PATCH') {
-    const { id, codigo, nombre, ubicacion } = req.body;
-    if (!id) return res.status(400).json({ error: 'ID requerido' });
-
-    const updates = {};
-    if (codigo !== undefined) updates.codigo = codigo.trim();
-    if (nombre !== undefined) updates.nombre = nombre.trim();
-    if (ubicacion !== undefined) updates.ubicacion = ubicacion?.trim() || null;
-
-    const { data, error } = await supabaseAdmin
-      .from('productos')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) return res.status(400).json({ error: error.message });
-    return res.status(200).json(data);
-  }
-
-  // ── DELETE: eliminar producto ──
-  if (req.method === 'DELETE') {
-    const { id } = req.body;
-    if (!id) return res.status(400).json({ error: 'ID requerido' });
-
-    const { error } = await supabaseAdmin
-      .from('productos')
-      .delete()
-      .eq('id', id);
-    if (error) return res.status(400).json({ error: error.message });
-    return res.status(200).json({ ok: true });
-  }
-
-  return res.status(405).json({ error: 'Método no permitido' });
 }
