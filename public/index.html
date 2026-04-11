@@ -2016,7 +2016,7 @@ async function changePin() {
     const nuevoPin = document.getElementById('c-pin-nuevo').value;
     const confirmacion = document.getElementById('c-pin-confirm').value;
 
-    // Validación de longitud requerida por tu backend
+    // 1. Validaciones de formato (requeridas por tu API)
     if (nuevoPin.length < 6) {
         return showToast('Error', 'La contraseña debe tener al menos 6 caracteres');
     }
@@ -2027,33 +2027,62 @@ async function changePin() {
     try {
         let token = null;
 
-        // 1. Intentar obtenerlo del cliente de Supabase si existe
-        if (typeof supabase !== 'undefined') {
+        // 2. INTENTO A: Extraer de Cookies (Probable ubicación de tu sesión)
+        const getCookie = (name) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        };
+
+        // Buscamos nombres comunes que usa Supabase o sistemas de Auth
+        token = getCookie('sb-access-token') || getCookie('supabase-auth-token') || getCookie('token');
+
+        // 3. INTENTO B: Buscar en el objeto global de Supabase si existe
+        if (!token && typeof supabase !== 'undefined') {
             const { data } = await supabase.auth.getSession();
             token = data?.session?.access_token;
         }
 
-        // 2. Si no, buscar en TODO el LocalStorage
+        // 4. INTENTO C: Buscar en LocalStorage (por si acaso cambió el nombre)
         if (!token) {
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.includes('auth-token')) {
-                    const data = JSON.parse(localStorage.getItem(key));
-                    token = data?.access_token;
-                }
+            const authKey = Object.keys(localStorage).find(key => key.includes('auth-token'));
+            if (authKey) {
+                const data = JSON.parse(localStorage.getItem(authKey));
+                token = data?.access_token;
             }
         }
 
-        // 3. Si no, buscar en SessionStorage (a veces se guarda ahí)
         if (!token) {
-            for (let i = 0; i < sessionStorage.length; i++) {
-                const key = sessionStorage.key(i);
-                if (key.includes('auth-token')) {
-                    const data = JSON.parse(sessionStorage.getItem(key));
-                    token = data?.access_token;
-                }
-            }
+            console.error("No se pudo localizar el token de acceso.");
+            return showToast('Error', 'No se detectó una sesión activa. Por favor, refresca la página.');
         }
+
+        // 5. Envío al API change-password.js
+        const response = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ password: nuevoPin })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.ok) {
+            showToast('Éxito', 'PIN actualizado correctamente');
+            document.getElementById('c-pin-nuevo').value = '';
+            document.getElementById('c-pin-confirm').value = '';
+        } else {
+            // Manejo de errores devueltos por tu backend
+            showToast('Error', result.error || 'No se pudo actualizar la contraseña');
+        }
+
+    } catch (error) {
+        console.error("Error crítico en changePin:", error);
+        showToast('Error', 'Error de conexión con el servidor');
+    }
+}
 
         if (!token) {
             console.error("No se encontró token en ninguna fuente.");
