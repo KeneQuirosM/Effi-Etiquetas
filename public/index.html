@@ -2083,38 +2083,6 @@ async function changePin() {
         showToast('Error', 'Error de conexión con el servidor');
     }
 }
-
-        if (!token) {
-            console.error("No se encontró token en ninguna fuente.");
-            return showToast('Error', 'Sesión no encontrada. Por favor, inicia sesión de nuevo.');
-        }
-
-        // Petición al API
-        const response = await fetch('/api/change-password', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ password: nuevoPin })
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.ok) {
-            showToast('Éxito', 'Contraseña actualizada correctamente');
-            document.getElementById('c-pin-nuevo').value = '';
-            document.getElementById('c-pin-confirm').value = '';
-        } else {
-            showToast('Error', result.error || 'No se pudo actualizar');
-        }
-
-    } catch (error) {
-        console.error("Error crítico:", error);
-        showToast('Error', 'Error de comunicación con el servidor');
-    }
-}
-
 /* ── TOAST ─────────────────────────────────────────── */
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
