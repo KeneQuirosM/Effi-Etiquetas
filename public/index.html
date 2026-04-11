@@ -2013,37 +2013,49 @@ async function checkPin() {
 }
 
 async function changePin() {
-  const pinInput = document.getElementById('c-pin-actual');
-  const nuevoPin = pinInput.value;
+  const password = document.getElementById('c-pin-nuevo').value;
+  const confirm = document.getElementById('c-pin-confirm').value;
 
-  if (nuevoPin.length < 6) {
-    showToast('Error', 'El PIN debe tener al menos 6 caracteres');
-    return;
+  // 1. Validaciones básicas antes de enviar
+  if (password.length < 6) {
+    return showToast('Error', 'La contraseña debe tener al menos 6 caracteres');
+  }
+
+  if (password !== confirm) {
+    return showToast('Error', 'Las contraseñas no coinciden');
   }
 
   try {
-    // Aquí asumo que guardas tu token en localStorage al iniciar sesión
-    const token = localStorage.getItem('supabase_token'); 
+    // 2. Obtener el token de sesión (Supabase suele guardarlo en el localStorage)
+    // El nombre de la clave depende de tu configuración, suele ser 'sb-XXXX-auth-token'
+    const session = JSON.parse(localStorage.getItem('sb-tu-app-auth-token')); 
+    const token = session?.access_token;
 
-    const response = await fetch('/api/change-password', { // Ajusta la ruta a tu API
+    if (!token) {
+      return showToast('Error', 'Sesión expirada. Inicia sesión de nuevo.');
+    }
+
+    // 3. Llamada al API que nos mostraste
+    const response = await fetch('/api/change-password', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ password: nuevoPin })
+      body: JSON.stringify({ password: password })
     });
 
     const result = await response.json();
 
     if (response.ok) {
-      showToast('Éxito', 'PIN actualizado correctamente');
-      pinInput.value = ''; // Limpiar el campo
+      showToast('Éxito', 'Contraseña actualizada correctamente');
+      document.getElementById('c-pin-nuevo').value = '';
+      document.getElementById('c-pin-confirm').value = '';
     } else {
-      showToast('Error', result.error || 'No se pudo cambiar el PIN');
+      showToast('Error', result.error || 'No se pudo cambiar la contraseña');
     }
   } catch (error) {
-    showToast('Error', 'Error de conexión con el servidor');
+    showToast('Error', 'Error de red al intentar cambiar la contraseña');
     console.error(error);
   }
 }
