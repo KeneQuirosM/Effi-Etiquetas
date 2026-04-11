@@ -1896,14 +1896,17 @@ const DEFAULT_DATA = {
 
 /* ── CONFIG ──────────────────────────────────────── */
 const API = '';  // vacío = mismo dominio en Vercel
-const LOGO_KEY = 'effi_logo_v1';         // localStorage solo para logos (base64)
+const LOGO_KEY = 'effi_logo_v1';
 const ROTULO_LOGO_KEY = 'effi_rotulo_logo_v1';
+const CACHE_KEY = 'effi_inventario_cache_v1';      // offline cache
+const SESSION_KEY = 'effi_coord_session_v1';        // sessionStorage token
 
 /* ── STATE ─────────────────────────────────────────── */
 let appData = { tiendas: [] };
-let coordToken = null;   // JWT del coordinador
+let coordToken = null;
 let coordUnlocked = false;
 let pinBuffer = '';
+let isOffline = false;
 
 /* ── API HELPERS ───────────────────────────────────── */
 async function apiGet(path) {
@@ -1934,16 +1937,51 @@ async function apiDelete(path, body) {
   return r.json();
 }
 
+/* ── OFFLINE BANNER ─────────────────────────────────── */
+function showOfflineBanner() {
+  if (document.getElementById('offline-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'offline-banner';
+  banner.innerHTML = '⚠️ Sin conexión — usando inventario en caché. Los cambios no se guardarán.';
+  banner.style.cssText = `
+    position:fixed;top:0;left:0;right:0;z-index:9000;
+    background:#c98e00;color:#fff;text-align:center;
+    padding:8px 16px;font-size:13px;font-weight:600;
+    font-family:'DM Sans',sans-serif;
+  `;
+  document.body.prepend(banner);
+}
+
+function hideOfflineBanner() {
+  const b = document.getElementById('offline-banner');
+  if (b) b.remove();
+}
+
 /* ── LOAD DATA FROM API ─────────────────────────────── */
 async function loadData() {
   try {
     showToast('Cargando inventario...', '');
     const data = await apiGet('/api/tiendas');
     appData = data;
+    // Guardar en cache para uso offline
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    isOffline = false;
+    hideOfflineBanner();
     hideToast();
   } catch(e) {
-    showToast('Error cargando datos. Verifica conexión.', 'danger');
-    appData = { tiendas: [] };
+    // Intentar usar cache local
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      appData = JSON.parse(cached);
+      isOffline = true;
+      showOfflineBanner();
+      hideToast();
+      showToast('Usando inventario en caché', 'danger');
+    } else {
+      showToast('Sin conexión y sin caché. Verifica conexión.', 'danger');
+      appData = { tiendas: [] };
+      isOffline = true;
+    }
   }
 }
 
@@ -1952,23 +1990,26 @@ function hideToast() {
   t.className = 'toast';
 }
 
-/* ── COORDINADOR LOGIN (reemplaza PIN modal) ────────── */
+/* ── COORDINADOR LOGIN ──────────────────────────────── */
+function activateCoord(token) {
+  coordToken = token;
+  coordUnlocked = true;
+  sessionStorage.setItem(SESSION_KEY, token);
+  const btn = document.getElementById('btn-coord-toggle');
+  btn.classList.add('active');
+  document.getElementById('coord-icon').textContent = '⚙️';
+  document.getElementById('coord-label').textContent = 'Coordinador Activo';
+}
+
 async function checkPin() {
-  // En versión API el "PIN" es en realidad email/password
-  // Reutilizamos el modal de PIN para mostrar login
-  const email = document.getElementById('coord-email')?.value?.trim();
+  const email    = document.getElementById('coord-email')?.value?.trim();
   const password = document.getElementById('coord-password')?.value?.trim();
   if (!email || !password) return;
 
   try {
     const data = await apiPost('/api/auth', { email, password });
-    coordToken = data.token;
+    activateCoord(data.token);
     closePinModal();
-    coordUnlocked = true;
-    const btn = document.getElementById('btn-coord-toggle');
-    btn.classList.add('active');
-    document.getElementById('coord-icon').textContent = '⚙️';
-    document.getElementById('coord-label').textContent = 'Coordinador Activo';
     document.getElementById('coord-panel').classList.add('visible');
     showToast('✅ Sesión iniciada', 'success');
   } catch(e) {
@@ -2003,7 +2044,17 @@ function populateTiendas() {
   });
 }
 
+/* ── OFFLINE GUARD ──────────────────────────────────── */
+function guardOffline() {
+  if (isOffline) {
+    showToast('Sin conexión — no se pueden guardar cambios', 'danger');
+    return true;
+  }
+  return false;
+}
+
 async function renameTienda() {
+  if (guardOffline()) return;
   const idx = document.getElementById('c-rename-tienda-select').value;
   const nuevoNombre = document.getElementById('c-rename-tienda-nombre').value.trim();
   if (idx === '') return showToast('Selecciona una tienda', 'danger');
@@ -2044,6 +2095,7 @@ function switchTab(id) {
 
 /* ── COORD ACTIONS ─────────────────────────────────── */
 async function addProducto() {
+  if (guardOffline()) return;
   const tiendaIdx = document.getElementById('c-select-tienda').value;
   const newId = document.getElementById('c-new-id').value.trim();
   const newNombre = document.getElementById('c-new-nombre').value.trim();
@@ -2067,6 +2119,7 @@ async function addProducto() {
 }
 
 async function addTienda() {
+  if (guardOffline()) return;
   const nombre = document.getElementById('c-tienda-nombre').value.trim();
   if (!nombre) return showToast('Escribe un nombre', 'danger');
   try {
@@ -2079,6 +2132,7 @@ async function addTienda() {
 }
 
 async function removeProducto(tiendaIdx, productId) {
+  if (guardOffline()) return;
   const inv = appData.tiendas[tiendaIdx].inventario;
   const item = inv.find(i => i.id === productId);
   if (!item) return;
@@ -2096,6 +2150,7 @@ async function removeProducto(tiendaIdx, productId) {
 }
 
 async function deleteTienda() {
+  if (guardOffline()) return;
   const idx = document.getElementById('m-select-tienda').value;
   if (idx === '') return showToast('Selecciona una tienda', 'danger');
   const tienda = appData.tiendas[idx];
@@ -2137,6 +2192,7 @@ function renderManageList() {
 }
 
 async function saveProductoEdit(tiendaIdx, originalId, row) {
+  if (guardOffline()) return;
   const newId     = row.querySelector('.input-id').value.replace(/\D/g, '').trim();
   const newNombre = row.querySelector('.input-name').value.trim();
   const newUbic   = row.querySelector('.input-ubic').value.trim().toUpperCase();
@@ -2182,7 +2238,9 @@ function toggleCoordMode() {
 }
 
 function lockCoord() {
+  coordToken = null;
   coordUnlocked = false;
+  sessionStorage.removeItem(SESSION_KEY);
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
   document.getElementById('coord-icon').textContent = '🔒';
@@ -2702,6 +2760,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
   await loadLogo();
   await loadRotuloLogo();
+
+  // Restaurar sesión del coordinador si existe en sessionStorage
+  const savedToken = sessionStorage.getItem(SESSION_KEY);
+  if (savedToken) {
+    try {
+      // Verificar que el token sigue siendo válido
+      const res = await fetch(API + '/api/tiendas', {
+        headers: { 'Authorization': 'Bearer ' + savedToken }
+      });
+      if (res.ok) {
+        activateCoord(savedToken);
+        showToast('✅ Sesión restaurada', 'success');
+      } else {
+        sessionStorage.removeItem(SESSION_KEY);
+      }
+    } catch(e) {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  }
+
   populateTiendas();
 
   const selTienda = document.getElementById('select-tienda');
