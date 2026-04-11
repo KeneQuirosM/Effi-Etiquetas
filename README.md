@@ -26,7 +26,7 @@ Copiar `.env.example` a `.env` y completar:
 ```
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_ANON_KEY=eyJxxx...       (Project Settings → API → anon public)
-SUPABASE_SERVICE_KEY=eyJxxx...    (Project Settings → API → service_role secret)
+SUPABASE_SERVICE_ROLE_KEY=eyJxxx...    (Project Settings → API → service_role secret)
 ```
 
 ### 3. Vercel
@@ -48,19 +48,22 @@ Si tenés datos en el `etiquetas.html` anterior (localStorage), podés importarl
 ## 📁 Estructura
 
 ```
-efficommerce-etiquetas/
+effi-etiquetas/
 ├── api/
-│   ├── _supabase.js      # Cliente Supabase
-│   ├── auth.js           # Login coordinador
-│   ├── tiendas.js        # CRUD tiendas
-│   ├── productos.js      # CRUD productos
-│   └── config.js         # Logos y configuración
+│   ├── _supabase.js    
+│   ├── auth.js
+│   ├── change-password.js
+│   ├── config.js
+│   ├── productos.js
+│   └── tiendas.js
 ├── public/
-│   └── index.html        # App completa
-├── supabase-schema.sql   # Schema de la BD
-├── vercel.json           # Configuración Vercel
+│   └── index.html
+├── .env.example
+├── .gitignore
 ├── package.json
-└── .env.example
+├── README.md
+├── supabase-schema.sql
+└── vercel.json
 ```
 
 ---
