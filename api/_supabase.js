@@ -1,20 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Cliente configurado con persistencia
-export const supabase = createClient(
+// 🔐 Cliente ADMIN (backend)
+export const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY,
+  process.env.SUPABASE_SERVICE_ROLE_KEY, // 🔥 CLAVE CORRECTA
   {
     auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
+      autoRefreshToken: false,
+      persistSession: false
     }
   }
 );
-
-// --- ESTA ES LA PIEZA QUE FALTA ---
-// Esto hace que 'supabase' sea visible para la consola y el index.html
-if (typeof window !== 'undefined') {
-    window.supabase = supabase;
-}
