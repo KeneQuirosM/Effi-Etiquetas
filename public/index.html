@@ -2015,33 +2015,41 @@ async function checkPin() {
 
 async function changePin() {
     const nuevoPin = document.getElementById('c-pin-nuevo').value;
-    
-    // Intentamos obtener la sesión oficial
-    let { data: { session } } = await window.supabase.auth.getSession();
-    
-    // SI NO HAY SESIÓN (Tu caso actual), el backend fallará.
-    if (!session) {
-        console.error("No hay sesión de Supabase Auth activa.");
-        showToast('Error', 'Sesión de seguridad no iniciada. Reintenta el login.');
+
+    // Validación básica
+    if (!nuevoPin || nuevoPin.length < 4) {
+        showToast('Error', 'El PIN debe tener al menos 4 caracteres');
         return;
     }
 
-    const token = session.access_token;
+    // Verificar sesión
+    if (!coordToken) {
+        showToast('Error', 'Debes iniciar sesión primero');
+        return;
+    }
 
-    const response = await fetch('/api/change-password', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ password: nuevoPin })
-    });
+    try {
+        const response = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${coordToken}`
+            },
+            body: JSON.stringify({ password: nuevoPin })
+        });
 
-    const result = await response.json();
-    if (response.ok) {
-        showToast('Éxito', 'PIN actualizado');
-    } else {
-        showToast('Error', result.error);
+        const result = await response.json();
+
+        if (response.ok) {
+            showToast('Éxito', 'PIN actualizado correctamente');
+            document.getElementById('c-pin-nuevo').value = '';
+        } else {
+            showToast('Error', result.error || 'No se pudo actualizar el PIN');
+        }
+
+    } catch (error) {
+        console.error('Error al cambiar PIN:', error);
+        showToast('Error', 'Error de conexión');
     }
 }
 
