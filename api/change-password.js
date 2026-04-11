@@ -22,15 +22,14 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'No autorizado' });
     }
 
-    // 🔥 IMPORTANTE:
-    // Aquí asumimos que tu token ES el user.id
-    const userId = token;
+    // ✅ VALIDAR TOKEN DE SUPABASE
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
 
-    if (!userId) {
+    if (authErr || !user) {
       return res.status(401).json({ error: 'Token inválido' });
     }
 
-    // 📥 Obtener nueva contraseña
+    // 📥 Nueva contraseña
     const { password } = req.body;
 
     if (!password || password.length < 6) {
@@ -39,8 +38,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🔄 Actualizar contraseña en Supabase
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+    // 🔄 Actualizar contraseña
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
       password
     });
 
@@ -48,7 +47,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: error.message });
     }
 
-    // ✅ Respuesta exitosa
     return res.status(200).json({
       ok: true,
       message: 'Contraseña actualizada correctamente'
