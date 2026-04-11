@@ -2016,7 +2016,7 @@ async function changePin() {
     const nuevoPin = document.getElementById('c-pin-nuevo').value;
     const confirmacion = document.getElementById('c-pin-confirm').value;
 
-    // Validación de longitud mínima requerida por tu API
+    // Validación de longitud requerida por tu backend
     if (nuevoPin.length < 6) {
         return showToast('Error', 'La contraseña debe tener al menos 6 caracteres');
     }
@@ -2025,17 +2025,42 @@ async function changePin() {
     }
 
     try {
-        // INTENTO 1: Obtener la sesión directamente del cliente de Supabase
-        // (Asegúrate de que la variable 'supabase' sea la que usas en tu app)
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
+        let token = null;
 
-        if (!token) {
-            console.error("No se pudo obtener la sesión del cliente Supabase");
-            return showToast('Error', 'Debes iniciar sesión nuevamente.');
+        // 1. Intentar obtenerlo del cliente de Supabase si existe
+        if (typeof supabase !== 'undefined') {
+            const { data } = await supabase.auth.getSession();
+            token = data?.session?.access_token;
         }
 
-        // Llamada a tu API
+        // 2. Si no, buscar en TODO el LocalStorage
+        if (!token) {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.includes('auth-token')) {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    token = data?.access_token;
+                }
+            }
+        }
+
+        // 3. Si no, buscar en SessionStorage (a veces se guarda ahí)
+        if (!token) {
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key.includes('auth-token')) {
+                    const data = JSON.parse(sessionStorage.getItem(key));
+                    token = data?.access_token;
+                }
+            }
+        }
+
+        if (!token) {
+            console.error("No se encontró token en ninguna fuente.");
+            return showToast('Error', 'Sesión no encontrada. Por favor, inicia sesión de nuevo.');
+        }
+
+        // Petición al API
         const response = await fetch('/api/change-password', {
             method: 'POST',
             headers: {
@@ -2054,9 +2079,10 @@ async function changePin() {
         } else {
             showToast('Error', result.error || 'No se pudo actualizar');
         }
+
     } catch (error) {
         console.error("Error crítico:", error);
-        showToast('Error', 'Hubo un problema de conexión');
+        showToast('Error', 'Error de comunicación con el servidor');
     }
 }
 
