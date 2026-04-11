@@ -2013,56 +2013,53 @@ async function checkPin() {
 }
 
 async function changePin() {
-    const nuevoPin = document.getElementById('c-pin-nuevo').value;
-    const confirmacion = document.getElementById('c-pin-confirm').value;
+    const inputNuevo = document.getElementById('c-pin-nuevo');
+    const inputConfirm = document.getElementById('c-pin-confirm');
+    const nuevoPin = inputNuevo.value;
+    const confirmacion = inputConfirm.value;
 
-    // 1. Validaciones de formato (requeridas por tu API)
-    if (nuevoPin.length < 6) {
-        return showToast('Error', 'La contraseña debe tener al menos 6 caracteres');
-    }
-    if (nuevoPin !== confirmacion) {
-        return showToast('Error', 'Las contraseñas no coinciden');
-    }
+    if (nuevoPin.length < 6) return showToast('Error', 'Mínimo 6 caracteres');
+    if (nuevoPin !== confirmacion) return showToast('Error', 'Las contraseñas no coinciden');
 
     try {
         let token = null;
 
-        // 2. INTENTO A: Extraer de Cookies (Probable ubicación de tu sesión)
-        const getCookie = (name) => {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-        };
+        // --- 1. BUSCAR EN LOCALSTORAGE (Cualquier cosa que parezca un Token) ---
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.includes('token') || key.includes('auth') || key.startsWith('sb-')) {
+                const val = localStorage.getItem(key);
+                try {
+                    const parsed = JSON.parse(val);
+                    token = parsed.access_token || parsed.token || parsed;
+                } catch(e) { token = val; }
+                if (token && typeof token === 'string' && token.length > 50) break;
+            }
+        }
 
-        // Buscamos nombres comunes que usa Supabase o sistemas de Auth
-        token = getCookie('sb-access-token') || getCookie('supabase-auth-token') || getCookie('token');
-
-        // 3. INTENTO B: Buscar en el objeto global de Supabase si existe
+        // --- 2. SI FALLA, BUSCAR EN EL OBJETO DE SUPABASE ---
         if (!token && typeof supabase !== 'undefined') {
             const { data } = await supabase.auth.getSession();
             token = data?.session?.access_token;
         }
 
-        // 4. INTENTO C: Buscar en LocalStorage (por si acaso cambió el nombre)
+        // --- 3. SI FALLA, BUSCAR EN COOKIES ---
         if (!token) {
-            const authKey = Object.keys(localStorage).find(key => key.includes('auth-token'));
-            if (authKey) {
-                const data = JSON.parse(localStorage.getItem(authKey));
-                token = data?.access_token;
-            }
+            const cookieToken = document.cookie.split('; ').find(row => row.match(/token|auth|sb-/i));
+            if (cookieToken) token = cookieToken.split('=')[1];
         }
 
         if (!token) {
-            console.error("No se pudo localizar el token de acceso.");
-            return showToast('Error', 'No se detectó una sesión activa. Por favor, refresca la página.');
+            console.error("DEBUG: No se encontró token. Llaves actuales:", Object.keys(localStorage));
+            return showToast('Error', 'No se localizó la sesión. Intenta cerrar sesión y volver a entrar.');
         }
 
-        // 5. Envío al API change-password.js
+        // 4. ENVÍO AL API
         const response = await fetch('/api/change-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token.trim()}`
             },
             body: JSON.stringify({ password: nuevoPin })
         });
@@ -2070,19 +2067,19 @@ async function changePin() {
         const result = await response.json();
 
         if (response.ok && result.ok) {
-            showToast('Éxito', 'PIN actualizado correctamente');
-            document.getElementById('c-pin-nuevo').value = '';
-            document.getElementById('c-pin-confirm').value = '';
+            showToast('Éxito', 'Contraseña actualizada correctamente');
+            inputNuevo.value = '';
+            inputConfirm.value = '';
         } else {
-            // Manejo de errores devueltos por tu backend
-            showToast('Error', result.error || 'No se pudo actualizar la contraseña');
+            showToast('Error', result.error || 'Error en el servidor');
         }
 
     } catch (error) {
-        console.error("Error crítico en changePin:", error);
-        showToast('Error', 'Error de conexión con el servidor');
+        console.error("Error crítico:", error);
+        showToast('Error', 'Error de red');
     }
 }
+
 /* ── TOAST ─────────────────────────────────────────── */
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
