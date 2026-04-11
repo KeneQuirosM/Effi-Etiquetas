@@ -1184,25 +1184,20 @@
       <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
 
       <!-- PIN -->
-      <p class="section-label" style="margin-bottom:10px">Cambiar PIN</p>
+      <p class="section-label" style="margin-bottom:10px">Cambiar Contraseña</p>
       <div class="form-row">
         <div class="form-group">
-          <label>PIN Actual</label>
-          <input type="password" id="c-pin-actual" maxlength="4" placeholder="••••" inputmode="numeric" autocomplete="off">
+          <label>Contraseña Nueva</label>
+          <input type="password" id="c-pin-nuevo" maxlength="32" placeholder="••••••••" inputmode="text" autocomplete="new-password">
         </div>
         <div class="form-group">
-          <label>PIN Nuevo</label>
-          <input type="password" id="c-pin-nuevo" maxlength="4" placeholder="••••" inputmode="numeric" autocomplete="new-password">
+          <label>Confirmar Nueva</label>
+          <input type="password" id="c-pin-confirm" maxlength="32" placeholder="••••••••" inputmode="text" autocomplete="new-password">
         </div>
       </div>
-      <div class="form-row single" style="margin-bottom:14px">
-        <div class="form-group">
-          <label>Confirmar PIN Nuevo</label>
-          <input type="password" id="c-pin-confirm" maxlength="4" placeholder="••••" inputmode="numeric" autocomplete="new-password">
-        </div>
-      </div>
-      <button class="btn-action btn-primary" onclick="changePin()" style="margin-bottom:8px">🔑 Cambiar PIN</button>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">El PIN debe ser de 4 dígitos numéricos.</p>
+
+    <button class="btn-action btn-primary" onclick="changePin()" style="margin-bottom:8px">🔑 Actualizar Contraseña</button>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">La contraseña debe tener al menos 6 caracteres y puede incluir letras y números.</p>
 
       <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
 
@@ -2017,8 +2012,40 @@ async function checkPin() {
   }
 }
 
-function changePin() {
-  showToast('Para cambiar contraseña ve a Supabase Dashboard', '');
+async function changePin() {
+  const pinInput = document.getElementById('c-pin-actual');
+  const nuevoPin = pinInput.value;
+
+  if (nuevoPin.length < 6) {
+    showToast('Error', 'El PIN debe tener al menos 6 caracteres');
+    return;
+  }
+
+  try {
+    // Aquí asumo que guardas tu token en localStorage al iniciar sesión
+    const token = localStorage.getItem('supabase_token'); 
+
+    const response = await fetch('/api/change-password', { // Ajusta la ruta a tu API
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ password: nuevoPin })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      showToast('Éxito', 'PIN actualizado correctamente');
+      pinInput.value = ''; // Limpiar el campo
+    } else {
+      showToast('Error', result.error || 'No se pudo cambiar el PIN');
+    }
+  } catch (error) {
+    showToast('Error', 'Error de conexión con el servidor');
+    console.error(error);
+  }
 }
 
 /* ── TOAST ─────────────────────────────────────────── */
