@@ -2013,10 +2013,13 @@ async function checkPin() {
 }
 
 async function changePin() {
-    const nuevoPin = document.getElementById('c-pin-nuevo').value;
-    const confirmacion = document.getElementById('c-pin-confirm').value;
+    // 1. Referencias a los elementos del DOM
+    const inputNuevo = document.getElementById('c-pin-nuevo');
+    const inputConfirm = document.getElementById('c-pin-confirm');
+    const nuevoPin = inputNuevo.value;
+    const confirmacion = inputConfirm.value;
 
-    // Validaciones de cliente
+    // 2. Validaciones iniciales del Frontend
     if (nuevoPin.length < 6) {
         return showToast('Error', 'La contraseña debe tener al menos 6 caracteres');
     }
@@ -2025,43 +2028,50 @@ async function changePin() {
     }
 
     try {
-        // Intentar obtener el token de Supabase del LocalStorage
-        const storageKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
-        const sessionData = JSON.parse(localStorage.getItem(storageKey));
+        // 3. Obtención dinámica del Token de Supabase
+        // Buscamos cualquier clave en LocalStorage que guarde la sesión de Supabase
+        const authKey = Object.keys(localStorage).find(key => 
+            key.startsWith('sb-') && key.endsWith('-auth-token')
+        );
+
+        const sessionData = authKey ? JSON.parse(localStorage.getItem(authKey)) : null;
         const token = sessionData?.access_token;
 
         if (!token) {
-            console.error("No se encontró el token en LocalStorage");
-            return showToast('Error', 'No se detectó sesión activa. Reingresa.');
+            console.error("No se encontró sesión activa en LocalStorage");
+            return showToast('Error', 'Sesión no encontrada. Por favor, inicia sesión de nuevo.');
         }
 
+        // 4. Petición al API (change-password.js)
         const response = await fetch('/api/change-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}` // Enviamos el token para verificar el usuario
             },
+            // El backend espera estrictamente el campo "password"
             body: JSON.stringify({ password: nuevoPin })
         });
 
         const result = await response.json();
 
-        if (response.ok) {
+        // 5. Manejo de la respuesta del servidor
+        if (response.ok && result.ok) {
             showToast('Éxito', 'Contraseña actualizada correctamente');
-            // Limpiar campos
-            document.getElementById('c-pin-nuevo').value = '';
-            document.getElementById('c-pin-confirm').value = '';
+            // Limpiar los campos tras el éxito
+            inputNuevo.value = '';
+            inputConfirm.value = '';
         } else {
-            // El servidor respondió con un error (ej. 401 o 400)
-            console.error("Respuesta del servidor:", result);
-            showToast('Error', result.error || 'Error en el servidor');
+            // Mostramos el error específico que devuelva tu API
+            showToast('Error', result.error || 'No se pudo actualizar la contraseña');
         }
+
     } catch (error) {
-        // Error de red o código (ej. 404 ruta no encontrada)
-        console.error("Error de conexión/petición:", error);
-        showToast('Error', 'No se pudo conectar con el servidor');
+        console.error("Error en la petición fetch:", error);
+        showToast('Error', 'Error de conexión con el servidor');
     }
 }
+
 /* ── TOAST ─────────────────────────────────────────── */
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
