@@ -2013,70 +2013,34 @@ async function checkPin() {
 }
 
 async function changePin() {
-    const inputNuevo = document.getElementById('c-pin-nuevo');
-    const inputConfirm = document.getElementById('c-pin-confirm');
-    const nuevoPin = inputNuevo.value;
-    const confirmacion = inputConfirm.value;
+    const nuevoPin = document.getElementById('c-pin-nuevo').value;
+    
+    // Intentamos obtener la sesión oficial
+    let { data: { session } } = await window.supabase.auth.getSession();
+    
+    // SI NO HAY SESIÓN (Tu caso actual), el backend fallará.
+    if (!session) {
+        console.error("No hay sesión de Supabase Auth activa.");
+        showToast('Error', 'Sesión de seguridad no iniciada. Reintenta el login.');
+        return;
+    }
 
-    if (nuevoPin.length < 6) return showToast('Error', 'Mínimo 6 caracteres');
-    if (nuevoPin !== confirmacion) return showToast('Error', 'Las contraseñas no coinciden');
+    const token = session.access_token;
 
-    try {
-        let token = null;
+    const response = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: nuevoPin })
+    });
 
-        // --- 1. BUSCAR EN LOCALSTORAGE (Cualquier cosa que parezca un Token) ---
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.includes('token') || key.includes('auth') || key.startsWith('sb-')) {
-                const val = localStorage.getItem(key);
-                try {
-                    const parsed = JSON.parse(val);
-                    token = parsed.access_token || parsed.token || parsed;
-                } catch(e) { token = val; }
-                if (token && typeof token === 'string' && token.length > 50) break;
-            }
-        }
-
-        // --- 2. SI FALLA, BUSCAR EN EL OBJETO DE SUPABASE ---
-        if (!token && typeof supabase !== 'undefined') {
-            const { data } = await supabase.auth.getSession();
-            token = data?.session?.access_token;
-        }
-
-        // --- 3. SI FALLA, BUSCAR EN COOKIES ---
-        if (!token) {
-            const cookieToken = document.cookie.split('; ').find(row => row.match(/token|auth|sb-/i));
-            if (cookieToken) token = cookieToken.split('=')[1];
-        }
-
-        if (!token) {
-            console.error("DEBUG: No se encontró token. Llaves actuales:", Object.keys(localStorage));
-            return showToast('Error', 'No se localizó la sesión. Intenta cerrar sesión y volver a entrar.');
-        }
-
-        // 4. ENVÍO AL API
-        const response = await fetch('/api/change-password', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token.trim()}`
-            },
-            body: JSON.stringify({ password: nuevoPin })
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.ok) {
-            showToast('Éxito', 'Contraseña actualizada correctamente');
-            inputNuevo.value = '';
-            inputConfirm.value = '';
-        } else {
-            showToast('Error', result.error || 'Error en el servidor');
-        }
-
-    } catch (error) {
-        console.error("Error crítico:", error);
-        showToast('Error', 'Error de red');
+    const result = await response.json();
+    if (response.ok) {
+        showToast('Éxito', 'PIN actualizado');
+    } else {
+        showToast('Error', result.error);
     }
 }
 
