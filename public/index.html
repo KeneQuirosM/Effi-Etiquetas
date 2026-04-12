@@ -2029,10 +2029,15 @@ async function checkPin() {
 
   try {
     const data = await apiPost('/api/auth', { email, password });
+
+    // 🔥 ESTA LÍNEA TE FALTABA
+    localStorage.setItem('token', data.token);
+
     activateCoord(data.token);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
     showToast('✅ Sesión iniciada', 'success');
+
   } catch(e) {
     document.getElementById('pin-error').textContent = 'Credenciales incorrectas';
   }
