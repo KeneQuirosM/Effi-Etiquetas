@@ -1103,6 +1103,7 @@
       <select id="select-formato">
         <option value="estandar">Estándar (Normal)</option>
         <option value="solo-notas">Solo Observaciones (Renglones)</option>
+        <option value="fragil">📦 Frágil (Manejo Especial)</option>
       </select>
     </div>
 
@@ -3046,11 +3047,12 @@ function updatePreview() {
     qrArea.classList.remove('visible');
   }
 
-   // Actualizar datos del modo FRÁGIL
+  // Actualizar datos del modo FRÁGIL
   const fragilTienda = document.getElementById('fragil-tienda');
   if (fragilTienda) {
     fragilTienda.textContent = tiendaName.toUpperCase();
-}
+  }
+} // ← CIERRE CORRECTO DE LA FUNCIÓN
 
 /* ── INIT ──────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
