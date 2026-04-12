@@ -2342,6 +2342,40 @@ function applyLogo(base64) {
   }
 }
 
+// Función para agregar mensajes al log de importación
+function logImport(message, type = 'info') {
+  const logDiv = document.getElementById('import-log');
+  if (!logDiv) return;
+  
+  const timestamp = new Date().toLocaleTimeString();
+  let color = '#a6e22e'; // verde por defecto
+  if (type === 'error') color = '#f92672';
+  else if (type === 'warn') color = '#e6db74';
+  else if (type === 'success') color = '#a6e22e';
+  
+  const entry = document.createElement('div');
+  entry.style.color = color;
+  entry.style.marginBottom = '2px';
+  entry.textContent = `[${timestamp}] ${message}`;
+  
+  logDiv.appendChild(entry);
+  // Auto-scroll al final
+  const container = document.getElementById('import-log-container');
+  container.scrollTop = container.scrollHeight;
+  
+  // Limitar número de líneas a 100 para no sobrecargar
+  if (logDiv.children.length > 100) {
+    logDiv.removeChild(logDiv.firstChild);
+  }
+}
+
+function clearImportLog() {
+  const logDiv = document.getElementById('import-log');
+  if (logDiv) logDiv.innerHTML = '';
+  logImport('— Registro limpiado —');
+}
+
+
 function handleLogoUpload(input) {
   const file = input.files[0];
   if (!file) return;
@@ -2464,6 +2498,9 @@ async function handleJSONImport(input) {
       if (!coordToken)
         return showToast('Debés estar en modo Coordinador para importar', 'danger');
 
+      clearImportLog();
+      logImport('🚀 Iniciando importación...', 'info');
+      logImport(`📦 Total de tiendas en archivo: ${parsed.tiendas.length}`, 'info');
       showToast('Importando... espere', '');
 
       let tiendasCreadas = 0;
@@ -2477,31 +2514,37 @@ async function handleJSONImport(input) {
         tiendasExistentesMap.set(t.nombre.trim().toLowerCase(), t.id);
       });
 
-      for (const tienda of parsed.tiendas) {
+      for (let i = 0; i < parsed.tiendas.length; i++) {
+        const tienda = parsed.tiendas[i];
         const nombreTienda = tienda.nombre.trim();
         const nombreNormalizado = nombreTienda.toLowerCase();
         let tiendaId;
+
+        logImport(`🏪 Procesando tienda ${i+1}/${parsed.tiendas.length}: "${nombreTienda}"`, 'info');
 
         // Verificar si la tienda ya existe
         if (tiendasExistentesMap.has(nombreNormalizado)) {
           tiendaId = tiendasExistentesMap.get(nombreNormalizado);
           tiendasExistentes++;
+          logImport(`   ↳ Tienda ya existe (ID: ${tiendaId}), se usarán sus productos`, 'warn');
         } else {
           // Crear nueva tienda
           try {
             const nuevaTienda = await apiPost('/api/tiendas', { nombre: nombreTienda });
             tiendaId = nuevaTienda.id;
             tiendasCreadas++;
-            // Agregar al mapa local para futuras referencias dentro del mismo JSON
             tiendasExistentesMap.set(nombreNormalizado, tiendaId);
+            logImport(`   ✅ Tienda creada (ID: ${tiendaId})`, 'success');
           } catch (err) {
-            console.warn(`Error al crear tienda "${nombreTienda}":`, err.message);
-            // Si falla la creación, no podemos agregar sus productos
-            continue;
+            logImport(`   ❌ Error al crear tienda: ${err.message}`, 'error');
+            continue; // saltar productos de esta tienda
           }
         }
 
         // Procesar productos de esta tienda
+        const totalProd = tienda.inventario?.length || 0;
+        logImport(`   📦 Procesando ${totalProd} productos...`, 'info');
+        
         for (const item of (tienda.inventario || [])) {
           try {
             await apiPost('/api/productos', {
@@ -2511,39 +2554,40 @@ async function handleJSONImport(input) {
               ubicacion: item.ubicacion || null
             });
             productosAgregados++;
+            logImport(`      ➕ Producto agregado: [${item.id}] ${item.producto}`, 'success');
           } catch (err) {
-            // Si es error de duplicado (código ya existe en esa tienda), lo omitimos
+            productosOmitidos++;
             if (err.message.includes('duplicate') || err.message.includes('ya existe')) {
-              productosOmitidos++;
+              logImport(`      ⚠️ Producto omitido (duplicado): [${item.id}] ${item.producto}`, 'warn');
             } else {
-              console.warn(`Error al agregar producto "${item.producto}" en tienda ${nombreTienda}:`, err.message);
-              productosOmitidos++;
+              logImport(`      ❌ Error al agregar [${item.id}]: ${err.message}`, 'error');
             }
           }
         }
+        logImport(`   🏁 Tienda "${nombreTienda}" completada.`, 'info');
       }
 
-      // Recargar datos para reflejar cambios
+      // Recargar datos
+      logImport('🔄 Recargando datos desde el servidor...', 'info');
       await loadData();
       populateTiendas();
       renderManageList();
       document.getElementById('select-producto').innerHTML = '<option value="">-- Producto --</option>';
       document.getElementById('select-id').innerHTML = '<option value="">-- ID --</option>';
 
-      let mensaje = `✅ Importación completada: `;
-      if (tiendasCreadas > 0) mensaje += `${tiendasCreadas} tiendas nuevas, `;
-      if (tiendasExistentes > 0) mensaje += `${tiendasExistentes} tiendas existentes actualizadas, `;
-      mensaje += `${productosAgregados} productos agregados`;
-      if (productosOmitidos > 0) mensaje += `, ${productosOmitidos} omitidos (duplicados)`;
+      const mensaje = `✅ Tiendas nuevas: ${tiendasCreadas} | Tiendas actualizadas: ${tiendasExistentes} | Productos agregados: ${productosAgregados} | Omitidos: ${productosOmitidos}`;
+      logImport(`🎉 IMPORTACIÓN FINALIZADA: ${mensaje}`, 'success');
       showToast(mensaje, 'success');
 
     } catch(err) {
-      showToast('Error al leer el archivo JSON', 'danger');
+      logImport(`💥 Error crítico: ${err.message}`, 'error');
+      showToast('Error al procesar el archivo JSON', 'danger');
       console.error(err);
     }
   };
   reader.readAsText(file);
 }
+
 
 /* ── BULK PRINT ─────────────────────────────────────── */
 function openBulk() {
