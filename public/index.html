@@ -985,6 +985,56 @@
 
     @page { size: 4in 6in; margin: 0; }
   }
+
+  /* Modo Frágil */
+.fragil-mode .label-body,
+.fragil-mode .label-footer,
+.fragil-mode .label-notes,
+.fragil-mode .label-qr { 
+  display: none !important; 
+}
+
+.fragil-mode .label-fragil {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+  text-align: center;
+}
+
+.fragil-icons {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  margin-top: 0.4in;
+}
+
+.fragil-icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 9pt;
+  color: #000;
+}
+
+.fragil-icon-item .icon {
+  font-size: 24pt;
+  line-height: 1.2;
+}
+
+.fragil-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 900;
+  font-size: 42pt;
+  color: #d63030;
+  text-transform: uppercase;
+  letter-spacing: 8px;
+  margin: 0.2in 0;
+}
+
 </style>
 </head>
 <body>
@@ -1272,7 +1322,31 @@
         </tbody>
       </table>
     </div>
-
+ <!-- Contenido para modo FRÁGIL (oculto por defecto) -->
+    <div class="label-fragil" style="display: none;">
+      <div style="font-family: 'Space Mono', monospace; font-size: 14pt; font-weight: 700; color: #1a2a6c; margin-bottom: 0.1in;">
+        <span id="fragil-tienda">TIENDA</span>
+      </div>
+      <div class="fragil-title" id="fragil-main-text">FRÁGIL</div>
+      <div class="fragil-icons">
+        <div class="fragil-icon-item">
+          <span class="icon">📦</span>
+          <span>FRAGIL</span>
+        </div>
+        <div class="fragil-icon-item">
+          <span class="icon">💧🚫</span>
+          <span>NO MOJAR</span>
+        </div>
+        <div class="fragil-icon-item">
+          <span class="icon">👣🚫</span>
+          <span>NO PISAR</span>
+        </div>
+        <div class="fragil-icon-item">
+          <span class="icon">⬆️</span>
+          <span>HACIA ARRIBA</span>
+        </div>
+      </div>
+    </div>
     <div class="label-footer">
       <span id="view-tienda" class="shop-corner">TIENDA</span>
       <p>ID: <span id="view-id">0000</span></p>
@@ -2971,6 +3045,11 @@ function updatePreview() {
     qrText.textContent = '';
     qrArea.classList.remove('visible');
   }
+
+   // Actualizar datos del modo FRÁGIL
+  const fragilTienda = document.getElementById('fragil-tienda');
+  if (fragilTienda) {
+    fragilTienda.textContent = tiendaName.toUpperCase();
 }
 
 /* ── INIT ──────────────────────────────────────────── */
@@ -3036,9 +3115,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     updatePreview();
   });
 
-  // Cambio de formato (solo notas)
   selFormato.addEventListener('change', () => {
-    etiqueta.classList.toggle('solo-notas', selFormato.value === 'solo-notas');
+    const formato = selFormato.value;
+    etiqueta.classList.remove('solo-notas', 'fragil-mode');
+    if (formato === 'solo-notas') {
+      etiqueta.classList.add('solo-notas');
+    } else if (formato === 'fragil') {
+      etiqueta.classList.add('fragil-mode');
+    }
+    updatePreview(); // Asegurar que se actualicen los textos
   });
 
   // Botón imprimir etiqueta individual
