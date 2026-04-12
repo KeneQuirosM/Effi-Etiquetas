@@ -1212,7 +1212,16 @@
       </div>
       <p style="font-size:11px;color:var(--muted)">Exporta para editar en Excel/Notepad. Importa para aplicar cambios masivos.</p>
 
-    </div>
+      <!-- Barra de progreso importación -->
+      <div id="import-progress-wrap" style="display:none;margin-top:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:600;color:var(--muted)" id="import-progress-label">Importando...</span>
+          <span style="font-size:11px;font-weight:700;color:var(--primary)" id="import-progress-pct">0%</span>
+        </div>
+        <div style="background:var(--border);border-radius:99px;height:8px;overflow:hidden">
+          <div id="import-progress-bar" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width 0.2s"></div>
+        </div>
+      </div>
   </div>
 
   <!-- LABEL PREVIEW -->
@@ -1894,7 +1903,9 @@ const API = '';  // vacío = mismo dominio en Vercel
 const LOGO_KEY = 'effi_logo_v1';
 const ROTULO_LOGO_KEY = 'effi_rotulo_logo_v1';
 const CACHE_KEY = 'effi_inventario_cache_v1';      // offline cache
-const SESSION_KEY = 'effi_coord_session_v1';        // sessionStorage token
+const SESSION_KEY = 'effi_coord_session_v1';
+const REFRESH_KEY = 'effi_coord_refresh_v1';
+const EXPIRES_KEY = 'effi_coord_expires_v1';
 
 /* ── STATE ─────────────────────────────────────────── */
 let appData = { tiendas: [] };
@@ -1986,14 +1997,50 @@ function hideToast() {
 }
 
 /* ── COORDINADOR LOGIN ──────────────────────────────── */
-function activateCoord(token) {
+let refreshTimer = null;
+
+function activateCoord(token, refreshToken, expiresAt) {
   coordToken = token;
   coordUnlocked = true;
   sessionStorage.setItem(SESSION_KEY, token);
+  if (refreshToken) sessionStorage.setItem(REFRESH_KEY, refreshToken);
+  if (expiresAt)    sessionStorage.setItem(EXPIRES_KEY, expiresAt);
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.add('active');
   document.getElementById('coord-icon').textContent = '⚙️';
   document.getElementById('coord-label').textContent = 'Coordinador Activo';
+  scheduleRefresh(expiresAt);
+}
+
+function scheduleRefresh(expiresAt) {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  if (!expiresAt) return;
+  // Refrescar 5 minutos antes de que expire
+  const msUntilRefresh = (expiresAt * 1000) - Date.now() - (5 * 60 * 1000);
+  if (msUntilRefresh <= 0) {
+    doTokenRefresh();
+    return;
+  }
+  refreshTimer = setTimeout(doTokenRefresh, msUntilRefresh);
+}
+
+async function doTokenRefresh() {
+  const refreshToken = sessionStorage.getItem(REFRESH_KEY);
+  if (!refreshToken) return;
+  try {
+    const r = await fetch(API + '/api/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    if (!r.ok) throw new Error('refresh failed');
+    const data = await r.json();
+    activateCoord(data.token, data.refresh_token, data.expires_at);
+  } catch(e) {
+    // Token no renovable — cerrar sesión silenciosamente
+    lockCoord();
+    showToast('Sesión expirada. Inicia sesión nuevamente.', 'danger');
+  }
 }
 
 async function checkPin() {
@@ -2003,7 +2050,7 @@ async function checkPin() {
 
   try {
     const data = await apiPost('/api/auth', { email, password });
-    activateCoord(data.token);
+    activateCoord(data.token, data.refresh_token, data.expires_at);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
     showToast('✅ Sesión iniciada', 'success');
@@ -2271,7 +2318,10 @@ function toggleCoordMode() {
 function lockCoord() {
   coordToken = null;
   coordUnlocked = false;
+  if (refreshTimer) clearTimeout(refreshTimer);
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(REFRESH_KEY);
+  sessionStorage.removeItem(EXPIRES_KEY);
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
   document.getElementById('coord-icon').textContent = '🔒';
@@ -2430,13 +2480,36 @@ async function handleJSONImport(input) {
       if (!coordToken)
         return showToast('Debés estar en modo Coordinador para importar', 'danger');
 
-      showToast('Importando... espere', '');
+      // Calcular total de operaciones
+      const totalTiendas = parsed.tiendas.length;
+      const totalProductos = parsed.tiendas.reduce((s, t) => s + (t.inventario?.length || 0), 0);
+      const total = totalTiendas + totalProductos;
+      let done = 0;
+
+      const wrap = document.getElementById('import-progress-wrap');
+      const bar  = document.getElementById('import-progress-bar');
+      const pct  = document.getElementById('import-progress-pct');
+      const lbl  = document.getElementById('import-progress-label');
+
+      const setProgress = (n, label) => {
+        const p = Math.round((n / total) * 100);
+        bar.style.width = p + '%';
+        pct.textContent = p + '%';
+        lbl.textContent = label || 'Importando...';
+      };
+
+      wrap.style.display = 'block';
+      setProgress(0);
 
       let tiendasOk = 0, productosOk = 0, errores = 0;
 
       for (const tienda of parsed.tiendas) {
         try {
+          lbl.textContent = `Tienda: ${tienda.nombre}`;
           const t = await apiPost('/api/tiendas', { nombre: tienda.nombre });
+          done++;
+          setProgress(done);
+          tiendasOk++;
           for (const item of (tienda.inventario || [])) {
             try {
               await apiPost('/api/productos', {
@@ -2448,15 +2521,21 @@ async function handleJSONImport(input) {
               productosOk++;
             } catch (err) {
               errores++;
-              console.warn('Producto omitido:', item, err.message);
             }
+            done++;
+            setProgress(done, `${tienda.nombre} — ${productosOk} productos`);
           }
-          tiendasOk++;
         } catch (err) {
           errores++;
-          console.warn('Tienda omitida:', tienda.nombre, err.message);
+          done++;
+          setProgress(done);
         }
       }
+
+      bar.style.width = '100%';
+      pct.textContent = '100%';
+      lbl.textContent = '¡Listo!';
+      setTimeout(() => { wrap.style.display = 'none'; }, 2000);
 
       await loadData();
       populateTiendas();
@@ -2469,6 +2548,7 @@ async function handleJSONImport(input) {
       showToast(msg, 'success');
 
     } catch(err) {
+      document.getElementById('import-progress-wrap').style.display = 'none';
       showToast('Error al leer el archivo JSON', 'danger');
     }
   };
@@ -2796,18 +2876,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   const savedToken = sessionStorage.getItem(SESSION_KEY);
   if (savedToken) {
     try {
-      // Verificar que el token sigue siendo válido
       const res = await fetch(API + '/api/tiendas', {
         headers: { 'Authorization': 'Bearer ' + savedToken }
       });
       if (res.ok) {
-        activateCoord(savedToken);
+        const savedRefresh = sessionStorage.getItem(REFRESH_KEY);
+        const savedExpires = sessionStorage.getItem(EXPIRES_KEY);
+        activateCoord(savedToken, savedRefresh, savedExpires ? Number(savedExpires) : null);
         showToast('✅ Sesión restaurada', 'success');
       } else {
-        sessionStorage.removeItem(SESSION_KEY);
+        const savedRefresh = sessionStorage.getItem(REFRESH_KEY);
+        if (savedRefresh) {
+          await doTokenRefresh();
+        } else {
+          [SESSION_KEY, REFRESH_KEY, EXPIRES_KEY].forEach(k => sessionStorage.removeItem(k));
+        }
       }
     } catch(e) {
-      sessionStorage.removeItem(SESSION_KEY);
+      [SESSION_KEY, REFRESH_KEY, EXPIRES_KEY].forEach(k => sessionStorage.removeItem(k));
     }
   }
 
