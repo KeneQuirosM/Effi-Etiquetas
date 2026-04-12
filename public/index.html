@@ -1212,17 +1212,6 @@
       </div>
       <p style="font-size:11px;color:var(--muted)">Exporta para editar en Excel/Notepad. Importa para aplicar cambios masivos.</p>
 
-      <!-- Barra de progreso importación -->
-      <div id="import-progress-wrap" style="display:none;margin-top:12px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:11px;font-weight:600;color:var(--muted)" id="import-progress-label">Importando...</span>
-          <span style="font-size:11px;font-weight:700;color:var(--primary)" id="import-progress-pct">0%</span>
-        </div>
-        <div style="background:var(--border);border-radius:99px;height:8px;overflow:hidden">
-          <div id="import-progress-bar" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width 0.2s"></div>
-        </div>
-      </div>
-
     </div>
   </div>
 
@@ -1925,35 +1914,45 @@ async function apiPost(path, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (coordToken) headers['Authorization'] = 'Bearer ' + coordToken;
   const r = await fetch(API + path, { method: 'POST', headers, body: JSON.stringify(body) });
+  
+  // ✅ NUEVO: detectar token expirado o inválido
+  if (r.status === 401) {
+    lockCoord(); // cierra la sesión automáticamente
+    showToast('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
+    throw new Error('Sesión expirada');
+  }
+  
   if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
   return r.json();
 }
 
+
 async function apiPatch(path, body) {
-  const token = localStorage.getItem('token'); // 🔥 SIEMPRE fresco
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + token
-  };
-
-  const r = await fetch(API + path, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify(body)
-  });
-
-  if (!r.ok) {
-    const e = await r.json().catch(() => ({}));
-    throw new Error(e.error || 'Error');
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + coordToken };
+  const r = await fetch(API + path, { method: 'PATCH', headers, body: JSON.stringify(body) });
+  
+  // ✅ NUEVO: detectar token expirado o inválido
+  if (r.status === 401) {
+    lockCoord();
+    showToast('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
+    throw new Error('Sesión expirada');
   }
-
+  
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
   return r.json();
 }
 
 async function apiDelete(path, body) {
   const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + coordToken };
   const r = await fetch(API + path, { method: 'DELETE', headers, body: JSON.stringify(body) });
+  
+  // ✅ NUEVO: detectar token expirado o inválido
+  if (r.status === 401) {
+    lockCoord();
+    showToast('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
+    throw new Error('Sesión expirada');
+  }
+  
   if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
   return r.json();
 }
@@ -2029,15 +2028,10 @@ async function checkPin() {
 
   try {
     const data = await apiPost('/api/auth', { email, password });
-
-    // 🔥 ESTA LÍNEA TE FALTABA
-    localStorage.setItem('token', data.token);
-
     activateCoord(data.token);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
     showToast('✅ Sesión iniciada', 'success');
-
   } catch(e) {
     document.getElementById('pin-error').textContent = 'Credenciales incorrectas';
   }
