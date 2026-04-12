@@ -1211,6 +1211,14 @@
         </label>
       </div>
       <p style="font-size:11px;color:var(--muted)">Exporta para editar en Excel/Notepad. Importa para aplicar cambios masivos.</p>
+       <!-- Consola de importación -->
+      <div style="margin-top: 20px;">
+        <p class="section-label" style="margin-bottom: 8px;">📋 Registro de importación</p>
+        <div id="import-log-container" style="background: #1e1e2f; border-radius: 8px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: 'Space Mono', monospace; font-size: 11px; line-height: 1.5; border: 1px solid var(--border);">
+          <div id="import-log" style="color: #a6e22e; white-space: pre-wrap; word-break: break-all;">— Esperando archivo —</div>
+        </div>
+        <button class="btn-action btn-ghost" onclick="clearImportLog()" style="margin-top: 8px; font-size: 11px; padding: 4px 12px;">🗑 Limpiar registro</button>
+      </div>
 
     </div>
   </div>
