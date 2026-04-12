@@ -2466,44 +2466,80 @@ async function handleJSONImport(input) {
 
       showToast('Importando... espere', '');
 
-      let tiendasOk = 0, productosOk = 0, errores = 0;
+      let tiendasCreadas = 0;
+      let tiendasExistentes = 0;
+      let productosAgregados = 0;
+      let productosOmitidos = 0;
+
+      // Mapa de nombres de tiendas existentes -> id (normalizado)
+      const tiendasExistentesMap = new Map();
+      appData.tiendas.forEach(t => {
+        tiendasExistentesMap.set(t.nombre.trim().toLowerCase(), t.id);
+      });
 
       for (const tienda of parsed.tiendas) {
-        try {
-          const t = await apiPost('/api/tiendas', { nombre: tienda.nombre });
-          for (const item of (tienda.inventario || [])) {
-            try {
-              await apiPost('/api/productos', {
-                tienda_id: t.id,
-                codigo: String(item.id),
-                nombre: item.producto,
-                ubicacion: item.ubicacion || null
-              });
-              productosOk++;
-            } catch (err) {
-              errores++;
-              console.warn('Producto omitido:', item, err.message);
+        const nombreTienda = tienda.nombre.trim();
+        const nombreNormalizado = nombreTienda.toLowerCase();
+        let tiendaId;
+
+        // Verificar si la tienda ya existe
+        if (tiendasExistentesMap.has(nombreNormalizado)) {
+          tiendaId = tiendasExistentesMap.get(nombreNormalizado);
+          tiendasExistentes++;
+        } else {
+          // Crear nueva tienda
+          try {
+            const nuevaTienda = await apiPost('/api/tiendas', { nombre: nombreTienda });
+            tiendaId = nuevaTienda.id;
+            tiendasCreadas++;
+            // Agregar al mapa local para futuras referencias dentro del mismo JSON
+            tiendasExistentesMap.set(nombreNormalizado, tiendaId);
+          } catch (err) {
+            console.warn(`Error al crear tienda "${nombreTienda}":`, err.message);
+            // Si falla la creación, no podemos agregar sus productos
+            continue;
+          }
+        }
+
+        // Procesar productos de esta tienda
+        for (const item of (tienda.inventario || [])) {
+          try {
+            await apiPost('/api/productos', {
+              tienda_id: tiendaId,
+              codigo: String(item.id),
+              nombre: item.producto,
+              ubicacion: item.ubicacion || null
+            });
+            productosAgregados++;
+          } catch (err) {
+            // Si es error de duplicado (código ya existe en esa tienda), lo omitimos
+            if (err.message.includes('duplicate') || err.message.includes('ya existe')) {
+              productosOmitidos++;
+            } else {
+              console.warn(`Error al agregar producto "${item.producto}" en tienda ${nombreTienda}:`, err.message);
+              productosOmitidos++;
             }
           }
-          tiendasOk++;
-        } catch (err) {
-          errores++;
-          console.warn('Tienda omitida:', tienda.nombre, err.message);
         }
       }
 
+      // Recargar datos para reflejar cambios
       await loadData();
       populateTiendas();
       renderManageList();
       document.getElementById('select-producto').innerHTML = '<option value="">-- Producto --</option>';
       document.getElementById('select-id').innerHTML = '<option value="">-- ID --</option>';
 
-      const msg = `✅ ${tiendasOk} tiendas, ${productosOk} productos importados` +
-                  (errores ? ` (${errores} omitidos por duplicado)` : '');
-      showToast(msg, 'success');
+      let mensaje = `✅ Importación completada: `;
+      if (tiendasCreadas > 0) mensaje += `${tiendasCreadas} tiendas nuevas, `;
+      if (tiendasExistentes > 0) mensaje += `${tiendasExistentes} tiendas existentes actualizadas, `;
+      mensaje += `${productosAgregados} productos agregados`;
+      if (productosOmitidos > 0) mensaje += `, ${productosOmitidos} omitidos (duplicados)`;
+      showToast(mensaje, 'success');
 
     } catch(err) {
       showToast('Error al leer el archivo JSON', 'danger');
+      console.error(err);
     }
   };
   reader.readAsText(file);
