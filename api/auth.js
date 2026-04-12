@@ -40,6 +40,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_at: data.session.expires_at,
       user: { email: data.user.email }
     });
 
