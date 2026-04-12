@@ -2039,21 +2039,24 @@ async function checkPin() {
 
 async function changePin() {
     const nuevoPin = document.getElementById('c-pin-nuevo').value;
+    const confirmPin = document.getElementById('c-pin-confirm').value;
 
-    // Validación básica
-    if (!nuevoPin || nuevoPin.length < 4) {
-        showToast('Error', 'El PIN debe tener al menos 4 caracteres');
+    if (!nuevoPin || nuevoPin.length < 6) {
+        showToast('La contraseña debe tener al menos 6 caracteres', 'danger');
         return;
     }
-
-    // Verificar sesión
+    if (nuevoPin !== confirmPin) {
+        showToast('Las contraseñas no coinciden', 'danger');
+        return;
+    }
     if (!coordToken) {
-        showToast('Error', 'Debes iniciar sesión primero');
+        showToast('Debes iniciar sesión primero', 'danger');
         return;
     }
 
     try {
-        const response = await fetch('/api/change-password', {
+        // ✅ Endpoint correcto: /api/config
+        const response = await fetch('/api/config', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2062,18 +2065,24 @@ async function changePin() {
             body: JSON.stringify({ password: nuevoPin })
         });
 
+        if (response.status === 401) {
+            lockCoord();
+            showToast('Sesión expirada. Vuelve a iniciar sesión.', 'danger');
+            return;
+        }
+
         const result = await response.json();
 
         if (response.ok) {
-            showToast('Éxito', 'PIN actualizado correctamente');
+            showToast('✅ Contraseña actualizada correctamente', 'success');
             document.getElementById('c-pin-nuevo').value = '';
+            document.getElementById('c-pin-confirm').value = '';
         } else {
-            showToast('Error', result.error || 'No se pudo actualizar el PIN');
+            showToast(result.error || 'Error al cambiar la contraseña', 'danger');
         }
-
     } catch (error) {
         console.error('Error al cambiar PIN:', error);
-        showToast('Error', 'Error de conexión');
+        showToast('Error de conexión', 'danger');
     }
 }
 
