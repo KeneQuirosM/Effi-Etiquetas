@@ -1000,22 +1000,23 @@
   display: flex !important;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center; /* Centra verticalmente el contenido */
   flex-grow: 1;
   width: 100%;
   height: 100%;
   text-align: center;
   padding: 0.2in 0;
+  position: relative;
 }
 
 .fragil-title {
   font-family: 'Inter', sans-serif;
   font-weight: 900;
-  font-size: 48pt;
+  font-size: 52pt;
   color: #d63030;
   text-transform: uppercase;
   letter-spacing: 12px;
-  margin: 0.1in 0;
+  margin: 0 0 0.2in 0; /* Empuja los iconos hacia abajo */
   line-height: 1;
 }
 
@@ -1023,12 +1024,14 @@
   display: flex;
   flex-direction: row;
   justify-content: space-evenly;
-  align-items: flex-start;
+  align-items: flex-end; /* Alinea los iconos en la parte inferior */
   flex-wrap: wrap;
   width: 100%;
-  margin: 10px 0;
+  margin-top: auto; /* Empuja el grid hacia abajo */
+  padding-bottom: 0.2in;
   gap: 6px;
 }
+
 
 .fragil-icon-item {
   display: flex;
