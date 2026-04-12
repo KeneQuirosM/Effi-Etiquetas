@@ -1032,6 +1032,12 @@
       <select id="select-tienda"><option value="">-- Seleccione --</option></select>
     </div>
 
+   <div class="field">
+      <label>🔍 Buscar producto</label>
+      <input type="text" id="search-producto" placeholder="Escribe para filtrar..." autocomplete="off" disabled>
+    </div>
+
+
     <div class="field">
       <label>Producto</label>
       <select id="select-producto"><option value="">-- Seleccione --</option></select>
@@ -1991,13 +1997,19 @@ async function loadData() {
     showToast('Cargando inventario...', '');
     const data = await apiGet('/api/tiendas');
     appData = data;
-    // Guardar en cache para uso offline
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
     isOffline = false;
     hideOfflineBanner();
     hideToast();
+    
+    // ✅ NUEVO: Resetear búsqueda
+    const searchInput = document.getElementById('search-producto');
+    if (searchInput) {
+      searchInput.value = '';
+      searchInput.disabled = true;
+    }
+    
   } catch(e) {
-    // Intentar usar cache local
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
       appData = JSON.parse(cached);
@@ -2009,6 +2021,13 @@ async function loadData() {
       showToast('Sin conexión y sin caché. Verifica conexión.', 'danger');
       appData = { tiendas: [] };
       isOffline = true;
+    }
+    
+    // ✅ NUEVO: También resetear búsqueda en caso de error
+    const searchInput = document.getElementById('search-producto');
+    if (searchInput) {
+      searchInput.value = '';
+      searchInput.disabled = true;
     }
   }
 }
@@ -2143,16 +2162,62 @@ async function renameTienda() {
   } catch(e) { showToast(e.message, 'danger'); }
 }
 
+let inventarioCompleto = []; // Variable global para guardar el inventario sin filtrar
+
 function populateInventario(tiendaIdx, prodSel, idSel) {
+  const searchInput = document.getElementById('search-producto');
+  
   prodSel.innerHTML = '<option value="">-- Producto --</option>';
   idSel.innerHTML = '<option value="">-- ID --</option>';
-  if (tiendaIdx === '' || !appData.tiendas[tiendaIdx]) return;
-  const inv = [...appData.tiendas[tiendaIdx].inventario]
+  
+  if (tiendaIdx === '' || !appData.tiendas[tiendaIdx]) {
+    inventarioCompleto = [];
+    searchInput.value = '';
+    searchInput.disabled = true;
+    return;
+  }
+  
+  // Guardar inventario completo ordenado
+  inventarioCompleto = [...appData.tiendas[tiendaIdx].inventario]
     .sort((a,b) => parseInt(a.id) - parseInt(b.id));
-  inv.forEach(item => {
+  
+  // Habilitar búsqueda
+  searchInput.disabled = false;
+  searchInput.value = '';
+  
+  // Llamar al filtro inicial (sin filtro)
+  filterProductos();
+}
+
+function filterProductos() {
+  const searchTerm = document.getElementById('search-producto').value.trim().toLowerCase();
+  const prodSel = document.getElementById('select-producto');
+  const idSel = document.getElementById('select-id');
+  
+  // Limpiar selects
+  prodSel.innerHTML = '<option value="">-- Producto --</option>';
+  idSel.innerHTML = '<option value="">-- ID --</option>';
+  
+  // Filtrar inventario
+  const filtrado = inventarioCompleto.filter(item => 
+    item.producto.toLowerCase().includes(searchTerm) || 
+    item.id.toString().includes(searchTerm)
+  );
+  
+  // Poblar con los resultados
+  filtrado.forEach(item => {
     prodSel.add(new Option(item.producto, item.id));
     idSel.add(new Option(item.id, item.id));
   });
+  
+  // Si solo hay un resultado, seleccionarlo automáticamente (opcional)
+  if (filtrado.length === 1) {
+    prodSel.value = filtrado[0].id;
+    idSel.value = filtrado[0].id;
+  }
+  
+  // Actualizar previsualización
+  updatePreview();
 }
 
 /* ── TAB SWITCH ────────────────────────────────────── */
@@ -2910,15 +2975,28 @@ function updatePreview() {
 
 /* ── INIT ──────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
+  // Cargar datos iniciales
   await loadData();
   await loadLogo();
   await loadRotuloLogo();
+
+  // Referencias a elementos del DOM
+  const selTienda = document.getElementById('select-tienda');
+  const selProd = document.getElementById('select-producto');
+  const selId = document.getElementById('select-id');
+  const selFormato = document.getElementById('select-formato');
+  const etiqueta = document.getElementById('etiqueta');
+  const searchInput = document.getElementById('search-producto');
+
+  // Event listener para búsqueda rápida
+  if (searchInput) {
+    searchInput.addEventListener('input', filterProductos);
+  }
 
   // Restaurar sesión del coordinador si existe en sessionStorage
   const savedToken = sessionStorage.getItem(SESSION_KEY);
   if (savedToken) {
     try {
-      // Verificar que el token sigue siendo válido
       const res = await fetch(API + '/api/tiendas', {
         headers: { 'Authorization': 'Bearer ' + savedToken }
       });
@@ -2933,33 +3011,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Poblar selectores de tiendas
   populateTiendas();
 
-  const selTienda = document.getElementById('select-tienda');
-  const selProd = document.getElementById('select-producto');
-  const selId = document.getElementById('select-id');
-  const selFormato = document.getElementById('select-formato');
-  const etiqueta = document.getElementById('etiqueta');
+  // --- LISTENERS ---
 
+  // Cambio de tienda
   selTienda.addEventListener('change', () => {
+    // Limpiar búsqueda
+    if (searchInput) searchInput.value = '';
     populateInventario(selTienda.value, selProd, selId);
-    updatePreview();
+    // updatePreview ya se llama dentro de filterProductos
   });
 
+  // Cambio de producto (sincronizar ID)
   selProd.addEventListener('change', () => {
     selId.value = selProd.value;
     updatePreview();
   });
 
+  // Cambio de ID (sincronizar producto)
   selId.addEventListener('change', () => {
     selProd.value = selId.value;
     updatePreview();
   });
 
+  // Cambio de formato (solo notas)
   selFormato.addEventListener('change', () => {
     etiqueta.classList.toggle('solo-notas', selFormato.value === 'solo-notas');
   });
 
+  // Botón imprimir etiqueta individual
   document.getElementById('btn-print').addEventListener('click', () => {
     document.body.classList.add('print-single');
     window.print();
@@ -2972,7 +3054,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!overlay.classList.contains('show')) return;
     if (e.key === 'Escape') closePinModal();
   });
+
+  // Inicializar estado del campo de búsqueda (por defecto deshabilitado)
+  if (searchInput) {
+    searchInput.disabled = true;
+  }
 });
+
 </script>
 </body>
 </html>
