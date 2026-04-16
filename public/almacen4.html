@@ -273,6 +273,10 @@ async function changePin() {
 /* ── TOAST ─────────────────────────────────────────── */
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
+  if (!t) {
+    console.warn('Toast:', msg);
+    return;
+  }
   t.textContent = msg;
   t.className = 'toast ' + type + ' show';
   setTimeout(() => t.className = 'toast ' + type, 2800);
