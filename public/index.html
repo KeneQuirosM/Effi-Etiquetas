@@ -1163,6 +1163,7 @@
 
     <button class="btn-print" id="btn-print">🖨 Imprimir Etiqueta</button>
     <button class="btn-bulk" id="btn-bulk" onclick="openBulk()">📋 Impresión Masiva</button>
+    <button class="btn-bulk" id="btn-stockforge" onclick="openStockforge()">🏭 Gestión de Almacén</button>
   </div>
 
   <div class="sidebar-footer">
@@ -2871,6 +2872,11 @@ function bulkSelectNone() {
   updateBulkCount();
 }
 
+
+function openStockforge() {
+  window.open('/almacen4.html', '_blank');
+}
+  
 function updateBulkCount() {
   const n = document.querySelectorAll('.bulk-item.selected').length;
   document.getElementById('bulk-selected-count').textContent = `${n} seleccionado${n !== 1 ? 's' : ''}`;
