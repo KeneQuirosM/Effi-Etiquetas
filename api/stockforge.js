@@ -10,7 +10,6 @@ export default async function handler(req, res) {
 
   try {
     // ── GET: Obtener todo el estado ────────────────────────────────
-        // ── GET: Obtener todo el estado ────────────────────────────────
     if (req.method === 'GET') {
       console.log('📥 GET /api/stockforge');
 
@@ -136,7 +135,7 @@ export default async function handler(req, res) {
         });
       });
 
-      // Asegurar celdas vacías para todos los racks
+      // Asegurar celdas vacías
       racksMapped.forEach(r => {
         if (!r.id) return;
         if (!cellsObj[r.id]) cellsObj[r.id] = [];
@@ -164,13 +163,14 @@ export default async function handler(req, res) {
         movements: movementsMapped
       });
     }
-    // ── POST: Guardar todo el estado (reemplazo completo) ─────────
+
+    // ── POST: Guardar todo el estado ─────────────────────────────
     if (req.method === 'POST') {
       const { zones, racks, cells, people, tiendas, movements } = req.body;
 
       console.log(`📤 POST - zonas:${zones?.length}, racks:${racks?.length}, people:${people?.length}, tiendas:${tiendas?.length}`);
 
-      // 1. Limpiar tablas en orden (respetando FKs)
+      // 1. Limpiar tablas
       await supabase.from('movimientos').delete().neq('id', '');
       await supabase.from('changelog').delete().neq('id', 0);
       await supabase.from('audits').delete().neq('id', 0);
@@ -185,7 +185,7 @@ export default async function handler(req, res) {
       await supabase.from('responsables').delete().neq('id', '');
       console.log('🧹 Tablas limpiadas');
 
-      // 2. Insertar zonas (mapear desc → descripcion)
+      // 2. Zonas
       if (zones?.length) {
         const zonasMapped = zones.map(z => ({
           id: z.id,
@@ -205,7 +205,7 @@ export default async function handler(req, res) {
         else console.log(`✅ ${people.length} responsables insertados`);
       }
 
-      // 4. Tiendas (solo insertar si no existen)
+      // 4. Tiendas
       if (tiendas?.length) {
         for (const t of tiendas) {
           const { data: existing } = await supabase
@@ -224,24 +224,21 @@ export default async function handler(req, res) {
         console.log(`✅ Tiendas procesadas`);
       }
 
-      // 5. Racks (con mapeo completo de campos)
+      // 5. Racks
       let racksInsertados = 0;
       if (racks?.length) {
-        // Obtener zonas existentes para validar zone_id
         const { data: zonasExistentes } = await supabase.from('zonas').select('id');
         const zonasIds = new Set((zonasExistentes || []).map(z => z.id));
 
         for (const r of racks) {
-          const zoneId = r.zone; // el JSON usa "zone"
-          
-          // Preparar objeto rack con nombres de columna correctos
+          const zoneId = r.zone;
           const rackData = {
             id: r.id,
             name: r.name,
             bays: r.bays,
             levels: r.levels,
-            width: r.w,   // mapear w → width
-            height: r.h,  // mapear h → height
+            width: r.w,
+            height: r.h,
             x: r.x,
             y: r.y,
             zone_id: (zoneId && zonasIds.has(zoneId)) ? zoneId : null,
@@ -252,17 +249,15 @@ export default async function handler(req, res) {
           const { error: errRack } = await supabase.from('racks').insert(rackData);
           if (errRack) {
             console.error(`❌ Error insertando rack ${r.id} (${r.name}):`, errRack);
-            continue; // saltar relaciones si el rack no se insertó
+            continue;
           }
           racksInsertados++;
 
-          // Relaciones rack_responsables
           if (r.responsables?.length) {
             await supabase.from('rack_responsables').insert(
               r.responsables.map(rid => ({ rack_id: r.id, responsable_id: rid }))
             );
           }
-          // Relaciones rack_tiendas
           if (r.tiendas?.length) {
             await supabase.from('rack_tiendas').insert(
               r.tiendas.map(tid => ({ rack_id: r.id, tienda_id: parseInt(tid) }))
@@ -272,11 +267,10 @@ export default async function handler(req, res) {
         console.log(`✅ ${racksInsertados} racks insertados correctamente`);
       }
 
-      // 6. Celdas y sus relaciones
+      // 6. Celdas
       let celdasOk = 0, celdasError = 0;
       if (cells) {
         for (const [rackId, cellsArr] of Object.entries(cells)) {
-          // Verificar que el rack existe
           const { data: rackExiste } = await supabase
             .from('racks')
             .select('id')
@@ -325,7 +319,6 @@ export default async function handler(req, res) {
                 );
               }
 
-              // SKUs: mapear qty → cantidad, minStock → min_stock
               if (skus?.length) {
                 const skusMapped = skus.map(s => ({
                   celda_id: celdaId,
@@ -341,7 +334,6 @@ export default async function handler(req, res) {
                 if (errSku) console.error(`❌ SKUs celda ${celdaId}:`, errSku);
               }
 
-              // Audits
               if (audits?.length) {
                 const auditsMapped = audits.map(a => ({
                   celda_id: celdaId,
@@ -353,7 +345,6 @@ export default async function handler(req, res) {
                 await supabase.from('audits').insert(auditsMapped);
               }
 
-              // Changelog
               if (changelog?.length) {
                 const changelogMapped = changelog.map(c => ({
                   celda_id: celdaId,
@@ -397,4 +388,11 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ ok: true, celdas: celdasOk, errores: celdasError });
     }
-    
+
+    return res.status(405).json({ error: 'Método no permitido' });
+
+  } catch (error) {
+    console.error('💥 Error general:', error);
+    return res.status(500).json({ error: error.message });
+  }
+}
