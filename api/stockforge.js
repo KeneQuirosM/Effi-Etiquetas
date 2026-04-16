@@ -130,15 +130,11 @@ export default async function handler(req, res) {
         movements: movimientos || []
       });
     }
-
     // ── POST: Guardar todo el estado (reemplazo completo) ─────────
     if (req.method === 'POST') {
       const { zones, racks, cells, people, tiendas, movements } = req.body;
 
       console.log(`📤 POST - zonas:${zones?.length}, racks:${racks?.length}, people:${people?.length}, tiendas:${tiendas?.length}`);
-
-      // Variables para el resumen final
-      let celdasOk = 0, celdasError = 0;
 
       // 1. Limpiar tablas en orden (respetando FKs)
       await supabase.from('movimientos').delete().neq('id', '');
@@ -175,7 +171,7 @@ export default async function handler(req, res) {
         else console.log(`✅ ${people.length} responsables insertados`);
       }
 
-      // 4. Tiendas
+      // 4. Tiendas (solo insertar si no existen)
       if (tiendas?.length) {
         for (const t of tiendas) {
           const { data: existing } = await supabase
@@ -194,162 +190,152 @@ export default async function handler(req, res) {
         console.log(`✅ Tiendas procesadas`);
       }
 
-      // 5. Racks (con mapeo de zone → zone_id y validación de zona)
-            // 5. Racks (con mapeo de campos y zone → zone_id)
+      // 5. Racks (con mapeo completo de campos)
+      let racksInsertados = 0;
       if (racks?.length) {
+        // Obtener zonas existentes para validar zone_id
         const { data: zonasExistentes } = await supabase.from('zonas').select('id');
         const zonasIds = new Set((zonasExistentes || []).map(z => z.id));
 
-        const racksParaInsertar = [];
-
         for (const r of racks) {
-          const rackCopy = { ...r };
-          const zoneId = r.zone;
+          const zoneId = r.zone; // el JSON usa "zone"
           
-          if (zoneId && !zonasIds.has(zoneId)) {
-            console.warn(`⚠️ Rack ${r.id} (${r.name}): zone "${zoneId}" no existe. Se asignará NULL.`);
-            rackCopy.zone_id = null;
-          } else {
-            rackCopy.zone_id = zoneId || null;
-          }
-          
-          delete rackCopy.zone;
-          racksParaInsertar.push(rackCopy);
-        }
-
-        if (racksParaInsertar.length > 0) {
-          // Mapear campos al esquema de la tabla racks (width, height)
-          const racksClean = racksParaInsertar.map(({ responsables, tiendas: rackTiendas, w, h, ...r }) => ({
+          // Preparar objeto rack con nombres de columna correctos
+          const rackData = {
             id: r.id,
             name: r.name,
             bays: r.bays,
             levels: r.levels,
-            width: w,
-            height: h,
+            width: r.w,   // mapear w → width
+            height: r.h,  // mapear h → height
             x: r.x,
             y: r.y,
-            zone_id: r.zone_id,
+            zone_id: (zoneId && zonasIds.has(zoneId)) ? zoneId : null,
             created_at: r.created_at,
             updated_at: r.updated_at
-          }));
+          };
 
-          const { error: errRack } = await supabase.from('racks').insert(racksClean);
+          const { error: errRack } = await supabase.from('racks').insert(rackData);
           if (errRack) {
-            console.error('❌ Error racks:', errRack);
-          } else {
-            console.log(`✅ ${racksParaInsertar.length} racks insertados correctamente`);
+            console.error(`❌ Error insertando rack ${r.id} (${r.name}):`, errRack);
+            continue; // saltar relaciones si el rack no se insertó
           }
+          racksInsertados++;
 
-          // Insertar relaciones
-          for (const r of racksParaInsertar) {
-            if (r.responsables?.length) {
-              await supabase.from('rack_responsables').insert(
-                r.responsables.map(rid => ({ rack_id: r.id, responsable_id: rid }))
-              );
-            }
-            if (r.tiendas?.length) {
-              await supabase.from('rack_tiendas').insert(
-                r.tiendas.map(tid => ({ rack_id: r.id, tienda_id: parseInt(tid) }))
-              );
-            }
+          // Relaciones rack_responsables
+          if (r.responsables?.length) {
+            await supabase.from('rack_responsables').insert(
+              r.responsables.map(rid => ({ rack_id: r.id, responsable_id: rid }))
+            );
+          }
+          // Relaciones rack_tiendas
+          if (r.tiendas?.length) {
+            await supabase.from('rack_tiendas').insert(
+              r.tiendas.map(tid => ({ rack_id: r.id, tienda_id: parseInt(tid) }))
+            );
           }
         }
+        console.log(`✅ ${racksInsertados} racks insertados correctamente`);
       }
-      // 6. Celdas y sus relaciones (con mapeo de campos)
-      for (const [rackId, cellsArr] of Object.entries(cells || {})) {
-        // Verificar que el rack exista antes de insertar sus celdas
-        const { data: rackExiste } = await supabase
-          .from('racks')
-          .select('id')
-          .eq('id', rackId)
-          .maybeSingle();
 
-        if (!rackExiste) {
-          console.error(`❌ Rack ${rackId} no existe en la BD, se omiten sus ${cellsArr.length} celdas`);
-          celdasError += cellsArr.length;
-          continue;
-        }
-
-        for (const cell of cellsArr) {
-          const { skus, audits, changelog, responsables, tiendas: cellTiendas, ...cellData } = cell;
-
-          const { data: inserted, error: errCell } = await supabase
-            .from('celdas')
-            .insert({
-              rack_id: rackId,
-              bay: cellData.bay,
-              level: cellData.level,
-              state: cellData.state || 'empty',
-              notes: cellData.notes || ''
-            })
+      // 6. Celdas y sus relaciones
+      let celdasOk = 0, celdasError = 0;
+      if (cells) {
+        for (const [rackId, cellsArr] of Object.entries(cells)) {
+          // Verificar que el rack existe
+          const { data: rackExiste } = await supabase
+            .from('racks')
             .select('id')
-            .single();
+            .eq('id', rackId)
+            .maybeSingle();
 
-          if (errCell) {
-            console.error(`❌ Celda ${rackId} B${cellData.bay}N${cellData.level}:`, errCell);
-            celdasError++;
+          if (!rackExiste) {
+            console.error(`❌ Rack ${rackId} no existe en BD, se omiten sus ${cellsArr.length} celdas`);
+            celdasError += cellsArr.length;
             continue;
           }
 
-          if (inserted) {
-            celdasOk++;
-            const celdaId = inserted.id;
+          for (const cell of cellsArr) {
+            const { skus, audits, changelog, responsables, tiendas: cellTiendas, ...cellData } = cell;
 
-            if (responsables?.length) {
-              await supabase.from('celda_responsables').insert(
-                responsables.map(rid => ({ celda_id: celdaId, responsable_id: rid }))
-              );
-            }
-            if (cellTiendas?.length) {
-              await supabase.from('celda_tiendas').insert(
-                cellTiendas.map(tid => ({ celda_id: celdaId, tienda_id: parseInt(tid) }))
-              );
-            }
+            const { data: inserted, error: errCell } = await supabase
+              .from('celdas')
+              .insert({
+                rack_id: rackId,
+                bay: cellData.bay,
+                level: cellData.level,
+                state: cellData.state || 'empty',
+                notes: cellData.notes || ''
+              })
+              .select('id')
+              .single();
 
-            // SKUs: mapear qty → cantidad, minStock → min_stock
-            if (skus?.length) {
-              const skusMapped = skus.map(s => ({
-                celda_id: celdaId,
-                sku: s.sku || '',
-                descripcion: s.desc || '',
-                cantidad: s.qty || '',
-                unidad: s.unit || 'pcs',
-                expiry: s.expiry || null,
-                min_stock: s.minStock || '',
-                cost: parseFloat(s.cost) || 0
-              }));
-              const { error: errSku } = await supabase.from('skus').insert(skusMapped);
-              if (errSku) console.error(`❌ SKUs celda ${celdaId}:`, errSku);
+            if (errCell) {
+              console.error(`❌ Celda ${rackId} B${cellData.bay}N${cellData.level}:`, errCell);
+              celdasError++;
+              continue;
             }
 
-            // Audits: mapear date → fecha, who → quien, notes → notas
-            if (audits?.length) {
-              const auditsMapped = audits.map(a => ({
-                celda_id: celdaId,
-                fecha: a.date || '',
-                ts: a.ts || Date.now(),
-                quien: a.who || '',
-                notas: a.notes || ''
-              }));
-              await supabase.from('audits').insert(auditsMapped);
-            }
+            if (inserted) {
+              celdasOk++;
+              const celdaId = inserted.id;
 
-            // Changelog: mapear date → fecha, changes → cambios
-            if (changelog?.length) {
-              const changelogMapped = changelog.map(c => ({
-                celda_id: celdaId,
-                fecha: c.date || '',
-                ts: c.ts || Date.now(),
-                cambios: Array.isArray(c.changes) ? c.changes.join(' · ') : (c.changes || '')
-              }));
-              await supabase.from('changelog').insert(changelogMapped);
+              if (responsables?.length) {
+                await supabase.from('celda_responsables').insert(
+                  responsables.map(rid => ({ celda_id: celdaId, responsable_id: rid }))
+                );
+              }
+              if (cellTiendas?.length) {
+                await supabase.from('celda_tiendas').insert(
+                  cellTiendas.map(tid => ({ celda_id: celdaId, tienda_id: parseInt(tid) }))
+                );
+              }
+
+              // SKUs: mapear qty → cantidad, minStock → min_stock
+              if (skus?.length) {
+                const skusMapped = skus.map(s => ({
+                  celda_id: celdaId,
+                  sku: s.sku || '',
+                  descripcion: s.desc || '',
+                  cantidad: s.qty || '',
+                  unidad: s.unit || 'pcs',
+                  expiry: s.expiry || null,
+                  min_stock: s.minStock || '',
+                  cost: parseFloat(s.cost) || 0
+                }));
+                const { error: errSku } = await supabase.from('skus').insert(skusMapped);
+                if (errSku) console.error(`❌ SKUs celda ${celdaId}:`, errSku);
+              }
+
+              // Audits
+              if (audits?.length) {
+                const auditsMapped = audits.map(a => ({
+                  celda_id: celdaId,
+                  fecha: a.date || '',
+                  ts: a.ts || Date.now(),
+                  quien: a.who || '',
+                  notas: a.notes || ''
+                }));
+                await supabase.from('audits').insert(auditsMapped);
+              }
+
+              // Changelog
+              if (changelog?.length) {
+                const changelogMapped = changelog.map(c => ({
+                  celda_id: celdaId,
+                  fecha: c.date || '',
+                  ts: c.ts || Date.now(),
+                  cambios: Array.isArray(c.changes) ? c.changes.join(' · ') : (c.changes || '')
+                }));
+                await supabase.from('changelog').insert(changelogMapped);
+              }
             }
           }
         }
       }
       console.log(`✅ Celdas insertadas: ${celdasOk}, errores: ${celdasError}`);
 
-      // 7. Movimientos: mapear campos al schema de Supabase
+      // 7. Movimientos
       if (movements?.length) {
         const movimientosMapped = movements.map(m => ({
           id: m.id,
@@ -377,11 +363,4 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ ok: true, celdas: celdasOk, errores: celdasError });
     }
-
-    return res.status(405).json({ error: 'Método no permitido' });
-
-  } catch (error) {
-    console.error('💥 Error general:', error);
-    return res.status(500).json({ error: error.message });
-  }
-}
+    
