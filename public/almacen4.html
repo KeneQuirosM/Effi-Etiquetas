@@ -2130,7 +2130,6 @@ const COLORS=['#00ff88','#f0a500','#00d4ff','#ff6b35','#ff3b5c','#ffd000','#a78b
 
 // ═══════════════ PERSIST ═══════════════
 let lastAutoSnap=0;
-let isOffline = false;
   function showOfflineBanner() {
   if (document.getElementById('offline-banner')) return;
   const banner = document.createElement('div');
@@ -2150,12 +2149,12 @@ function showToast(msg, type) {
 }
 
 function hideToast() {}
-async function save(){
+async function save() {
   if (isOffline) {
     showToast('Sin conexión — no se pueden guardar cambios', 'danger');
     return;
   }
-  try{
+  try {
     const payload = {
       zones: state.zones,
       racks: state.racks,
@@ -2173,7 +2172,6 @@ async function save(){
     
     if (!response.ok) throw new Error('Error al guardar');
     
-    // Backup local
     localStorage.setItem('stockforge_v4', JSON.stringify(payload));
     
     const i = document.getElementById('save-ind');
@@ -2183,19 +2181,18 @@ async function save(){
       i._t = setTimeout(() => i.classList.remove('show'), 2000);
     }
     
-    // auto-snapshot
     const now = Date.now();
-    if (now - lastAutoSnap > 30*60*1000) {
+    if (now - lastAutoSnap > 30 * 60 * 1000) {
       lastAutoSnap = now;
       setTimeout(() => saveSnapshot(true), 1000);
     }
-  } catch(e) {
+  } catch (e) {
     console.error('Error guardando:', e);
     showToast('Error al guardar en el servidor', 'danger');
   }
 }
-async function load(){
-  try{
+async function load() {
+  try {
     showToast('Cargando inventario...', '');
     const response = await fetch(API_URL);
     if (!response.ok) throw new Error('Error al cargar');
@@ -2212,9 +2209,8 @@ async function load(){
     hideOfflineBanner();
     hideToast();
     return true;
-  } catch(e) {
+  } catch (e) {
     console.error('Error cargando:', e);
-    // Intentar usar cache local
     const cached = localStorage.getItem('stockforge_v4');
     if (cached) {
       const d = JSON.parse(cached);
