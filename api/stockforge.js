@@ -179,24 +179,17 @@ export default async function handler(req, res) {
 
       // 4. Racks
       if (racks?.length) {
+        console.log(`📦 Insertando ${racks.length} racks...`);
         const racksClean = racks.map(({ responsables, tiendas: rackTiendas, ...r }) => r);
+        // Log de los IDs que se van a insertar
+        console.log('   IDs:', racksClean.map(r => r.id).join(', '));
         const { error: errRack } = await supabase.from('racks').insert(racksClean);
-        if (errRack) console.error('❌ Error racks:', errRack);
-
-        for (const r of racks) {
-          if (r.responsables?.length) {
-            await supabase.from('rack_responsables').insert(
-              r.responsables.map(rid => ({ rack_id: r.id, responsable_id: rid }))
-            );
-          }
-          if (r.tiendas?.length) {
-            await supabase.from('rack_tiendas').insert(
-              r.tiendas.map(tid => ({ rack_id: r.id, tienda_id: parseInt(tid) }))
-            );
-          }
+        if (errRack) {
+          console.error('❌ Error racks:', errRack);
+        } else {
+          console.log(`✅ ${racks.length} racks insertados`);
         }
-        console.log(`✅ ${racks.length} racks insertados`);
-      }
+        ...
 
       // 5. Celdas y sus relaciones (con mapeo de campos)
       let celdasOk = 0, celdasError = 0;
