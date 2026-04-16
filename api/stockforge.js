@@ -65,6 +65,7 @@ export default async function handler(req, res) {
       // Reconstruir el objeto state como lo espera STOCKFORGE
       const racksConRelaciones = (racks || []).map(r => ({
         ...r,
+        zone: r.zone_id, // mapear zone_id → zone para el frontend
         responsables: (rackResp || []).filter(rr => rr.rack_id === r.id).map(rr => rr.responsable_id),
         tiendas: (rackTiendas || []).filter(rt => rt.rack_id === r.id).map(rt => String(rt.tienda_id))
       }));
@@ -134,6 +135,10 @@ export default async function handler(req, res) {
 
       console.log(`📤 POST - zonas:${zones?.length}, racks:${racks?.length}, people:${people?.length}, tiendas:${tiendas?.length}`);
 
+      // Variables para el resumen final
+      let celdasOk = 0;
+      let celdasError = 0;
+
       // 1. Limpiar tablas en orden (respetando FKs)
       await supabase.from('movimientos').delete().neq('id', '');
       await supabase.from('changelog').delete().neq('id', 0);
@@ -149,7 +154,7 @@ export default async function handler(req, res) {
       await supabase.from('responsables').delete().neq('id', '');
       console.log('🧹 Tablas limpiadas');
 
-            // 2. Insertar zonas (mapear desc → descripcion)
+      // 2. Insertar zonas (mapear desc → descripcion)
       if (zones?.length) {
         const zonasMapped = zones.map(z => ({
           id: z.id,
@@ -162,14 +167,14 @@ export default async function handler(req, res) {
         else console.log(`✅ ${zonasMapped.length} zonas insertadas`);
       }
 
-      // 3. Responsables (sin cambios)
+      // 3. Responsables
       if (people?.length) {
         const { error: errPeople } = await supabase.from('responsables').insert(people);
         if (errPeople) console.error('❌ Error responsables:', errPeople);
         else console.log(`✅ ${people.length} responsables insertados`);
       }
 
-      // 4. Tiendas (sin cambios)
+      // 4. Tiendas
       if (tiendas?.length) {
         for (const t of tiendas) {
           const { data: existing } = await supabase
@@ -188,7 +193,7 @@ export default async function handler(req, res) {
         console.log(`✅ Tiendas procesadas`);
       }
 
-      // 5. Racks (con mapeo de zone → zone_id)
+      // 5. Racks (con mapeo de zone → zone_id y validación de zona)
       if (racks?.length) {
         // Obtener todas las zonas existentes para validar
         const { data: zonasExistentes } = await supabase.from('zonas').select('id');
@@ -200,7 +205,7 @@ export default async function handler(req, res) {
         for (const r of racks) {
           const rackCopy = { ...r };
           const zoneId = r.zone; // el JSON usa "zone"
-          
+
           if (zoneId && !zonasIds.has(zoneId)) {
             console.warn(`⚠️ Rack ${r.id} (${r.name}): zone "${zoneId}" no existe. Se asignará NULL.`);
             rackCopy.zone_id = null;
@@ -208,7 +213,7 @@ export default async function handler(req, res) {
           } else {
             rackCopy.zone_id = zoneId || null;
           }
-          
+
           delete rackCopy.zone; // eliminar campo sobrante
           racksParaInsertar.push(rackCopy);
         }
@@ -241,7 +246,102 @@ export default async function handler(req, res) {
           console.log(`📌 ${racksConZoneCorregida.length} racks con zone corregido a NULL`);
         }
       }
-       // 6. Movimientos: mapear campos al schema de Supabase
+
+      // 6. Celdas y sus relaciones (con mapeo de campos)
+      for (const [rackId, cellsArr] of Object.entries(cells || {})) {
+        // Verificar que el rack exista antes de insertar sus celdas
+        const { data: rackExiste } = await supabase
+          .from('racks')
+          .select('id')
+          .eq('id', rackId)
+          .maybeSingle();
+
+        if (!rackExiste) {
+          console.error(`❌ Rack ${rackId} no existe en la BD, se omiten sus ${cellsArr.length} celdas`);
+          celdasError += cellsArr.length;
+          continue;
+        }
+
+        for (const cell of cellsArr) {
+          const { skus, audits, changelog, responsables, tiendas: cellTiendas, ...cellData } = cell;
+
+          const { data: inserted, error: errCell } = await supabase
+            .from('celdas')
+            .insert({
+              rack_id: rackId,
+              bay: cellData.bay,
+              level: cellData.level,
+              state: cellData.state || 'empty',
+              notes: cellData.notes || ''
+            })
+            .select('id')
+            .single();
+
+          if (errCell) {
+            console.error(`❌ Celda ${rackId} B${cellData.bay}N${cellData.level}:`, errCell);
+            celdasError++;
+            continue;
+          }
+
+          if (inserted) {
+            celdasOk++;
+            const celdaId = inserted.id;
+
+            if (responsables?.length) {
+              await supabase.from('celda_responsables').insert(
+                responsables.map(rid => ({ celda_id: celdaId, responsable_id: rid }))
+              );
+            }
+            if (cellTiendas?.length) {
+              await supabase.from('celda_tiendas').insert(
+                cellTiendas.map(tid => ({ celda_id: celdaId, tienda_id: parseInt(tid) }))
+              );
+            }
+
+            // SKUs: mapear qty → cantidad, minStock → min_stock
+            if (skus?.length) {
+              const skusMapped = skus.map(s => ({
+                celda_id: celdaId,
+                sku: s.sku || '',
+                descripcion: s.desc || '',
+                cantidad: s.qty || '',
+                unidad: s.unit || 'pcs',
+                expiry: s.expiry || null,
+                min_stock: s.minStock || '',
+                cost: parseFloat(s.cost) || 0
+              }));
+              const { error: errSku } = await supabase.from('skus').insert(skusMapped);
+              if (errSku) console.error(`❌ SKUs celda ${celdaId}:`, errSku);
+            }
+
+            // Audits: mapear date → fecha, who → quien, notes → notas
+            if (audits?.length) {
+              const auditsMapped = audits.map(a => ({
+                celda_id: celdaId,
+                fecha: a.date || '',
+                ts: a.ts || Date.now(),
+                quien: a.who || '',
+                notas: a.notes || ''
+              }));
+              await supabase.from('audits').insert(auditsMapped);
+            }
+
+            // Changelog: mapear date → fecha, changes → cambios
+            if (changelog?.length) {
+              const changelogMapped = changelog.map(c => ({
+                celda_id: celdaId,
+                fecha: c.date || '',
+                ts: c.ts || Date.now(),
+                cambios: Array.isArray(c.changes) ? c.changes.join(' · ') : (c.changes || '')
+              }));
+              await supabase.from('changelog').insert(changelogMapped);
+            }
+          }
+        }
+      }
+      console.log(`✅ Celdas insertadas: ${celdasOk}, errores: ${celdasError}`);
+
+      // 7. Movimientos: mapear campos al schema de Supabase
       if (movements?.length) {
         const movimientosMapped = movements.map(m => ({
           id: m.id,
