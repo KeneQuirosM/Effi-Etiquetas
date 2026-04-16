@@ -2121,6 +2121,8 @@ function saveSettings(){
 }
 
 const STORE_KEY='stockforge_v4';
+const API_URL = '/api/stockforge';
+let isOffline = false;
 let state={zones:[],racks:[],cells:{},people:[],tiendas:[],movements:[]};
 let selRack=null, zoom=1, editRackId=null, pendCells={}, cellCtx=null, viewCtx=null, bpSelection=new Set();
 let pickedColor='#00ff88';
