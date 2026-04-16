@@ -11,3 +11,5 @@ export const supabaseAdmin = createClient(
     }
   }
 );
+
+export const supabase = supabaseAdmin;
