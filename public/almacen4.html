@@ -6515,6 +6515,7 @@ function loadBrandFromStorage(){
 }
 
 // ═══════════════ PIN / ROLES ═══════════════
+// ═══════════════ PIN / ROLES ═══════════════
 const PIN_KEY='sf_pin';
 const PIN_SESSION='sf_sess';
 let editMode=false;
@@ -6690,7 +6691,7 @@ function pinSubmit(){
   }
 }
 
-// PIN keyboard — capture phase so it wins over other listeners
+// PIN keyboard capture
 document.addEventListener('keydown',function(e){
   const modal=document.getElementById('o-pin');
   if(!modal||!modal.classList.contains('open'))return;
@@ -6700,7 +6701,6 @@ document.addEventListener('keydown',function(e){
 },true);
 
 function openPinChange(){openPinModal('change1',null);}
-
 function initPinSession(){
   if(hasPin()&&sessionValid()){setEditMode(true);}
   else{setEditMode(false);}
@@ -6708,38 +6708,46 @@ function initPinSession(){
 
 function applyGuardAttrs(){}
 
+// Inicialización asíncrona corregida
+(async function(){
+  try {
+    await load();
+  } catch(e) {
+    console.error('load error', e);
+  }
+  try { buildSwatches('zsw'); } catch(e) {}
+  try { fullRender(); } catch(e) {}
+  try { loadBrandFromStorage(); } catch(e) {}
+  try {
+    const g = localStorage.getItem('sf_grid');
+    const btn = document.getElementById('gbtn');
+    if(btn && g === '0') {
+      btn.classList.remove('on');
+      document.getElementById('floor').classList.add('nogrid');
+    }
+  } catch(e) {}
+  try { applyTheme(currentTheme); } catch(e) {}
+  try { applyI18n(); } catch(e) {}
+  try { addAct(currentLang==='en'?'System started':'Sistema iniciado', 'var(--green)'); } catch(e) {}
+  try { applyGuardAttrs(); initPinSession(); } catch(e) {}
+  try { initPanels(); } catch(e) {}
+})();
 
-try{load();}catch(e){console.error('load error',e);}
-try{buildSwatches('zsw');}catch(e){console.error('swatches error',e);}
-try{fullRender();}catch(e){console.error('fullRender error',e);}
-try{loadBrandFromStorage();}catch(e){console.error('brand error',e);}
-try{(()=>{const g=localStorage.getItem('sf_grid');const btn=document.getElementById('gbtn');if(btn&&g==='0'){btn.classList.remove('on');document.getElementById('floor').classList.add('nogrid');}})();}catch(e){}
-try{applyTheme(currentTheme);}catch(e){console.error('theme error',e);}
-try{applyI18n();}catch(e){console.error('i18n error',e);}
-try{addAct(currentLang==='en'?'System started':'Sistema iniciado','var(--green)');}catch(e){}
-try{applyGuardAttrs();initPinSession();}catch(e){console.error('PIN init error',e);}
-try{initPanels();}catch(e){console.error('panel init error',e);}
-
-// Attach PIN button listener directly — belt AND suspenders
+// Attach PIN button listener
 (function(){
-  var lb=document.getElementById('lock-btn');
+  var lb = document.getElementById('lock-btn');
   if(lb){
     lb.removeAttribute('onclick');
-    lb.addEventListener('click',function(e){
+    lb.addEventListener('click', function(e){
       e.stopPropagation();
-      console.log('lock-btn clicked, hasPin='+hasPin()+' editMode='+editMode);
       toggleLock();
     });
-    console.log('lock-btn listener attached');
-  } else {
-    console.error('lock-btn NOT FOUND');
   }
-  // Also attach guard listeners to all edit header buttons
   document.querySelectorAll('.hbtn[data-edit]').forEach(function(b){
-    var action=b.getAttribute('data-edit');
-    b.addEventListener('click',function(e){
+    var action = b.getAttribute('data-edit');
+    b.addEventListener('click', function(e){
       e.stopPropagation();
-      guardEdit(function(){eval(action);});
+      guardEdit(function(){ eval(action); });
     });
   });
 })();
