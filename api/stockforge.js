@@ -138,8 +138,7 @@ export default async function handler(req, res) {
       console.log(`📤 POST - zonas:${zones?.length}, racks:${racks?.length}, people:${people?.length}, tiendas:${tiendas?.length}`);
 
       // Variables para el resumen final
-      let celdasOk = 0;
-      let celdasError = 0;
+      let celdasOk = 0, celdasError = 0;
 
       // 1. Limpiar tablas en orden (respetando FKs)
       await supabase.from('movimientos').delete().neq('id', '');
