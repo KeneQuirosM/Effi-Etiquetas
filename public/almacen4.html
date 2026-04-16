@@ -2191,28 +2191,12 @@ async function save() {
     showToast('Error al guardar en el servidor', 'danger');
   }
 }
+  
 async function load() {
-  try {
-    showToast('Cargando inventario...', '');
-    const response = await fetch(API_URL);
-    if (!response.ok) throw new Error('Error al cargar');
-    const data = await response.json();
-    
-    state.zones = data.zonas || [];
-    state.racks = data.racks || [];
-    state.cells = data.cells || {};
-    state.people = data.people || [];
-    state.tiendas = data.tiendas || [];
-    state.movements = data.movements || [];
-    
-    isOffline = false;
-    hideOfflineBanner();
-    hideToast();
-    return true;
-  } catch (e) {
-    console.error('Error cargando:', e);
-    const cached = localStorage.getItem('stockforge_v4');
-    if (cached) {
+  // 1. Intentar cargar desde caché local INMEDIATAMENTE
+  const cached = localStorage.getItem('stockforge_v4');
+  if (cached) {
+    try {
       const d = JSON.parse(cached);
       state.zones = d.zones || [];
       state.racks = d.racks || [];
@@ -2220,15 +2204,77 @@ async function load() {
       state.people = d.people || [];
       state.tiendas = d.tiendas || [];
       state.movements = d.movements || [];
-      isOffline = true;
-      showOfflineBanner();
-      hideToast();
-      showToast('Usando inventario en caché', 'danger');
-      return true;
+      
+      // Renderizar inmediatamente con datos en caché
+      fullRender();
+      updateStats();
+      updateExpiryPanel();
+      updateLowStockPanel();
+      
+      // Mostrar indicador sutil de que se está actualizando
+      showToast('Actualizando desde servidor...', 'info');
+    } catch (e) {
+      console.warn('Cache corrupto, se ignorará');
     }
-    showToast('Sin conexión y sin caché', 'danger');
-    return false;
   }
+
+  // 2. Luego, en segundo plano, obtener datos frescos del servidor
+  try {
+    const response = await fetch(API_URL);
+    if (!response.ok) throw new Error('Error al cargar');
+    const data = await response.json();
+    
+    // Solo actualizar si los datos del servidor son diferentes o si no había caché
+    const freshData = {
+      zones: data.zonas || [],
+      racks: data.racks || [],
+      cells: data.cells || {},
+      people: data.people || [],
+      tiendas: data.tiendas || [],
+      movements: data.movements || []
+    };
+    
+    // Comparación simple (puedes mejorarla si quieres)
+    const cachedStr = localStorage.getItem('stockforge_v4');
+    const freshStr = JSON.stringify(freshData);
+    
+    if (cachedStr !== freshStr) {
+      // Actualizar estado
+      state.zones = freshData.zones;
+      state.racks = freshData.racks;
+      state.cells = freshData.cells;
+      state.people = freshData.people;
+      state.tiendas = freshData.tiendas;
+      state.movements = freshData.movements;
+      
+      // Guardar en caché
+      localStorage.setItem('stockforge_v4', freshStr);
+      
+      // Re-renderizar si hubo cambios
+      fullRender();
+      updateStats();
+      updateExpiryPanel();
+      updateLowStockPanel();
+    }
+    
+    isOffline = false;
+    hideOfflineBanner();
+    hideToast();
+    
+  } catch (e) {
+    console.error('Error actualizando desde servidor:', e);
+    // Si no hay caché y falla el servidor, mostrar error
+    if (!cached) {
+      showToast('Sin conexión y sin caché', 'danger');
+    } else {
+      // Ya mostramos los datos en caché, solo notificar que no se pudo actualizar
+      showToast('Trabajando sin conexión', 'warn');
+    }
+    isOffline = true;
+    showOfflineBanner();
+  }
+}
+  
 }
 function exportJSON(){
   const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
