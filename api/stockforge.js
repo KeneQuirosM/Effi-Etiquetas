@@ -64,11 +64,13 @@ export default async function handler(req, res) {
 
       // Reconstruir el objeto state como lo espera STOCKFORGE
       const racksConRelaciones = (racks || []).map(r => ({
-        ...r,
-        zone: r.zone_id, // mapear zone_id → zone para el frontend
-        responsables: (rackResp || []).filter(rr => rr.rack_id === r.id).map(rr => rr.responsable_id),
-        tiendas: (rackTiendas || []).filter(rt => rt.rack_id === r.id).map(rt => String(rt.tienda_id))
-      }));
+  ...r,
+  w: r.width,
+  h: r.height,
+  zone: r.zone_id, // mapear zone_id → zone para el frontend
+  responsables: (rackResp || []).filter(rr => rr.rack_id === r.id).map(rr => rr.responsable_id),
+  tiendas: (rackTiendas || []).filter(rt => rt.rack_id === r.id).map(rt => String(rt.tienda_id))
+}));
 
       const cellsObj = {};
       (celdas || []).forEach(c => {
