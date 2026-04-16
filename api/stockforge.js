@@ -10,25 +10,37 @@ export default async function handler(req, res) {
 
   try {
     // ── GET: Obtener todo el estado ────────────────────────────────
+        // ── GET: Obtener todo el estado ────────────────────────────────
     if (req.method === 'GET') {
       console.log('📥 GET /api/stockforge');
 
       // Zonas
       const { data: zonas, error: errZ } = await supabase.from('zonas').select('*');
       if (errZ) throw errZ;
+      // Mapear descripcion → desc para el frontend
+      const zonasMapped = (zonas || []).map(z => ({
+        ...z,
+        desc: z.descripcion
+      }));
 
       // Racks
       const { data: racks, error: errR } = await supabase.from('racks').select('*');
       if (errR) throw errR;
+      // Mapear width → w, height → h, zone_id → zone
+      const racksMapped = (racks || []).map(r => ({
+        ...r,
+        w: r.width,
+        h: r.height,
+        zone: r.zone_id
+      }));
 
       // Responsables
       const { data: responsables, error: errP } = await supabase.from('responsables').select('*');
       if (errP) throw errP;
 
-      // Tiendas (mapear nombre → name)
+      // Tiendas
       const { data: tiendasRaw, error: errT } = await supabase.from('tiendas').select('id, nombre, creado_en');
       if (errT) throw errT;
-
       const tiendas = (tiendasRaw || []).map(t => ({
         id: String(t.id),
         name: t.nombre,
@@ -61,17 +73,35 @@ export default async function handler(req, res) {
         .select('*')
         .order('ts', { ascending: false });
       if (errM) throw errM;
+      // Mapear movimientos a formato frontend
+      const movementsMapped = (movimientos || []).map(m => ({
+        id: m.id,
+        ts: m.ts,
+        date: m.date,
+        type: m.type,
+        sku: m.sku,
+        desc: m.descripcion,
+        qty: m.cantidad,
+        unit: m.unidad,
+        rack: m.rack_origen,
+        rackId: m.rack_origen_id,
+        bay: m.bay_origen,
+        level: m.level_origen,
+        destRack: m.rack_destino,
+        destRackId: m.rack_destino_id,
+        destBay: m.bay_destino,
+        destLevel: m.level_destino,
+        note: m.nota
+      }));
 
-      // Reconstruir el objeto state como lo espera STOCKFORGE
-      const racksConRelaciones = (racks || []).map(r => ({
-  ...r,
-  w: r.width,
-  h: r.height,
-  zone: r.zone_id, // mapear zone_id → zone para el frontend
-  responsables: (rackResp || []).filter(rr => rr.rack_id === r.id).map(rr => rr.responsable_id),
-  tiendas: (rackTiendas || []).filter(rt => rt.rack_id === r.id).map(rt => String(rt.tienda_id))
-}));
+      // Reconstruir racks con responsables y tiendas
+      const racksConRelaciones = racksMapped.map(r => ({
+        ...r,
+        responsables: (rackResp || []).filter(rr => rr.rack_id === r.id).map(rr => rr.responsable_id),
+        tiendas: (rackTiendas || []).filter(rt => rt.rack_id === r.id).map(rt => String(rt.tienda_id))
+      }));
 
+      // Reconstruir cellsObj
       const cellsObj = {};
       (celdas || []).forEach(c => {
         if (!cellsObj[c.rack_id]) cellsObj[c.rack_id] = [];
@@ -105,8 +135,8 @@ export default async function handler(req, res) {
         });
       });
 
-      // Asegurar que todas las celdas existan (incluso vacías)
-      (racks || []).forEach(r => {
+      // Asegurar celdas vacías
+      racksMapped.forEach(r => {
         if (!cellsObj[r.id]) cellsObj[r.id] = [];
         for (let b = 0; b < (r.bays || 3); b++) {
           for (let l = 0; l < (r.levels || 4); l++) {
@@ -122,12 +152,12 @@ export default async function handler(req, res) {
       });
 
       return res.status(200).json({
-        zonas: zonas || [],
-        racks: racksConRelaciones || [],
+        zonas: zonasMapped,
+        racks: racksConRelaciones,
         cells: cellsObj,
         people: responsables || [],
         tiendas: tiendas || [],
-        movements: movimientos || []
+        movements: movementsMapped
       });
     }
     // ── POST: Guardar todo el estado (reemplazo completo) ─────────
