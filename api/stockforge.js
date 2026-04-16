@@ -281,9 +281,30 @@ export default async function handler(req, res) {
       console.log(`✅ Celdas insertadas: ${celdasOk}, errores: ${celdasError}`);
 
       // 6. Movimientos
+       // 6. Movimientos: mapear campos al schema de Supabase
       if (movements?.length) {
-        const { error: errMov } = await supabase.from('movimientos').insert(movements);
+        const movimientosMapped = movements.map(m => ({
+          id: m.id,
+          ts: m.ts,
+          date: m.date,
+          type: m.type,
+          sku: m.sku || '',
+          descripcion: m.desc || '',
+          cantidad: m.qty || '',
+          unidad: m.unit || '',
+          rack_origen: m.rack || '',
+          rack_origen_id: m.rackId || '',
+          bay_origen: m.bay ?? 0,
+          level_origen: m.level ?? 0,
+          rack_destino: m.destRack || '',
+          rack_destino_id: m.destRackId || '',
+          bay_destino: m.destBay ?? 0,
+          level_destino: m.destLevel ?? 0,
+          nota: m.note || ''
+        }));
+        const { error: errMov } = await supabase.from('movimientos').insert(movimientosMapped);
         if (errMov) console.error('❌ Error movimientos:', errMov);
+        else console.log(`✅ ${movimientosMapped.length} movimientos insertados`);
       }
 
       return res.status(200).json({ ok: true, celdas: celdasOk, errores: celdasError });
