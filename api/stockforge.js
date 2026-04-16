@@ -194,32 +194,44 @@ export default async function handler(req, res) {
       }
 
       // 5. Racks (con mapeo de zone → zone_id y validación de zona)
+            // 5. Racks (con mapeo de campos y zone → zone_id)
       if (racks?.length) {
-        // Obtener todas las zonas existentes para validar
         const { data: zonasExistentes } = await supabase.from('zonas').select('id');
         const zonasIds = new Set((zonasExistentes || []).map(z => z.id));
 
         const racksParaInsertar = [];
-        const racksConZoneCorregida = [];
 
         for (const r of racks) {
           const rackCopy = { ...r };
-          const zoneId = r.zone; // el JSON usa "zone"
-
+          const zoneId = r.zone;
+          
           if (zoneId && !zonasIds.has(zoneId)) {
             console.warn(`⚠️ Rack ${r.id} (${r.name}): zone "${zoneId}" no existe. Se asignará NULL.`);
             rackCopy.zone_id = null;
-            racksConZoneCorregida.push(r.id);
           } else {
             rackCopy.zone_id = zoneId || null;
           }
-
-          delete rackCopy.zone; // eliminar campo sobrante
+          
+          delete rackCopy.zone;
           racksParaInsertar.push(rackCopy);
         }
 
         if (racksParaInsertar.length > 0) {
-          const racksClean = racksParaInsertar.map(({ responsables, tiendas: rackTiendas, ...r }) => r);
+          // Mapear campos al esquema de la tabla racks (width, height)
+          const racksClean = racksParaInsertar.map(({ responsables, tiendas: rackTiendas, w, h, ...r }) => ({
+            id: r.id,
+            name: r.name,
+            bays: r.bays,
+            levels: r.levels,
+            width: w,
+            height: h,
+            x: r.x,
+            y: r.y,
+            zone_id: r.zone_id,
+            created_at: r.created_at,
+            updated_at: r.updated_at
+          }));
+
           const { error: errRack } = await supabase.from('racks').insert(racksClean);
           if (errRack) {
             console.error('❌ Error racks:', errRack);
@@ -241,12 +253,7 @@ export default async function handler(req, res) {
             }
           }
         }
-
-        if (racksConZoneCorregida.length > 0) {
-          console.log(`📌 ${racksConZoneCorregida.length} racks con zone corregido a NULL`);
-        }
       }
-
       // 6. Celdas y sus relaciones (con mapeo de campos)
       for (const [rackId, cellsArr] of Object.entries(cells || {})) {
         // Verificar que el rack exista antes de insertar sus celdas
