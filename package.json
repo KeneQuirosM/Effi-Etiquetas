@@ -1,7 +1,8 @@
 {
-  "name": "efficommerce-etiquetas",
+  "name": "effi-etiquetas",
   "version": "1.0.0",
-  "description": "Generador de Etiquetas Efficommerce",
+  "description": "Generador de Etiquetas y STOCKFORGE",
+  "type": "module",
   "scripts": {
     "dev": "vercel dev"
   },
