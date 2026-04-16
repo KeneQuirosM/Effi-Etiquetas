@@ -2145,9 +2145,11 @@ function hideOfflineBanner() {
 }
 
 function showToast(msg, type) {
-  notif(msg, type === 'danger' ? 'err' : 'ok');
+  if (type === 'danger') notif(msg, 'err');
+  else if (type === 'warn') notif(msg, 'warn');
+  else if (type === 'info') notif(msg, 'ok'); // o un estilo específico
+  else notif(msg, 'ok');
 }
-
 function hideToast() {}
 async function save() {
   if (isOffline) {
