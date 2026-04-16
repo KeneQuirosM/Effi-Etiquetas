@@ -17,21 +17,21 @@ export default async function handler(req, res) {
       // Zonas
       const { data: zonas, error: errZ } = await supabase.from('zonas').select('*');
       if (errZ) throw errZ;
-      // Mapear descripcion → desc para el frontend
       const zonasMapped = (zonas || []).map(z => ({
         ...z,
-        desc: z.descripcion
+        desc: z.descripcion || ''
       }));
 
       // Racks
       const { data: racks, error: errR } = await supabase.from('racks').select('*');
       if (errR) throw errR;
-      // Mapear width → w, height → h, zone_id → zone
       const racksMapped = (racks || []).map(r => ({
         ...r,
-        w: r.width,
-        h: r.height,
-        zone: r.zone_id
+        w: r.width || 180,
+        h: r.height || 150,
+        bays: r.bays || 3,
+        levels: r.levels || 4,
+        zone: r.zone_id || ''
       }));
 
       // Responsables
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       if (errT) throw errT;
       const tiendas = (tiendasRaw || []).map(t => ({
         id: String(t.id),
-        name: t.nombre,
+        name: t.nombre || '',
         code: '',
         created_at: t.creado_en
       }));
@@ -73,28 +73,28 @@ export default async function handler(req, res) {
         .select('*')
         .order('ts', { ascending: false });
       if (errM) throw errM;
-      // Mapear movimientos a formato frontend
+      
       const movementsMapped = (movimientos || []).map(m => ({
         id: m.id,
-        ts: m.ts,
-        date: m.date,
-        type: m.type,
-        sku: m.sku,
-        desc: m.descripcion,
-        qty: m.cantidad,
-        unit: m.unidad,
-        rack: m.rack_origen,
-        rackId: m.rack_origen_id,
-        bay: m.bay_origen,
-        level: m.level_origen,
-        destRack: m.rack_destino,
-        destRackId: m.rack_destino_id,
-        destBay: m.bay_destino,
-        destLevel: m.level_destino,
-        note: m.nota
+        ts: m.ts || Date.now(),
+        date: m.date || '',
+        type: m.type || '',
+        sku: m.sku || '',
+        desc: m.descripcion || '',
+        qty: m.cantidad || '',
+        unit: m.unidad || '',
+        rack: m.rack_origen || '',
+        rackId: m.rack_origen_id || '',
+        bay: m.bay_origen ?? 0,
+        level: m.level_origen ?? 0,
+        destRack: m.rack_destino || '',
+        destRackId: m.rack_destino_id || '',
+        destBay: m.bay_destino ?? 0,
+        destLevel: m.level_destino ?? 0,
+        note: m.nota || ''
       }));
 
-      // Reconstruir racks con responsables y tiendas
+      // Reconstruir racks con relaciones
       const racksConRelaciones = racksMapped.map(r => ({
         ...r,
         responsables: (rackResp || []).filter(rr => rr.rack_id === r.id).map(rr => rr.responsable_id),
@@ -104,6 +104,7 @@ export default async function handler(req, res) {
       // Reconstruir cellsObj
       const cellsObj = {};
       (celdas || []).forEach(c => {
+        if (!c.rack_id) return;
         if (!cellsObj[c.rack_id]) cellsObj[c.rack_id] = [];
         cellsObj[c.rack_id].push({
           bay: c.bay,
@@ -113,33 +114,36 @@ export default async function handler(req, res) {
           responsables: (c.celda_responsables || []).map(cr => cr.responsable_id),
           tiendas: (c.celda_tiendas || []).map(ct => String(ct.tienda_id)),
           skus: (c.skus || []).map(s => ({
-            sku: s.sku,
-            desc: s.descripcion,
-            qty: s.cantidad,
-            unit: s.unidad,
-            expiry: s.expiry,
-            minStock: s.min_stock,
-            cost: s.cost
+            sku: s.sku || '',
+            desc: s.descripcion || '',
+            qty: s.cantidad || '',
+            unit: s.unidad || 'pcs',
+            expiry: s.expiry || null,
+            minStock: s.min_stock || '',
+            cost: s.cost || 0
           })),
           audits: (c.audits || []).map(a => ({
-            date: a.fecha,
-            ts: a.ts,
-            who: a.quien,
-            notes: a.notas
+            date: a.fecha || '',
+            ts: a.ts || Date.now(),
+            who: a.quien || '',
+            notes: a.notas || ''
           })),
           changelog: (c.changelog || []).map(cl => ({
-            date: cl.fecha,
-            ts: cl.ts,
+            date: cl.fecha || '',
+            ts: cl.ts || Date.now(),
             changes: cl.cambios?.split(' · ') || []
           }))
         });
       });
 
-      // Asegurar celdas vacías
+      // Asegurar celdas vacías para todos los racks
       racksMapped.forEach(r => {
+        if (!r.id) return;
         if (!cellsObj[r.id]) cellsObj[r.id] = [];
-        for (let b = 0; b < (r.bays || 3); b++) {
-          for (let l = 0; l < (r.levels || 4); l++) {
+        const bays = r.bays || 3;
+        const levels = r.levels || 4;
+        for (let b = 0; b < bays; b++) {
+          for (let l = 0; l < levels; l++) {
             const exists = cellsObj[r.id].some(c => c.bay === b && c.level === l);
             if (!exists) {
               cellsObj[r.id].push({
