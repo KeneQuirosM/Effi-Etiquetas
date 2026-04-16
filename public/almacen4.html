@@ -2278,7 +2278,6 @@ async function load() {
   }
 }
   
-}
 function exportJSON(){
   const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
