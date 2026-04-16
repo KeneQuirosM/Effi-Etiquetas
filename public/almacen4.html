@@ -2128,28 +2128,109 @@ const COLORS=['#00ff88','#f0a500','#00d4ff','#ff6b35','#ff3b5c','#ffd000','#a78b
 
 // ═══════════════ PERSIST ═══════════════
 let lastAutoSnap=0;
-function save(){
-  try{
-    localStorage.setItem(STORE_KEY,JSON.stringify(state));
-    const i=document.getElementById('save-ind');
-    i.classList.add('show'); clearTimeout(i._t); i._t=setTimeout(()=>i.classList.remove('show'),2000);
-    // auto-snapshot max once per 30 min
-    const now=Date.now();
-    if(now-lastAutoSnap>30*60*1000){lastAutoSnap=now;setTimeout(()=>saveSnapshot(true),1000);}
-  }catch(e){notif(t('notif_save_error'),'err');}
+let isOffline = false;
+  function showOfflineBanner() {
+  if (document.getElementById('offline-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'offline-banner';
+  banner.innerHTML = '⚠️ Sin conexión — usando datos en caché';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c98e00;color:#fff;text-align:center;padding:4px;z-index:9999;';
+  document.body.prepend(banner);
 }
-function load(){
-  try{
-    let r=localStorage.getItem(STORE_KEY);
-    if(!r) r=localStorage.getItem('stockforge_v3'); // migrate from v3
-    if(r){const d=JSON.parse(r);state.zones=d.zones||[];state.racks=d.racks||[];state.cells=d.cells||{};state.people=d.people||[];state.tiendas=d.tiendas||[];state.movements=d.movements||[];
-    state.people=state.people.map(p=>typeof p==='string'?{id:'P'+Math.random().toString(36).slice(2),name:p,role:''}:p).filter(p=>p&&p.name);
-    state.tiendas=state.tiendas.map(t=>typeof t==='string'?{id:'T'+Math.random().toString(36).slice(2),name:t,code:''}:t).filter(t=>t&&t.name);
-    const vP=new Set(state.people.map(p=>p.id)),vT=new Set(state.tiendas.map(t=>t.id));
-    state.racks.forEach(r=>{r.responsables=(r.responsables||[]).filter(id=>vP.has(id));r.tiendas=(r.tiendas||[]).filter(id=>vT.has(id));});
-    Object.values(state.cells).forEach(arr=>arr.forEach(c=>{c.responsables=(c.responsables||[]).filter(id=>vP.has(id));c.tiendas=(c.tiendas||[]).filter(id=>vT.has(id));}));
+
+function hideOfflineBanner() {
+  const b = document.getElementById('offline-banner');
+  if (b) b.remove();
+}
+
+function showToast(msg, type) {
+  notif(msg, type === 'danger' ? 'err' : 'ok');
+}
+
+function hideToast() {}
+async function save(){
+  if (isOffline) {
+    showToast('Sin conexión — no se pueden guardar cambios', 'danger');
+    return;
   }
-  }catch(e){}
+  try{
+    const payload = {
+      zones: state.zones,
+      racks: state.racks,
+      cells: state.cells,
+      people: state.people,
+      tiendas: state.tiendas,
+      movements: state.movements
+    };
+    
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) throw new Error('Error al guardar');
+    
+    // Backup local
+    localStorage.setItem('stockforge_v4', JSON.stringify(payload));
+    
+    const i = document.getElementById('save-ind');
+    if (i) {
+      i.classList.add('show');
+      clearTimeout(i._t);
+      i._t = setTimeout(() => i.classList.remove('show'), 2000);
+    }
+    
+    // auto-snapshot
+    const now = Date.now();
+    if (now - lastAutoSnap > 30*60*1000) {
+      lastAutoSnap = now;
+      setTimeout(() => saveSnapshot(true), 1000);
+    }
+  } catch(e) {
+    console.error('Error guardando:', e);
+    showToast('Error al guardar en el servidor', 'danger');
+  }
+}
+async function load(){
+  try{
+    showToast('Cargando inventario...', '');
+    const response = await fetch(API_URL);
+    if (!response.ok) throw new Error('Error al cargar');
+    const data = await response.json();
+    
+    state.zones = data.zonas || [];
+    state.racks = data.racks || [];
+    state.cells = data.cells || {};
+    state.people = data.people || [];
+    state.tiendas = data.tiendas || [];
+    state.movements = data.movements || [];
+    
+    isOffline = false;
+    hideOfflineBanner();
+    hideToast();
+    return true;
+  } catch(e) {
+    console.error('Error cargando:', e);
+    // Intentar usar cache local
+    const cached = localStorage.getItem('stockforge_v4');
+    if (cached) {
+      const d = JSON.parse(cached);
+      state.zones = d.zones || [];
+      state.racks = d.racks || [];
+      state.cells = d.cells || {};
+      state.people = d.people || [];
+      state.tiendas = d.tiendas || [];
+      state.movements = d.movements || [];
+      isOffline = true;
+      showOfflineBanner();
+      hideToast();
+      showToast('Usando inventario en caché', 'danger');
+      return true;
+    }
+    showToast('Sin conexión y sin caché', 'danger');
+    return false;
+  }
 }
 function exportJSON(){
   const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
