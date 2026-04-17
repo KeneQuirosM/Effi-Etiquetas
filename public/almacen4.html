@@ -6524,19 +6524,38 @@ function tick(){const n=new Date();document.getElementById('hclock').innerHTML=`
 setInterval(tick,1000);tick();
 
 // ═══════════════ LOGO & NAME ═══════════════
-function loadLogoImg(ev){
-  const file=ev.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const src=e.target.result;
-    document.getElementById('logo-img').src=src;
-    document.getElementById('logo-img').style.display='block';
-    document.getElementById('logo-placeholder').style.display='none';
-    try{localStorage.setItem('sf_logo',src);}catch(e){}
-    notif(t('notif_logo_updated'),'ok');
+async function loadLogoImg(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const src = e.target.result;
+    // Mostrar en UI inmediatamente
+    document.getElementById('logo-img').src = src;
+    document.getElementById('logo-img').style.display = 'block';
+    document.getElementById('logo-placeholder').style.display = 'none';
+    
+    // Guardar en localStorage (backup)
+    try { localStorage.setItem('sf_logo', src); } catch(e) {}
+    
+    // Subir a Supabase (usando el mismo endpoint que index.html)
+    try {
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${coordToken}`  // Requiere modo coordinador
+        },
+        body: JSON.stringify({ clave: 'sf_logo', valor: src })
+      });
+      notif(t('notif_logo_updated'), 'ok');
+    } catch (err) {
+      console.warn('No se pudo subir a la nube, solo local:', err);
+      notif('Logo guardado localmente', 'warn');
+    }
   };
   reader.readAsDataURL(file);
-  ev.target.value='';
+  ev.target.value = '';
 }
 function startEditName(){
   const display=document.getElementById('logo-name-display');
@@ -6565,22 +6584,41 @@ function finishEditName(){
   input.style.display='none';
   display.style.display='block';
 }
-function loadBrandFromStorage(){
-  try{
-    const logo=localStorage.getItem('sf_logo');
-    if(logo){
-      document.getElementById('logo-img').src=logo;
-      document.getElementById('logo-img').style.display='block';
-      document.getElementById('logo-placeholder').style.display='none';
+async function loadBrandFromStorage() {
+  try {
+    // Intentar obtener logo desde Supabase
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      const config = await res.json();
+      if (config.sf_logo) {
+        localStorage.setItem('sf_logo', config.sf_logo);
+        document.getElementById('logo-img').src = config.sf_logo;
+        document.getElementById('logo-img').style.display = 'block';
+        document.getElementById('logo-placeholder').style.display = 'none';
+      }
     }
-    const name=localStorage.getItem('sf_bname');
-    if(name){
-      const {prefix,accent}=JSON.parse(name);
-      const display=document.getElementById('logo-name-display');
-      display.innerHTML=(prefix||'BODEGA')+' <em style="color:var(--accent);font-style:normal;" id="logo-name-em">'+(accent||'EFFICOMMERCE CR')+'</em>';
-      document.title=((prefix||'BODEGA')+' '+(accent||'EFFICOMMERCE CR')).trim()+' — Gestión de Almacén';
+  } catch (e) {
+    console.warn('Usando logo local');
+  }
+  
+  // Fallback a localStorage
+  const logo = localStorage.getItem('sf_logo');
+  if (logo) {
+    document.getElementById('logo-img').src = logo;
+    document.getElementById('logo-img').style.display = 'block';
+    document.getElementById('logo-placeholder').style.display = 'none';
+  }
+  
+  // Cargar nombre de empresa
+  try {
+    const name = localStorage.getItem('sf_bname');
+    if (name) {
+      const { prefix, accent } = JSON.parse(name);
+      const display = document.getElementById('logo-name-display');
+      display.innerHTML = (prefix || 'BODEGA') + ' <em style="color:var(--accent);font-style:normal;" id="logo-name-em">' + (accent || 'EFFICOMMERCE CR') + '</em>';
+      document.title = ((prefix || 'BODEGA') + ' ' + (accent || 'EFFICOMMERCE CR')).trim() + ' — Gestión de Almacén';
     }
-  }catch(e){}
+  } catch (e) {}
 }
 
 // ═══════════════ PIN / ROLES ═══════════════
