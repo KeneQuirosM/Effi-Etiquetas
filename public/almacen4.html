@@ -10,7 +10,7 @@
 :root{
   --bg:#0a0c0f;--bg2:#0d1017;--bg3:#111520;--panel:#0f1318;
   --border:#1a2030;--border2:#243048;
-  --accent:#f0a500;--cyan:#00d4ff;--green:#00ff88;
+  --accent: #f2a900;--cyan:#00d4ff;--green:#00ff88;
   --red:#ff3b5c;--yellow:#ffd000;
   --text:#b8c8e0;--dim:#4a5a78;--bright:#e0ecff;
   --steel:#141c2a;--beam:#1e2d45;
@@ -1375,7 +1375,7 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
         </div>
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:12px;margin-bottom:14px">
-        <div style="data-i18n="bulk_preview_title" style="font-size:1.08rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Vista previa de selección</div>
+        <div data-i18n="bulk_preview_title" style="font-size:1.08rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Vista previa de selección</div>
         <div id="bp-preview" style="display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow-y:auto"></div>
         <div id="bp-count" style="margin-top:8px;font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--cyan)">${t('rep_labels_selected').replace(/^\d+ /,'0 ')}</div>
       </div>
@@ -1979,6 +1979,26 @@ const THEMES={
     '--steel':'#141c2a','--beam':'#1e2d45',
     '--body-bg':'#0a0c0f','--scanline':'rgba(0,0,0,.05)',
   },
+  effi: {
+    '--bg': '#f0f2f7',           // mismo fondo que index
+    '--bg2': '#e8ecf3',
+    '--bg3': '#ffffff',
+    '--panel': '#ffffff',
+    '--border': '#dde1ec',
+    '--border2': '#b8c4d8',
+    '--accent': '#f2a900',       // dorado Efficommerce
+    '--cyan': '#1a2a6c',         // azul corporativo
+    '--green': '#1e8f4e',        // verde éxito del index
+    '--red': '#d63030',
+    '--yellow': '#f2a900',
+    '--text': '#1c1f2e',
+    '--dim': '#7a80a0',
+    '--bright': '#1a2a6c',
+    '--steel': '#e8ecf3',
+    '--beam': '#1a2a6c',
+    '--body-bg': '#f0f2f7',
+    '--scanline': 'rgba(26,42,108,0.02)',
+      },
   light:{
     '--bg':'#f0f4f8','--bg2':'#e8edf5','--bg3':'#ffffff','--panel':'#ffffff',
     '--border':'#d0d8e8','--border2':'#b8c4d8',
@@ -2050,7 +2070,8 @@ function openSettings(){
           <button class="btn theme-opt${currentTheme==='dark'?' on':''}" data-theme="dark" onclick="applyTheme('dark');renderSettingsModal()" style="flex:1">${t('settings_theme_dark')}</button>
           <button class="btn theme-opt${currentTheme==='light'?' on':''}" data-theme="light" onclick="applyTheme('light');renderSettingsModal()" style="flex:1">${t('settings_theme_light')}</button>
           <button class="btn theme-opt${currentTheme==='dalton'?' on':''}" data-theme="dalton" onclick="applyTheme('dalton');renderSettingsModal()" style="flex:1">${t('settings_theme_dalton')}</button>
-        </div>
+          <button class="btn theme-opt${currentTheme==='effi'?' on':''}" data-theme="effi" onclick="applyTheme('effi');renderSettingsModal()" style="flex:1">Effi</button>
+          </div>
       </div>
       <!-- Brand -->
       <div>
