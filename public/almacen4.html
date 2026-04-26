@@ -1279,25 +1279,11 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
     <div class="mbdy" style="padding:20px 24px">
       <div id="pin-subtitle" style="text-align:center;color:var(--dim);font-size:1.05rem;margin-bottom:16px;line-height:1.4"></div>
       <div class="pin-dots" id="pin-dots">
-        <div class="pin-dot" id="pd0"></div>
-        <div class="pin-dot" id="pd1"></div>
-        <div class="pin-dot" id="pd2"></div>
-        <div class="pin-dot" id="pd3"></div>
+        <!-- ... -->
       </div>
       <div class="pin-status" id="pin-status"></div>
       <div class="pin-pad">
-        <div class="pin-key" onclick="pinKey('1')">1</div>
-        <div class="pin-key" onclick="pinKey('2')">2</div>
-        <div class="pin-key" onclick="pinKey('3')">3</div>
-        <div class="pin-key" onclick="pinKey('4')">4</div>
-        <div class="pin-key" onclick="pinKey('5')">5</div>
-        <div class="pin-key" onclick="pinKey('6')">6</div>
-        <div class="pin-key" onclick="pinKey('7')">7</div>
-        <div class="pin-key" onclick="pinKey('8')">8</div>
-        <div class="pin-key" onclick="pinKey('9')">9</div>
-        <div class="pin-key del" onclick="pinClear()">✕</div>
-        <div class="pin-key" onclick="pinKey('0')">0</div>
-        <div class="pin-key del" onclick="pinDel()">⌫</div>
+        <!-- ... -->
       </div>
     </div>
     <div class="mft" style="justify-content:center">
@@ -6706,10 +6692,14 @@ function guardEdit(fn) {
 }
 
 function openCoordinadorModal() {
-  const modal = document.getElementById('o-pin');
+   const modal = document.getElementById('o-pin');
   if (!modal) return;
-  modal.querySelector('.mttl').textContent = '🔐 Acceso Coordinador';
-  modal.querySelector('#pin-subtitle').textContent = 'Ingresá tu email y contraseña de coordinador';
+  const subtitle = modal.querySelector('#pin-subtitle');
+  const title = modal.querySelector('.mttl');
+  if (!subtitle || !title) return; // salir si no existen
+
+  title.textContent = '🔐 Acceso Coordinador';
+  subtitle.textContent = 'Ingresá tu email y contraseña de coordinador';
   const body = modal.querySelector('.mbdy');
   body.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
