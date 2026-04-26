@@ -2262,8 +2262,8 @@ async function load() {
   if (cached) {
     try {
       const d = JSON.parse(cached);
-      state.zones = d.zones || [];
-      state.racks = d.racks || [];
+      state.zones = (d.zones || []).map(z => ({...z, desc: z.desc||z.descripcion||'', area_m2: z.area_m2||0, tipo: z.tipo||'operativa'}));
+      state.racks = (d.racks || []).map(r => ({...r, zone: r.zone||r.zone_id||'', w: r.w||r.width||180, h: r.h||r.height||150}));
       state.cells = d.cells || {};
       state.people = d.people || [];
       state.tiendas = d.tiendas || [];
@@ -2291,10 +2291,23 @@ async function load() {
     
     console.log('[StockForge] Respuesta del servidor:', data);
     
-    // Solo actualizar si los datos del servidor son diferentes o si no había caché
+    // Normalizar racks: zone_id→zone, width/height→w/h
+    const racksNorm = (data.racks || []).map(r => ({
+      ...r,
+      zone: r.zone || r.zone_id || '',
+      w: r.w || r.width || 180,
+      h: r.h || r.height || 150
+    }));
+    // Normalizar zonas: asegurar campo desc
+    const zonasNorm = (data.zonas || data.zones || []).map(z => ({
+      ...z,
+      desc: z.desc || z.descripcion || '',
+      area_m2: z.area_m2 || 0,
+      tipo: z.tipo || 'operativa'
+    }));
     const freshData = {
-      zones: data.zonas || data.zones || [],
-      racks: data.racks || [],
+      zones: zonasNorm,
+      racks: racksNorm,
       cells: data.cells || {},
       people: data.people || [],
       tiendas: data.tiendas || [],
