@@ -5598,4 +5598,3 @@ function actualizarMetricasEspacio(){
   const mbDisp=document.getElementById('mb-disponible');
   if(mbDisp) mbDisp.style.width=`${100-pctOcupado}%`;
 }
-</script>
