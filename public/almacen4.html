@@ -2771,7 +2771,7 @@ function renderZoneList(){
   state.zones.forEach(z=>{
     const cnt=state.racks.filter(r=>r.zone===z.id).length;
     const el=document.createElement('div');el.className='zpill';
-    el.innerHTML=`<div class="zdot" style="background:${z.color}"></div><div class="zname">${z.name}</div><div class="zcnt">${cnt}r</div><button class="zdel btn-go" style="width:auto;padding:0 6px;font-size:.9rem;letter-spacing:1px;color:var(--cyan);border-color:transparent" title="${t('zone_go')}">${t('zone_go')}</button><button class="zdel btn-edit" style="width:auto;padding:0 6px;font-size:.9rem;color:var(--accent);border-color:transparent" title="Editar zona">✎</button><button class="zdel btn-del">✕</button>`;
+    el.innerHTML=`<div class="zdot" style="background:${z.color}"></div><div class="zname">${z.name}</div><div class="zcnt"></div><button class="zdel btn-go" style="width:auto;padding:0 6px;font-size:.9rem;letter-spacing:1px;color:var(--cyan);border-color:transparent" title="${t('zone_go')}">${t('zone_go')}</button><button class="zdel btn-edit" style="width:auto;padding:0 6px;font-size:.9rem;color:var(--accent);border-color:transparent" title="Editar zona">✎</button><button class="zdel btn-del">✕</button>`;
     el.querySelector('.btn-go').onclick=()=>goToZone(z.id);
     el.querySelector('.btn-edit').onclick=()=>guardEdit(()=>openEditZone(z.id));
     el.querySelector('.btn-del').onclick=()=>deleteZone(z.id);
