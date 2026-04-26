@@ -154,13 +154,21 @@ export default async function handler(req, res) {
         }
       });
 
+      // Configuración de la bodega
+      const { data: bodegaConfig } = await supabase
+        .from('bodega_config')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle();
+      
       return res.status(200).json({
         zonas: zonasMapped,
         racks: racksConRelaciones,
         cells: cellsObj,
         people: responsables || [],
         tiendas: tiendas || [],
-        movements: movementsMapped
+        movements: movementsMapped,
+        bodega: bodegaConfig || { area_total_m2: 500, area_pasillos_m2: 80
       });
     }
 
