@@ -160,7 +160,7 @@ export default async function handler(req, res) {
         .select('*')
         .eq('id', 1)
         .maybeSingle();
-      
+
       return res.status(200).json({
         zonas: zonasMapped,
         racks: racksConRelaciones,
@@ -168,7 +168,7 @@ export default async function handler(req, res) {
         people: responsables || [],
         tiendas: tiendas || [],
         movements: movementsMapped,
-        bodega: bodegaConfig || { area_total_m2: 500, area_pasillos_m2: 80
+        bodega: bodegaConfig || { area_total_m2: 500, area_pasillos_m2: 80 }
       });
     }
 
@@ -394,6 +394,16 @@ export default async function handler(req, res) {
         else console.log(`✅ ${movimientosMapped.length} movimientos insertados`);
       }
 
+      // 8. Guardar/actualizar configuración de bodega
+      if (req.body.bodega) {
+        const { area_total_m2, area_pasillos_m2 } = req.body.bodega;
+        await supabase.from('bodega_config').upsert({
+          id: 1,
+          area_total_m2: area_total_m2 || 500,
+          area_pasillos_m2: area_pasillos_m2 || 80
+        });
+      }
+
       return res.status(200).json({ ok: true, celdas: celdasOk, errores: celdasError });
     }
 
@@ -404,13 +414,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error.message });
   }
 }
-
-  // 8. Guardar/actualizar configuración de bodega
-      if (req.body.bodega) {
-        const { area_total_m2, area_pasillos_m2 } = req.body.bodega;
-        await supabase.from('bodega_config').upsert({
-          id: 1,
-          area_total_m2: area_total_m2 || 500,
-          area_pasillos_m2: area_pasillos_m2 || 80
-        });
-      }
