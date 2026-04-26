@@ -712,6 +712,7 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
         <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>document.getElementById('imp-xlsx').click())" style="color:var(--green)">📊 Stock Excel</button>
         <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>addZone())" data-i18n="btn_zone">＋ Zona</button>
         <button class="guard-btn" style="color:var(--cyan)" onclick="closeOverflow();guardEdit(()=>openO('o-catalog'))" data-i18n="btn_catalogs">👥 Catálogos</button>
+        <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>openO('o-bodega-config'))" data-i18n="btn_bodega_config">📐 Configurar Bodega</button>
       </div>
     </div>
     <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(event)">
@@ -780,7 +781,26 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
     <div class="shd"><span data-i18n="zones_title">Zonas</span> <button id="zone-add-btn" onclick="guardEdit(()=>addZone())">＋</button></div>
     <div id="zlist" style="display:flex;flex-direction:column;gap:3px"></div>
   </div>
+  <div class="lsec">
+  <div class="shd">📐 Espacio (m²)</div>
+  <div class="sblk">
+    <div class="sblk-lbl">Área útil total</div>
+    <div class="sblk-val" id="st-util">0<small>m²</small></div>
+    <div class="mbar"><div class="mbar-f" id="mb-util" style="width:0%;background:var(--cyan)"></div></div>
+  </div>
+  <div class="sblk">
+    <div class="sblk-lbl">Ocupado por racks</div>
+    <div class="sblk-val" id="st-ocupado-area">0<small>m²</small></div>
+    <div class="mbar"><div class="mbar-f" id="mb-ocupado-area" style="width:0%;background:var(--green)"></div></div>
+  </div>
+  <div class="sblk">
+    <div class="sblk-lbl">Disponible</div>
+    <div class="sblk-val" id="st-disponible">0<small>m²</small></div>
+    <div class="mbar"><div class="mbar-f" id="mb-disponible" style="width:0%;background:var(--accent)"></div></div>
+  </div>
+</div>
   <div class="lscroll">
+    
     <div class="shd" style="margin-bottom:2px" data-i18n="legend_title">Leyenda</div>
     <div class="leg"><div class="lb" style="background:rgba(0,255,136,.15);border-color:rgba(0,255,136,.5)"></div><span data-i18n="leg_full">Ocupado</span></div>
     <div class="leg"><div class="lb" style="background:rgba(255,208,0,.15);border-color:rgba(255,208,0,.5)"></div><span data-i18n="leg_partial">Parcial</span></div>
@@ -918,6 +938,7 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
     </div>
     <div class="mft">
       <button class="btn bo" onclick="closeO('o-catalog')" data-i18n="btn_close">Cerrar</button>
+      <button class="btn bo bsm" onclick="closeO('o-catalog');openPinChange()" style="margin-left:auto;border-color:var(--dim);color:var(--dim);font-size:.95rem" title="Cambiar PIN de coordinador" data-i18n="btn_change_pin">🔑 Cambiar PIN</button>
     </div>
   </div>
 </div>
@@ -930,6 +951,20 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
       <div class="fg"><label class="fl" data-i18n="zone_name_lbl">Nombre</label><input class="fi" id="zn" placeholder="Ej: Zona Fría" data-i18n="zone_name_ph" data-i18n-target="placeholder"></div>
       <div class="fg"><label class="fl" data-i18n="zone_color_lbl">Color</label><div class="swatches" id="zsw"></div></div>
       <div class="fg"><label class="fl" data-i18n="zone_desc_lbl">Descripción</label><input class="fi" id="zd" data-i18n="zone_desc_ph" data-i18n-target="placeholder" placeholder="Opcional"></div>
+      <div class="fr2">
+     <div class="fg">
+        <label class="fl">Área (m²)</label>
+        <input class="fi" id="zarea" type="number" value="0" min="0" step="0.01">
+      </div>
+  <div class="fg">
+    <label class="fl">Tipo de zona</label>
+    <select class="fi" id="ztipo">
+      <option value="operativa">Operativa (almacenaje)</option>
+      <option value="excluida">Excluida (oficinas, comedor)</option>
+      <option value="pasillo">Pasillo</option>
+    </select>
+  </div>
+</div>
     </div>
     <div class="mft">
       <button class="btn bo" onclick="closeO('o-zone')" data-i18n="btn_close">Cancelar</button>
@@ -974,6 +1009,16 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
         <div class="fg"><label class="fl" data-i18n="rack_width">Ancho px</label><input class="fi" id="rw" type="number" value="180" min="60" max="600" oninput="refreshCG()"></div>
         <div class="fg"><label class="fl" data-i18n="rack_height">Alto px</label><input class="fi" id="rh" type="number" value="150" min="40" max="600" oninput="refreshCG()"></div>
       </div>
+      <div class="fr2">
+  <div class="fg">
+    <label class="fl">Largo real (m)</label>
+    <input class="fi" id="rlargo" type="number" value="0" min="0" step="0.01">
+  </div>
+  <div class="fg">
+    <label class="fl">Ancho real (m)</label>
+    <input class="fi" id="ranchor" type="number" value="0" min="0" step="0.01">
+  </div>
+</div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:9px">
         <div style="font-size:1.08rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:5px">Celdas — clic para asignar productos</div>
         <div style="font-size:1.08rem;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:4px">BAHÍAS → / NIVELES ↓</div>
@@ -1355,6 +1400,30 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
     <div class="mft">
       <button class="btn bo" onclick="closeO('o-audit')" data-i18n="btn_close">Cancelar</button>
       <button class="btn bp" onclick="saveAudit()" style="background:var(--green);border-color:var(--green);color:#000">✓ Confirmar conteo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: CONFIGURACIÓN DE BODEGA ══ -->
+<div class="ov" id="o-bodega-config">
+  <div class="modal" style="width:440px">
+    <div class="mhd">
+      <div class="mttl">🏭 Configuración de Bodega</div>
+      <button class="mcl" onclick="closeO('o-bodega-config')">✕</button>
+    </div>
+    <div class="mbdy">
+      <div class="fg">
+        <label class="fl">Área total del galerón (m²)</label>
+        <input class="fi" id="cfg-area-total" type="number" value="500" min="1" step="1">
+      </div>
+      <div class="fg">
+        <label class="fl">Área de pasillos (m²)</label>
+        <input class="fi" id="cfg-area-pasillos" type="number" value="80" min="0" step="1">
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn bo" onclick="closeO('o-bodega-config')">Cancelar</button>
+      <button class="btn bp" onclick="guardarConfigBodega()">Guardar</button>
     </div>
   </div>
 </div>
@@ -2026,6 +2095,7 @@ function openSettings(){
           <button class="btn theme-opt${currentTheme==='dark'?' on':''}" data-theme="dark" onclick="applyTheme('dark');renderSettingsModal()" style="flex:1">${t('settings_theme_dark')}</button>
           <button class="btn theme-opt${currentTheme==='light'?' on':''}" data-theme="light" onclick="applyTheme('light');renderSettingsModal()" style="flex:1">${t('settings_theme_light')}</button>
           <button class="btn theme-opt${currentTheme==='dalton'?' on':''}" data-theme="dalton" onclick="applyTheme('dalton');renderSettingsModal()" style="flex:1">${t('settings_theme_dalton')}</button>
+          <button class="btn theme-opt${currentTheme==='effi'?' on':''}" data-theme="effi" onclick="applyTheme('effi');renderSettingsModal()" style="flex:1">Effi</button>
           </div>
       </div>
       <!-- Brand -->
@@ -2099,7 +2169,21 @@ function saveSettings(){
 const STORE_KEY='stockforge_v4';
 const API_URL = '/api/stockforge';
 let isOffline = false;
-let state={zones:[],racks:[],cells:{},people:[],tiendas:[],movements:[]};
+
+let state = {
+  zones: [],       // cada zona ahora tendrá: area_m2, tipo (operativa/excluida)
+  racks: [],       // cada rack ahora tendrá: largo_m, ancho_m
+  cells: {},
+  people: [],
+  tiendas: [],
+  movements: [],
+  bodega: {        // NUEVO: configuración global de la bodega
+    area_total_m2: 500,      // m² totales del galerón
+    area_pasillos_m2: 80,    // m² ocupados por pasillos
+    area_excluida_m2: 0      // se calcula automático de zonas excluidas
+  }
+};
+
 let selRack=null, zoom=1, editRackId=null, pendCells={}, cellCtx=null, viewCtx=null, bpSelection=new Set();
 let pickedColor='#00ff88';
 const COLORS=['#00ff88','#f0a500','#00d4ff','#ff6b35','#ff3b5c','#ffd000','#a78bfa','#34d399','#f472b6','#60a5fa','#fb923c','#22d3ee'];
@@ -2183,6 +2267,7 @@ async function load() {
       state.people = d.people || [];
       state.tiendas = d.tiendas || [];
       state.movements = d.movements || [];
+      state.bodega = data.bodega || { area_total_m2:500, area_pasillos_m2:80, area_excluida_m2:0 };
       
       // Renderizar inmediatamente con datos en caché
       fullRender();
@@ -2710,23 +2795,68 @@ function openEditZone(id){
   openO('o-zone');
 }
 
+function guardarConfigBodega(){
+  const areaTotal=parseFloat(document.getElementById('cfg-area-total').value)||500;
+  const areaPasillos=parseFloat(document.getElementById('cfg-area-pasillos').value)||0;
+  state.bodega.area_total_m2=areaTotal;
+  state.bodega.area_pasillos_m2=areaPasillos;
+  try{
+    fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({bodega:state.bodega})
+    });
+  }catch(e){}
+  closeO('o-bodega-config');
+  actualizarMetricasEspacio();
+  save();
+  notif('✅ Configuración de bodega actualizada','ok');
+}
+
+function actualizarMetricasEspacio(){
+  if(!state.bodega)state.bodega={area_total_m2:500,area_pasillos_m2:80,area_excluida_m2:0};
+  let areaExcluida=0;
+  state.zones.forEach(z=>{if(z.tipo==='excluida'||z.tipo==='pasillo')areaExcluida+=parseFloat(z.area_m2||0);});
+  let areaOcupada=0;
+  state.racks.forEach(r=>{const largo=parseFloat(r.largo_m||0);const ancho=parseFloat(r.ancho_m||0);areaOcupada+=largo*ancho;});
+  const areaPasillos=parseFloat(state.bodega.area_pasillos_m2||80);
+  const areaTotal=parseFloat(state.bodega.area_total_m2||500);
+  const areaUtil=Math.max(0,areaTotal-areaPasillos-areaExcluida);
+  const pctOcupado=areaUtil>0?Math.round((areaOcupada/areaUtil)*100):0;
+
+  const elUtil=document.getElementById('st-util');
+  const elOcup=document.getElementById('st-ocupado-area');
+  const elDisp=document.getElementById('st-disponible');
+  if(elUtil)elUtil.innerHTML=`${areaUtil.toFixed(0)}<small>m²</small>`;
+  if(elOcup)elOcup.innerHTML=`${areaOcupada.toFixed(1)}<small>m²</small>`;
+  if(elDisp)elDisp.innerHTML=`${(areaUtil-areaOcupada).toFixed(1)}<small>m²</small>`;
+
+  const mbOcup=document.getElementById('mb-ocupado-area');
+  const mbDisp=document.getElementById('mb-disponible');
+  if(mbOcup)mbOcup.style.width=`${pctOcupado}%`;
+  if(mbDisp)mbDisp.style.width=`${100-pctOcupado}%`;
+}
+
 function saveZone(){
   if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');return;}
   const name=document.getElementById('zn').value.trim();
   if(!name){notif(t('notif_write_name_short'),'warn');return;}
+  const desc=document.getElementById('zd').value.trim();
+  const area=parseFloat(document.getElementById('zarea')?.value||0);
+  const tipo=document.getElementById('ztipo')?.value||'operativa';
   if(_editZoneId){
     const z=state.zones.find(z=>z.id===_editZoneId);
-    if(z){z.name=name;z.color=pickedColor;z.desc=document.getElementById('zd').value.trim();}
+    if(z){z.name=name;z.color=pickedColor;z.desc=desc;z.area_m2=area;z.tipo=tipo;}
     notif(`${currentLang==='en'?'Zone':'Zona'} "${name}" ${currentLang==='en'?'updated':'actualizada'}`,'ok');
     addAct(`${currentLang==='en'?'Zone':'Zona'} <strong>${name}</strong> ${currentLang==='en'?'updated':'actualizada'}`,pickedColor);
   } else {
-    state.zones.push({id:'Z'+Date.now(),name,color:pickedColor,desc:document.getElementById('zd').value.trim()});
+    state.zones.push({id:'Z'+Date.now(),name,color:pickedColor,desc,area_m2:area,tipo});
     notif(`${currentLang==='en'?'Zone':'Zona'} "${name}" ${currentLang==='en'?'created':'creada'}`,'ok');
     addAct(`${currentLang==='en'?'Zone':'Zona'} <strong>${name}</strong> ${currentLang==='en'?'created':'creada'}`,pickedColor);
   }
   document.getElementById('zn').value='';document.getElementById('zd').value='';
   _editZoneId=null;
-  closeO('o-zone');save();renderZoneList();populateZoneSel();renderFloor();
+  closeO('o-zone');save();renderZoneList();populateZoneSel();renderFloor();actualizarMetricasEspacio();
 }
 
 function addZone(){
@@ -3428,14 +3558,15 @@ function saveRack(){
   const zone=document.getElementById('rz').value;
   const responsables=getRackCheckedIds('rack-resp-checks');
   const tiendas=getRackCheckedIds('rack-shop-checks');
+  const largoReal=parseFloat(document.getElementById('rlargo')?.value||0);
+  const anchoReal=parseFloat(document.getElementById('ranchor')?.value||0);
   const buildCells=id=>{
     const arr=[];
     for(let b=0;b<bays;b++)for(let l=0;l<levels;l++){const key=`${b}-${l}`;arr.push(pendCells[key]||{bay:b,level:l,state:'empty',skus:[],notes:''});}
     state.cells[id]=arr;
   };
   if(editRackId){
-    Object.assign(state.racks.find(r=>r.id===editRackId),{name,bays,levels,w,h,x,y,zone,responsables,tiendas});
-    // Clean cells: remove any responsable/tienda IDs no longer in the rack
+    Object.assign(state.racks.find(r=>r.id===editRackId),{name,bays,levels,w,h,x,y,zone,responsables,tiendas,largo_m:largoReal,ancho_m:anchoReal});
     (state.cells[editRackId]||[]).forEach(cl=>{
       if(cl.responsables&&cl.responsables.length)
         cl.responsables=cl.responsables.filter(id=>responsables.includes(id));
@@ -3444,10 +3575,10 @@ function saveRack(){
     });
     buildCells(editRackId);addAct(`Rack <strong>${name}</strong> ${currentLang==='en'?'updated':'actualizado'}`,'var(--cyan)');notif(`"${name}" ${currentLang==='en'?'updated':'actualizado'}`,'ok');
   }else{
-    const id='R'+Date.now();state.racks.push({id,name,bays,levels,w,h,x,y,zone,responsables,tiendas});
+    const id='R'+Date.now();state.racks.push({id,name,bays,levels,w,h,x,y,zone,responsables,tiendas,largo_m:largoReal,ancho_m:anchoReal});
     buildCells(id);addAct(`Rack <strong>${name}</strong> ${currentLang==='en'?'created':'creado'}`,'var(--green)');notif(`"${name}" ${currentLang==='en'?'added':'agregado'}`,'ok');
   }
-  closeO('o-rack');save();renderFloor();renderZoneList();updateStats();updateExpiryPanel();updateLowStockPanel();
+  closeO('o-rack');save();renderFloor();renderZoneList();updateStats();actualizarMetricasEspacio();updateExpiryPanel();updateLowStockPanel();
 }
 
 // ═══════════════ RENDER FLOOR ═══════════════
@@ -5614,6 +5745,7 @@ function updateStats(){
   rc.style.strokeDashoffset=circ*(1-pct/100);rc.style.stroke=pct>80?'var(--red)':pct>55?'var(--yellow)':'var(--green)';
   document.getElementById('rpct').textContent=pct+'%';
   document.getElementById('rdet').textContent=`${occ} / ${total} ${t('rep_cells_total')} · ${skuQtyMap.size} SKUs`;
+  actualizarMetricasEspacio();
 }
 
 // ═══════════════ VALOR INVENTARIO ═══════════════
@@ -6472,7 +6604,7 @@ function skuColor(sku){
   if(!sku)return'var(--dim)';let h=0;for(let i=0;i<sku.length;i++)h=(h*31+sku.charCodeAt(i))&0xffffff;
   return['#00ff88','#f0a500','#00d4ff','#ff6b35','#ffd000','#a78bfa','#f472b6','#34d399'][Math.abs(h)%8];
 }
-function fullRender(){renderZoneList();populateZoneSel();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();}
+function fullRender(){renderZoneList();populateZoneSel();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();actualizarMetricasEspacio();}
 
 // ═══════════════ CLOCK ═══════════════
 function tick(){const n=new Date();document.getElementById('hclock').innerHTML=`<div class="dot y"></div>${n.toTimeString().slice(0,8)}`;}
@@ -6842,6 +6974,50 @@ function applyGuardAttrs(){}
     });
   });
 })();
+
+if (!state.bodega) {
+  state.bodega = {
+    area_total_m2: 500,
+    area_pasillos_m2: 80,
+    area_excluida_m2: 0
+  };
+}
+
+function actualizarMetricasEspacio() {
+  // 1. Área total excluida (suma de zonas tipo 'excluida' y 'pasillo')
+  let areaExcluida = 0;
+  state.zones.forEach(z => {
+    if (z.tipo === 'excluida' || z.tipo === 'pasillo') {
+      areaExcluida += parseFloat(z.area_m2 || 0);
+    }
+  });
+
+  // 2. Área ocupada por racks (suma de largo_m * ancho_m)
+  let areaOcupada = 0;
+  state.racks.forEach(r => {
+    const largo = parseFloat(r.largo_m || 0);
+    const ancho = parseFloat(r.ancho_m || 0);
+    areaOcupada += largo * ancho;
+  });
+
+  // 3. Área útil = total - pasillos (fijo) - zonas excluidas
+  const areaPasillos = parseFloat(state.bodega?.area_pasillos_m2 || 80);
+  const areaTotal = parseFloat(state.bodega?.area_total_m2 || 500);
+  const areaUtil = Math.max(0, areaTotal - areaPasillos - areaExcluida);
+
+  // 4. Porcentajes
+  const pctOcupado = areaUtil > 0 ? Math.round((areaOcupada / areaUtil) * 100) : 0;
+  const pctDisponible = Math.max(0, 100 - pctOcupado);
+
+  // 5. Actualizar UI
+  document.getElementById('st-util').innerHTML = `${areaUtil.toFixed(0)}<small>m²</small>`;
+  document.getElementById('st-ocupado-area').innerHTML = `${areaOcupada.toFixed(1)}<small>m²</small>`;
+  document.getElementById('st-disponible').innerHTML = `${(areaUtil - areaOcupada).toFixed(1)}<small>m²</small>`;
+
+  document.getElementById('mb-util').style.width = '100%';
+  document.getElementById('mb-ocupado-area').style.width = `${pctOcupado}%`;
+  document.getElementById('mb-disponible').style.width = `${pctDisponible}%`;
+}
 </script>
 </body>
 </html>
