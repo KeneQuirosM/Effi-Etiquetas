@@ -6982,41 +6982,43 @@ if (!state.bodega) {
     area_excluida_m2: 0
   };
 }
-
-function actualizarMetricasEspacio() {
-  // 1. Área total excluida (suma de zonas tipo 'excluida' y 'pasillo')
-  let areaExcluida = 0;
-  state.zones.forEach(z => {
-    if (z.tipo === 'excluida' || z.tipo === 'pasillo') {
-      areaExcluida += parseFloat(z.area_m2 || 0);
+function actualizarMetricasEspacio(){
+  if(!state.bodega) state.bodega={area_total_m2:500, area_pasillos_m2:80, area_excluida_m2:0};
+  
+  let areaExcluida=0;
+  state.zones.forEach(z=>{
+    if(z.tipo==='excluida'||z.tipo==='pasillo'){
+      areaExcluida+=parseFloat(z.area_m2||0);
     }
   });
-
-  // 2. Área ocupada por racks (suma de largo_m * ancho_m)
-  let areaOcupada = 0;
-  state.racks.forEach(r => {
-    const largo = parseFloat(r.largo_m || 0);
-    const ancho = parseFloat(r.ancho_m || 0);
-    areaOcupada += largo * ancho;
+  
+  let areaOcupada=0;
+  state.racks.forEach(r=>{
+    const largo=parseFloat(r.largo_m||0);
+    const ancho=parseFloat(r.ancho_m||0);
+    areaOcupada+=largo*ancho;
   });
+  
+  const areaPasillos=parseFloat(state.bodega.area_pasillos_m2||80);
+  const areaTotal=parseFloat(state.bodega.area_total_m2||500);
+  const areaUtil=Math.max(0,areaTotal-areaPasillos-areaExcluida);
+  const pctOcupado=areaUtil>0?Math.round((areaOcupada/areaUtil)*100):0;
 
-  // 3. Área útil = total - pasillos (fijo) - zonas excluidas
-  const areaPasillos = parseFloat(state.bodega?.area_pasillos_m2 || 80);
-  const areaTotal = parseFloat(state.bodega?.area_total_m2 || 500);
-  const areaUtil = Math.max(0, areaTotal - areaPasillos - areaExcluida);
+  // Actualizar UI solo si los elementos existen
+  const elUtil=document.getElementById('st-util');
+  if(elUtil) elUtil.innerHTML=`${areaUtil.toFixed(0)}<small>m²</small>`;
 
-  // 4. Porcentajes
-  const pctOcupado = areaUtil > 0 ? Math.round((areaOcupada / areaUtil) * 100) : 0;
-  const pctDisponible = Math.max(0, 100 - pctOcupado);
+  const elOcup=document.getElementById('st-ocupado-area');
+  if(elOcup) elOcup.innerHTML=`${areaOcupada.toFixed(1)}<small>m²</small>`;
 
-  // 5. Actualizar UI
-  document.getElementById('st-util').innerHTML = `${areaUtil.toFixed(0)}<small>m²</small>`;
-  document.getElementById('st-ocupado-area').innerHTML = `${areaOcupada.toFixed(1)}<small>m²</small>`;
-  document.getElementById('st-disponible').innerHTML = `${(areaUtil - areaOcupada).toFixed(1)}<small>m²</small>`;
+  const elDisp=document.getElementById('st-disponible');
+  if(elDisp) elDisp.innerHTML=`${(areaUtil-areaOcupada).toFixed(1)}<small>m²</small>`;
 
-  document.getElementById('mb-util').style.width = '100%';
-  document.getElementById('mb-ocupado-area').style.width = `${pctOcupado}%`;
-  document.getElementById('mb-disponible').style.width = `${pctDisponible}%`;
+  const mbOcup=document.getElementById('mb-ocupado-area');
+  if(mbOcup) mbOcup.style.width=`${pctOcupado}%`;
+
+  const mbDisp=document.getElementById('mb-disponible');
+  if(mbDisp) mbDisp.style.width=`${100-pctOcupado}%`;
 }
 </script>
 </body>
