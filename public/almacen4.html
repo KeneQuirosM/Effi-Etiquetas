@@ -2293,7 +2293,7 @@ async function load() {
     
     // Solo actualizar si los datos del servidor son diferentes o si no había caché
     const freshData = {
-      zones: data.zones || [],
+      zones: data.zonas || data.zones || [],
       racks: data.racks || [],
       cells: data.cells || {},
       people: data.people || [],
