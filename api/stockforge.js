@@ -404,3 +404,13 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error.message });
   }
 }
+
+  // 8. Guardar/actualizar configuración de bodega
+      if (req.body.bodega) {
+        const { area_total_m2, area_pasillos_m2 } = req.body.bodega;
+        await supabase.from('bodega_config').upsert({
+          id: 1,
+          area_total_m2: area_total_m2 || 500,
+          area_pasillos_m2: area_pasillos_m2 || 80
+        });
+      }
