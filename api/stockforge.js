@@ -154,21 +154,13 @@ export default async function handler(req, res) {
         }
       });
 
-      // Configuración de la bodega
-      const { data: bodegaConfig } = await supabase
-        .from('bodega_config')
-        .select('*')
-        .eq('id', 1)
-        .maybeSingle();
-
       return res.status(200).json({
         zonas: zonasMapped,
         racks: racksConRelaciones,
         cells: cellsObj,
         people: responsables || [],
         tiendas: tiendas || [],
-        movements: movementsMapped,
-        bodega: bodegaConfig || { area_total_m2: 500, area_pasillos_m2: 80 }
+        movements: movementsMapped
       });
     }
 
@@ -199,7 +191,9 @@ export default async function handler(req, res) {
           id: z.id,
           name: z.name,
           color: z.color,
-          descripcion: z.desc || z.descripcion || ''
+          descripcion: z.desc || z.descripcion || '',
+          area_m2: parseFloat(z.area_m2 || 0),
+          tipo: z.tipo || 'operativa'
         }));
         const { error: errZones } = await supabase.from('zonas').insert(zonasMapped);
         if (errZones) console.error('❌ Error zonas:', errZones);
@@ -245,13 +239,15 @@ export default async function handler(req, res) {
             name: r.name,
             bays: r.bays,
             levels: r.levels,
-            width: r.w,
-            height: r.h,
+            width: r.w || r.width,
+            height: r.h || r.height,
             x: r.x,
             y: r.y,
             zone_id: (zoneId && zonasIds.has(zoneId)) ? zoneId : null,
+            largo_m: parseFloat(r.largo_m || 0),
+            ancho_m: parseFloat(r.ancho_m || 0),
             created_at: r.created_at,
-            updated_at: r.updated_at
+            updated_at: new Date().toISOString()
           };
 
           const { error: errRack } = await supabase.from('racks').insert(rackData);
@@ -392,16 +388,6 @@ export default async function handler(req, res) {
         const { error: errMov } = await supabase.from('movimientos').insert(movimientosMapped);
         if (errMov) console.error('❌ Error movimientos:', errMov);
         else console.log(`✅ ${movimientosMapped.length} movimientos insertados`);
-      }
-
-      // 8. Guardar/actualizar configuración de bodega
-      if (req.body.bodega) {
-        const { area_total_m2, area_pasillos_m2 } = req.body.bodega;
-        await supabase.from('bodega_config').upsert({
-          id: 1,
-          area_total_m2: area_total_m2 || 500,
-          area_pasillos_m2: area_pasillos_m2 || 80
-        });
       }
 
       return res.status(200).json({ ok: true, celdas: celdasOk, errores: celdasError });
