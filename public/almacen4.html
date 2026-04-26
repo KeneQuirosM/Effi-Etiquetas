@@ -2289,6 +2289,8 @@ async function load() {
     if (!response.ok) throw new Error('Error al cargar');
     const data = await response.json();
     
+    console.log('[StockForge] Respuesta del servidor:', data);
+    
     // Solo actualizar si los datos del servidor son diferentes o si no había caché
     const freshData = {
       zones: data.zones || [],
@@ -2296,31 +2298,27 @@ async function load() {
       cells: data.cells || {},
       people: data.people || [],
       tiendas: data.tiendas || [],
-      movements: data.movements || []
+      movements: data.movements || [],
+      bodega: data.bodega || state.bodega || { area_total_m2:500, area_pasillos_m2:80, area_excluida_m2:0 }
     };
     
-    // Comparación simple (puedes mejorarla si quieres)
-    const cachedStr = localStorage.getItem('stockforge_v4');
-    const freshStr = JSON.stringify(freshData);
+    // Actualizar estado
+    state.zones = freshData.zones;
+    state.racks = freshData.racks;
+    state.cells = freshData.cells;
+    state.people = freshData.people;
+    state.tiendas = freshData.tiendas;
+    state.movements = freshData.movements;
+    state.bodega = freshData.bodega;
     
-    if (cachedStr !== freshStr) {
-      // Actualizar estado
-      state.zones = freshData.zones;
-      state.racks = freshData.racks;
-      state.cells = freshData.cells;
-      state.people = freshData.people;
-      state.tiendas = freshData.tiendas;
-      state.movements = freshData.movements;
-      
-      // Guardar en caché
-      localStorage.setItem('stockforge_v4', freshStr);
-      
-      // Re-renderizar si hubo cambios
-      fullRender();
-      updateStats();
-      updateExpiryPanel();
-      updateLowStockPanel();
-    }
+    // Guardar en caché
+    localStorage.setItem('stockforge_v4', JSON.stringify(freshData));
+    
+    // Re-renderizar con datos frescos
+    fullRender();
+    updateStats();
+    updateExpiryPanel();
+    updateLowStockPanel();
     
     isOffline = false;
     hideOfflineBanner();
@@ -2560,7 +2558,7 @@ function saveSnapshot(auto=false){
 }
 
 function restoreSnapshot(ts){
-  if(!coordUnlocked){notif(t('notif_pin_locked_snap'),'warn');setTimeout(()=>openPinModal('unlock',()=>restoreSnapshot(ts)),600);return;}
+  if(!coordUnlocked){notif(t('notif_pin_locked_snap'),'warn');openCoordinadorModal();return;}
   try{
     const snaps=JSON.parse(localStorage.getItem(SNAP_KEY))||[];
     const snap=snaps.find(s=>s.ts===ts);
@@ -2577,7 +2575,7 @@ function restoreSnapshot(ts){
 }
 
 function deleteSnapshot(ts){
-  if(!coordUnlocked){notif(t('notif_pin_locked_del'),'warn');setTimeout(()=>openPinModal('unlock',()=>deleteSnapshot(ts)),600);return;}
+  if(!coordUnlocked){notif(t('notif_pin_locked_del'),'warn');openCoordinadorModal();return;}
   const msg=currentLang==='en'?'Delete this snapshot? This cannot be undone.':'¿Eliminar este snapshot? Esta acción no se puede deshacer.';
   if(!confirm(msg))return;
   try{
@@ -2929,7 +2927,7 @@ function openAddRack(){
   refreshCG();openO('o-rack');
 }
 function openEditRack(id){
-  if(!coordUnlocked){openPinUnlock(()=>openEditRack(id));return;}
+  if(!coordUnlocked){openCoordinadorModal();return;}
   editRackId=id;const r=state.racks.find(r=>r.id===id);
   document.getElementById('rack-mttl').textContent=t('rack_modal_title_edit');
   document.getElementById('rsavebtn').textContent=t('rack_update_btn');
@@ -2963,8 +2961,7 @@ function refreshCG(){
 // ═══════════════ CELL MODAL ═══════════════
 function openCellEdit(bay,level,rackId){
   if(!coordUnlocked){
-    // If called from rack preview grid (rackId=null) still guard
-    openPinUnlock(()=>openCellEdit(bay,level,rackId));return;
+    openCoordinadorModal();return;
   }
   cellCtx={bay,level,rackId};
   let cell;
@@ -3251,7 +3248,7 @@ function openViewCell(rackId,bay,level){
     </details>`:''}`;
   openO('o-view');
 }
-function editFromView(){if(!coordUnlocked){closeO('o-view');openPinUnlock(()=>{openViewCell(viewCtx.rackId,viewCtx.bay,viewCtx.level);setTimeout(()=>editFromView(),80);});return;}closeO('o-view');if(viewCtx)openCellEdit(viewCtx.bay,viewCtx.level,viewCtx.rackId);}
+function editFromView(){if(!coordUnlocked){closeO('o-view');openCoordinadorModal();return;}closeO('o-view');if(viewCtx)openCellEdit(viewCtx.bay,viewCtx.level,viewCtx.rackId);}
 
 function sortViewSkus(mode){
   if(!viewCtx)return;
@@ -3340,7 +3337,7 @@ function openSkuHistory(){
   requestAnimationFrame(()=>div.classList.add('open'));
 }
 function openTransferFromView(){
-  if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');setTimeout(()=>openPinModal('unlock',()=>openTransferFromView()),600);return;}
+  if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');openCoordinadorModal();return;}
   closeO('o-view');openTransferWithOrigin(viewCtx);
 }
 
