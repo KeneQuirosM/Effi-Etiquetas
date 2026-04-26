@@ -717,8 +717,8 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
     <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(event)">
     <input type="file" id="imp-xlsx" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcelStock(event)">
     <button class="hbtn" onclick="openSettings()" data-i18n="btn_settings" title="Settings / Configuración">⚙</button>
-    <button class="hbtn" id="lock-btn" onclick="(function(){var m=document.getElementById('o-pin');if(!m)return;if(typeof toggleLock==='function'){toggleLock();}else{m.classList.add('open');}})()" data-i18n-target="title" data-i18n="lock_title">🔒</button>
-    <!-- Hamburger — mobile only -->
+   <button class="hbtn" id="lock-btn" onclick="toggleLock()" data-i18n-target="title" data-i18n="lock_title">🔒</button> 
+   <!-- Hamburger — mobile only -->
     <button class="hbtn hburger" id="hburger" onclick="toggleMobileMenu()" title="Menú">☰</button>
   </div>
 </header>
@@ -6592,180 +6592,171 @@ async function loadBrandFromStorage() {
   } catch (e) {}
 }
 
-// ═══════════════ PIN / ROLES ═══════════════
-// ═══════════════ PIN / ROLES ═══════════════
-const PIN_KEY='sf_pin';
-const PIN_SESSION='sf_sess';
-let editMode=false;
-let pinBuffer='';
-let pinMode='';
-let pinSetupFirst='';
-let pendingAction=null;
+// ═══════════════ MODO COORDINADOR (SUPABASE) ═══════════════
+let coordToken = null;
+let coordUnlocked = false;
 
-function pinHash(p){let h=5381;for(let i=0;i<p.length;i++)h=((h<<5)+h)+p.charCodeAt(i)|0;return String(h>>>0);}
-function pinStored(){try{return localStorage.getItem(PIN_KEY)||'';}catch{return '';}}
-function hasPin(){return pinStored().length>0;}
-function writeSession(){try{localStorage.setItem(PIN_SESSION,'1');}catch{}}
-function clearSession(){try{localStorage.removeItem(PIN_SESSION);}catch{}}
-function sessionValid(){try{return localStorage.getItem(PIN_SESSION)==='1';}catch{return false;}}
+function guardarSesion(token) {
+  sessionStorage.setItem('sf_coord_token', token);
+}
 
-function setEditMode(val){
-  editMode=val;
-  const btn=document.getElementById('lock-btn');
-  if(btn){
-    if(val){
-      btn.textContent='🔓';
-      btn.style.borderColor='var(--green)';
-      btn.style.color='var(--green)';
-      btn.title=t('lock_active');
-    }else{
-      btn.textContent='🔒';
-      btn.style.borderColor='';
-      btn.style.color='';
-      btn.title=t('lock_title');
-    }
+function restaurarSesion() {
+  return sessionStorage.getItem('sf_coord_token');
+}
+
+function cerrarSesion() {
+  sessionStorage.removeItem('sf_coord_token');
+  coordToken = null;
+  coordUnlocked = false;
+}
+
+function tokenExpirado(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return (payload.exp * 1000) < Date.now();
+  } catch(e) { return true; }
+}
+
+function activarCoordinador(token) {
+  coordToken = token;
+  coordUnlocked = true;
+  guardarSesion(token);
+  const btn = document.getElementById('lock-btn');
+  if (btn) {
+    btn.textContent = '🔓';
+    btn.style.borderColor = 'var(--green)';
+    btn.style.color = 'var(--green)';
+    btn.title = 'Coordinador activo — click para cerrar sesión';
   }
-  document.querySelectorAll('.hbtn.guard-btn').forEach(b=>{
-    if(val){
-      b.style.opacity='';
-      b.style.cursor='';
-    }else{
-      b.style.opacity='0.45';
-      b.style.cursor='not-allowed';
-    }
+  document.querySelectorAll('.hbtn.guard-btn').forEach(b => {
+    b.style.opacity = '';
+    b.style.cursor = '';
   });
 }
 
-function guardEdit(fn){
-  if(!hasPin()){openPinModal('setup',fn);return;}
-  if(editMode){fn();return;}
-  notif(t('notif_pin_locked'),'warn');
-  setTimeout(()=>openPinModal('unlock',fn),600);
+function desactivarCoordinador() {
+  coordToken = null;
+  coordUnlocked = false;
+  cerrarSesion();
+  const btn = document.getElementById('lock-btn');
+  if (btn) {
+    btn.textContent = '🔒';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.title = 'Modo coordinador';
+  }
+  document.querySelectorAll('.hbtn.guard-btn').forEach(b => {
+    b.style.opacity = '0.45';
+    b.style.cursor = 'not-allowed';
+  });
 }
 
-function toggleLock(){
-  if(!hasPin()){openPinModal('setup',null);return;}
-  if(editMode){
-    clearSession();
-    setEditMode(false);
-    notif(t('notif_session_closed'),'warn');
-  }else{
-    openPinModal('unlock',null);
+async function loginCoordinador(email, password) {
+  try {
+    const response = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Credenciales incorrectas');
+    }
+    const data = await response.json();
+    activarCoordinador(data.token);
+    notif('✅ Sesión iniciada como coordinador', 'ok');
+    return true;
+  } catch(e) {
+    notif(e.message || 'Error de conexión', 'err');
+    return false;
   }
 }
 
-function openPinModal(mode,action){
-  pinMode=mode;
-  pinBuffer='';
-  pinSetupFirst='';
-  pendingAction=action||null;
-  const title={setup:t('pin_setup'),setup2:t('pin_confirm'),unlock:t('pin_unlock'),change1:t('pin_change1'),change2:t('pin_change2'),change3:t('pin_change3')};
-  const sub={
-    setup:'Creá un PIN de 4 dígitos. Lo necesitarás para editar el inventario.',
-    unlock:'Ingresá el PIN de coordinador para activar el modo edición.',
-    change1:'Ingresá el PIN actual para continuar.'
-  };
-  const titleEl=document.getElementById('pin-title');
-  const subEl=document.getElementById('pin-subtitle');
-  if(titleEl)titleEl.textContent=title[mode]||'🔐 PIN';
-  if(subEl)subEl.textContent=sub[mode]||'';
-  pinSetStatus('');
-  pinUpdateDots();
-  const modal=document.getElementById('o-pin');
-  if(modal)modal.classList.add('open');
-}
-
-function pinUpdateDots(){
-  for(let i=0;i<4;i++){
-    const d=document.getElementById('pd'+i);
-    if(d)d.classList.toggle('filled',i<pinBuffer.length);
+async function renovarTokenSiEsNecesario() {
+  if (!coordToken) return false;
+  if (!tokenExpirado(coordToken)) return true;
+  try {
+    const response = await fetch('/api/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: localStorage.getItem('sf_refresh_token') })
+    });
+    if (!response.ok) {
+      desactivarCoordinador();
+      return false;
+    }
+    const data = await response.json();
+    activarCoordinador(data.token);
+    return true;
+  } catch(e) {
+    desactivarCoordinador();
+    return false;
   }
 }
-function pinKey(d){
-  if(pinBuffer.length>=4)return;
-  pinBuffer+=d;pinUpdateDots();
-  if(pinBuffer.length===4)setTimeout(pinSubmit,120);
-}
-function pinDel(){if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);pinUpdateDots();}}
-function pinClear(){pinBuffer='';pinUpdateDots();}
-function pinSetStatus(msg,color){
-  const el=document.getElementById('pin-status');
-  if(el){el.textContent=msg;el.style.color=color||'var(--dim)';}
-}
-function pinShake(){
-  const pad=document.querySelector('.pin-pad');
-  if(!pad)return;
-  pad.style.transform='translateX(-8px)';
-  setTimeout(()=>{pad.style.transform='translateX(8px)';},80);
-  setTimeout(()=>{pad.style.transform='translateX(0)';},160);
-}
 
-function pinSubmit(){
-  const val=pinBuffer;pinBuffer='';pinUpdateDots();
-  if(pinMode==='setup'){
-    pinSetupFirst=val;pinMode='setup2';
-    const titleEl=document.getElementById('pin-title');
-    const subEl=document.getElementById('pin-subtitle');
-    if(titleEl)titleEl.textContent=t('pin_confirm');
-    if(subEl)subEl.textContent=t('pin_sub_confirm');
-    pinSetStatus(currentLang==='en'?'Confirm your PIN':'Confirmá el PIN');
+function guardEdit(fn) {
+  if (!coordUnlocked) {
+    notif('🔒 Ingresá como coordinador para editar', 'warn');
+    openCoordinadorModal();
     return;
   }
-  if(pinMode==='setup2'){
-    if(val!==pinSetupFirst){
-      pinSetStatus(currentLang==='en'?"Don't match — try again":'No coinciden — intentá de nuevo','var(--red)');pinShake();
-      pinBuffer='';pinUpdateDots();
-      setTimeout(()=>{pinMode='setup';pinSetStatus(currentLang==='en'?'Enter PIN':'Ingresá el PIN');},1200);
-      return;
-    }
-    try{localStorage.setItem(PIN_KEY,pinHash(val));}catch(e){notif(t('notif_pin_error'),'err');return;}
-    writeSession();setEditMode(true);
-    const modal=document.getElementById('o-pin');if(modal)modal.classList.remove('open');
-    notif(t('notif_pin_set'),'ok');
-    if(pendingAction){const f=pendingAction;pendingAction=null;setTimeout(f,120);}
+  renovarTokenSiEsNecesario().then(valido => {
+    if (valido) fn();
+  });
+}
+
+function openCoordinadorModal() {
+  const modal = document.getElementById('o-pin');
+  if (!modal) return;
+  modal.querySelector('.mttl').textContent = '🔐 Acceso Coordinador';
+  modal.querySelector('#pin-subtitle').textContent = 'Ingresá tu email y contraseña de coordinador';
+  const body = modal.querySelector('.mbdy');
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">EMAIL</label>
+        <input id="coord-email-stock" type="email" placeholder="coordinador@efficommerce.com"
+          style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">CONTRASEÑA</label>
+        <input id="coord-pass-stock" type="password" placeholder="••••••••"
+          style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)"
+          onkeydown="if(event.key==='Enter') loginDesdeModal()">
+      </div>
+    </div>
+    <button class="btn bp" onclick="loginDesdeModal()" style="width:100%;padding:11px;font-size:1rem;font-weight:700">
+      Iniciar Sesión
+    </button>
+    <div id="coord-error" style="font-size:12px;color:var(--red);margin-top:6px;min-height:16px"></div>
+  `;
+  modal.classList.add('open');
+  setTimeout(() => document.getElementById('coord-email-stock').focus(), 150);
+}
+
+async function loginDesdeModal() {
+  const email = document.getElementById('coord-email-stock').value.trim();
+  const password = document.getElementById('coord-pass-stock').value.trim();
+  const errorEl = document.getElementById('coord-error');
+  if (!email || !password) {
+    errorEl.textContent = 'Email y contraseña requeridos';
     return;
   }
-  if(pinMode==='unlock'){
-    if(pinHash(val)!==pinStored()){
-      pinSetStatus(currentLang==='en'?'Incorrect PIN':'PIN incorrecto','var(--red)');pinShake();
-      pinBuffer='';pinUpdateDots();
-      return;
-    }
-    writeSession();setEditMode(true);
-    const modal=document.getElementById('o-pin');if(modal)modal.classList.remove('open');
-    notif(t('notif_coordinator_active'),'ok');
-    if(pendingAction){const f=pendingAction;pendingAction=null;setTimeout(f,120);}
-    return;
+  const ok = await loginCoordinador(email, password);
+  if (ok) {
+    document.getElementById('o-pin').classList.remove('open');
+  } else {
+    errorEl.textContent = 'Credenciales incorrectas';
   }
-  if(pinMode==='change1'){
-    if(pinHash(val)!==pinStored()){
-      pinSetStatus(currentLang==='en'?'Incorrect PIN':'PIN incorrecto','var(--red)');pinShake();
-      pinBuffer='';pinUpdateDots();return;
-    }
-    pinMode='change2';
-    const titleEl=document.getElementById('pin-title');
-    const subEl=document.getElementById('pin-subtitle');
-    if(titleEl)titleEl.textContent=t('pin_change2');
-    if(subEl)subEl.textContent=t('pin_sub_change2');
-    pinSetStatus('');return;
-  }
-  if(pinMode==='change2'){
-    pinSetupFirst=val;pinMode='change3';
-    const titleEl=document.getElementById('pin-title');
-    const subEl=document.getElementById('pin-subtitle');
-    if(titleEl)titleEl.textContent=t('pin_change3');
-    if(subEl)subEl.textContent=t('pin_sub_change3');
-    pinSetStatus('');return;
-  }
-  if(pinMode==='change3'){
-    if(val!==pinSetupFirst){
-      pinSetStatus('No coinciden','var(--red)');pinShake();
-      pinBuffer='';pinUpdateDots();
-      setTimeout(()=>{pinMode='change2';pinSetStatus(currentLang==='en'?'New PIN':'Nuevo PIN');},1200);return;
-    }
-    try{localStorage.setItem(PIN_KEY,pinHash(val));}catch(e){}
-    const modal=document.getElementById('o-pin');if(modal)modal.classList.remove('open');
-    notif(t('notif_pin_changed'),'ok');return;
+}
+
+function toggleLock() {
+  if (coordUnlocked) {
+    cerrarSesion();
+    desactivarCoordinador();
+    notif('🔒 Sesión cerrada', 'warn');
+  } else {
+    openCoordinadorModal();
   }
 }
 
@@ -6784,10 +6775,27 @@ function initPinSession(){
   else{setEditMode(false);}
 }
 
+function toggleLock() {
+  if (coordUnlocked) {
+    cerrarSesion();
+    desactivarCoordinador();
+    notif('🔒 Sesión cerrada', 'warn');
+  } else {
+    openCoordinadorModal();
+  }
+}
+
 function applyGuardAttrs(){}
 
 // Inicialización asíncrona corregida
 (async function(){
+  try {
+  const token = restaurarSesion();
+  if (token && !tokenExpirado(token)) {
+    activarCoordinador(token);
+    notif('✅ Sesión restaurada', 'ok');
+  }
+} catch(e) {}
   try {
     await load();
   } catch(e) {
