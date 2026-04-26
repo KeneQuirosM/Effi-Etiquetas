@@ -6765,15 +6765,6 @@ function initPinSession(){
   else{setEditMode(false);}
 }
 
-function toggleLock() {
-  if (coordUnlocked) {
-    cerrarSesion();
-    desactivarCoordinador();
-    notif('🔒 Sesión cerrada', 'warn');
-  } else {
-    openCoordinadorModal();
-  }
-}
 
 function applyGuardAttrs(){}
 
