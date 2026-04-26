@@ -6692,36 +6692,62 @@ function guardEdit(fn) {
 }
 
 function openCoordinadorModal() {
-   const modal = document.getElementById('o-pin');
+  const modal = document.getElementById('o-pin');
   if (!modal) return;
-  const subtitle = modal.querySelector('#pin-subtitle');
-  const title = modal.querySelector('.mttl');
-  if (!subtitle || !title) return; // salir si no existen
 
-  title.textContent = '🔐 Acceso Coordinador';
-  subtitle.textContent = 'Ingresá tu email y contraseña de coordinador';
-  const body = modal.querySelector('.mbdy');
-  body.innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
-      <div>
-        <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">EMAIL</label>
-        <input id="coord-email-stock" type="email" placeholder="coordinador@efficommerce.com"
-          style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)">
+  // Construir todo el contenido del modal desde cero
+  modal.innerHTML = `
+    <div class="modal" style="width:320px">
+      <div class="mhd">
+        <div class="mttl">🔐 Acceso Coordinador</div>
+        <button class="mcl" onclick="cerrarModalCoordinador()">✕</button>
       </div>
-      <div>
-        <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">CONTRASEÑA</label>
-        <input id="coord-pass-stock" type="password" placeholder="••••••••"
-          style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)"
-          onkeydown="if(event.key==='Enter') loginDesdeModal()">
+      <div class="mbdy" style="padding:20px 24px">
+        <div id="pin-subtitle" style="text-align:center;color:var(--dim);font-size:1.05rem;margin-bottom:16px;line-height:1.4">
+          Ingresá tu email y contraseña de coordinador
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">EMAIL</label>
+            <input id="coord-email-stock" type="email" placeholder="coordinador@efficommerce.com"
+              style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">CONTRASEÑA</label>
+            <input id="coord-pass-stock" type="password" placeholder="••••••••"
+              style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)"
+              onkeydown="if(event.key==='Enter') loginDesdeModal()">
+          </div>
+        </div>
+        <button class="btn bp" onclick="loginDesdeModal()" style="width:100%;padding:11px;font-size:1rem;font-weight:700">
+          Iniciar Sesión
+        </button>
+        <div id="coord-error" style="font-size:12px;color:var(--red);margin-top:6px;min-height:16px"></div>
+      </div>
+      <div class="mft" style="justify-content:center">
+        <button class="btn bo" onclick="cerrarModalCoordinador()" style="min-width:100px">Cancelar</button>
       </div>
     </div>
-    <button class="btn bp" onclick="loginDesdeModal()" style="width:100%;padding:11px;font-size:1rem;font-weight:700">
-      Iniciar Sesión
-    </button>
-    <div id="coord-error" style="font-size:12px;color:var(--red);margin-top:6px;min-height:16px"></div>
   `;
+
+  // Añadir evento para cerrar con Escape
+  modal.onkeydown = function(e) {
+    if (e.key === 'Escape') cerrarModalCoordinador();
+  };
+
   modal.classList.add('open');
-  setTimeout(() => document.getElementById('coord-email-stock').focus(), 150);
+  setTimeout(() => {
+    const emailInput = document.getElementById('coord-email-stock');
+    if (emailInput) emailInput.focus();
+  }, 150);
+}
+
+// Función para cerrar el modal y restaurar posibilidad de reabrirlo
+function cerrarModalCoordinador() {
+  const modal = document.getElementById('o-pin');
+  if (modal) {
+    modal.classList.remove('open');
+  }
 }
 
 async function loginDesdeModal() {
