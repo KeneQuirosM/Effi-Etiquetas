@@ -6604,7 +6604,16 @@ function skuColor(sku){
   if(!sku)return'var(--dim)';let h=0;for(let i=0;i<sku.length;i++)h=(h*31+sku.charCodeAt(i))&0xffffff;
   return['#00ff88','#f0a500','#00d4ff','#ff6b35','#ffd000','#a78bfa','#f472b6','#34d399'][Math.abs(h)%8];
 }
-function fullRender(){renderZoneList();populateZoneSel();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();actualizarMetricasEspacio();}
+
+function fullRender(){
+  try { renderZoneList(); } catch(e){ console.error('Error en renderZoneList:', e); }
+  try { populateZoneSel(); } catch(e){ console.error('Error en populateZoneSel:', e); }
+  try { renderFloor(); } catch(e){ console.error('Error en renderFloor:', e); }
+  try { updateStats(); } catch(e){ console.error('Error en updateStats:', e); }
+  try { updateExpiryPanel(); } catch(e){ console.error('Error en updateExpiryPanel:', e); }
+  try { updateLowStockPanel(); } catch(e){ console.error('Error en updateLowStockPanel:', e); }
+  try { actualizarMetricasEspacio(); } catch(e){ console.error('Error en actualizarMetricasEspacio:', e); }
+}
 
 // ═══════════════ CLOCK ═══════════════
 function tick(){const n=new Date();document.getElementById('hclock').innerHTML=`<div class="dot y"></div>${n.toTimeString().slice(0,8)}`;}
