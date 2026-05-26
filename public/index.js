@@ -1369,7 +1369,11 @@ function bulkSelectNone() {
 function openStockforge() {
   window.open('/almacen4.html', '_blank');
 }
-  
+
+function openDev() {
+  window.open('/devoluciones.html', '_blank');
+}
+
 function updateBulkCount() {
   const n = document.querySelectorAll('.bulk-item.selected').length;
   document.getElementById('bulk-selected-count').textContent = `${n} seleccionado${n !== 1 ? 's' : ''}`;
