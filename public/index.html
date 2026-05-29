@@ -1,373 +1,427 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Generador de Guías - Cargo Expreso</title>
-  <link rel="stylesheet" href="styles.css">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <!-- Librería para leer PDFs -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<!-- Tesseract.js para OCR -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efficommerce — Generador de Etiquetas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/index.css">
 </head>
-<!-- Modal para no manifestadas -->
-<div id="noManifestadasModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>❌ Guías No Manifestadas</h3>
-      <span class="close" onclick="cerrarModalNoManifestadas()">&times;</span>
-    </div>
-    <div class="modal-body">
-      <div class="modal-stats">
-        <span class="badge total">Total: <span id="modalTotalNoManif">0</span></span>
-        <button onclick="copiarNoManifestadas()" class="btn-copy">
-          <i class="fas fa-copy"></i> Copiar lista
-        </button>
-      </div>
-      <div class="no-manifestadas-list" id="noManifestadasList">
-        <!-- Las guías no manifestadas se insertarán aquí -->
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal de Historial Mejorado -->
-<div id="historialModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>📊 Historial de Documentos</h3>
-            <span class="close" onclick="cerrarModalHistorial()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <div class="historial-stats">
-                <div class="stat-item">
-                    <span class="stat-value" id="historialTotal">0</span>
-                    <span class="stat-label">Total</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="historialComparativos">0</span>
-                    <span class="stat-label">Comparativos</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="historialGuias">0</span>
-                    <span class="stat-label">Guías</span>
-                </div>
-                <button class="btn-clear" onclick="limpiarHistorialConfirm()">
-                    <i class="fas fa-trash"></i> Limpiar
-                </button>
-            </div>
-            <div class="historial-list" id="historialList"></div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Confirmación para Limpiar -->
-<div id="confirmModal" class="modal">
-    <div class="modal-content" style="max-width: 400px;">
-        <div class="modal-header">
-            <h3>⚠️ Confirmar Eliminación</h3>
-            <span class="close" onclick="cerrarConfirmModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <p>¿Estás seguro de que quieres eliminar <strong>todo</strong> el historial?</p>
-            <p style="font-size: 12px; color: #666; margin-top: 10px;">
-                📝 <strong id="confirmCount">0</strong> registros serán eliminados permanentemente.
-            </p>
-        </div>
-        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 15px;">
-            <button class="btn-action secondary" onclick="cerrarConfirmModal()">
-                <i class="fas fa-times"></i> Cancelar
-            </button>
-            <button class="btn-action btn-marcar" onclick="limpiarHistorial()">
-                <i class="fas fa-trash"></i> Sí, Eliminar Todo
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para guías repetidas -->
-<div id="repetidasModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>🔄 Guías Repetidas</h3>
-      <span class="close" onclick="cerrarModalRepetidas()">&times;</span>
-    </div>
-    <div class="modal-body">
-      <div class="modal-stats">
-        <span class="badge total">Total repetidas: <span id="modalTotalRepetidas">0</span></span>
-        <button onclick="copiarRepetidas()" class="btn-copy">
-          <i class="fas fa-copy"></i> Copiar lista
-        </button>
-      </div>
-      <div class="repetidas-list" id="repetidasList">
-        <!-- Las guías repetidas se insertarán aquí -->
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal para faltantes -->
-<div id="faltantesModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>📋 Guías Faltantes</h3>
-<span class="close" onclick="this.closest('.modal').style.display='none'">&times;</span>
-    </div>
-    <div class="modal-body">
-      <div class="modal-stats">
-        <span class="badge total">Total: <span id="modalTotal">0</span></span>
-        <button onclick="copiarFaltantes()" class="btn-copy">
-          <i class="fas fa-copy"></i> Copiar lista
-        </button>
-      </div>
-      <div class="faltantes-list" id="faltantesList">
-        <!-- Las guías faltantes se insertarán aquí -->
-      </div>
-    </div>
-  </div>
-</div>
 <body>
-  <div class="app-container">
-    <!-- Header con logo -->
-<header class="app-header">
-  <div class="logo-container">
-    <div class="logo logo-small">
-      <img src="logo.webp" alt="Cargo Expreso">
+
+<!-- LOGIN OVERLAY (Coordinador) -->
+<div id="pin-overlay">
+  <div class="pin-modal">
+    <h3>🔒 Modo Coordinador</h3>
+    <p>Inicia sesión para acceder</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">EMAIL</label>
+        <input id="coord-email" type="email" placeholder="coordinador@efficommerce.com"
+          style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none"
+          onkeydown="if(event.key==='Enter') document.getElementById('coord-password').focus()">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">CONTRASEÑA</label>
+        <input id="coord-password" type="password" placeholder="••••••••"
+          style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none"
+          onkeydown="if(event.key==='Enter') checkPin()">
+      </div>
     </div>
-    <h1>Gestion de guias y manifiestos</h1>
-  </div>
-  <!-- modal cruces -->
-<div class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
-  <i class="fas fa-exclamation-triangle"></i>
-  <span class="notification-badge" id="notificationBadge">0</span>
-</div>
-
-</header>
-
-    <!-- Sección Dashboard -->
-    <section class="dashboard-section">
-      <div class="section-header">
-        <i class="fas fa-chart-line"></i>
-        <h2>📊 Panel de Control - Comparativo de Manifiesto</h2>
-      </div>
-
-      <div class="dashboard-content">
-        <div class="input-card">
-          <div class="input-group">
-          <label for="fileInput">
-            <i class="fas fa-file-excel"></i>
-            Cargar Manifiesto (.xls/.xlsx)
-          </label>
-          <div class="file-input-container">
-            <input type="file" id="fileInput" accept=".xls,.xlsx" class="hidden-file-input" />
-            <button type="button" class="file-input-button" onclick="document.getElementById('fileInput').click()">
-              <i class="fas fa-upload"></i> Examinar
-            </button>
-            <span class="file-input-label" id="fileInputLabel">Seleccionar archivo...</span>
-          </div>
-        </div>
-
-          <div class="input-group">
-            <label for="scanInput">
-              <i class="fas fa-barcode"></i>
-              Escanear Guía
-            </label>
-            <input type="text" id="scanInput" placeholder="Escanee aquí..." autofocus />
-          </div>
-        </div>
-
-        <!-- Tarjetas métricas -->
-        <div class="metrics-grid">
-          <div class="metric-card total">
-            <div class="metric-icon">
-              <i class="fas fa-clipboard-list"></i>
-            </div>
-            <div class="metric-content">
-              <div class="metric-value" id="dashTotal">0</div>
-              <div class="metric-label">Total en Manifiesto</div>
-            </div>
-          </div>
-
-          <div class="metric-card correct">
-            <div class="metric-icon">
-              <i class="fas fa-check-circle"></i>
-            </div>
-            <div class="metric-content">
-              <div class="metric-value" id="dashCorrectas">0</div>
-              <div class="metric-label">Correctas</div>
-            </div>
-          </div>
-
-          <div class="metric-card warning" onclick="abrirModalFaltantes()" style="cursor: pointer;">
-  <div class="metric-icon">
-    <i class="fas fa-exclamation-triangle"></i>
-  </div>
-  <div class="metric-content">
-    <div class="metric-value" id="dashFaltantes">0</div>
-    <div class="metric-label">Faltantes</div>
+    <button class="btn-action btn-primary" onclick="checkPin()" style="width:100%;padding:11px;font-size:14px">
+      Iniciar Sesión
+    </button>
+    <div class="pin-error" id="pin-error"></div>
+    <button class="btn-cancel-pin" onclick="closePinModal()">Cancelar</button>
   </div>
 </div>
 
-<!-- Modal repetidos, no manifestadas -->
-<div class="metric-card repeat" onclick="abrirModalRepetidas()" style="cursor: pointer;">
-  <div class="metric-icon">
-    <i class="fas fa-redo-alt"></i>
-  </div>
-  <div class="metric-content">
-    <div class="metric-value" id="dashRepetidas">0</div>
-    <div class="metric-label">Repetidas</div>
-  </div>
-</div>
-          <div class="metric-card danger" onclick="abrirModalNoManifestadas()" style="cursor: pointer;">
-  <div class="metric-icon">
-    <i class="fas fa-times-circle"></i>
-  </div>
-  <div class="metric-content">
-    <div class="metric-value" id="dashNoManif">0</div>
-    <div class="metric-label">No Manifestadas</div>
-  </div>
-</div>
-        </div>
-
-         <!-- Barra de progreso -->
-        <div class="progress-container">
-            <div class="progress-header">
-                <div class="progress-title">Progreso de Escaneo</div>
-                <div class="progress-percentage" id="progressPercentage">0%</div>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-            <div class="progress-stats">
-                <span id="progressScanned">0 escaneadas</span>
-                <span id="progressTotal">de 0 totales</span>
-            </div>
-        </div>
-
-
-        <!-- Info de ruta -->
-        <div class="info-card">
-          <h3><i class="fas fa-info-circle"></i> Información de Ruta</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <i class="fas fa-route"></i>
-              <div>
-                <span class="info-label">Ruta:</span>
-                <span class="info-value" id="infoRuta">-</span>
-              </div>
-            </div>
-            <div class="info-item">
-              <i class="fas fa-user-tie"></i>
-              <div>
-                <span class="info-label">Piloto:</span>
-                <span class="info-value" id="infoPiloto">-</span>
-              </div>
-            </div>
-            <div class="info-item">
-              <i class="fas fa-warehouse"></i>
-              <div>
-                <span class="info-label">Bodeguero:</span>
-                <span class="info-value" id="infoBodeguero">-</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <button class="action-btn primary" onclick="openComparativoWindow()">
-          <i class="fas fa-eye"></i>
-          Ver Reporte Comparativo
-        </button>
-<!-- Abrir modal historial -->
-<button class="action-btn" onclick="abrirModalHistorial()">
-    <i class="fas fa-history"></i>
-    Ver Historial
-</button>
-      </div>
-    </section>
-
-    <!-- Sección Generador de Guías -->
-    <section class="generator-section">
-      <div class="section-header">
-        <i class="fas fa-qrcode"></i>
-        <h2>🚚 Generador de Guías de Courier</h2>
-      </div>
-
-      <div class="generator-card">
-        <div class="input-group">
-          <label for="guideNumber">
-            <i class="fas fa-tag"></i>
-            Número de Guía
-          </label>
-          <input type="text" id="guideNumber" placeholder="Ej: CE1234567890" maxlength="20">
-        </div>
-
-        <div class="input-group">
-          <label for="codeType">
-            <i class="fas fa-barcode"></i>
-            Tipo de Código
-          </label>
-          <select id="codeType">
-            <option value="qr">Código QR</option>
-            <option value="barcode">Código de Barras</option>
-          </select>
-        </div>
-
-        <button class="action-btn generate" onclick="generateGuide()">
-          <i class="fas fa-magic"></i>
-          Generar Guía
-        </button>
-      </div>
-      <!-- Etiqueta de courier -->
-<div class="courier-guide" id="courierGuide">
-  <div class="guide-header">
-      <div class="company-logo">
-          <div class="logo-content">
-            <img src="logo-cargo-expreso.png" alt="Cargo Expreso" 
-            onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
-          </div>
-      </div>
-      <div class="guide-title">Número de Guía:</div>
-      <div class="guide-number" id="displayGuideNumber">-</div>
-  </div>
-
-  <div class="qr-container">
-      <div id="qrcode"></div>
-  </div>
-
-  <div class="guide-footer">
-      <strong>CARGO EXPRESO</strong><br>
-      <i class="fas fa-qrcode"></i> Escanea el código para rastrear tu paquete<br>
-      <i class="fas fa-phone"></i> Tel: (506) 7057-3397<br>
-      <i class="fas fa-globe"></i> cargoexpreso.com<br>
-      <span class="footer-tags">Logística • Transporte • Paquetería</span>
-  </div>
-</div>
-
-      <div class="actions" id="actions">
-        <button class="action-btn" onclick="imprimirGuia()">
-            <i class="fas fa-print"></i>
-            Imprimir Guía
-        </button>
-        <button class="action-btn secondary" onclick="newGuide()">
-            <i class="fas fa-plus"></i>
-            Nueva Guía
-        </button>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="brand">
+    <img id="brand-logo-img" style="max-height:44px;max-width:200px;display:none;margin-bottom:6px;object-fit:contain;filter:brightness(0) invert(1)">
+    <div id="brand-logo-text">
+      <h1>Effi<span>commerce</span></h1>
+      <p>Generador de Etiquetas</p>
     </div>
-      </div>
-    </section>
   </div>
 
-  <!-- Librerías externas -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode/dist/JsBarcode.all.min.js"></script>
+  <div class="sidebar-body">
+    <div class="field">
+      <label>Tienda</label>
+      <select id="select-tienda"><option value="">-- Seleccione --</option></select>
+    </div>
 
-  <!-- Tu lógica separada -->
-  <script src="script.js"></script>
+   <div class="field">
+      <label>🔍 Buscar producto</label>
+      <input type="text" id="search-producto" placeholder="Escribe para filtrar..." autocomplete="off" disabled>
+    </div>
 
-  <!-- Contenedor de notificaciones toast -->
-<div id="toastContainer" class="toast-container"></div>
+
+    <div class="field">
+      <label>Producto</label>
+      <select id="select-producto"><option value="">-- Seleccione --</option></select>
+    </div>
+
+    <div class="field">
+      <label>ID</label>
+      <select id="select-id"><option value="">-- ID --</option></select>
+    </div>
+
+    <div class="field">
+      <label>Formato</label>
+      <select id="select-formato">
+        <option value="estandar">Estándar (Normal)</option>
+        <option value="solo-notas">Solo Observaciones (Renglones)</option>
+        <option value="fragil">Frágil (Manejo Especial)</option>
+      </select>
+    </div>
+
+    <button class="btn-print" id="btn-print">🖨 Imprimir Etiqueta</button>
+    <button class="btn-bulk" id="btn-bulk" onclick="openBulk()">📋 Impresión Masiva</button>
+    <button class="btn-bulk" id="btn-stockforge" onclick="openStockforge()">🏭 Gestión de Almacén</button>
+    <button class="btn-bulk" id="btn-stockforge" onclick="openDev()">🔄Gestión de Devoluciones</button>
+  </div>
+
+  <div class="sidebar-footer">
+    <button class="btn-coord" id="btn-coord-toggle" onclick="toggleCoordMode()">
+      <span id="coord-icon">🔒</span>
+      <span id="coord-label">Modo Coordinador</span>
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN AREA -->
+<main class="main">
+
+  <!-- COORDINATOR PANEL -->
+  <div id="coord-panel">
+    <div class="coord-header">
+      <h2>⚙️ Panel de Coordinador <span class="coord-badge">ADMIN</span></h2>
+      <button class="btn-action btn-ghost" onclick="lockCoord()">🔒 Cerrar sesión</button>
+    </div>
+
+    <div class="coord-tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-add-item')">Agregar Producto</button>
+      <button class="tab-btn" onclick="switchTab('tab-add-tienda')">Nueva Tienda</button>
+      <button class="tab-btn" onclick="switchTab('tab-manage')">Gestionar Inventario</button>
+      <button class="tab-btn" onclick="switchTab('tab-config')">Configuración</button>
+    </div>
+
+    <!-- TAB: Agregar Producto -->
+    <div id="tab-add-item" class="tab-content active">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tienda</label>
+          <select id="c-select-tienda"></select>
+        </div>
+        <div class="form-group">
+          <label>ID del Producto</label>
+          <input type="text" id="c-new-id" placeholder="Ej: 72">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Nombre del Producto</label>
+          <input type="text" id="c-new-nombre" placeholder="Ej: CEPILLO ELÉCTRICO FACIAL">
+        </div>
+      </div>
+      <button class="btn-action btn-primary" onclick="addProducto()">+ Agregar Producto</button>
+    </div>
+
+    <!-- TAB: Nueva Tienda -->
+    <div id="tab-add-tienda" class="tab-content">
+      <div class="form-row single" style="margin-bottom:16px">
+        <div class="form-group">
+          <label>Nombre de la Tienda Nueva</label>
+          <input type="text" id="c-tienda-nombre" placeholder="Ej: Mi Nueva Tienda">
+        </div>
+      </div>
+      <button class="btn-action btn-primary" onclick="addTienda()">+ Crear Tienda</button>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+
+      <p class="section-label" style="margin-bottom:10px">Renombrar Tienda Existente</p>
+      <div class="form-row" style="margin-bottom:14px">
+        <div class="form-group">
+          <label>Tienda</label>
+          <select id="c-rename-tienda-select"></select>
+        </div>
+        <div class="form-group">
+          <label>Nombre Nuevo</label>
+          <input type="text" id="c-rename-tienda-nombre" placeholder="Ej: SICOMMER 2">
+        </div>
+      </div>
+      <button class="btn-action btn-primary" onclick="renameTienda()">✏️ Renombrar</button>
+    </div>
+
+    <!-- TAB: Gestionar Inventario -->
+    <div id="tab-manage" class="tab-content">
+      <div class="form-row single" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Selecciona Tienda</label>
+          <select id="m-select-tienda" onchange="renderManageList()"></select>
+        </div>
+      </div>
+      <p class="section-label">Inventario actual</p>
+      <div class="inv-list" id="manage-inv-list">
+        <div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona una tienda</span></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-action btn-danger" onclick="deleteTienda()" style="margin-left:auto">🗑 Eliminar Tienda</button>
+      </div>
+    </div>
+    <!-- TAB: Configuración -->
+    <div id="tab-config" class="tab-content">
+
+      <!-- LOGO ETIQUETA -->
+      <p class="section-label" style="margin-bottom:10px">Logo de la Etiqueta</p>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+        <div id="logo-preview-box" style="width:90px;height:60px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);flex-shrink:0">
+          <span id="logo-preview-placeholder" style="font-size:11px;color:var(--muted);text-align:center;padding:4px">Sin logo</span>
+          <img id="logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
+            📁 Subir imagen
+            <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
+          </label>
+          <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeLogo()">✕ Quitar logo</button>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:22px">PNG, JPG o SVG. Se guarda en el navegador automáticamente.</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
+
+      <!-- LOGO RÓTULO -->
+      <p class="section-label" style="margin-bottom:10px">Logo del Rótulo A4</p>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+        <div id="rotulo-logo-preview-box" style="width:90px;height:60px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);flex-shrink:0">
+          <span id="rotulo-logo-preview-placeholder" style="font-size:11px;color:var(--muted);text-align:center;padding:4px">Sin logo</span>
+          <img id="rotulo-logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
+            📁 Subir imagen
+            <input type="file" id="rotulo-logo-file-input" accept="image/*" style="display:none" onchange="handleRotuloLogoUpload(this)">
+          </label>
+          <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeRotuloLogo()">✕ Quitar logo</button>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Logo independiente del rótulo. Si no se sube, usa el mismo que la etiqueta.</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
+
+      <!-- PIN -->
+      <p class="section-label" style="margin-bottom:10px">Cambiar Contraseña</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contraseña Nueva</label>
+          <input type="password" id="c-pin-nuevo" maxlength="32" placeholder="••••••••" inputmode="text" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label>Confirmar Nueva</label>
+          <input type="password" id="c-pin-confirm" maxlength="32" placeholder="••••••••" inputmode="text" autocomplete="new-password">
+        </div>
+      </div>
+
+    <button class="btn-action btn-primary" onclick="changePin()" style="margin-bottom:8px">🔑 Actualizar Contraseña</button>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">La contraseña debe tener al menos 6 caracteres y puede incluir letras y números.</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
+
+      <!-- JSON -->
+      <p class="section-label" style="margin-bottom:10px">Datos de Inventario (JSON)</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn-action btn-primary" onclick="exportJSON()" style="font-size:12px">⬇ Exportar JSON</button>
+        <label class="btn-action btn-ghost" style="cursor:pointer;font-size:12px">
+          ⬆ Importar JSON
+          <input type="file" id="json-file-input" accept=".json" style="display:none" onchange="handleJSONImport(this)">
+        </label>
+      </div>
+      <p style="font-size:11px;color:var(--muted)">Exporta para editar en Excel/Notepad. Importa para aplicar cambios masivos.</p>
+       <!-- Consola de importación -->
+      <div style="margin-top: 20px;">
+        <p class="section-label" style="margin-bottom: 8px;">📋 Registro de importación</p>
+        <div id="import-log-container" style="background: #1e1e2f; border-radius: 8px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: 'Space Mono', monospace; font-size: 11px; line-height: 1.5; border: 1px solid var(--border);">
+          <div id="import-log" style="color: #a6e22e; white-space: pre-wrap; word-break: break-all;">— Esperando archivo —</div>
+        </div>
+        <button class="btn-action btn-ghost" onclick="clearImportLog()" style="margin-top: 8px; font-size: 11px; padding: 4px 12px;">🗑 Limpiar registro</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- LABEL PREVIEW -->
+  <div id="etiqueta" class="label-4x6">
+    <div class="label-header">
+      <img id="label-logo-img" style="max-width:80%;max-height:1in;display:none;margin:0 auto">
+      <div id="label-logo-text">
+        <div style="font-family:'Space Mono',monospace;font-size:22pt;font-weight:700;color:#1a2a6c;letter-spacing:-1px;padding:14px 0 4px">Effi<span style="color:#f2a900">commerce</span></div>
+        <div style="font-size:9pt;letter-spacing:2px;color:#7a80a0;text-transform:uppercase;margin-bottom:4px">Logística Interna</div>
+      </div>
+      <!-- QR GS1: arriba derecha, absoluto para no afectar layout -->
+      <div class="label-qr" id="label-qr-area">
+        <div id="label-qr-code"></div>
+        <span id="label-qr-text"></span>
+      </div>
+    </div>
+
+    <div class="label-body">
+      <h1 id="view-name">PRODUCTO</h1>
+    </div>
+
+    <div class="label-notes">
+      <table class="notes-table">
+        <thead>
+          <tr>
+            <th class="col-obs">Observación</th>
+            <th class="col-fecha">Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+          <tr><td></td><td class="col-fecha"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+        <!-- Contenido para modo FRÁGIL (vectores profesionales) -->
+    <div class="label-fragil" style="display: none;">
+      <div style="font-family: 'Space Mono', monospace; font-size: 20pt; font-weight: 700; color: #1a2a6c; margin-bottom: 0.1in;">
+        <span id="fragil-tienda">TIENDA</span>
+      </div>
+      <div class="fragil-title" id="fragil-main-text">FRÁGIL</div>
+      <div class="fragil-grid">
+        
+         <!-- FRAGIL -->
+        <div class="fragil-icon-item">
+          <svg width="48" height="48" viewBox="0 0 360.613 360.613" xmlns="http://www.w3.org/2000/svg">
+            <path d="M278.886 178.881c18.078-22.445 28.032-50.712 28.029-79.438.096-2.597 2.316-63.676 2.316-67.287 0-17.732-16.914-32.154-37.702-32.154H143.28s-2.859-.18-4.089 2.586c-.388.869-9.535 21.438-10.091 33.878-.164 3.651 2.745 7.022 8.334 13.156 2.271 2.492 6.331 6.953 7.271 9.03-1.046 1.303-3.795 1.854-7.675 2.492-4.254.699-9.071 1.495-12.039 4.917-4.751 4.948-2.571 13.271-.465 21.327 1.144 4.386 2.878 11.007 1.752 12.845-.035.054-.133.219-.736.352-1.409.293-4.548-.808-8.456-3.96-6.328-5.099-11.675-13.074-11.675-17.413l-.018-.397c-.122-1.358 1.841-4.099 3.422-6.3 3.139-4.377 7.435-10.369 4.174-16.895l-.354-.588c-2.896-4.051-10.073-4.387-18.382-4.775-3.185-.15-7.92-.369-9.451-.911-7.748-8.694-25.182-36.14-25.36-36.419-2.436-3.875-8.227-2.044-8.057 2.495.678 18.227 1.398 83.255 1.405 83.86 0 28.881 9.953 57.148 28.031 79.595 17.21 21.37 41.109 36.708 67.526 43.461 4.865 23.979 9.035 62.221.634 70.623-4.917 4.915-29.329 4.929-45.093 3.374l-.43-.021c-17.73 0-32.153 14.42-32.153 32.147 0 17.729 14.423 32.15 32.153 32.15h152.785c17.729 0 32.15-14.422 32.15-32.15 0-17.728-14.422-32.147-32.15-32.147l-.431.021c-15.309 1.52-40.229 1.493-45.096-3.374-8.399-8.402-4.231-46.644.633-70.623 26.418-6.753 50.318-22.092 67.528-43.461zM203.357 217.864c-1.439 6.751-13.725 66.377 1.184 81.282 9.479 9.479 44.388 6.647 51.912 5.917 12.813.108 23.203 10.566 23.203 23.402 0 12.908-10.5 23.408-23.408 23.408H103.463c-12.907 0-23.409-10.5-23.409-23.408 0-12.836 10.39-23.292 23.205-23.402 7.529.729 42.435 3.559 51.908-5.916 14.91-14.906 2.518-74.51 1.184-81.283-.581-2.948-3.203-3.322-3.287-3.342-53.892-12.481-91.527-59.864-91.527-115.287-.007-.526-.499-42.581-1.025-68.642 5.927 8.912 13.569 19.989 18.146 24.992 2.464 2.694 6.905 3.023 15.195 3.412 3.367.154 9.393.437 11.526 1.243.184 1.659-1.373 3.992-3.663 7.183-2.513 3.502-5.354 7.464-5.04 11.979.116 7.977 7.564 18.101 14.928 24.032 3.515 2.831 8.5 5.938 13.459 5.938.781 0 1.566-.079 2.34-.25 2.78-.603 4.969-2.096 6.331-4.317 3.078-5.013 1.219-12.114-.746-19.63-.992-3.796-3.059-11.692-1.674-13.077l.268-.291c.873-1.051 4.2-1.598 6.874-2.039 5.313-.875 12.59-2.074 14.897-8.997l.164-.665c.82-4.917-4.02-10.228-9.618-16.375-2.147-2.359-5.337-5.859-6.038-7.323.542-8.484 5.859-22.034 8.208-27.666h125.462c15.968 0 28.96 10.502 28.96 23.412 0 2.763-1.511 45.014-2.313 67.129 0 55.37-37.639 102.757-91.533 115.234-2.836.302-5.356.595-6 3.617z" />
+          </svg>
+          <span>FRAGIL</span>
+        </div>
+
+
+        <!-- NO MOJAR -->
+        <div class="fragil-icon-item">
+          <svg width="48" height="48" viewBox="0 0 419.624 419.624" xmlns="http://www.w3.org/2000/svg">
+            <path d="M363.943 90.342C333.501 31.24 280.268 0 209.997 0 139.045 0 85.512 31.458 55.185 90.971c-25.659 50.352-25.954 102.985-25.954 105.203 0 1.525 0 6.162 4.438 6.162 2.037 0 3.266 0 13.021-13.102.126-.171 12.885-17.05 29.997-17.05 17.024 0 29.883 16.886 30.006 17.05 9.748 13.102 13.067 13.102 14.317 13.102 1.362 0 4.553 0 14.312-13.102.125-.171 12.885-17.05 29.999-17.05 2.415 0 4.371-1.957 4.371-4.372s-1.957-4.372-4.371-4.372c-21.457 0-36.388 19.733-37.012 20.572-3.044 4.088-5.674 7.013-7.302 8.608-1.629-1.593-4.259-4.52-7.3-8.606-.624-.839-15.557-20.574-37.019-20.574-21.455 0-36.386 19.733-37.01 20.572-.413.556-.815 1.089-1.205 1.604 1.836-25.215 10.526-85.493 50.969-129.041 29.476-31.74 70.037-47.834 120.555-47.834 50.546 0 91.125 16.314 120.611 48.486 40.354 44.033 48.83 104.376 50.577 128.989-.535-.692-1.091-1.427-1.668-2.203-.626-.839-15.559-20.574-37.014-20.574-21.464 0-36.398 19.732-37.022 20.574-3.034 4.076-5.649 6.998-7.277 8.596-1.625-1.595-4.23-4.502-7.228-8.528-.627-.879-15.595-21.484-37.244-20.636-25.398 1.033-38.686 16.281-38.686 30.812v161.755c0 32.309-19.853 54.872-48.276 54.872-29.009 0-51.095-23.362-54.926-55.549-.1-.836-.033-2.048.846-3.09.948-1.121 2.616-1.771 4.824-1.881 3.051-.174 3.805 3.156 3.912 3.705 5.043 25.795 22.406 44.629 45.335 44.629h.007c24.73-.004 38.344-18.444 38.344-48.126 0-2.415-1.957-4.372-4.372-4.372-2.415 0-4.371 1.957-4.371 4.372 0 9.237-.511 39.379-29.604 39.383h-.005c-18.913 0-32.151-14.153-36.433-36.056-1.497-7.657-6.823-12.592-13.249-12.27-5.926.295-9.288 2.867-11.066 4.973-2.266 2.683-3.279 6.15-2.85 9.763 4.362 36.655 30.098 63.26 63.606 63.26 33.572 0 57.019-26.159 57.019-63.615V194.254c0-10.357 10.407-21.266 30.299-22.074 16.841-.689 29.654 16.814 29.827 17.054 9.75 13.102 12.931 13.102 14.288 13.102 1.358 0 4.541 0 14.291-13.102.128-.171 12.891-17.05 30.011-17.05 17.017 0 29.876 16.886 30 17.05 9.75 13.102 11.619 13.102 13.424 13.102 4.466 0 4.466-4.676 4.466-6.435.503-3.115.202-55.69-25.947-106.461z" />
+          </svg>
+          <span>NO MOJAR</span>
+        </div>
+
+        <!-- ESTE LADO ARRIBA -->
+        <div class="fragil-icon-item">
+          <svg width="48" height="48" viewBox="0 0 365.449 365.449" xmlns="http://www.w3.org/2000/svg">
+            <path d="M358.939 106.357l-47.942-70.502c-3.957-5.819-12.566-10.376-19.603-10.376H67.061c-6.825 0-15.76 3.962-20.344 9.021L15.12 69.381c-1.621 1.789-1.485 4.555.304 6.176 1.791 1.619 4.553 1.481 6.176-.306l31.597-34.882c2.967-3.275 9.446-6.148 13.864-6.148h224.333c4.146 0 10.042 3.121 12.372 6.548l47.942 70.504c2.662 3.915 4.998 11.504 4.998 16.237v197.852c0 3.234-2.63 5.863-5.863 5.863h-34.412v-66.086h16.902c2.88 0 5.151-1.262 6.231-3.465 1.079-2.203.688-4.771-1.079-7.047l-32.507-41.947c-1.548-1.996-3.809-3.127-6.159-3.109-2.367.02-4.595 1.191-6.107 3.207l-31.397 41.861c-1.719 2.295-2.077 4.865-.98 7.057 1.096 2.189 3.369 3.445 6.233 3.445h15.683v66.086h-63.863v-66.086h16.902c2.88 0 5.151-1.262 6.231-3.465 1.079-2.203.688-4.771-1.079-7.047l-32.508-41.947c-1.547-1.996-3.763-3.127-6.158-3.111-2.367.021-4.595 1.193-6.107 3.209l-31.397 41.861c-1.719 2.295-2.075 4.865-.981 7.055 1.097 2.191 3.368 3.447 6.234 3.447h15.683v66.086H21.357c-6.956 0-12.614-5.658-12.614-12.615V123.274c0-6.956 5.659-12.616 12.614-12.616h282.02c2.415 0 4.372-1.957 4.372-4.372 0-2.413-1.957-4.371-4.372-4.371H21.357C9.581 101.916 0 111.498 0 123.274v195.339c0 11.775 9.581 21.357 21.357 21.357h169.221c2.415 0 4.372-1.957 4.372-4.371v-74.828c0-2.414-1.957-4.371-4.372-4.371l-15.694-.002 27.97-37.293 28.898 37.295h-16.735c-2.417 0-4.371 1.957-4.371 4.371V335.6c0 2.414 1.954 4.371 4.371 4.371h72.494c2.415 0 4.371-1.957 4.371-4.371 0-.141.112-74.828.112-74.828 0-2.414-1.957-4.371-4.372-4.371l-15.694-.002 27.97-37.293 28.898 37.295h-16.735c-2.417 0-4.371 1.957-4.371 4.371 0 0 .1 74.672.1 74.828 0 2.414 1.956 4.371 4.371 4.371h38.684c8.052 0 14.605-6.551 14.605-14.605V127.511c-.001-6.492-2.861-15.784-6.513-21.154z" />
+          </svg>
+          <span>ESTE LADO ARRIBA</span>
+        </div>
+
+      
+      </div>
+      <div style="text-align: center; font-family: 'Inter', sans-serif; font-size: 10pt; color: #7a80a0; margin-top: 8px;">
+        MANEJAR CON CUIDADO
+      </div>
+    </div>
+
+    <div class="label-footer">
+      <span id="view-tienda" class="shop-corner">TIENDA</span>
+      <p>ID: <span id="view-id">0000</span></p>
+    </div>
+  </div>
+</main>
+
+<!-- RÓTULO MODAL -->
+<div id="rotulo-overlay">
+  <div class="rotulo-modal">
+    <div class="rotulo-modal-header">
+      <h3>🪧 Rótulo A4 Horizontal</h3>
+      <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px" onclick="closeRotulo()">✕</button>
+    </div>
+    <div class="rotulo-modal-body">
+      <div class="form-row single" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Nombre (texto grande)</label>
+          <input type="text" id="rotulo-input-name" placeholder="Ej: SICOMMER"
+            oninput="updateRotuloPreview()"
+            style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;text-transform:uppercase">
+        </div>
+      </div>
+      <div class="form-row single" style="margin-bottom:4px">
+        <div class="form-group">
+          <label>ID <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+          <input type="text" id="rotulo-input-id" placeholder="Ej: 39753"
+            oninput="updateRotuloPreview()"
+            style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none">
+        </div>
+      </div>
+      <!-- Vista previa -->
+      <div class="rotulo-preview" id="rotulo-preview-box">
+        <div class="rotulo-preview-border"></div>
+        <div class="rotulo-preview-logo" id="rotulo-prev-logo">
+          <div class="brand-text">Effi<span>commerce</span></div>
+        </div>
+        <div class="rotulo-preview-name" id="rotulo-prev-name">NOMBRE</div>
+        <div class="rotulo-preview-id" id="rotulo-prev-id" style="display:none"></div>
+      </div>
+    </div>
+    <div class="rotulo-modal-footer">
+      <button class="btn-action btn-ghost" onclick="closeRotulo()">Cancelar</button>
+      <button class="btn-action btn-primary" onclick="printRotulo()">🖨 Imprimir A4</button>
+    </div>
+  </div>
+</div>
+
+<!-- RÓTULO PRINT AREA -->
+<div id="rotulo-print-area"></div>
+
+<!-- BULK PRINT MODAL -->
+<div id="bulk-overlay">
+  <div class="bulk-modal">
+    <div class="bulk-modal-header">
+      <h3>📋 Impresión Masiva</h3>
+      <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px" onclick="closeBulk()">✕ Cerrar</button>
+    </div>
+    <div class="bulk-modal-body">
+      <select class="bulk-tienda-select" id="bulk-select-tienda" onchange="renderBulkList()">
+        <option value="">-- Selecciona una tienda --</option>
+      </select>
+      <div class="bulk-actions-bar">
+        <span id="bulk-selected-count">0 seleccionados</span>
+        <button class="btn-action btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkSelectAll()">Seleccionar todo</button>
+        <button class="btn-action btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkSelectNone()">Limpiar</button>
+      </div>
+      <div class="bulk-list" id="bulk-list">
+        <div class="bulk-item"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>
+      </div>
+    </div>
+    <div class="bulk-modal-footer">
+      <span class="bulk-count" id="bulk-footer-count">Selecciona productos para imprimir</span>
+      <button class="btn-action btn-ghost" onclick="closeBulk()">Cancelar</button>
+      <button class="btn-action btn-primary" onclick="printBulk()">🖨 Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK PRINT AREA (hidden, shown only when printing) -->
+<div id="bulk-print-area"></div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/index.js"></script>
 </body>
 </html>

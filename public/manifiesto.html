@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Guías - Cargo Expreso</title>
+  <link rel="stylesheet" href="manifiesto.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Librería para leer PDFs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<!-- Tesseract.js para OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<!-- Modal para no manifestadas -->
+<div id="noManifestadasModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>❌ Guías No Manifestadas</h3>
+      <span class="close" onclick="cerrarModalNoManifestadas()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div class="modal-stats">
+        <span class="badge total">Total: <span id="modalTotalNoManif">0</span></span>
+        <button onclick="copiarNoManifestadas()" class="btn-copy">
+          <i class="fas fa-copy"></i> Copiar lista
+        </button>
+      </div>
+      <div class="no-manifestadas-list" id="noManifestadasList">
+        <!-- Las guías no manifestadas se insertarán aquí -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Historial Mejorado -->
+<div id="historialModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📊 Historial de Documentos</h3>
+            <span class="close" onclick="cerrarModalHistorial()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="historial-stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="historialTotal">0</span>
+                    <span class="stat-label">Total</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="historialComparativos">0</span>
+                    <span class="stat-label">Comparativos</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="historialGuias">0</span>
+                    <span class="stat-label">Guías</span>
+                </div>
+                <button class="btn-clear" onclick="limpiarHistorialConfirm()">
+                    <i class="fas fa-trash"></i> Limpiar
+                </button>
+            </div>
+            <div class="historial-list" id="historialList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación para Limpiar -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>⚠️ Confirmar Eliminación</h3>
+            <span class="close" onclick="cerrarConfirmModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>¿Estás seguro de que quieres eliminar <strong>todo</strong> el historial?</p>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                📝 <strong id="confirmCount">0</strong> registros serán eliminados permanentemente.
+            </p>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 15px;">
+            <button class="btn-action secondary" onclick="cerrarConfirmModal()">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+            <button class="btn-action btn-marcar" onclick="limpiarHistorial()">
+                <i class="fas fa-trash"></i> Sí, Eliminar Todo
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para guías repetidas -->
+<div id="repetidasModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>🔄 Guías Repetidas</h3>
+      <span class="close" onclick="cerrarModalRepetidas()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div class="modal-stats">
+        <span class="badge total">Total repetidas: <span id="modalTotalRepetidas">0</span></span>
+        <button onclick="copiarRepetidas()" class="btn-copy">
+          <i class="fas fa-copy"></i> Copiar lista
+        </button>
+      </div>
+      <div class="repetidas-list" id="repetidasList">
+        <!-- Las guías repetidas se insertarán aquí -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para faltantes -->
+<div id="faltantesModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>📋 Guías Faltantes</h3>
+<span class="close" onclick="this.closest('.modal').style.display='none'">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div class="modal-stats">
+        <span class="badge total">Total: <span id="modalTotal">0</span></span>
+        <button onclick="copiarFaltantes()" class="btn-copy">
+          <i class="fas fa-copy"></i> Copiar lista
+        </button>
+      </div>
+      <div class="faltantes-list" id="faltantesList">
+        <!-- Las guías faltantes se insertarán aquí -->
+      </div>
+    </div>
+  </div>
+</div>
+<body>
+  <div class="app-container">
+    <!-- Header con logo -->
+<header class="app-header">
+  <div class="logo-container">
+    <div class="logo logo-small">
+      <img src="logo.webp" alt="Cargo Expreso">
+    </div>
+    <h1>Gestion de guias y manifiestos</h1>
+  </div>
+  <!-- modal cruces -->
+<div class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
+  <i class="fas fa-exclamation-triangle"></i>
+  <span class="notification-badge" id="notificationBadge">0</span>
+</div>
+
+</header>
+
+    <!-- Sección Dashboard -->
+    <section class="dashboard-section">
+      <div class="section-header">
+        <i class="fas fa-chart-line"></i>
+        <h2>📊 Panel de Control - Comparativo de Manifiesto</h2>
+      </div>
+
+      <div class="dashboard-content">
+        <div class="input-card">
+          <div class="input-group">
+          <label for="fileInput">
+            <i class="fas fa-file-excel"></i>
+            Cargar Manifiesto (.xls/.xlsx)
+          </label>
+          <div class="file-input-container">
+            <input type="file" id="fileInput" accept=".xls,.xlsx" class="hidden-file-input" />
+            <button type="button" class="file-input-button" onclick="document.getElementById('fileInput').click()">
+              <i class="fas fa-upload"></i> Examinar
+            </button>
+            <span class="file-input-label" id="fileInputLabel">Seleccionar archivo...</span>
+          </div>
+        </div>
+
+          <div class="input-group">
+            <label for="scanInput">
+              <i class="fas fa-barcode"></i>
+              Escanear Guía
+            </label>
+            <input type="text" id="scanInput" placeholder="Escanee aquí..." autofocus />
+          </div>
+        </div>
+
+        <!-- Tarjetas métricas -->
+        <div class="metrics-grid">
+          <div class="metric-card total">
+            <div class="metric-icon">
+              <i class="fas fa-clipboard-list"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-value" id="dashTotal">0</div>
+              <div class="metric-label">Total en Manifiesto</div>
+            </div>
+          </div>
+
+          <div class="metric-card correct">
+            <div class="metric-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-value" id="dashCorrectas">0</div>
+              <div class="metric-label">Correctas</div>
+            </div>
+          </div>
+
+          <div class="metric-card warning" onclick="abrirModalFaltantes()" style="cursor: pointer;">
+  <div class="metric-icon">
+    <i class="fas fa-exclamation-triangle"></i>
+  </div>
+  <div class="metric-content">
+    <div class="metric-value" id="dashFaltantes">0</div>
+    <div class="metric-label">Faltantes</div>
+  </div>
+</div>
+
+<!-- Modal repetidos, no manifestadas -->
+<div class="metric-card repeat" onclick="abrirModalRepetidas()" style="cursor: pointer;">
+  <div class="metric-icon">
+    <i class="fas fa-redo-alt"></i>
+  </div>
+  <div class="metric-content">
+    <div class="metric-value" id="dashRepetidas">0</div>
+    <div class="metric-label">Repetidas</div>
+  </div>
+</div>
+          <div class="metric-card danger" onclick="abrirModalNoManifestadas()" style="cursor: pointer;">
+  <div class="metric-icon">
+    <i class="fas fa-times-circle"></i>
+  </div>
+  <div class="metric-content">
+    <div class="metric-value" id="dashNoManif">0</div>
+    <div class="metric-label">No Manifestadas</div>
+  </div>
+</div>
+        </div>
+
+         <!-- Barra de progreso -->
+        <div class="progress-container">
+            <div class="progress-header">
+                <div class="progress-title">Progreso de Escaneo</div>
+                <div class="progress-percentage" id="progressPercentage">0%</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-stats">
+                <span id="progressScanned">0 escaneadas</span>
+                <span id="progressTotal">de 0 totales</span>
+            </div>
+        </div>
+
+
+        <!-- Info de ruta -->
+        <div class="info-card">
+          <h3><i class="fas fa-info-circle"></i> Información de Ruta</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <i class="fas fa-route"></i>
+              <div>
+                <span class="info-label">Ruta:</span>
+                <span class="info-value" id="infoRuta">-</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <i class="fas fa-user-tie"></i>
+              <div>
+                <span class="info-label">Piloto:</span>
+                <span class="info-value" id="infoPiloto">-</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <i class="fas fa-warehouse"></i>
+              <div>
+                <span class="info-label">Bodeguero:</span>
+                <span class="info-value" id="infoBodeguero">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="action-btn primary" onclick="openComparativoWindow()">
+          <i class="fas fa-eye"></i>
+          Ver Reporte Comparativo
+        </button>
+<!-- Abrir modal historial -->
+<button class="action-btn" onclick="abrirModalHistorial()">
+    <i class="fas fa-history"></i>
+    Ver Historial
+</button>
+      </div>
+    </section>
+
+    <!-- Sección Generador de Guías -->
+    <section class="generator-section">
+      <div class="section-header">
+        <i class="fas fa-qrcode"></i>
+        <h2>🚚 Generador de Guías de Courier</h2>
+      </div>
+
+      <div class="generator-card">
+        <div class="input-group">
+          <label for="guideNumber">
+            <i class="fas fa-tag"></i>
+            Número de Guía
+          </label>
+          <input type="text" id="guideNumber" placeholder="Ej: CE1234567890" maxlength="20">
+        </div>
+
+        <div class="input-group">
+          <label for="codeType">
+            <i class="fas fa-barcode"></i>
+            Tipo de Código
+          </label>
+          <select id="codeType">
+            <option value="qr">Código QR</option>
+            <option value="barcode">Código de Barras</option>
+          </select>
+        </div>
+
+        <button class="action-btn generate" onclick="generateGuide()">
+          <i class="fas fa-magic"></i>
+          Generar Guía
+        </button>
+      </div>
+      <!-- Etiqueta de courier -->
+<div class="courier-guide" id="courierGuide">
+  <div class="guide-header">
+      <div class="company-logo">
+          <div class="logo-content">
+            <img src="logo-cargo-expreso.png" alt="Cargo Expreso" 
+            onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
+          </div>
+      </div>
+      <div class="guide-title">Número de Guía:</div>
+      <div class="guide-number" id="displayGuideNumber">-</div>
+  </div>
+
+  <div class="qr-container">
+      <div id="qrcode"></div>
+  </div>
+
+  <div class="guide-footer">
+      <strong>CARGO EXPRESO</strong><br>
+      <i class="fas fa-qrcode"></i> Escanea el código para rastrear tu paquete<br>
+      <i class="fas fa-phone"></i> Tel: (506) 7057-3397<br>
+      <i class="fas fa-globe"></i> cargoexpreso.com<br>
+      <span class="footer-tags">Logística • Transporte • Paquetería</span>
+  </div>
+</div>
+
+      <div class="actions" id="actions">
+        <button class="action-btn" onclick="imprimirGuia()">
+            <i class="fas fa-print"></i>
+            Imprimir Guía
+        </button>
+        <button class="action-btn secondary" onclick="newGuide()">
+            <i class="fas fa-plus"></i>
+            Nueva Guía
+        </button>
+    </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Librerías externas -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode/dist/JsBarcode.all.min.js"></script>
+
+  <!-- Tu lógica separada -->
+  <script src="manifiesto.js"></script>
+
+  <!-- Contenedor de notificaciones toast -->
+<div id="toastContainer" class="toast-container"></div>
+</body>
+</html>
