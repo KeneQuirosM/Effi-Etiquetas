@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Devoluciones Transportadora</title>
+  <title>Generador de Guías - Cargo Expreso</title>
   <link rel="stylesheet" href="manifiesto.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <!-- Librería para leer PDFs -->
@@ -286,84 +286,10 @@
       </div>
     </section>
 
-    <!-- Sección Generador de Guías -->
-    <section class="generator-section">
-      <div class="section-header">
-        <i class="fas fa-qrcode"></i>
-        <h2>🚚 Generador de Guías de Courier</h2>
-      </div>
-
-      <div class="generator-card">
-        <div class="input-group">
-          <label for="guideNumber">
-            <i class="fas fa-tag"></i>
-            Número de Guía
-          </label>
-          <input type="text" id="guideNumber" placeholder="Ej: CE1234567890" maxlength="20">
-        </div>
-
-        <div class="input-group">
-          <label for="codeType">
-            <i class="fas fa-barcode"></i>
-            Tipo de Código
-          </label>
-          <select id="codeType">
-            <option value="qr">Código QR</option>
-            <option value="barcode">Código de Barras</option>
-          </select>
-        </div>
-
-        <button class="action-btn generate" onclick="generateGuide()">
-          <i class="fas fa-magic"></i>
-          Generar Guía
-        </button>
-      </div>
-      <!-- Etiqueta de courier -->
-<div class="courier-guide" id="courierGuide">
-  <div class="guide-header">
-      <div class="company-logo">
-          <div class="logo-content">
-            <img src="logo-cargo-expreso.png" alt="Cargo Expreso" 
-            onerror="this.style.display='none'; var fb=document.getElementById('logoFallback'); if(fb) fb.style.display='flex';">
-            <div id="logoFallback" style="display:none; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:#0d6efd;">CARGO EXPRESO</div>
-          </div>
-      </div>
-      <div class="guide-title">Número de Guía:</div>
-      <div class="guide-number" id="displayGuideNumber">-</div>
-  </div>
-
-  <div class="qr-container">
-      <div id="qrcode"></div>
-  </div>
-
-  <div class="guide-footer">
-      <strong>CARGO EXPRESO</strong><br>
-      <i class="fas fa-qrcode"></i> Escanea el código para rastrear tu paquete<br>
-      <i class="fas fa-phone"></i> Tel: (506) 7057-3397<br>
-      <i class="fas fa-globe"></i> cargoexpreso.com<br>
-      <span class="footer-tags">Logística • Transporte • Paquetería</span>
-  </div>
-</div>
-
-      <div class="actions" id="actions">
-        <button class="action-btn" onclick="imprimirGuia()">
-            <i class="fas fa-print"></i>
-            Imprimir Guía
-        </button>
-        <button class="action-btn secondary" onclick="newGuide()">
-            <i class="fas fa-plus"></i>
-            Nueva Guía
-        </button>
-    </div>
-      </div>
-    </section>
   </div>
 
   <!-- Librerías externas -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode/dist/JsBarcode.all.min.js"></script>
 
   <!-- Tu lógica separada -->
   <script src="manifiesto.js"></script>
