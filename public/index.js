@@ -1374,6 +1374,10 @@ function openDev() {
   window.open('/devoluciones.html', '_blank');
 }
 
+function openMan() {
+  window.open('/manifiesto.html', '_blank');
+}
+
 function updateBulkCount() {
   const n = document.querySelectorAll('.bulk-item.selected').length;
   document.getElementById('bulk-selected-count').textContent = `${n} seleccionado${n !== 1 ? 's' : ''}`;
