@@ -430,94 +430,105 @@ async function handleFile(event) {
         showToast(`✅ Excel: ${guias.length} guías encontradas`, 'success');
         
       } else if (isPDF) {
-        // ====== PROCESAR PDF CON OCR ======
-        showToast('📄 Procesando PDF con OCR... Puede tomar unos segundos', 'info');
-        
+        // ====== PROCESAR PDF CON OCR (VERSIÓN ROBUSTA) ======
+        showToast('📄 Cargando PDF...', 'info');
+
         const pdfData = new Uint8Array(e.target.result);
-        
-        // Cargar PDF.js si es necesario
+
+        // Asegurar PDF.js cargado con worker correcto
         if (typeof pdfjsLib === 'undefined') {
           await new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
-            script.onload = () => {
-              pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-              resolve();
-            };
-            script.onerror = reject;
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('No se pudo cargar PDF.js'));
             document.head.appendChild(script);
           });
         }
-        
+        // Siempre asignar el worker (puede no estar seteado)
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
         try {
           const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-          console.log("PDF cargado, páginas:", pdf.numPages);
-          
+          const totalPaginas = pdf.numPages;
+          console.log("PDF cargado, páginas:", totalPaginas);
+
           let textoCompleto = '';
-          
-          // Procesar primeras 2 páginas (donde suelen estar los datos)
-          for (let i = 1; i <= Math.min(pdf.numPages, 2); i++) {
+          let usandoOCR = false;
+
+          for (let i = 1; i <= totalPaginas; i++) {
+            showToast(`📄 Procesando página ${i} de ${totalPaginas}...`, 'info');
             const page = await pdf.getPage(i);
-            
-            // Intentar extraer texto normal primero
+
+            // 1. Intentar texto nativo primero
             const textContent = await page.getTextContent();
-            let pageText = textContent.items.map(item => item.str).join(' ');
-            
-            // Si no hay texto o es muy poco, usar OCR
-            if (!pageText.trim() || pageText.length < 50) {
-              console.log(`Página ${i} sin texto detectable, usando OCR...`);
-              
-              // Convertir página a imagen
-              const scale = 1.5;
-              const viewport = page.getViewport({ scale: scale });
+            let pageText = textContent.items.map(item => item.str).join(' ').trim();
+
+            // 2. Si no hay texto suficiente, usar OCR
+            if (pageText.length < 30) {
+              usandoOCR = true;
+              showToast(`🔍 Página ${i}: usando OCR (imagen escaneada)...`, 'info');
+
+              const scale = 2.0; // Mayor escala = mejor reconocimiento
+              const viewport = page.getViewport({ scale });
               const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
               canvas.width = viewport.width;
               canvas.height = viewport.height;
-              
-              await page.render({ canvasContext: context, viewport: viewport }).promise;
-              
-              // Usar OCR si Tesseract está disponible
+              await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
               if (typeof Tesseract !== 'undefined') {
-                showToast('🔍 Reconociendo texto de imagen...', 'info');
-                const result = await Tesseract.recognize(canvas, 'spa', {
-                  logger: m => console.log(m)
-                });
-                pageText = result.data.text;
+                try {
+                  const result = await Tesseract.recognize(canvas, 'spa', {
+                    logger: m => {
+                      if (m.status === 'recognizing text') {
+                        console.log(`OCR p${i}: ${Math.round(m.progress * 100)}%`);
+                      }
+                    }
+                  });
+                  pageText = result.data.text;
+                } catch (ocrErr) {
+                  console.warn(`OCR falló en página ${i}:`, ocrErr);
+                  pageText = '';
+                }
               } else {
-                console.warn("Tesseract no disponible, solo texto nativo");
+                console.warn("Tesseract no disponible");
               }
-            } else {
-              console.log(`Página ${i} tiene texto directo`);
             }
-            
-            textoCompleto += pageText + ' ';
+
+            console.log(`Página ${i} texto (${pageText.length} chars):`, pageText.substring(0, 200));
+            textoCompleto += pageText + '\n';
           }
-          
-          console.log("Texto extraído:", textoCompleto.substring(0, 500));
-          
-          // Extraer guías del texto
-          const patronGuia1000 = /\b(1000\d{6})\b/g;
-          const patronCR = /CR\d{7,}/gi;
-          const patronPrefijo = /(?:BC|1W|2W|3W|4W)[A-Z0-9\-]+/gi;
-          
-          let guiasEncontradas = [];
-          guiasEncontradas.push(...(textoCompleto.match(patronGuia1000) || []));
-          guiasEncontradas.push(...(textoCompleto.match(patronCR) || []));
-          guiasEncontradas.push(...(textoCompleto.match(patronPrefijo) || []));
-          
+
+          console.log("--- TEXTO COMPLETO EXTRAÍDO ---");
+          console.log(textoCompleto);
+
+          // Extraer guías con múltiples patrones
+          const pat1000  = /\b(1000\d{6})\b/g;           // guías tipo 1000XXXXXX
+          const patCR    = /\bCR\d{7,}\b/gi;              // guías CR
+          const patPrefijo = /\b(?:BC|1W|2W|3W|4W)[A-Z0-9\-]{4,}\b/gi; // BC, 1W, etc.
+
+          let guiasEncontradas = [
+            ...(textoCompleto.match(pat1000)    || []),
+            ...(textoCompleto.match(patCR)      || []),
+            ...(textoCompleto.match(patPrefijo) || []),
+          ];
+
           guias = [...new Set(guiasEncontradas)];
           console.log("Guías encontradas:", guias);
-          
+
           if (guias.length === 0) {
-            showToast('⚠️ No se encontraron guías en el PDF. Verifica que sea legible.', 'warning');
+            const detalle = usandoOCR
+              ? 'El OCR no reconoció guías. El PDF puede estar muy borroso o inclinado.'
+              : 'No se encontraron guías con los patrones conocidos (1000XXXXXX, CR..., etc).';
+            showToast(`⚠️ ${detalle}`, 'warning', 8000);
           } else {
-            showToast(`📄 PDF: ${guias.length} guías encontradas`, 'success');
+            showToast(`✅ PDF: ${guias.length} guías encontradas${usandoOCR ? ' (vía OCR)' : ''}`, 'success');
           }
-          
+
         } catch (pdfError) {
           console.error("Error al procesar PDF:", pdfError);
-          showToast('❌ Error al leer el PDF. ¿Está dañado o protegido?', 'error');
+          showToast(`❌ Error al leer el PDF: ${pdfError.message}`, 'error', 8000);
           guias = [];
         }
       }
