@@ -599,7 +599,7 @@ function abrirModalFaltantes() {
   if (total) total.textContent = faltantesSet.size;
   if (lista) {
     lista.innerHTML = faltantesSet.size === 0 ? '<div><p>No hay guías faltantes</p></div>' : 
-      Array.from(faltantesSet).map(g => `<div><span>${g}</span><button onclick="marcarComoEscaneada('${g}')">✓</button></div>`).join('');
+      Array.from(faltantesSet).map(g => `<div class="faltante-item"><span class="faltante-number">${g}</span><button class="btn-action btn-marcar" onclick="marcarComoEscaneada('${g}')"><i class="fas fa-check"></i> Marcar</button></div>`).join('');
   }
   modal.style.display = 'block';
 }
