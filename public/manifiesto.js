@@ -658,19 +658,261 @@ function cerrarConfirmModal() { const m = document.getElementById('confirmModal'
 // ====== COMPARATIVO ======
 function openComparativoWindow() {
   const ahora = new Date();
-  const fecha = ahora.toLocaleDateString();
+  const fecha = ahora.toLocaleDateString('es-CR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   const hora = ahora.toLocaleTimeString();
   const manifestadas = manifiesto.slice();
   const pistoleadas = Array.from(correctasSet);
+  const noManif = Array.from(noManifestadasSet);
+  const faltantes = Array.from(faltantesSet);
   const maxLen = Math.max(manifestadas.length, pistoleadas.length);
+
   guardarEnHistorial('comparativo', { total: manifiesto.length, correctas: correctasSet.size, faltantes: faltantesSet.size, noManifestadas: noManifestadasSet.size, ruta: window.nombreRuta });
-  let filas = '';
-  for (let i = 0; i < maxLen; i++) filas += `<tr><td>${manifestadas[i] || ''}</td><td>${pistoleadas[i] || ''}</td></tr>`;
-  const html = `<!DOCTYPE html><html><head><title>Comparativo</title><meta charset="utf-8"><style>body{font-family:sans-serif;margin:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#0d6efd;color:#fff}.info{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}.card{display:inline-block;padding:20px;margin:10px;border-radius:10px;color:#fff;text-align:center}.total{background:#0d6efd}.correctas{background:#198754}.faltantes{background:#ffc107;color:#000}.no-manifestadas{background:#dc3545}</style></head><body>
-  <h1>Comparativo de Ruta</h1><div class="info"><div><strong>Ruta:</strong> ${window.nombreRuta}</div><div><strong>Piloto:</strong> ${window.piloto}</div><div><strong>Bodeguero:</strong> ${window.bodeguero}</div></div>
-  <div><div class="card total"><div>${manifiesto.length}</div><div>Total</div></div><div class="card correctas"><div>${correctasSet.size}</div><div>Correctas</div></div><div class="card faltantes"><div>${faltantesSet.size}</div><div>Faltantes</div></div><div class="card no-manifestadas"><div>${noManifestadasSet.size}</div><div>No Manifestadas</div></div></div>
-  <h3>Guías Manifestadas vs Pistoleadas</h3><table><thead><tr><th>Manifestadas</th><th>Pistoleadas</th></tr></thead><tbody>${filas}</tbody></table>
-  <button onclick="window.print()">Imprimir</button></body></html>`;
+
+  let filasComparativo = '';
+  for (let i = 0; i < maxLen; i++) {
+    const esCorrecta = pistoleadas[i] && correctasSet.has(pistoleadas[i]);
+    filasComparativo += `<tr>
+      <td>${manifestadas[i] || '<span style="color:#aaa">—</span>'}</td>
+      <td style="color:${esCorrecta ? '#198754' : '#dc3545'}; font-weight:600">${pistoleadas[i] || '<span style="color:#aaa">—</span>'}</td>
+    </tr>`;
+  }
+
+  let filasNoManif = noManif.length === 0
+    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Ninguna guía fuera de manifiesto ✅</td></tr>'
+    : noManif.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#dc3545;font-weight:600">${g}</td></tr>`).join('');
+
+  let filаsFaltantes = faltantes.length === 0
+    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Todas las guías fueron escaneadas ✅</td></tr>'
+    : faltantes.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#e67e00;font-weight:600">${g}</td></tr>`).join('');
+
+  const porcentaje = manifiesto.length > 0 ? Math.round((correctasSet.size / manifiesto.length) * 100) : 0;
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Reporte Comparativo — ${window.nombreRuta}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background:#f0f2f5; color:#333; }
+
+    .page { max-width:900px; margin:0 auto; background:white; }
+
+    /* HEADER */
+    .report-header {
+      background: linear-gradient(135deg, #0e15d3, #7a9df3);
+      color:white; padding:30px 40px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .report-header h1 { font-size:22px; font-weight:700; margin-bottom:4px; }
+    .report-header .sub { font-size:13px; opacity:0.85; }
+    .report-header .fecha { font-size:12px; opacity:0.75; margin-top:6px; }
+    .badge-ruta {
+      background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4);
+      padding:8px 16px; border-radius:20px; font-size:13px; font-weight:600;
+    }
+
+    /* INFO RUTA */
+    .info-bar {
+      background:#f8f9fa; border-bottom:1px solid #e9ecef;
+      display:flex; gap:0; padding:0;
+    }
+    .info-bar-item {
+      flex:1; padding:14px 20px; border-right:1px solid #e9ecef;
+      display:flex; flex-direction:column; gap:2px;
+    }
+    .info-bar-item:last-child { border-right:none; }
+    .info-bar-item .label { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; }
+    .info-bar-item .value { font-size:14px; font-weight:600; color:#333; }
+
+    /* TARJETAS MÉTRICAS */
+    .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-bottom:1px solid #e9ecef; }
+    .metric {
+      padding:24px 20px; text-align:center; border-right:1px solid #e9ecef;
+    }
+    .metric:last-child { border-right:none; }
+    .metric .num { font-size:36px; font-weight:800; line-height:1; }
+    .metric .lbl { font-size:12px; margin-top:6px; opacity:0.8; font-weight:500; text-transform:uppercase; letter-spacing:.5px; }
+    .metric.total  { background:#eef2ff; color:#0e15d3; }
+    .metric.ok     { background:#f0fdf4; color:#198754; }
+    .metric.warn   { background:#fffbeb; color:#d97706; }
+    .metric.danger { background:#fff1f2; color:#dc3545; }
+
+    /* BARRA PROGRESO */
+    .progress-section { padding:20px 40px; border-bottom:1px solid #e9ecef; }
+    .progress-label { display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; font-weight:600; }
+    .progress-track { height:12px; background:#e9ecef; border-radius:6px; overflow:hidden; }
+    .progress-bar { height:100%; border-radius:6px; background:linear-gradient(90deg,#198754,#20c997); transition:width .5s; }
+
+    /* SECCIONES DE TABLA */
+    .section { padding:30px 40px; border-bottom:1px solid #e9ecef; }
+    .section-title {
+      font-size:15px; font-weight:700; margin-bottom:16px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .section-title .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    thead th {
+      background:#f1f3f9; padding:10px 14px; text-align:left;
+      font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+      color:#666; border-bottom:2px solid #e0e4ef;
+    }
+    tbody tr:nth-child(even) { background:#fafbfc; }
+    tbody td { padding:9px 14px; border-bottom:1px solid #f0f0f0; }
+
+    /* BOTÓN IMPRIMIR */
+    .print-bar {
+      position:sticky; top:0; z-index:100;
+      background:white; border-bottom:2px solid #e9ecef;
+      padding:12px 40px; display:flex; justify-content:flex-end; gap:10px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.08);
+    }
+    .btn-print {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 24px; border:none; border-radius:8px;
+      font-size:14px; font-weight:600; cursor:pointer;
+      background:linear-gradient(135deg,#0e15d3,#7a9df3); color:white;
+      box-shadow:0 4px 12px rgba(14,21,211,0.3);
+      transition:all .2s;
+    }
+    .btn-print:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(14,21,211,0.4); }
+    .btn-close {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 20px; border:2px solid #e9ecef; border-radius:8px;
+      font-size:14px; font-weight:600; cursor:pointer;
+      background:white; color:#666; transition:all .2s;
+    }
+    .btn-close:hover { background:#f8f9fa; }
+
+    /* FOOTER */
+    .report-footer {
+      padding:20px 40px; text-align:center;
+      font-size:11px; color:#aaa; background:#f8f9fa;
+    }
+
+    @media print {
+      .print-bar { display:none !important; }
+      body { background:white; }
+      .page { max-width:100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Barra de imprimir -->
+  <div class="print-bar">
+    <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir Reporte</button>
+  </div>
+
+  <!-- Encabezado -->
+  <div class="report-header">
+    <div>
+      <h1>Reporte Comparativo de Manifiesto</h1>
+      <div class="sub">Efficommerce — Transportadora</div>
+      <div class="fecha">📅 ${fecha} &nbsp;|&nbsp; 🕐 ${hora}</div>
+    </div>
+    <div class="badge-ruta">🚚 Ruta: ${window.nombreRuta}</div>
+  </div>
+
+  <!-- Info ruta -->
+  <div class="info-bar">
+    <div class="info-bar-item">
+      <span class="label">Piloto</span>
+      <span class="value">${window.piloto}</span>
+    </div>
+    <div class="info-bar-item">
+      <span class="label">Bodeguero</span>
+      <span class="value">${window.bodeguero}</span>
+    </div>
+    <div class="info-bar-item">
+      <span class="label">Fecha generación</span>
+      <span class="value">${ahora.toLocaleDateString()}</span>
+    </div>
+    <div class="info-bar-item">
+      <span class="label">Hora</span>
+      <span class="value">${hora}</span>
+    </div>
+  </div>
+
+  <!-- Métricas -->
+  <div class="metrics">
+    <div class="metric total">
+      <div class="num">${manifiesto.length}</div>
+      <div class="lbl">Total Manifiesto</div>
+    </div>
+    <div class="metric ok">
+      <div class="num">${correctasSet.size}</div>
+      <div class="lbl">Correctas</div>
+    </div>
+    <div class="metric warn">
+      <div class="num">${faltantesSet.size}</div>
+      <div class="lbl">Faltantes</div>
+    </div>
+    <div class="metric danger">
+      <div class="num">${noManifestadasSet.size}</div>
+      <div class="lbl">No Manifestadas</div>
+    </div>
+  </div>
+
+  <!-- Progreso -->
+  <div class="progress-section">
+    <div class="progress-label">
+      <span>Progreso de entrega</span>
+      <span>${porcentaje}% completado</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-bar" style="width:${porcentaje}%"></div>
+    </div>
+  </div>
+
+  <!-- Tabla comparativo -->
+  <div class="section">
+    <div class="section-title">
+      <span class="dot" style="background:#0e15d3"></span>
+      Guías Manifestadas vs Escaneadas
+    </div>
+    <table>
+      <thead><tr><th>Manifestadas</th><th>Escaneadas</th></tr></thead>
+      <tbody>${filasComparativo}</tbody>
+    </table>
+  </div>
+
+  <!-- Guías No Manifestadas -->
+  <div class="section">
+    <div class="section-title">
+      <span class="dot" style="background:#dc3545"></span>
+      Guías No Manifestadas (${noManif.length})
+      <span style="font-size:12px;color:#888;font-weight:400">— escaneadas pero no estaban en el manifiesto</span>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Número de Guía</th></tr></thead>
+      <tbody>${filasNoManif}</tbody>
+    </table>
+  </div>
+
+  <!-- Guías Faltantes -->
+  <div class="section">
+    <div class="section-title">
+      <span class="dot" style="background:#d97706"></span>
+      Guías Faltantes (${faltantes.length})
+      <span style="font-size:12px;color:#888;font-weight:400">— en el manifiesto pero no escaneadas</span>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Número de Guía</th></tr></thead>
+      <tbody>${filаsFaltantes}</tbody>
+    </table>
+  </div>
+
+  <div class="report-footer">
+    Generado por Sistema de Gestión de Manifiestos — Efficommerce Transportadora
+  </div>
+
+</div>
+</body></html>`;
+
   const win = window.open("", "_blank");
   win.document.write(html);
   win.document.close();
