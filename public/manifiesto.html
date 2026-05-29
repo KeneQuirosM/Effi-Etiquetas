@@ -6,6 +6,47 @@
   <title>Generador de Guías - Cargo Expreso</title>
   <link rel="stylesheet" href="manifiesto.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      width: 100%;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .header-logo-img {
+      height: 48px;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+    .header-titles h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin: 0;
+      color: white;
+    }
+    .header-sub {
+      font-size: 0.8rem;
+      opacity: 0.8;
+      font-weight: 300;
+      color: white;
+    }
+    .header-qr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .header-qr span {
+      color: white;
+    }
+  </style>
   <!-- Librería para leer PDFs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <!-- Tesseract.js para OCR -->
@@ -132,10 +173,13 @@
     <!-- Header con logo -->
 <header class="app-header">
   <div class="logo-container">
-    <div class="logo logo-small">
-      <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png" alt="Efficommerce">
+    <div class="header-left">
+      <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png" alt="Efficommerce" class="header-logo-img" onerror="this.style.display='none'">
+      <div class="header-titles">
+        <h1>Gestión de Manifiestos</h1>
+        <span class="header-sub">Transportadora</span>
+      </div>
     </div>
-    <h1>Gestion de manifiestos Transportadora</h1>
   </div>
   <!-- modal cruces -->
 <div class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
@@ -173,7 +217,7 @@
               <i class="fas fa-barcode"></i>
               Escanear Guía
             </label>
-            <input type="text" id="scanInput" placeholder="Escanee aquí..." autofocus />
+            <input type="text" id="scanInput" placeholder="Escanee aquí..." autofocus onkeydown="onScanEnter(event)" />
           </div>
         </div>
 
