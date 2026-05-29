@@ -468,25 +468,43 @@ async function handleFile(event) {
             // 2. Si no hay texto suficiente, usar OCR
             if (pageText.length < 30) {
               usandoOCR = true;
-              showToast(`🔍 Página ${i}: usando OCR (imagen escaneada)...`, 'info');
+              showToast(`🔍 Página ${i}: usando OCR...`, 'info');
 
-              const scale = 2.0; // Mayor escala = mejor reconocimiento
-              const viewport = page.getViewport({ scale });
-              const canvas = document.createElement('canvas');
-              canvas.width = viewport.width;
-              canvas.height = viewport.height;
-              await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+              // Función auxiliar para renderizar página con rotación opcional
+              const renderCanvas = async (rotation = 0) => {
+                const viewport = page.getViewport({ scale: 2.0, rotation });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                return canvas;
+              };
 
               if (typeof Tesseract !== 'undefined') {
                 try {
-                  const result = await Tesseract.recognize(canvas, 'spa', {
-                    logger: m => {
-                      if (m.status === 'recognizing text') {
-                        console.log(`OCR p${i}: ${Math.round(m.progress * 100)}%`);
-                      }
-                    }
+                  // Primer intento: rotación normal
+                  let canvas = await renderCanvas(0);
+                  let result = await Tesseract.recognize(canvas, 'spa', {
+                    logger: m => { if (m.status === 'recognizing text') console.log(`OCR p${i}: ${Math.round(m.progress * 100)}%`); }
                   });
                   pageText = result.data.text;
+
+                  // Si no encontró guías (1000XXXXXX), intentar rotado 180°
+                  const guiasEnPagina = pageText.match(/\b1000\d{6}\b/g) || [];
+                  if (guiasEnPagina.length === 0) {
+                    console.log(`Página ${i}: sin guías en orientación normal, intentando 180°...`);
+                    showToast(`🔄 Página ${i}: reintentando rotada 180°...`, 'info');
+                    canvas = await renderCanvas(180);
+                    result = await Tesseract.recognize(canvas, 'spa', {
+                      logger: m => { if (m.status === 'recognizing text') console.log(`OCR p${i} rot180: ${Math.round(m.progress * 100)}%`); }
+                    });
+                    const pageText180 = result.data.text;
+                    const guias180 = pageText180.match(/\b1000\d{6}\b/g) || [];
+                    if (guias180.length > guiasEnPagina.length) {
+                      console.log(`Página ${i}: rotación 180° encontró ${guias180.length} guías`);
+                      pageText = pageText180;
+                    }
+                  }
                 } catch (ocrErr) {
                   console.warn(`OCR falló en página ${i}:`, ocrErr);
                   pageText = '';
