@@ -7,34 +7,78 @@
   <link rel="stylesheet" href="manifiesto.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
-    .logo-container {
+    /* ── HEADER OPCIÓN A ── */
+    .app-header {
+      background: #0d1b6e !important;
+      padding: 0 !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+    .header-main-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 20px;
-      width: 100%;
+      padding: 13px 22px;
     }
     .header-left {
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 14px;
+    }
+    .header-logo-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.1);
+      border: 0.5px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 6px 12px;
     }
     .header-logo-img {
-      height: 48px;
+      height: 28px;
       object-fit: contain;
       filter: brightness(0) invert(1);
     }
+    .header-divider {
+      width: 1px;
+      height: 30px;
+      background: rgba(255,255,255,0.15);
+    }
+    .header-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
     .header-titles h1 {
-      font-size: 1.4rem;
-      font-weight: 700;
+      font-size: 1rem;
+      font-weight: 500;
       margin: 0;
       color: white;
+      letter-spacing: 0.2px;
     }
     .header-sub {
-      font-size: 0.8rem;
-      opacity: 0.8;
-      font-weight: 300;
-      color: white;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.5);
+      font-weight: 400;
+    }
+    .header-status-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 22px;
+      background: rgba(0,0,0,0.15);
+      border-top: 0.5px solid rgba(255,255,255,0.08);
+    }
+    .header-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #4caf50;
+      flex-shrink: 0;
+    }
+    .header-status-text {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.45);
     }
 
     /* ── TABLA DE GUÍAS ── */
@@ -326,18 +370,32 @@
 
     <!-- Header -->
     <header class="app-header">
-      <div class="logo-container">
+      <div class="header-main-row">
         <div class="header-left">
-          <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png" alt="Efficommerce" class="header-logo-img" onerror="this.style.display='none'">
+          <!-- Logo en pill -->
+          <div class="header-logo-pill">
+            <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png"
+                 alt="Efficommerce" class="header-logo-img"
+                 onerror="this.style.display='none'">
+          </div>
+          <!-- Separador -->
+          <div class="header-divider"></div>
+          <!-- Títulos -->
           <div class="header-titles">
-            <h1>Gestión de Manifiestos</h1>
-            <span class="header-sub">Transportadora</span>
+            <h1>Comparativo de devoluciones</h1>
+            <span class="header-sub">Manifiesto · Verificación de guías · RedLogistics</span>
           </div>
         </div>
+        <!-- Notificación cruces -->
+        <div class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span class="notification-badge" id="notificationBadge">0</span>
+        </div>
       </div>
-      <div class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
-        <i class="fas fa-exclamation-triangle"></i>
-        <span class="notification-badge" id="notificationBadge">0</span>
+      <!-- Barra de estado -->
+      <div class="header-status-bar">
+        <span class="header-status-dot"></span>
+        <span class="header-status-text">Sistema activo · Escaneo en tiempo real</span>
       </div>
     </header>
 
