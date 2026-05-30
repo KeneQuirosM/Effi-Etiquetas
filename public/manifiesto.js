@@ -934,6 +934,51 @@ function ocultarIconoNotificacion() { const i=document.getElementById('notificat
 function abrirModalCrucesDesdeIcono() { if(crucesActivos.length) mostrarModalCruces(crucesActivos); }
 function limpiarNotificaciones() { ocultarIconoNotificacion(); cerrarModalCruces(); }
 
+// ====== BUSCADOR DE TABLA ======
+
+function filtrarTabla(query) {
+  const btnLimpiar = document.getElementById('btnLimpiarBusqueda');
+  if (btnLimpiar) btnLimpiar.style.display = query ? 'block' : 'none';
+
+  const term = query.trim().toLowerCase();
+  const filas = document.querySelectorAll('#guiasTableBody tr');
+
+  let visibles = 0;
+  filas.forEach(tr => {
+    // Ignorar fila vacía
+    if (tr.querySelector('.tabla-vacia')) { tr.style.display = ''; return; }
+
+    const celdaGuia = tr.querySelector('td:nth-child(2)');
+    if (!celdaGuia) return;
+
+    const textoGuia = celdaGuia.textContent.trim().toLowerCase();
+    const coincide = !term || textoGuia.includes(term);
+
+    tr.style.display = coincide ? '' : 'none';
+    if (coincide) {
+      visibles++;
+      // Resaltar si hay búsqueda activa
+      if (term) tr.classList.add('fila-highlight');
+      else tr.classList.remove('fila-highlight');
+    } else {
+      tr.classList.remove('fila-highlight');
+    }
+  });
+
+  // Actualizar contador con resultados filtrados
+  const contador = document.getElementById('tablaContador');
+  if (contador) {
+    const total = Array.from(filas).filter(tr => !tr.querySelector('.tabla-vacia')).length;
+    contador.textContent = term ? `${visibles} de ${total}` : total;
+  }
+}
+
+function limpiarBusqueda() {
+  const input = document.getElementById('tablaBuscador');
+  if (input) { input.value = ''; input.focus(); }
+  filtrarTabla('');
+}
+
 // ====== TABLA DE GUÍAS ======
 
 // Estado de checkboxes: guia -> boolean
@@ -943,6 +988,12 @@ function renderTablaGuias() {
   const tbody = document.getElementById('guiasTableBody');
   const contador = document.getElementById('tablaContador');
   if (!tbody) return;
+
+  // Limpiar buscador al re-renderizar
+  const buscador = document.getElementById('tablaBuscador');
+  if (buscador && buscador.value) { buscador.value = ''; }
+  const btnLimpiar = document.getElementById('btnLimpiarBusqueda');
+  if (btnLimpiar) btnLimpiar.style.display = 'none';
 
   // Construir lista unificada:
   // 1) Guías escaneadas (correctas + no manifestadas) — tienen hora de escaneo

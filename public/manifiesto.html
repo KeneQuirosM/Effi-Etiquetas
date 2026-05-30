@@ -143,11 +143,66 @@
       gap: 10px;
       margin-bottom: 10px;
     }
+    .guias-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
     .guias-counter {
       font-size: 13px;
       color: #666;
     }
     .guias-counter strong { color: #1a237e; }
+
+    /* buscador */
+    .tabla-search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .tabla-search-wrapper i {
+      position: absolute;
+      left: 10px;
+      color: #aaa;
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .tabla-search {
+      padding: 7px 12px 7px 30px;
+      border: 1.5px solid #dde3f0;
+      border-radius: 8px;
+      font-size: 13px;
+      width: 220px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      background: #f8f9ff;
+    }
+    .tabla-search:focus {
+      border-color: #1a237e;
+      box-shadow: 0 0 0 3px rgba(26,35,126,.1);
+      background: white;
+    }
+    .tabla-search::placeholder { color: #bbb; }
+
+    /* botón limpiar búsqueda */
+    .btn-clear-search {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0;
+      display: none;
+    }
+    .btn-clear-search:hover { color: #555; }
+
+    /* fila resaltada por búsqueda */
+    .guias-table tbody tr.fila-highlight td {
+      background: #fffde7 !important;
+    }
   </style>
   <!-- Librería para leer PDFs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -381,8 +436,24 @@
         <!-- ── TABLA DE GUÍAS ── -->
         <div class="guias-section">
           <div class="guias-toolbar">
-            <div class="guias-counter">
-              Mostrando <strong id="tablaContador">0</strong> guías registradas
+            <div class="guias-toolbar-left">
+              <div class="guias-counter">
+                Mostrando <strong id="tablaContador">0</strong> guías registradas
+              </div>
+              <div class="tabla-search-wrapper">
+                <i class="fas fa-search"></i>
+                <input
+                  type="text"
+                  id="tablaBuscador"
+                  class="tabla-search"
+                  placeholder="Buscar guía..."
+                  oninput="filtrarTabla(this.value)"
+                  autocomplete="off"
+                />
+                <button class="btn-clear-search" id="btnLimpiarBusqueda" onclick="limpiarBusqueda()" title="Limpiar">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
             </div>
             <button class="btn-exportar-excel" onclick="exportarExcelDevoluciones()">
               <i class="fas fa-file-excel"></i> Exportar Excel — Devoluciones
