@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Generador de Guías - Cargo Expreso</title>
+  <title>Comparativo de Manifiesto </title>
   <link rel="stylesheet" href="manifiesto.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
@@ -403,7 +403,7 @@
     <section class="dashboard-section">
       <div class="section-header">
         <i class="fas fa-chart-line"></i>
-        <h2>📊 Comparativo de Manifiesto</h2>
+        <h2>📊 Panel de Control - Comparativo de Manifiesto</h2>
       </div>
 
       <div class="dashboard-content">
@@ -411,7 +411,7 @@
           <div class="input-group">
             <label for="fileInput">
               <i class="fas fa-file-excel"></i>
-              Cargar Manifiesto (.xls/.xlsx /.pdf)
+              Cargar Manifiesto (.xls/.xlsx)
             </label>
             <div class="file-input-container">
               <input
@@ -499,7 +499,7 @@
                 Mostrando <strong id="tablaContador">0</strong> guías registradas
               </div>
               <div class="tabla-search-wrapper">
-                <i class="fas fa-search"></i>
+                <i class="fas fa-search" style="position:absolute;left:10px;color:#aaa;font-size:13px;pointer-events:none;z-index:1;"></i>
                 <input
                   type="text"
                   id="tablaBuscador"
@@ -507,6 +507,7 @@
                   placeholder="Buscar guía..."
                   oninput="filtrarTabla(this.value)"
                   autocomplete="off"
+                  style="padding-left:30px;"
                 />
                 <button class="btn-clear-search" id="btnLimpiarBusqueda" onclick="limpiarBusqueda()" title="Limpiar">
                   <i class="fas fa-times"></i>
