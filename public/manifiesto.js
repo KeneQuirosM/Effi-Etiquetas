@@ -283,6 +283,7 @@ function updateStats() {
   const repetidasCount = Array.from(guiasEscaneadas.values()).filter(d => d.veces > 1).length;
   if (dashRepetidas) dashRepetidas.textContent = repetidasCount;
   updateProgressBar();
+  renderTablaGuias();
 }
 
 function updateProgressBar() {
@@ -932,6 +933,150 @@ function mostrarIconoNotificacion(cruces) { crucesActivos=cruces; const icono=do
 function ocultarIconoNotificacion() { const i=document.getElementById('notificationIcon'); if(i) i.style.display='none'; }
 function abrirModalCrucesDesdeIcono() { if(crucesActivos.length) mostrarModalCruces(crucesActivos); }
 function limpiarNotificaciones() { ocultarIconoNotificacion(); cerrarModalCruces(); }
+
+// ====== TABLA DE GUÍAS ======
+
+// Estado de checkboxes: guia -> boolean
+const paquetesAbiertos = {};
+
+function renderTablaGuias() {
+  const tbody = document.getElementById('guiasTableBody');
+  const contador = document.getElementById('tablaContador');
+  if (!tbody) return;
+
+  // Construir lista unificada:
+  // 1) Guías escaneadas (correctas + no manifestadas) — tienen hora de escaneo
+  // 2) Faltantes — en manifiesto pero no escaneadas
+  const filas = [];
+
+  // Correctas
+  for (const g of correctasSet) {
+    const datos = guiasEscaneadas.get(g) || guiasEscaneadas.get(normalizarGuia(g));
+    filas.push({
+      guia: g,
+      estado: 'correcta',
+      hora: datos ? datos.primeraVez : '-'
+    });
+  }
+
+  // No manifestadas
+  for (const g of noManifestadasSet) {
+    const datos = guiasEscaneadas.get(normalizarGuia(g));
+    filas.push({
+      guia: g,
+      estado: 'nomanif',
+      hora: datos ? datos.primeraVez : '-'
+    });
+  }
+
+  // Faltantes
+  for (const g of faltantesSet) {
+    filas.push({
+      guia: g,
+      estado: 'faltante',
+      hora: '-'
+    });
+  }
+
+  if (contador) contador.textContent = filas.length;
+
+  if (filas.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="tabla-vacia">
+      <i class="fas fa-barcode" style="font-size:24px;display:block;margin-bottom:8px;opacity:.3"></i>
+      Cargue un manifiesto y escanee guías para verlas aquí
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filas.map((f, i) => {
+    const badgeClass = f.estado === 'correcta' ? 'badge-correcta' :
+                       f.estado === 'nomanif'  ? 'badge-nomanif'  : 'badge-faltante';
+    const badgeText  = f.estado === 'correcta' ? 'En manifiesto' :
+                       f.estado === 'nomanif'  ? 'No manifestada' : 'En manifiesto pero no recibida en físico';
+    const abierto = paquetesAbiertos[f.guia] || false;
+    return `<tr class="${abierto ? 'paquete-abierto' : ''}">
+      <td style="color:#999;font-size:12px;">${i + 1}</td>
+      <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${f.guia}</td>
+      <td><span class="badge-estado ${badgeClass}">${badgeText}</span></td>
+      <td style="color:#888;font-size:12px;">${f.hora}</td>
+      <td style="text-align:center;">
+        <label class="check-abierto">
+          <input type="checkbox" ${abierto ? 'checked' : ''}
+            onchange="togglePaqueteAbierto('${f.guia}', this.checked)" />
+        </label>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function togglePaqueteAbierto(guia, checked) {
+  paquetesAbiertos[guia] = checked;
+  // Resaltar fila sin re-renderizar toda la tabla
+  const filas = document.querySelectorAll('#guiasTableBody tr');
+  filas.forEach(tr => {
+    const celdaGuia = tr.querySelector('td:nth-child(2)');
+    if (celdaGuia && celdaGuia.textContent.trim() === guia) {
+      if (checked) tr.classList.add('paquete-abierto');
+      else tr.classList.remove('paquete-abierto');
+    }
+  });
+}
+
+function exportarExcelDevoluciones() {
+  const hoy = new Date();
+  const fecha = hoy.toISOString().slice(0, 10); // YYYY-MM-DD
+  const nombreArchivo = `Devoluciones RedLogistics ${fecha}.xlsx`;
+
+  // Construir datos igual que renderTablaGuias
+  const filas = [];
+
+  for (const g of correctasSet) {
+    const datos = guiasEscaneadas.get(g) || guiasEscaneadas.get(normalizarGuia(g));
+    filas.push({ guia: g, estado: 'En manifiesto', hora: datos ? datos.primeraVez : '-' });
+  }
+  for (const g of noManifestadasSet) {
+    const datos = guiasEscaneadas.get(normalizarGuia(g));
+    filas.push({ guia: g, estado: 'No manifestada', hora: datos ? datos.primeraVez : '-' });
+  }
+  for (const g of faltantesSet) {
+    filas.push({ guia: g, estado: 'En manifiesto pero no recibida en físico', hora: '-' });
+  }
+
+  if (filas.length === 0) {
+    showToast('⚠️ No hay guías para exportar.', 'warning');
+    return;
+  }
+
+  const wsData = [
+    ['#', 'Número de Guía', 'Estado', 'Hora Escaneo', 'Paquete Abierto']
+  ];
+
+  filas.forEach((f, i) => {
+    wsData.push([
+      i + 1,
+      f.guia,
+      f.estado,
+      f.hora,
+      paquetesAbiertos[f.guia] ? 'Sí' : 'No'
+    ]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Ancho de columnas
+  ws['!cols'] = [
+    { wch: 5 },
+    { wch: 22 },
+    { wch: 38 },
+    { wch: 14 },
+    { wch: 16 }
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Devoluciones');
+  XLSX.writeFile(wb, nombreArchivo);
+  showToast(`✅ Excel exportado: ${nombreArchivo}`, 'success');
+}
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {

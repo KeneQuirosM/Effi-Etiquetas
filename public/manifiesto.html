@@ -36,16 +36,118 @@
       font-weight: 300;
       color: white;
     }
-    .header-qr {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      flex-shrink: 0;
+
+    /* ── TABLA DE GUÍAS ── */
+    .guias-section {
+      margin-top: 20px;
     }
-    .header-qr span {
+    .guias-table-wrapper {
+      overflow-x: auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .guias-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      background: white;
+    }
+    .guias-table thead th {
+      background: #1a237e;
       color: white;
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      white-space: nowrap;
     }
+    .guias-table tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+      transition: background .15s;
+    }
+    .guias-table tbody tr:hover { background: #f8f9ff; }
+    .guias-table tbody td {
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+    .guias-table tbody tr:nth-child(even) { background: #fafbff; }
+    .guias-table tbody tr:nth-child(even):hover { background: #f0f2ff; }
+
+    /* badges de estado */
+    .badge-estado {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-correcta  { background: #e8f5e9; color: #2e7d32; }
+    .badge-faltante  { background: #fff8e1; color: #f57f17; }
+    .badge-nomanif   { background: #fce4ec; color: #c62828; }
+
+    /* checkbox paquete abierto */
+    .check-abierto {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .check-abierto input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      accent-color: #e53935;
+      cursor: pointer;
+    }
+    .guias-table tr.paquete-abierto td {
+      background: #fff3e0 !important;
+    }
+
+    /* fila vacía */
+    .tabla-vacia {
+      text-align: center;
+      color: #aaa;
+      padding: 32px !important;
+      font-size: 14px;
+    }
+
+    /* botón exportar */
+    .btn-exportar-excel {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      background: linear-gradient(135deg, #1b5e20, #43a047);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(27,94,32,0.3);
+      transition: all .2s;
+      margin-top: 14px;
+    }
+    .btn-exportar-excel:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 16px rgba(27,94,32,0.4);
+    }
+
+    .guias-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .guias-counter {
+      font-size: 13px;
+      color: #666;
+    }
+    .guias-counter strong { color: #1a237e; }
   </style>
   <!-- Librería para leer PDFs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -67,14 +169,12 @@
           <i class="fas fa-copy"></i> Copiar lista
         </button>
       </div>
-      <div class="no-manifestadas-list" id="noManifestadasList">
-        <!-- Las guías no manifestadas se insertarán aquí -->
-      </div>
+      <div class="no-manifestadas-list" id="noManifestadasList"></div>
     </div>
   </div>
 </div>
 
-<!-- Modal de Historial Mejorado -->
+<!-- Modal de Historial -->
 <div id="historialModal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -104,7 +204,7 @@
   </div>
 </div>
 
-<!-- Modal de Confirmación para Limpiar -->
+<!-- Modal Confirmación Limpiar -->
 <div id="confirmModal" class="modal">
   <div class="modal-content" style="max-width: 400px;">
     <div class="modal-header">
@@ -128,7 +228,7 @@
   </div>
 </div>
 
-<!-- Modal para guías repetidas -->
+<!-- Modal guías repetidas -->
 <div id="repetidasModal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -142,14 +242,12 @@
           <i class="fas fa-copy"></i> Copiar lista
         </button>
       </div>
-      <div class="repetidas-list" id="repetidasList">
-        <!-- Las guías repetidas se insertarán aquí -->
-      </div>
+      <div class="repetidas-list" id="repetidasList"></div>
     </div>
   </div>
 </div>
 
-<!-- Modal para faltantes -->
+<!-- Modal faltantes -->
 <div id="faltantesModal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -163,9 +261,7 @@
           <i class="fas fa-copy"></i> Copiar lista
         </button>
       </div>
-      <div class="faltantes-list" id="faltantesList">
-        <!-- Las guías faltantes se insertarán aquí -->
-      </div>
+      <div class="faltantes-list" id="faltantesList"></div>
     </div>
   </div>
 </div>
@@ -173,7 +269,7 @@
 <body>
   <div class="app-container">
 
-    <!-- Header con logo mejorado -->
+    <!-- Header -->
     <header class="app-header">
       <div class="logo-container">
         <div class="header-left">
@@ -184,14 +280,13 @@
           </div>
         </div>
       </div>
-      <!-- Ícono de notificación de cruces -->
       <div class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
         <i class="fas fa-exclamation-triangle"></i>
         <span class="notification-badge" id="notificationBadge">0</span>
       </div>
     </header>
 
-    <!-- Sección Dashboard -->
+    <!-- Dashboard -->
     <section class="dashboard-section">
       <div class="section-header">
         <i class="fas fa-chart-line"></i>
@@ -229,52 +324,38 @@
           </div>
         </div>
 
-        <!-- Tarjetas métricas -->
+        <!-- Métricas -->
         <div class="metrics-grid">
           <div class="metric-card total">
-            <div class="metric-icon">
-              <i class="fas fa-clipboard-list"></i>
-            </div>
+            <div class="metric-icon"><i class="fas fa-clipboard-list"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashTotal">0</div>
               <div class="metric-label">Total en Manifiesto</div>
             </div>
           </div>
-
           <div class="metric-card correct">
-            <div class="metric-icon">
-              <i class="fas fa-check-circle"></i>
-            </div>
+            <div class="metric-icon"><i class="fas fa-check-circle"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashCorrectas">0</div>
               <div class="metric-label">Correctas</div>
             </div>
           </div>
-
           <div class="metric-card warning" onclick="abrirModalFaltantes()" style="cursor: pointer;">
-            <div class="metric-icon">
-              <i class="fas fa-exclamation-triangle"></i>
-            </div>
+            <div class="metric-icon"><i class="fas fa-exclamation-triangle"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashFaltantes">0</div>
               <div class="metric-label">Faltantes</div>
             </div>
           </div>
-
           <div class="metric-card repeat" onclick="abrirModalRepetidas()" style="cursor: pointer;">
-            <div class="metric-icon">
-              <i class="fas fa-redo-alt"></i>
-            </div>
+            <div class="metric-icon"><i class="fas fa-redo-alt"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashRepetidas">0</div>
               <div class="metric-label">Repetidas</div>
             </div>
           </div>
-
           <div class="metric-card danger" onclick="abrirModalNoManifestadas()" style="cursor: pointer;">
-            <div class="metric-icon">
-              <i class="fas fa-times-circle"></i>
-            </div>
+            <div class="metric-icon"><i class="fas fa-times-circle"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashNoManif">0</div>
               <div class="metric-label">No Manifestadas</div>
@@ -297,42 +378,48 @@
           </div>
         </div>
 
-        <!-- Info de ruta -->
-        <div class="info-card">
-          <h3><i class="fas fa-info-circle"></i> Información de Ruta</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <i class="fas fa-route"></i>
-              <div>
-                <span class="info-label">Ruta:</span>
-                <span class="info-value" id="infoRuta">-</span>
-              </div>
+        <!-- ── TABLA DE GUÍAS ── -->
+        <div class="guias-section">
+          <div class="guias-toolbar">
+            <div class="guias-counter">
+              Mostrando <strong id="tablaContador">0</strong> guías registradas
             </div>
-            <div class="info-item">
-              <i class="fas fa-user-tie"></i>
-              <div>
-                <span class="info-label">Piloto:</span>
-                <span class="info-value" id="infoPiloto">-</span>
-              </div>
-            </div>
-            <div class="info-item">
-              <i class="fas fa-warehouse"></i>
-              <div>
-                <span class="info-label">Bodeguero:</span>
-                <span class="info-value" id="infoBodeguero">-</span>
-              </div>
-            </div>
+            <button class="btn-exportar-excel" onclick="exportarExcelDevoluciones()">
+              <i class="fas fa-file-excel"></i> Exportar Excel — Devoluciones
+            </button>
+          </div>
+          <div class="guias-table-wrapper">
+            <table class="guias-table" id="guiasTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Número de Guía</th>
+                  <th>Estado</th>
+                  <th>Hora Escaneo</th>
+                  <th style="text-align:center;">Paquete Abierto</th>
+                </tr>
+              </thead>
+              <tbody id="guiasTableBody">
+                <tr>
+                  <td colspan="5" class="tabla-vacia">
+                    <i class="fas fa-barcode" style="font-size:24px;display:block;margin-bottom:8px;opacity:.3"></i>
+                    Cargue un manifiesto y escanee guías para verlas aquí
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <button class="action-btn primary" onclick="openComparativoWindow()">
-          <i class="fas fa-eye"></i>
-          Ver Reporte Comparativo
-        </button>
-        <button class="action-btn" onclick="abrirModalHistorial()">
-          <i class="fas fa-history"></i>
-          Ver Historial
-        </button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+          <button class="action-btn primary" onclick="openComparativoWindow()">
+            <i class="fas fa-eye"></i> Ver Reporte Comparativo
+          </button>
+          <button class="action-btn" onclick="abrirModalHistorial()">
+            <i class="fas fa-history"></i> Ver Historial
+          </button>
+        </div>
+
       </div>
     </section>
 
