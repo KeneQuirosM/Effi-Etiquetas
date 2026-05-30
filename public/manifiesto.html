@@ -48,10 +48,11 @@
     }
   </style>
   <!-- Librería para leer PDFs -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<!-- Tesseract.js para OCR -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <!-- Tesseract.js para OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
+
 <!-- Modal para no manifestadas -->
 <div id="noManifestadasModal" class="modal">
   <div class="modal-content">
@@ -75,56 +76,56 @@
 
 <!-- Modal de Historial Mejorado -->
 <div id="historialModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>📊 Historial de Documentos</h3>
-            <span class="close" onclick="cerrarModalHistorial()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <div class="historial-stats">
-                <div class="stat-item">
-                    <span class="stat-value" id="historialTotal">0</span>
-                    <span class="stat-label">Total</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="historialComparativos">0</span>
-                    <span class="stat-label">Comparativos</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="historialGuias">0</span>
-                    <span class="stat-label">Guías</span>
-                </div>
-                <button class="btn-clear" onclick="limpiarHistorialConfirm()">
-                    <i class="fas fa-trash"></i> Limpiar
-                </button>
-            </div>
-            <div class="historial-list" id="historialList"></div>
-        </div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>📊 Historial de Documentos</h3>
+      <span class="close" onclick="cerrarModalHistorial()">&times;</span>
     </div>
+    <div class="modal-body">
+      <div class="historial-stats">
+        <div class="stat-item">
+          <span class="stat-value" id="historialTotal">0</span>
+          <span class="stat-label">Total</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="historialComparativos">0</span>
+          <span class="stat-label">Comparativos</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="historialGuias">0</span>
+          <span class="stat-label">Guías</span>
+        </div>
+        <button class="btn-clear" onclick="limpiarHistorialConfirm()">
+          <i class="fas fa-trash"></i> Limpiar
+        </button>
+      </div>
+      <div class="historial-list" id="historialList"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Modal de Confirmación para Limpiar -->
 <div id="confirmModal" class="modal">
-    <div class="modal-content" style="max-width: 400px;">
-        <div class="modal-header">
-            <h3>⚠️ Confirmar Eliminación</h3>
-            <span class="close" onclick="cerrarConfirmModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <p>¿Estás seguro de que quieres eliminar <strong>todo</strong> el historial?</p>
-            <p style="font-size: 12px; color: #666; margin-top: 10px;">
-                📝 <strong id="confirmCount">0</strong> registros serán eliminados permanentemente.
-            </p>
-        </div>
-        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 15px;">
-            <button class="btn-action secondary" onclick="cerrarConfirmModal()">
-                <i class="fas fa-times"></i> Cancelar
-            </button>
-            <button class="btn-action btn-marcar" onclick="limpiarHistorial()">
-                <i class="fas fa-trash"></i> Sí, Eliminar Todo
-            </button>
-        </div>
+  <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3>⚠️ Confirmar Eliminación</h3>
+      <span class="close" onclick="cerrarConfirmModal()">&times;</span>
     </div>
+    <div class="modal-body">
+      <p>¿Estás seguro de que quieres eliminar <strong>todo</strong> el historial?</p>
+      <p style="font-size: 12px; color: #666; margin-top: 10px;">
+        📝 <strong id="confirmCount">0</strong> registros serán eliminados permanentemente.
+      </p>
+    </div>
+    <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 15px;">
+      <button class="btn-action secondary" onclick="cerrarConfirmModal()">
+        <i class="fas fa-times"></i> Cancelar
+      </button>
+      <button class="btn-action btn-marcar" onclick="limpiarHistorial()">
+        <i class="fas fa-trash"></i> Sí, Eliminar Todo
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal para guías repetidas -->
@@ -153,7 +154,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h3>📋 Guías Faltantes</h3>
-<span class="close" onclick="this.closest('.modal').style.display='none'">&times;</span>
+      <span class="close" onclick="this.closest('.modal').style.display='none'">&times;</span>
     </div>
     <div class="modal-body">
       <div class="modal-stats">
@@ -168,26 +169,27 @@
     </div>
   </div>
 </div>
+
 <body>
   <div class="app-container">
-    <!-- Header con logo -->
-<header class="app-header">
-  <div class="logo-container">
-    <div class="header-left">
-      <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png" alt="Efficommerce" class="header-logo-img" onerror="this.style.display='none'">
-      <div class="header-titles">
-        <h1>Gestión de Manifiestos</h1>
-        <span class="header-sub">Transportadora</span>
-      </div>
-    </div>
-  </div>
-  <!-- modal cruces -->
-<div class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
-  <i class="fas fa-exclamation-triangle"></i>
-  <span class="notification-badge" id="notificationBadge">0</span>
-</div>
 
-</header>
+    <!-- Header con logo mejorado -->
+    <header class="app-header">
+      <div class="logo-container">
+        <div class="header-left">
+          <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png" alt="Efficommerce" class="header-logo-img" onerror="this.style.display='none'">
+          <div class="header-titles">
+            <h1>Gestión de Manifiestos</h1>
+            <span class="header-sub">Transportadora</span>
+          </div>
+        </div>
+      </div>
+      <!-- Ícono de notificación de cruces -->
+      <div class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span class="notification-badge" id="notificationBadge">0</span>
+      </div>
+    </header>
 
     <!-- Sección Dashboard -->
     <section class="dashboard-section">
@@ -199,18 +201,24 @@
       <div class="dashboard-content">
         <div class="input-card">
           <div class="input-group">
-          <label for="fileInput">
-            <i class="fas fa-file-excel"></i>
-            Cargar Manifiesto (.xls/.xlsx)
-          </label>
-          <div class="file-input-container">
-            <input type="file" id="fileInput" accept=".xls,.xlsx,.pdf" class="hidden-file-input" onchange="handleFile(event); document.getElementById('fileInputLabel').textContent = this.files[0]?.name || 'Seleccionar archivo...'" />
-            <button type="button" class="file-input-button" onclick="document.getElementById('fileInput').click()">
-              <i class="fas fa-upload"></i> Examinar
-            </button>
-            <span class="file-input-label" id="fileInputLabel">Seleccionar archivo...</span>
+            <label for="fileInput">
+              <i class="fas fa-file-excel"></i>
+              Cargar Manifiesto (.xls/.xlsx)
+            </label>
+            <div class="file-input-container">
+              <input
+                type="file"
+                id="fileInput"
+                accept=".xls,.xlsx,.pdf"
+                class="hidden-file-input"
+                onchange="handleFile(event); document.getElementById('fileInputLabel').textContent = this.files[0]?.name || 'Seleccionar archivo...'"
+              />
+              <button type="button" class="file-input-button" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-upload"></i> Examinar
+              </button>
+              <span class="file-input-label" id="fileInputLabel">Seleccionar archivo...</span>
+            </div>
           </div>
-        </div>
 
           <div class="input-group">
             <label for="scanInput">
@@ -244,51 +252,50 @@
           </div>
 
           <div class="metric-card warning" onclick="abrirModalFaltantes()" style="cursor: pointer;">
-  <div class="metric-icon">
-    <i class="fas fa-exclamation-triangle"></i>
-  </div>
-  <div class="metric-content">
-    <div class="metric-value" id="dashFaltantes">0</div>
-    <div class="metric-label">Faltantes</div>
-  </div>
-</div>
+            <div class="metric-icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-value" id="dashFaltantes">0</div>
+              <div class="metric-label">Faltantes</div>
+            </div>
+          </div>
 
-<!-- Modal repetidos, no manifestadas -->
-<div class="metric-card repeat" onclick="abrirModalRepetidas()" style="cursor: pointer;">
-  <div class="metric-icon">
-    <i class="fas fa-redo-alt"></i>
-  </div>
-  <div class="metric-content">
-    <div class="metric-value" id="dashRepetidas">0</div>
-    <div class="metric-label">Repetidas</div>
-  </div>
-</div>
+          <div class="metric-card repeat" onclick="abrirModalRepetidas()" style="cursor: pointer;">
+            <div class="metric-icon">
+              <i class="fas fa-redo-alt"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-value" id="dashRepetidas">0</div>
+              <div class="metric-label">Repetidas</div>
+            </div>
+          </div>
+
           <div class="metric-card danger" onclick="abrirModalNoManifestadas()" style="cursor: pointer;">
-  <div class="metric-icon">
-    <i class="fas fa-times-circle"></i>
-  </div>
-  <div class="metric-content">
-    <div class="metric-value" id="dashNoManif">0</div>
-    <div class="metric-label">No Manifestadas</div>
-  </div>
-</div>
+            <div class="metric-icon">
+              <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-value" id="dashNoManif">0</div>
+              <div class="metric-label">No Manifestadas</div>
+            </div>
+          </div>
         </div>
 
-         <!-- Barra de progreso -->
+        <!-- Barra de progreso -->
         <div class="progress-container">
-            <div class="progress-header">
-                <div class="progress-title">Progreso de Escaneo</div>
-                <div class="progress-percentage" id="progressPercentage">0%</div>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-            <div class="progress-stats">
-                <span id="progressScanned">0 escaneadas</span>
-                <span id="progressTotal">de 0 totales</span>
-            </div>
+          <div class="progress-header">
+            <div class="progress-title">Progreso de Escaneo</div>
+            <div class="progress-percentage" id="progressPercentage">0%</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-stats">
+            <span id="progressScanned">0 escaneadas</span>
+            <span id="progressTotal">de 0 totales</span>
+          </div>
         </div>
-
 
         <!-- Info de ruta -->
         <div class="info-card">
@@ -322,11 +329,10 @@
           <i class="fas fa-eye"></i>
           Ver Reporte Comparativo
         </button>
-<!-- Abrir modal historial -->
-<button class="action-btn" onclick="abrirModalHistorial()">
-    <i class="fas fa-history"></i>
-    Ver Historial
-</button>
+        <button class="action-btn" onclick="abrirModalHistorial()">
+          <i class="fas fa-history"></i>
+          Ver Historial
+        </button>
       </div>
     </section>
 
@@ -335,10 +341,10 @@
   <!-- Librerías externas -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-  <!-- Tu lógica separada -->
+  <!-- Lógica principal -->
   <script src="manifiesto.js"></script>
 
   <!-- Contenedor de notificaciones toast -->
-<div id="toastContainer" class="toast-container"></div>
+  <div id="toastContainer" class="toast-container"></div>
 </body>
 </html>
