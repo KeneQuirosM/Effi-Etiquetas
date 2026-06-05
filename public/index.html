@@ -46,11 +46,12 @@
   <!-- Brand — misma estructura que manifiesto/devoluciones -->
   <div class="brand">
     <div class="brand-logo-pill">
+      <!-- id requerido por index.js para mostrar/ocultar logo dinámico -->
       <img id="brand-logo-img"
-           src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png"
-           alt="Efficommerce"
-           style="height:22px;object-fit:contain;filter:brightness(0) invert(1);"
-           onerror="this.style.display='none'">
+           style="max-height:22px;max-width:160px;display:none;object-fit:contain;filter:brightness(0) invert(1);">
+      <div id="brand-logo-text" style="display:flex;flex-direction:column;gap:1px;">
+        <span style="font-family:var(--sans);font-size:13px;font-weight:600;color:white;letter-spacing:-.2px;">Effi<span style="color:var(--accent-light)">commerce</span></span>
+      </div>
     </div>
     <div class="brand-sep"></div>
     <div class="brand-text">
