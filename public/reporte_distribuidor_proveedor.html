@@ -670,6 +670,8 @@ function crossReferenceData(excelRows) {
     }
   });
 
+  const unmatchedStores = [];
+
   DATA = dbData
     .filter(tienda => !excludedStores.has(tienda.nombre))
     .map(tienda => {
@@ -681,6 +683,8 @@ function crossReferenceData(excelRows) {
 
     const dbStoreNameClean = cleanText(tienda.nombre);
     const dbStoreIdClean = cleanText(tienda.id);
+
+    let storeFoundInExcel = false;
 
     const items = (tienda.inventario || []).map(prod => {
       let totalQty = 0;
@@ -702,6 +706,8 @@ function crossReferenceData(excelRows) {
                            dbStoreNameClean.includes(rowTiendasText);
 
         if (!storeMatch) return;
+
+        storeFoundInExcel = true;
 
         // 1️⃣ Si hay SKU y coincide exacto dentro de la tienda → match directo
         // 2️⃣ Solo si no hay SKU en la fila, fallback a nombre exacto
@@ -729,6 +735,8 @@ function crossReferenceData(excelRows) {
       };
     });
 
+    if (!storeFoundInExcel) unmatchedStores.push(tienda.nombre);
+
     return {
       source: tienda.nombre,
       tipo: tipo,
@@ -738,10 +746,10 @@ function crossReferenceData(excelRows) {
     };
   });
 
-  calculateStats();
+  calculateStats(unmatchedStores);
 }
 
-function calculateStats() {
+function calculateStats(unmatchedStores = []) {
   let totalGuias = 0, totalProductos = 0, totalBajo30 = 0;
   DATA.forEach(g => { totalGuias += g.total; totalProductos += g.items.length; totalBajo30 += g.bajo30; });
 
@@ -753,6 +761,41 @@ function calculateStats() {
     <div class="stat"><div class="stat-val" style="color:var(--success-mid);">${totalGuias.toLocaleString()}</div><div class="stat-label">Unidades Salidas</div></div>
     <div class="stat"><div class="stat-val ${totalBajo30 > 0 ? 'red' : ''}">${totalBajo30}</div><div class="stat-label">Alertas < 30 Uds</div></div>
   `;
+
+  // ── LOG DE TIENDAS SIN MATCH ──
+  const existingLog = document.getElementById('unmatchedLog');
+  if (existingLog) existingLog.remove();
+
+  if (unmatchedStores.length > 0) {
+    const log = document.createElement('div');
+    log.id = 'unmatchedLog';
+    log.style.cssText = `
+      margin: 0 32px 10px 32px;
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-mid);
+      border-left: 4px solid var(--warning-mid);
+      border-radius: var(--radius-md);
+      padding: 12px 18px;
+      font-size: 0.82rem;
+      color: var(--warning-text);
+    `;
+    log.innerHTML = `
+      <div style="font-weight:700; margin-bottom:6px;">
+        <i class="fas fa-exclamation-triangle"></i>
+        ${unmatchedStores.length} tienda${unmatchedStores.length > 1 ? 's' : ''} sin datos en este reporte
+      </div>
+      <div style="color:var(--neutral-800); font-size:0.78rem; line-height:1.7;">
+        ${unmatchedStores.map(n => `<span style="background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:4px; margin-right:6px; display:inline-block;">${n}</span>`).join('')}
+      </div>
+      <div style="margin-top:8px; color:var(--neutral-600); font-size:0.74rem;">
+        <i class="fas fa-info-circle"></i> Verificá que el nombre en la BD coincida exactamente con el nombre en el Excel (después del guión).
+      </div>
+    `;
+
+    // Insertar justo antes del mainContent
+    const main = document.querySelector('.main');
+    main.insertBefore(log, main.firstChild);
+  }
 
   applyFilters();
 }
@@ -988,12 +1031,14 @@ function toggleExcludeStore(nombre, excluir) {
 }
 
 function rebuildReport() {
-  // Reconstruye el reporte completo usando los datos originales ya parseados
   if (originalExcelRows.length === 0) return;
 
-  // Convertir originalExcelRows (array de objetos) de vuelta a formato matricial
+  // originalExcelRows son objetos {header: valor}, reconstruir formato matricial correcto
   const headers = Object.keys(originalExcelRows[0]);
-  const rows = [headers, ...originalExcelRows.map(r => headers.map(h => r[h] || ''))];
+  const rows = [
+    headers,
+    ...originalExcelRows.map(r => headers.map(h => r[h] !== undefined ? r[h] : ''))
+  ];
   crossReferenceData(rows);
 }
 
