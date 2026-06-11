@@ -3,238 +3,423 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reporte de Salida por Distribuidor / Proveedor</title>
+<title>Reporte de Salida por Distribuidor / Proveedor — Efficommerce</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
+  /* ── VARIABLES DE IDENTIDAD CORPORATIVA (EFFICOMMERCE) ── */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --brand-900: #07104a;
+    --brand-800: #0d1b6e;
+    --brand-700: #1227a0;
+    --brand-500: #2a47d4;
+    --brand-300: #7a9df3;
+    --brand-100: #dde6fd;
+    --brand-50:  #f0f4fe;
+
+    --success-bg:   #e8f5e9;
+    --success-text: #1b5e20;
+    --success-mid:  #2e7d32;
+
+    --warning-bg:   #fff8e1;
+    --warning-text: #e65100;
+    --warning-mid:  #f57f17;
+
+    --danger-bg:    #fce4ec;
+    --danger-text:  #880e4f;
+    --danger-mid:   #c62828;
+
+    --neutral-50:  #f8f9fb;
+    --neutral-100: #f1f3f7;
+    --neutral-200: #e2e6ef;
+    --neutral-400: #9aa3b8;
+    --neutral-600: #5a6482;
+    --neutral-800: #1e2540;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+
+    --shadow-sm: 0 2px 8px rgba(13,27,110,.06);
+    --shadow-md: 0 4px 16px rgba(13,27,110,.08);
+    
+    --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    --transition: all .18s ease;
+  }
+
+  /* ── ESTILOS BASE ── */
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  
   body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: #0f1117;
-    color: #e2e8f0;
+    font-family: var(--font);
+    background: var(--neutral-100);
+    color: var(--neutral-800);
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
 
+  /* ── HEADER PROFUNDO LOGÍSTICO ── */
   header {
-    background: linear-gradient(135deg, #1a1f2e 0%, #0f1117 100%);
-    border-bottom: 1px solid #2d3748;
-    padding: 24px 32px;
-  }
-  header h1 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #f7fafc;
-    letter-spacing: -0.5px;
-  }
-  header p {
-    color: #718096;
-    font-size: 0.85rem;
-    margin-top: 4px;
+    background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-800) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 22px 32px;
+    color: #ffffff;
   }
 
+  .header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .header-logo-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border: 0.5px solid rgba(255,255,255,0.2);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+  }
+
+  .header-logo-pill span {
+    color: white;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+  }
+
+  .header-divider {
+    width: 1px;
+    height: 32px;
+    background: rgba(255,255,255,0.15);
+  }
+
+  .header-titles h1 {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: -0.3px;
+    margin: 0;
+  }
+
+  .header-titles p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+    margin-top: 3px;
+  }
+
+  /* ── BLOQUE DE MÉTRICAS (TARJETAS BLANCAS MODERNAS) ── */
   .stats-bar {
     display: flex;
     gap: 16px;
-    padding: 20px 32px;
-    background: #141821;
-    border-bottom: 1px solid #2d3748;
+    padding: 24px 32px;
+    background: var(--neutral-50);
+    border-bottom: 1px solid var(--neutral-200);
     flex-wrap: wrap;
   }
+
   .stat {
-    background: #1a1f2e;
-    border: 1px solid #2d3748;
-    border-radius: 8px;
-    padding: 12px 20px;
-    min-width: 140px;
-  }
-  .stat-val {
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: #63b3ed;
-    line-height: 1;
-  }
-  .stat-val.red { color: #fc8181; }
-  .stat-label {
-    font-size: 0.72rem;
-    color: #718096;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-top: 4px;
+    background: #ffffff;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    min-width: 160px;
+    flex: 1;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
   }
 
+  .stat:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .stat-val {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--brand-500);
+    line-height: 1.1;
+  }
+
+  .stat-val.red { color: var(--danger-mid); }
+
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--neutral-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 6px;
+    font-weight: 600;
+  }
+
+  /* ── BARRA DE CONTROL Y FILTROS ── */
   .controls {
     display: flex;
     gap: 12px;
     padding: 16px 32px;
-    background: #0f1117;
+    background: #ffffff;
     flex-wrap: wrap;
     align-items: center;
-    border-bottom: 1px solid #2d3748;
+    border-bottom: 1px solid var(--neutral-200);
   }
-  .controls input, .controls select {
-    background: #1a1f2e;
-    border: 1px solid #2d3748;
-    border-radius: 6px;
-    color: #e2e8f0;
-    padding: 8px 14px;
-    font-size: 0.85rem;
+
+  .controls input[type="text"], .controls select {
+    background: #ffffff;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm);
+    color: var(--neutral-800);
+    padding: 9px 14px;
+    font-size: 0.88rem;
     outline: none;
+    transition: var(--transition);
+    font-family: var(--font);
   }
-  .controls input { min-width: 240px; }
-  .controls input:focus, .controls select:focus {
-    border-color: #4299e1;
+
+  .controls input[type="text"] { min-width: 280px; }
+
+  .controls input[type="text"]:focus, .controls select:focus {
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px rgba(42, 71, 212, 0.15);
   }
+
+  /* ── BOTONES ESTILO MANIFIESTO ── */
   .toggle-btn {
-    background: #2d3748;
-    border: none;
-    border-radius: 6px;
-    color: #e2e8f0;
-    padding: 8px 16px;
-    font-size: 0.82rem;
+    background: var(--neutral-50);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm);
+    color: var(--neutral-600);
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font);
   }
-  .toggle-btn:hover { background: #4a5568; }
-  .toggle-btn.active { background: #c53030; color: #fff; }
 
-  .main { padding: 24px 32px; }
+  .toggle-btn:hover {
+    background: var(--neutral-200);
+    color: var(--neutral-800);
+    transform: translateY(-1px);
+  }
 
+  .toggle-btn.active {
+    background: var(--danger-bg);
+    border-color: var(--danger-mid);
+    color: var(--danger-mid);
+    font-weight: 600;
+  }
+
+  /* ── CONTENEDOR PRINCIPAL ── */
+  .main { padding: 32px; }
+
+  /* ── DISEÑO DE ACORDEONES (GRUPOS) ── */
   .group {
-    background: #1a1f2e;
-    border: 1px solid #2d3748;
-    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
     margin-bottom: 16px;
     overflow: hidden;
-    transition: opacity 0.2s;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
   }
-  .group.hidden { display: none; }
+
+  .group:hover {
+    box-shadow: var(--shadow-md);
+  }
 
   .group-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 20px;
+    gap: 14px;
+    padding: 16px 20px;
     cursor: pointer;
-    background: #1e2438;
-    border-bottom: 1px solid #2d3748;
+    background: #ffffff;
     user-select: none;
+    transition: var(--transition);
   }
-  .group-header:hover { background: #252d45; }
 
+  .group-header:hover { background: var(--neutral-50); }
+
+  .group.open {
+    border-color: var(--brand-300);
+  }
+
+  .group.open .group-header {
+    border-bottom: 1px solid var(--neutral-200);
+    background: var(--brand-50);
+  }
+
+  /* Píldoras de Distribución / Proveedor */
   .badge {
     font-size: 0.68rem;
     font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 100px;
+    padding: 3px 10px;
+    border-radius: 12px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     white-space: nowrap;
   }
-  .badge-dist { background: #2c5282; color: #90cdf4; }
-  .badge-prov { background: #22543d; color: #9ae6b4; }
+  .badge-dist { background: var(--brand-100); color: var(--brand-700); }
+  .badge-prov { background: var(--success-bg); color: var(--success-mid); }
 
   .group-name {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: #f7fafc;
+    font-weight: 600;
+    font-size: 0.98rem;
+    color: var(--neutral-800);
     flex: 1;
   }
-  .group-name:hover { color: #63b3ed; }
+
+  .group.open .group-name {
+    color: var(--brand-800);
+    font-weight: 700;
+  }
+
   .group-meta {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     align-items: center;
-    font-size: 0.8rem;
-    color: #718096;
+    font-size: 0.85rem;
+    color: var(--neutral-600);
   }
-  .group-meta .total { color: #63b3ed; font-weight: 700; }
-  .group-meta .bajo { color: #fc8181; font-weight: 700; }
+
+  .group-meta .total { color: var(--brand-500); font-weight: 700; }
+  .group-meta .bajo {
+    background: var(--danger-bg);
+    color: var(--danger-mid);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
   .chevron {
-    color: #4a5568;
-    transition: transform 0.2s;
+    color: var(--neutral-400);
+    transition: var(--transition);
     font-size: 0.8rem;
   }
-  .group.open .chevron { transform: rotate(180deg); }
+  .group.open .chevron { transform: rotate(180deg); color: var(--brand-500); }
 
   .group-body {
     display: none;
-    padding: 0;
+    background: #ffffff;
   }
   .group.open .group-body { display: block; }
 
+  /* ── TABLAS LIMPIAS Y ELEGANTES ── */
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.82rem;
+    font-size: 0.88rem;
   }
+
   th {
-    background: #141821;
-    color: #a0aec0;
+    background: var(--neutral-50);
+    color: var(--neutral-600);
     text-transform: uppercase;
-    font-size: 0.68rem;
+    font-size: 0.72rem;
     letter-spacing: 0.06em;
-    padding: 10px 16px;
+    padding: 12px 20px;
     text-align: left;
-    border-bottom: 1px solid #2d3748;
+    border-bottom: 1px solid var(--neutral-200);
+    font-weight: 600;
   }
+
   td {
-    padding: 10px 16px;
-    border-bottom: 1px solid #1a202c;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--neutral-100);
     vertical-align: middle;
+    color: var(--neutral-800);
   }
+
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #1e2438; }
+  tr:hover td { background: var(--neutral-50); }
 
+  /* Código / SKU Pill */
   .id-pill {
-    background: #2d3748;
-    color: #e2e8f0;
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: 700;
+    background: var(--neutral-50);
+    color: var(--neutral-800);
+    font-family: monospace;
+    font-size: 0.8rem;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    border: 1px solid var(--neutral-200);
   }
 
+  /* ── SLEEK PROGRESS BAR (CANTIDADES) ── */
   .qty-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
   }
+
   .bar-bg {
     flex: 1;
-    height: 6px;
-    background: #2d3748;
-    border-radius: 3px;
-    max-width: 120px;
+    height: 8px;
+    background: var(--neutral-200);
+    border-radius: 4px;
+    max-width: 140px;
+    overflow: hidden;
   }
+
   .bar-fill {
     height: 100%;
-    border-radius: 3px;
-    background: #3182ce;
-    transition: width 0.3s;
+    border-radius: 4px;
+    background: var(--brand-500);
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .bar-fill.low { background: #c53030; }
-  .qty-num {
-    font-weight: 800;
-    min-width: 32px;
-    text-align: right;
-    font-size: 0.85rem;
-  }
-  .qty-num.low { color: #fc8181; }
-  .qty-num.ok { color: #68d391; }
 
+  .bar-fill.low { background: var(--danger-mid); }
+
+  .qty-num {
+    font-weight: 700;
+    min-width: 36px;
+    text-align: right;
+    font-size: 0.9rem;
+  }
+  .qty-num.low { color: var(--danger-mid); }
+  .qty-num.ok { color: var(--success-mid); }
+
+  /* ── FOOTER INTERFAZ ── */
   .footer-note {
     text-align: center;
-    padding: 24px;
-    color: #4a5568;
-    font-size: 0.78rem;
+    padding: 32px;
+    color: var(--neutral-400);
+    font-size: 0.82rem;
+    border-top: 1px solid var(--neutral-200);
+    background: #ffffff;
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>📦 Reporte de Salida — Distribuidor / Proveedor</h1>
-  <p id="generation-p">Picking &amp; Packing · Cargando datos base de la BD... · Umbral de alerta: &lt;30 unidades</p>
+  <div class="header-container">
+    <div class="header-left">
+      <div class="header-logo-pill">
+        <i class="fas fa-boxes" style="color: white; font-size: 1.1rem;"></i>
+        <span>EFFICOMMERCE</span>
+      </div>
+      <div class="header-divider"></div>
+      <div class="header-titles">
+        <h1>Reporte de Salida por Distribuidor / Proveedor</h1>
+        <p id="generation-p">Picking &amp; Packing · Cargando datos base de la BD... · Umbral de alerta: &lt;30 unidades</p>
+      </div>
+    </div>
+  </div>
 </header>
 
 <div class="stats-bar" id="statsBar">
@@ -242,7 +427,9 @@
 
 <div class="controls">
   <input type="file" id="excelInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelUpload(event)">
-  <button class="toggle-btn" onclick="document.getElementById('excelInput').click()" style="background: #3182ce; color: #fff; font-weight: bold;">📁 Cargar Excel Reporte</button>
+  <button class="toggle-btn" onclick="document.getElementById('excelInput').click()" style="background: var(--brand-500); color: #fff; border-color: var(--brand-500); font-weight: 600; box-shadow: var(--shadow-sm);">
+    <i class="fas fa-file-excel"></i> Cargar Excel Reporte
+  </button>
 
   <input type="text" id="searchInput" placeholder="🔍  Buscar por nombre o ID de producto...">
   <select id="filterType">
@@ -250,15 +437,22 @@
     <option value="Distribuidor (Bodega Propia)">Solo Distribuidores (Bodega Propia)</option>
     <option value="Proveedor Dropshipping">Solo Proveedores Dropshipping</option>
   </select>
-  <button class="toggle-btn" id="toggleLow" onclick="toggleLowOnly()">⚠ Solo bajo 30 uds</button>
-  <button class="toggle-btn" onclick="expandAll()">Expandir todo</button>
-  <button class="toggle-btn" onclick="collapseAll()">Colapsar todo</button>
+  <button class="toggle-btn" id="toggleLow" onclick="toggleLowOnly()">
+    <i class="fas fa-exclamation-triangle"></i> Solo bajo 30 uds
+  </button>
+  <button class="toggle-btn" onclick="expandAll()">
+    <i class="fas fa-expand-alt"></i> Expandir todo
+  </button>
+  <button class="toggle-btn" onclick="collapseAll()">
+    <i class="fas fa-compress-alt"></i> Colapsar todo
+  </button>
 </div>
 
 <div class="main" id="mainContent">
-  <div style="text-align: center; padding: 40px; color: #718096;">
-    <p style="font-size: 1.1rem; margin-bottom: 8px;">📥 Por favor, sube el archivo de Excel para generar el reporte comparativo.</p>
-    <p style="font-size: 0.85rem;">Los productos se cruzarán automáticamente contra las tiendas guardadas en base de datos.</p>
+  <div style="text-align: center; padding: 60px 40px; color: var(--neutral-400);">
+    <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: var(--brand-300); margin-bottom: 16px; display: block;"></i>
+    <p style="font-size: 1.05rem; margin-bottom: 8px; font-weight: 500; color: var(--neutral-600);">📥 Por favor, sube el archivo de Excel para generar el reporte comparativo.</p>
+    <p style="font-size: 0.85rem;">Los productos se cruzarán automáticamente contra las tiendas guardadas en la base de datos.</p>
   </div>
 </div>
 
@@ -280,11 +474,11 @@ async function loadDatabaseData() {
     const result = await response.json();
     dbData = result.tiendas || [];
     
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · Conectado con Base de Datos ✅ · Umbral de alerta: &lt;30 unidades`;
+    document.getElementById('generation-p').innerHTML = `Picking & Packing · Conectado con Base de Datos <i class="fas fa-check-circle" style="color: #68d391;"></i> · Umbral de alerta: &lt;30 unidades`;
     document.getElementById('footerNote').innerText = `Base de datos cargada correctamente. Listo para recibir el archivo Excel.`;
   } catch (error) {
     console.error('Error al consultar base de datos:', error);
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color:#fc8181;">❌ Error al conectar con la base de datos</span>`;
+    document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color: var(--danger-mid); font-weight: 600;"><i class="fas fa-times-circle"></i> Error al conectar con la base de datos</span>`;
   }
 }
 
@@ -312,10 +506,8 @@ function crossReferenceData(excelRows) {
     return;
   }
 
-  // Función interna para limpiar textos (quita espacios, tildes y pasa a minúsculas)
   const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-  // 1. MAPEADO INTELIGENTE DE COLUMNAS (Se ejecuta una única vez leyendo la primera fila)
   let colTiendas = [];
   let colId = null;
   let colDesc = null;
@@ -325,26 +517,22 @@ function crossReferenceData(excelRows) {
   firstRowKeys.forEach(key => {
     const nk = cleanText(key);
     
-    // Detectar columnas de tiendas (mapea Distribuidor y Proveedor de forma simultánea)
     if (nk.includes('tienda') || nk.includes('store') || nk.includes('fuente') || nk.includes('distribuidor') || nk.includes('proveedor')) {
       colTiendas.push(key);
     }
     
-    // Detectar columna de ID / Código (Evita colisiones con guías o descripciones)
     if ((nk.includes('id') || nk.includes('codigo') || nk.includes('sku') || nk.includes('ref')) && !nk.includes('desc') && !nk.includes('guia') && !nk.includes('transportadora')) {
       if (!colId || nk === 'id' || nk === 'id articulo' || nk === 'codigo') {
         colId = key;
       }
     }
     
-    // Detectar columna de Descripción (Excluye explícitamente palabras de ID)
     if ((nk.includes('desc') || nk.includes('producto') || nk.includes('nombre') || nk.includes('art')) && !nk.includes('id') && !nk.includes('codigo')) {
       if (!colDesc || nk.includes('desc') || nk.includes('producto')) {
         colDesc = key;
       }
     }
     
-    // Detectar columna de Cantidad
     if (nk.includes('cant') || nk.includes('qty') || nk.includes('unidades') || nk.includes('salida')) {
       if (!nk.includes('guia') && !nk.includes('id') && !nk.includes('codigo')) {
         colQty = key;
@@ -352,7 +540,6 @@ function crossReferenceData(excelRows) {
     }
   });
 
-  // 2. CRUCE CON LA BASE DE DATOS
   DATA = dbData.map(tienda => {
     let tipo = "Distribuidor (Bodega Propia)";
     const nameUpper = tienda.nombre.toUpperCase();
@@ -369,27 +556,23 @@ function crossReferenceData(excelRows) {
       const dbProdNameClean = cleanText(prod.nombre || prod.producto);
 
       excelRows.forEach(row => {
-        // Concatenamos el texto de todas las columnas de tienda detectadas en esta fila
         const rowTiendasText = colTiendas.map(col => cleanText(row[col])).join(' | ');
         const rowId = colId ? cleanText(row[colId]) : '';
         const rowDesc = colDesc ? cleanText(row[colDesc]) : '';
 
-        // Coincidencia de Tienda: Valida si se nombra en cualquiera de las columnas mapeadas
         const storeMatch = rowTiendasText.includes(dbStoreNameClean) || 
                            dbStoreNameClean.includes(rowTiendasText) ||
                            colTiendas.some(col => cleanText(row[col]) === dbStoreIdClean);
 
         if (!storeMatch) return;
 
-        // Coincidencia de Producto: Por código numérico exacto o por texto en descripción
         const productMatch = (rowId && rowId === dbProdCodeClean) || 
                              (rowDesc && (rowDesc.includes(dbProdNameClean) || dbProdNameClean.includes(rowDesc)));
 
         if (productMatch) {
-          let rowQty = 1; // Por defecto cada línea es 1 guía procesada
+          let rowQty = 1; 
           if (colQty && row[colQty] !== undefined && row[colQty] !== null && row[colQty] !== '') {
             const parsed = parseFloat(row[colQty]);
-            // Filtro estricto anti-códigos largos de rastreo erróneos
             if (!isNaN(parsed) && parsed > 0 && parsed < 1000) {
               rowQty = parsed;
             }
@@ -445,7 +628,7 @@ function calculateStats() {
       <div class="stat-label">Total Productos</div>
     </div>
     <div class="stat">
-      <div class="stat-val" style="color: #68d391;">${totalGuias}</div>
+      <div class="stat-val" style="color: var(--success-mid);">${totalGuias}</div>
       <div class="stat-label">Guías Salientes</div>
     </div>
     <div class="stat">
@@ -492,19 +675,19 @@ function renderGroups(search = '', typeFilter = '') {
         <div class="group-meta">
           <span>Productos: ${filteredItems.length}</span>
           <span class="total">Salidas: ${group.total} uds</span>
-          ${group.bajo30 > 0 ? `<span class="bajo">⚠ ${group.bajo30} bajos</span>` : ''}
+          ${group.bajo30 > 0 ? `<span class="bajo"><i class="fas fa-exclamation-triangle"></i> ${group.bajo30} bajos</span>` : ''}
         </div>
-        <span class="chevron">▼</span>
+        <span class="chevron"><i class="fas fa-chevron-down"></i></span>
       </div>
       <div class="group-body">
         <table>
           <thead>
             <tr>
-              <th style="width: 130px;">ID / Código</th>
+              <th style="width: 140px;">ID / Código</th>
               <th>Descripción del Producto</th>
               ${filteredItems.some(i => i.ubicacion) ? '<th>Ubicación</th>' : ''}
               <th style="width: 200px;">Cantidad Salidas</th>
-              <th style="width: 110px;">Estado</th>
+              <th style="width: 120px;">Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -514,15 +697,15 @@ function renderGroups(search = '', typeFilter = '') {
               return `
                 <tr>
                   <td><span class="id-pill">${item.id}</span></td>
-                  <td><span style="font-weight:600; color:#f7fafc;">${item.desc}</span></td>
-                  ${item.ubicacion ? `<td><span style="color:#a0aec0;">${item.ubicacion}</span></td>` : (filteredItems.some(i => i.ubicacion) ? '<td>-</td>' : '')}
+                  <td><span style="font-weight: 600; color: var(--neutral-800);">${item.desc}</span></td>
+                  ${item.ubicacion ? `<td><span style="color: var(--neutral-600); font-weight: 500;">${item.ubicacion}</span></td>` : (filteredItems.some(i => i.ubicacion) ? '<td>-</td>' : '')}
                   <td>
                     <div class="qty-bar">
                       <div class="bar-bg"><div class="bar-fill ${isLow?'low':''}" style="width:${pct}%"></div></div>
                       <span class="qty-num ${isLow?'low':'ok'}">${item.qty}</span>
                     </div>
                   </td>
-                  <td>${isLow ? '<span style="color:#fc8181;font-size:0.75rem;font-weight:700;">⚠ BAJO 30</span>' : '<span style="color:#68d391;font-size:0.75rem;">✓ OK</span>'}</td>
+                  <td>${isLow ? '<span style="color: var(--danger-mid); font-size: 0.75rem; font-weight: 700;"><i class="fas fa-exclamation-circle"></i> BAJO 30</span>' : '<span style="color: var(--success-mid); font-size: 0.75rem; font-weight: 700;"><i class="fas fa-check-circle"></i> OK</span>'}</td>
                 </tr>`;
             }).join('')}
           </tbody>
@@ -543,7 +726,6 @@ function expandAll() {
 }
 
 function collapseAll() {
-  document.querySelectorAll('.group').forEach(g => g.classList.remove('remove'));
   document.querySelectorAll('.group').forEach(g => g.classList.remove('open'));
 }
 
