@@ -4,547 +4,396 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reporte de Salida por Distribuidor / Proveedor</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: #0f1117;
-    color: #e2e8f0;
-    min-height: 100vh;
-  }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
 
   header {
     background: linear-gradient(135deg, #1a1f2e 0%, #0f1117 100%);
     border-bottom: 1px solid #2d3748;
-    padding: 24px 32px;
+    padding: 22px 32px;
   }
-  header h1 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #f7fafc;
-    letter-spacing: -0.5px;
+  header h1 { font-size: 1.5rem; font-weight: 700; color: #f7fafc; }
+  header p  { color: #718096; font-size: 0.83rem; margin-top: 4px; }
+
+  .regla-banner {
+    background: #141821; border-bottom: 1px solid #2d3748;
+    padding: 9px 32px; display: flex; gap: 18px; align-items: center;
+    flex-wrap: wrap; font-size: 0.78rem; color: #a0aec0;
   }
-  header p {
-    color: #718096;
-    font-size: 0.85rem;
-    margin-top: 4px;
+  .pill { padding: 2px 10px; border-radius: 20px; font-weight: 700; font-size: 0.7rem; }
+  .pill-propia   { background: #92400e; color: #fde68a; }
+  .pill-dropship { background: #7f1d1d; color: #fecaca; }
+
+  .file-zone {
+    background: #141821; border: 2px dashed #2d3748; border-radius: 12px;
+    margin: 20px 32px; padding: 28px; text-align: center;
+    transition: border-color .2s, background .2s;
   }
+  .file-zone.dragover { border-color: #63b3ed; background: #1a2030; }
+  .file-zone input { display: none; }
+  .file-label {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: #2d3748; color: #e2e8f0; padding: 10px 28px;
+    border-radius: 32px; font-weight: 600; cursor: pointer; font-size: 0.9rem;
+  }
+  .file-label:hover { background: #4a5568; }
+  .file-info { margin-top: 10px; font-size: 0.8rem; color: #a0aec0; }
+  .file-info.ok  { color: #68d391; }
+  .file-info.err { color: #fc8181; }
 
   .stats-bar {
-    display: flex;
-    gap: 16px;
-    padding: 20px 32px;
-    background: #141821;
-    border-bottom: 1px solid #2d3748;
-    flex-wrap: wrap;
+    display: flex; gap: 14px; padding: 16px 32px;
+    background: #141821; border-bottom: 1px solid #2d3748; flex-wrap: wrap;
   }
-  .stat {
-    background: #1a1f2e;
-    border: 1px solid #2d3748;
-    border-radius: 8px;
-    padding: 12px 20px;
-    min-width: 140px;
-  }
-  .stat-val {
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: #63b3ed;
-    line-height: 1;
-  }
-  .stat-val.red { color: #fc8181; }
-  .stat-label {
-    font-size: 0.72rem;
-    color: #718096;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-top: 4px;
-  }
+  .stat { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 8px; padding: 11px 18px; min-width: 120px; }
+  .stat-val { font-size: 1.5rem; font-weight: 800; color: #63b3ed; line-height: 1; }
+  .stat-val.amber { color: #fde68a; }
+  .stat-val.red   { color: #fc8181; }
+  .stat-label { font-size: 0.68rem; color: #718096; text-transform: uppercase; letter-spacing:.05em; margin-top:3px; }
 
   .controls {
-    display: flex;
-    gap: 12px;
-    padding: 16px 32px;
-    background: #0f1117;
-    flex-wrap: wrap;
-    align-items: center;
+    display: flex; gap: 10px; padding: 13px 32px;
+    background: #0f1117; flex-wrap: wrap; align-items: center;
     border-bottom: 1px solid #2d3748;
   }
   .controls input, .controls select {
-    background: #1a1f2e;
-    border: 1px solid #2d3748;
-    border-radius: 6px;
-    color: #e2e8f0;
-    padding: 8px 14px;
-    font-size: 0.85rem;
-    outline: none;
+    background: #1a1f2e; border: 1px solid #2d3748; border-radius: 6px;
+    color: #e2e8f0; padding: 7px 13px; font-size: 0.84rem; outline: none;
   }
-  .controls input { min-width: 240px; }
-  .controls input:focus, .controls select:focus {
-    border-color: #4299e1;
-  }
+  .controls input { min-width: 260px; }
+  .controls input:focus, .controls select:focus { border-color: #4299e1; }
   .toggle-btn {
-    background: #2d3748;
-    border: none;
-    border-radius: 6px;
-    color: #e2e8f0;
-    padding: 8px 16px;
-    font-size: 0.82rem;
-    cursor: pointer;
-    transition: background 0.15s;
+    background: #2d3748; border: none; border-radius: 6px; color: #e2e8f0;
+    padding: 7px 14px; font-size: 0.82rem; cursor: pointer; transition: background .15s;
   }
   .toggle-btn:hover { background: #4a5568; }
   .toggle-btn.active { background: #c53030; color: #fff; }
+  .btn-export {
+    background: #276749; border: none; border-radius: 6px; color: #9ae6b4;
+    padding: 7px 14px; font-size: 0.82rem; cursor: pointer; font-weight: 600;
+  }
+  .btn-export:hover { background: #2f855a; }
 
   .main { padding: 24px 32px; }
 
   .group {
-    background: #1a1f2e;
-    border: 1px solid #2d3748;
-    border-radius: 10px;
-    margin-bottom: 16px;
-    overflow: hidden;
-    transition: opacity 0.2s;
+    background: #1a1f2e; border: 1px solid #2d3748; border-radius: 10px;
+    margin-bottom: 14px; overflow: hidden;
   }
-  .group.hidden { display: none; }
-
   .group-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 20px;
-    cursor: pointer;
-    background: #1e2438;
-    border-bottom: 1px solid #2d3748;
+    display: flex; align-items: center; gap: 12px; padding: 13px 20px;
+    cursor: pointer; background: #1e2438; border-bottom: 1px solid #2d3748;
     user-select: none;
   }
   .group-header:hover { background: #252d45; }
-
-  .badge {
-    font-size: 0.68rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 100px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-  }
-  .badge-dist { background: #2c5282; color: #90cdf4; }
-  .badge-prov { background: #22543d; color: #9ae6b4; }
-
-  .group-name {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: #f7fafc;
-    flex: 1;
-  }
-  .group-name:hover { color: #63b3ed; }
-  .group-meta {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    font-size: 0.8rem;
-    color: #718096;
-  }
+  .badge { font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 100px; white-space: nowrap; }
+  .badge-propia   { background: #92400e; color: #fde68a; }
+  .badge-dropship { background: #7f1d1d; color: #fecaca; }
+  .group-name { font-weight: 700; font-size: 0.95rem; color: #f7fafc; flex: 1; }
+  .group-meta { display: flex; gap: 12px; font-size: 0.79rem; color: #718096; }
   .group-meta .total { color: #63b3ed; font-weight: 700; }
-  .group-meta .bajo { color: #fc8181; font-weight: 700; }
-  .chevron {
-    color: #4a5568;
-    transition: transform 0.2s;
-    font-size: 0.8rem;
-  }
+  .group-meta .bajo  { color: #fc8181; font-weight: 700; }
+  .chevron { color: #4a5568; transition: transform .2s; font-size: 0.8rem; }
   .group.open .chevron { transform: rotate(180deg); }
-
-  .group-body {
-    display: none;
-    padding: 0;
-  }
+  .group-body { display: none; }
   .group.open .group-body { display: block; }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.82rem;
-  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
   th {
-    background: #141821;
-    color: #a0aec0;
-    text-transform: uppercase;
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    padding: 10px 16px;
-    text-align: left;
-    border-bottom: 1px solid #2d3748;
+    background: #141821; color: #a0aec0; text-transform: uppercase;
+    font-size: 0.66rem; letter-spacing:.06em; padding: 10px 16px;
+    text-align: left; border-bottom: 1px solid #2d3748;
   }
-  td {
-    padding: 10px 16px;
-    border-bottom: 1px solid #1a202c;
-    vertical-align: middle;
-  }
+  td { padding: 10px 16px; border-bottom: 1px solid #1a202c; vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: #1e2438; }
 
   .id-pill {
-    background: #2d3748;
-    color: #e2e8f0;
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: 700;
+    background: #2d3748; color: #e2e8f0; font-family: monospace;
+    font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 700;
   }
-
-  .qty-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .bar-bg {
-    flex: 1;
-    height: 6px;
-    background: #2d3748;
-    border-radius: 3px;
-    max-width: 120px;
-  }
-  .bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    background: #3182ce;
-    transition: width 0.3s;
-  }
+  .qty-bar { display: flex; align-items: center; gap: 10px; }
+  .bar-bg  { flex:1; height:6px; background:#2d3748; border-radius:3px; max-width:120px; }
+  .bar-fill { height:100%; border-radius:3px; background:#3182ce; }
   .bar-fill.low { background: #c53030; }
-  .qty-num {
-    font-weight: 800;
-    min-width: 32px;
-    text-align: right;
-    font-size: 0.85rem;
-  }
+  .qty-num { font-weight: 800; min-width: 32px; text-align: right; font-size: 0.85rem; }
   .qty-num.low { color: #fc8181; }
-  .qty-num.ok { color: #68d391; }
+  .qty-num.ok  { color: #68d391; }
 
-  .footer-note {
-    text-align: center;
-    padding: 24px;
-    color: #4a5568;
-    font-size: 0.78rem;
-  }
+  .empty-state { text-align: center; padding: 60px; color: #4a5568; }
+  .footer-note { text-align: center; padding: 20px; color: #4a5568; font-size: 0.77rem; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>📦 Reporte de Salida — Distribuidor / Proveedor</h1>
-  <p id="generation-p">Picking &amp; Packing · Cargando datos base de la BD... · Umbral de alerta: &lt;30 unidades</p>
+  <p id="headerSub">Cargue el Excel de salidas para generar el reporte</p>
 </header>
 
-<div class="stats-bar" id="statsBar">
+<div class="regla-banner">
+  <strong>📌 Regla:</strong>
+  <span class="pill pill-propia">🏪 Proveedor vacío → BODEGA PROPIA</span>
+  <span class="pill pill-dropship">📦 Proveedor con valor → DROPSHIPPING</span>
+</div>
+
+<div class="file-zone" id="fileZone">
+  <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" />
+  <div class="file-label" onclick="document.getElementById('excelInput').click()">
+    📂 Cargar Excel de salidas
   </div>
+  <div class="file-info" id="fileInfo">Seleccione el archivo .xlsx o .csv de salidas</div>
+</div>
 
-<div class="controls">
-  <input type="file" id="excelInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelUpload(event)">
-  <button class="toggle-btn" onclick="document.getElementById('excelInput').click()" style="background: #3182ce; color: #fff; font-weight: bold;">📁 Cargar Excel Reporte</button>
+<div class="stats-bar" id="statsBar" style="display:none;"></div>
 
-  <input type="text" id="searchInput" placeholder="🔍  Buscar por nombre o ID de producto...">
+<div class="controls" id="controlsSection" style="display:none;">
+  <input type="text" id="searchInput" placeholder="🔍  Buscar producto, ID o fuente...">
   <select id="filterType">
-    <option value="">Todos los tipos</option>
-    <option value="Distribuidor (Bodega Propia)">Solo Distribuidores (Bodega Propia)</option>
-    <option value="Proveedor Dropshipping">Solo Proveedores Dropshipping</option>
+    <option value="">Todos los orígenes</option>
+    <option value="propia">🏪 Solo Bodega Propia</option>
+    <option value="dropship">📦 Solo Dropshipping</option>
   </select>
   <button class="toggle-btn" id="toggleLow" onclick="toggleLowOnly()">⚠ Solo bajo 30 uds</button>
   <button class="toggle-btn" onclick="expandAll()">Expandir todo</button>
   <button class="toggle-btn" onclick="collapseAll()">Colapsar todo</button>
+  <button class="btn-export" onclick="exportCSV()">⬇ Exportar CSV</button>
 </div>
 
 <div class="main" id="mainContent">
-  <div style="text-align: center; padding: 40px; color: #718096;">
-    <p style="font-size: 1.1rem; margin-bottom: 8px;">📥 Por favor, sube el archivo de Excel para generar el reporte comparativo.</p>
-    <p style="font-size: 0.85rem;">Los productos se cruzarán automáticamente contra las tiendas guardadas en base de datos.</p>
-  </div>
+  <div class="empty-state">📂 Cargue un archivo Excel para ver el reporte</div>
 </div>
 
-<div class="footer-note" id="footerNote">Esperando archivo de reporte...</div>
+<div class="footer-note" id="footerNote">Reporte de Salida · Distribuidor / Proveedor</div>
 
 <script>
-let DATA = [];
-let dbData = []; 
+let rawData    = [];
 let showLowOnly = false;
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadDatabaseData();
-});
-
-// Carga inicial conectando al API Backend
-async function loadDatabaseData() {
-  try {
-    const response = await fetch('/api/tiendas'); 
-    const result = await response.json();
-    dbData = result.tiendas || [];
+// ─── PARSE EXCEL / CSV HÍBRIDO SEGURO ───────────────────────────
+function parseExcel(buf) {
+  const arr = new Uint8Array(buf);
+  // Validar si es un zip/xlsx real buscando los bytes mágicos de cabecera 'PK'
+  const isXLSX = arr[0] === 0x50 && arr[1] === 0x4B && arr[2] === 0x03 && arr[3] === 0x04;
+  
+  let rows = [];
+  
+  if (isXLSX) {
+    // Si es un Excel real, usar SheetJS de forma nativa
+    const wb   = XLSX.read(buf, { type: 'array' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+  } else {
+    // Si es un CSV text plano, procesarlo de forma segura ignorando el bug de comillas de pulgadas
+    let text = new TextDecoder('utf-8').decode(buf);
+    if (text.includes('')) { // Reintentar con Windows-1252 si da caracteres extraños de Excel antiguo
+      try { text = new TextDecoder('windows-1252').decode(buf); } catch(e){}
+    }
     
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · Conectado con Base de Datos ✅ · Umbral de alerta: &lt;30 unidades`;
-    document.getElementById('footerNote').innerText = `Base de datos cargada correctamente. Listo para recibir el archivo Excel.`;
-  } catch (error) {
-    console.error('Error al consultar base de datos:', error);
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color:#fc8181;">❌ Error al conectar con la base de datos</span>`;
+    const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+    if (lines.length > 0) {
+      const firstLine = lines[0];
+      const semicolons = (firstLine.match(/;/g) || []).length;
+      const commas = (firstLine.match(/,/g) || []).length;
+      const tabs = (firstLine.match(/\t/g) || []).length;
+      
+      let delim = ',';
+      if (semicolons > commas && semicolons > tabs) delim = ';';
+      else if (tabs > commas && tabs > semicolons) delim = '\t';
+      
+      rows = lines.map(line => {
+        return line.split(delim).map(cell => {
+          let c = cell.trim();
+          if (c.startsWith('"') && c.endsWith('"')) {
+            c = c.slice(1, -1).trim();
+          }
+          return c.replace(/""/g, '"');
+        });
+      });
+    }
   }
-}
 
-function handleExcelUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+  if (!rows || rows.length < 2) throw new Error("El archivo no tiene datos suficientes.");
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const excelRows = XLSX.utils.sheet_to_json(worksheet);
+  // Normalización estricta de encabezados para evitar fallos por tildes o codificación
+  const cleanHeader = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const H = rows[0].map(c => cleanHeader(c));
 
-    crossReferenceData(excelRows);
+  const findColIndex = (keywords, exactTerms = []) => {
+    for (const term of exactTerms) {
+      const idx = H.findIndex(h => h === term);
+      if (idx !== -1) return idx;
+    }
+    for (const kw of keywords) {
+      const idx = H.findIndex(h => h.includes(kw));
+      if (idx !== -1) return idx;
+    }
+    return -1;
   };
-  reader.readAsArrayBuffer(file);
+
+  const iDist = findColIndex(['distribuidor', 'tienda', 'store', 'fuente', 'origen'], ['distribuidor', 'tienda']);
+  const iProv = findColIndex(['proveedor dropshipping', 'proveedor', 'prov', 'dropship'], ['proveedor dropshipping', 'proveedor']);
+  
+  // Buscar ID evitando cruces accidentales con IDs de proveedores o distribuidores
+  let iId = H.findIndex(h => h === 'id articulo' || h === 'id_articulo' || h === 'codigo' || h === 'sku');
+  if (iId === -1) iId = H.findIndex(h => h === 'id');
+  if (iId === -1) {
+    iId = H.findIndex(h => (h.includes('id') || h.includes('codigo') || h.includes('sku') || h.includes('ref')) && !h.includes('proveedor') && !h.includes('distribuidor') && !h.includes('descrip'));
+  }
+
+  const iCant = findColIndex(['cantidad', 'qty', 'cant', 'unidades', 'salidas'], ['cantidad', 'qty']);
+  const iProd = findColIndex(['descripcion en la venta', 'descripcion', 'producto', 'nombre', 'articulo', 'detalle'], ['descripcion', 'producto']);
+
+  if (iId === -1 || iCant === -1) throw new Error(`Columnas esenciales no encontradas (ID o Cantidad). Detectadas: ${rows[0].join(', ')}`);
+
+  // Acumular directamente: clave = fuente + id  →  una sola línea con la suma
+  const acum = new Map();
+
+  for (let i = 1; i < rows.length; i++) {
+    const r   = rows[i];
+    if (!r || r.length === 0) continue;
+
+    const id  = r[iId] ? String(r[iId]).trim() : "";
+    if (!id) continue;
+    
+    const cant = parseFloat(String(r[iCant]).replace(',', '.'));
+    if (isNaN(cant) || cant === 0) continue;
+
+    const dist  = iDist!==-1 && r[iDist] ? String(r[iDist]).trim() : "Sin distribuidor";
+    const prov  = iProv!==-1 && r[iProv] ? String(r[iProv]).trim() : "";
+    const prod  = iProd!==-1 && r[iProd] ? String(r[iProd]).trim() : `Producto ${id}`;
+
+    // ★ REGLA CLAVE MANTENIDA COMPLETAMENTE INTÁCTA ★
+    const esDS  = prov !== "";
+    const fuente = esDS ? prov : dist;
+    const tipo   = esDS ? 'dropship' : 'propia';
+
+    const key = `${fuente}|||${id}`;
+    if (!acum.has(key)) {
+      acum.set(key, { id, producto: prod, cantidad: 0, fuente, tipo, distribuidor: dist, proveedor: prov });
+    }
+    acum.get(key).cantidad += cant;
+  }
+
+  return [...acum.values()];
 }
 
-// Comparación y cruce matemático inteligente
-function crossReferenceData(excelRows) {
-  if (!excelRows || excelRows.length === 0) {
-    document.getElementById('footerNote').innerText = 'El archivo Excel está vacío.';
+// ─── STATS ─────────────────────────────────────────────────────
+function renderStats(data) {
+  const bar = document.getElementById('statsBar');
+  bar.style.display = 'flex';
+  const totalUnits = data.reduce((s,i)=>s+i.cantidad, 0);
+  const bajo30     = data.filter(i=>i.cantidad<30).length;
+  const fuentes    = new Set(data.map(i=>i.fuente)).size;
+  const fPropias   = new Set(data.filter(i=>i.tipo==='propia').map(i=>i.fuente)).size;
+  const fDropship  = new Set(data.filter(i=>i.tipo==='dropship').map(i=>i.fuente)).size;
+
+  bar.innerHTML = `
+    <div class="stat"><div class="stat-val">${fuentes}</div><div class="stat-label">Fuentes activas</div></div>
+    <div class="stat"><div class="stat-val amber">${fPropias}</div><div class="stat-label">🏪 Bodega Propia</div></div>
+    <div class="stat"><div class="stat-val" style="color:#fecaca;">${fDropship}</div><div class="stat-label">📦 Dropshipping</div></div>
+    <div class="stat"><div class="stat-val">${data.length}</div><div class="stat-label">SKUs únicos</div></div>
+    <div class="stat"><div class="stat-val">${totalUnits.toLocaleString()}</div><div class="stat-label">Unidades totales</div></div>
+    <div class="stat"><div class="stat-val red">${bajo30}</div><div class="stat-label">⚠ Bajo 30 uds</div></div>
+  `;
+}
+
+// ─── RENDER GRUPOS ─────────────────────────────────────────────
+function renderGroups(data) {
+  const container = document.getElementById('mainContent');
+  if (!data.length) {
+    container.innerHTML = `<div class="empty-state">🔍 Sin resultados con los filtros actuales</div>`;
     return;
   }
 
-  // Función interna para limpiar textos (quita espacios, tildes y pasa a minúsculas)
-  const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-
-  // 1. MAPEADO INTELIGENTE DE COLUMNAS (Se ejecuta una única vez leyendo la primera fila)
-  let colTiendas = [];
-  let colId = null;
-  let colDesc = null;
-  let colQty = null;
-
-  const firstRowKeys = Object.keys(excelRows[0]);
-  firstRowKeys.forEach(key => {
-    const nk = cleanText(key);
-    
-    // Detectar columnas de tiendas (mapea Distribuidor y Proveedor de forma simultánea)
-    if (nk.includes('tienda') || nk.includes('store') || nk.includes('fuente') || nk.includes('distribuidor') || nk.includes('proveedor')) {
-      colTiendas.push(key);
+  // Agrupar por fuente
+  const grouped = new Map();
+  data.forEach(item => {
+    const key = item.tipo + '|||' + item.fuente;
+    if (!grouped.has(key)) {
+      grouped.set(key, { fuente: item.fuente, tipo: item.tipo, items: [], total: 0, bajoCount: 0 });
     }
-    
-    // Detectar columna de ID / Código (Evita colisiones con guías o descripciones)
-    if ((nk.includes('id') || nk.includes('codigo') || nk.includes('sku') || nk.includes('ref')) && !nk.includes('desc') && !nk.includes('guia') && !nk.includes('transportadora')) {
-      if (!colId || nk === 'id' || nk === 'id articulo' || nk === 'codigo') {
-        colId = key;
-      }
-    }
-    
-    // Detectar columna de Descripción (Excluye explícitamente palabras de ID)
-    if ((nk.includes('desc') || nk.includes('producto') || nk.includes('nombre') || nk.includes('art')) && !nk.includes('id') && !nk.includes('codigo')) {
-      if (!colDesc || nk.includes('desc') || nk.includes('producto')) {
-        colDesc = key;
-      }
-    }
-    
-    // Detectar columna de Cantidad
-    if (nk.includes('cant') || nk.includes('qty') || nk.includes('unidades') || nk.includes('salida')) {
-      if (!nk.includes('guia') && !nk.includes('id') && !nk.includes('codigo')) {
-        colQty = key;
-      }
-    }
+    const g = grouped.get(key);
+    g.items.push(item);
+    g.total += item.cantidad;
+    if (item.cantidad < 30) g.bajoCount++;
   });
 
-  // 2. CRUCE CON LA BASE DE DATOS
-  DATA = dbData.map(tienda => {
-    let tipo = "Distribuidor (Bodega Propia)";
-    const nameUpper = tienda.nombre.toUpperCase();
-    if (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO") || nameUpper.includes("COMPRONAT") || nameUpper.includes("BOXIN")) {
-      tipo = "Proveedor Dropshipping";
-    }
-
-    const dbStoreNameClean = cleanText(tienda.nombre);
-    const dbStoreIdClean = cleanText(tienda.id);
-
-    const items = (tienda.inventario || []).map(prod => {
-      let totalQty = 0;
-      const dbProdCodeClean = cleanText(prod.codigo || prod.id);
-      const dbProdNameClean = cleanText(prod.nombre || prod.producto);
-
-      excelRows.forEach(row => {
-        // Concatenamos el texto de todas las columnas de tienda detectadas en esta fila
-        const rowTiendasText = colTiendas.map(col => cleanText(row[col])).join(' | ');
-        const rowId = colId ? cleanText(row[colId]) : '';
-        const rowDesc = colDesc ? cleanText(row[colDesc]) : '';
-
-        // Coincidencia de Tienda: Valida si se nombra en cualquiera de las columnas mapeadas
-        const storeMatch = rowTiendasText.includes(dbStoreNameClean) || 
-                           dbStoreNameClean.includes(rowTiendasText) ||
-                           colTiendas.some(col => cleanText(row[col]) === dbStoreIdClean);
-
-        if (!storeMatch) return;
-
-        // Coincidencia de Producto: Por código numérico exacto o por texto en descripción
-        const productMatch = (rowId && rowId === dbProdCodeClean) || 
-                             (rowDesc && (rowDesc.includes(dbProdNameClean) || dbProdNameClean.includes(rowDesc)));
-
-        if (productMatch) {
-          let rowQty = 1; // Por defecto cada línea es 1 guía procesada
-          if (colQty && row[colQty] !== undefined && row[colQty] !== null && row[colQty] !== '') {
-            const parsed = parseFloat(row[colQty]);
-            // Filtro estricto anti-códigos largos de rastreo erróneos
-            if (!isNaN(parsed) && parsed > 0 && parsed < 1000) {
-              rowQty = parsed;
-            }
-          }
-          totalQty += rowQty;
-        }
-      });
-
-      return {
-        source: tienda.nombre,
-        tipo: tipo,
-        id: prod.codigo || prod.id,
-        desc: prod.nombre || prod.producto,
-        qty: totalQty,
-        ubicacion: prod.ubicacion || ''
-      };
-    });
-
-    const groupTotal = items.reduce((sum, item) => sum + item.qty, 0);
-    const bajo30 = items.filter(item => item.qty < 30).length;
-
-    return {
-      source: tienda.nombre,
-      tipo: tipo,
-      total: groupTotal,
-      bajo30: bajo30,
-      items: items
-    };
+  // Bodega propia primero, luego dropshipping; dentro de cada tipo por total desc
+  const sorted = [...grouped.values()].sort((a,b) => {
+    if (a.tipo !== b.tipo) return a.tipo === 'propia' ? -1 : 1;
+    return b.total - a.total;
   });
 
-  calculateStats();
-}
-
-function calculateStats() {
-  let totalGuias = 0;
-  let totalProductos = 0;
-  let totalBajo30 = 0;
-  let totalFuentes = DATA.length;
-
-  DATA.forEach(g => {
-    totalGuias += g.total;
-    totalProductos += g.items.length;
-    totalBajo30 += g.bajo30;
-  });
-
-  document.getElementById('statsBar').innerHTML = `
-    <div class="stat">
-      <div class="stat-val">${totalFuentes}</div>
-      <div class="stat-label">Fuentes / Tiendas</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val">${totalProductos}</div>
-      <div class="stat-label">Total Productos</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val" style="color: #68d391;">${totalGuias}</div>
-      <div class="stat-label">Guías Salientes</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val ${totalBajo30 > 0 ? 'red' : ''}">${totalBajo30}</div>
-      <div class="stat-label">Alertas &lt; 30 Uds</div>
-    </div>
-  `;
-
-  document.getElementById('footerNote').innerText = `Total de ${totalProductos} líneas analizadas de la base de datos completadas con éxito.`;
-
-  applyFilters();
-}
-
-function renderGroups(search = '', typeFilter = '') {
-  const container = document.getElementById('mainContent');
   container.innerHTML = '';
+  sorted.forEach((group, gi) => {
+    const maxQ   = Math.max(...group.items.map(i=>i.cantidad), 1);
+    const bClass = group.tipo === 'propia' ? 'badge-propia' : 'badge-dropship';
+    const bLabel = group.tipo === 'propia' ? '🏪 Bodega Propia' : '📦 Dropshipping';
 
-  const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  const searchLower = cleanText(search);
-
-  DATA.forEach((group, gi) => {
-    const filteredItems = group.items.filter(item => {
-      const matchSearch = !searchLower || 
-                          cleanText(item.id).includes(searchLower) || 
-                          cleanText(item.desc).includes(searchLower);
-      return matchSearch;
-    });
-
-    const matchType = !typeFilter || group.tipo === typeFilter;
-
-    if (filteredItems.length === 0 || !matchType) return;
-    if (showLowOnly && group.bajo30 === 0) return;
-
-    const badgeClass = group.tipo.includes('Bodega Propia') ? 'badge-dist' : 'badge-prov';
+    const rows = group.items
+      .sort((a,b) => b.cantidad - a.cantidad)
+      .map(item => {
+        const pct   = Math.round(item.cantidad / maxQ * 100);
+        const isLow = item.cantidad < 30;
+        return `<tr>
+          <td><span class="id-pill">${escH(item.id)}</span></td>
+          <td>${escH(item.producto)}</td>
+          <td>
+            <div class="qty-bar">
+              <div class="bar-bg"><div class="bar-fill ${isLow?'low':''}" style="width:${pct}%"></div></div>
+              <span class="qty-num ${isLow?'low':'ok'}">${item.cantidad}</span>
+            </div>
+          </td>
+          <td>${isLow
+            ? '<span style="color:#fc8181;font-size:0.74rem;font-weight:700;">⚠ BAJO 30</span>'
+            : '<span style="color:#68d391;font-size:0.74rem;">✓ OK</span>'
+          }</td>
+        </tr>`;
+      }).join('');
 
     const div = document.createElement('div');
-    div.className = 'group';
-    div.id = 'group_' + gi;
-
+    div.className = 'group open';
+    div.id = `g_${gi}`;
     div.innerHTML = `
-      <div class="group-header" onclick="toggleGroup(${gi})">
-        <span class="badge ${badgeClass}">${group.tipo.includes('Bodega Propia') ? 'DIST' : 'PROV'}</span>
-        <span class="group-name">${group.source}</span>
+      <div class="group-header" onclick="toggleG(${gi})">
+        <span class="badge ${bClass}">${bLabel}</span>
+        <span class="group-name">${escH(group.fuente)}</span>
         <div class="group-meta">
-          <span>Productos: ${filteredItems.length}</span>
-          <span class="total">Salidas: ${group.total} uds</span>
-          ${group.bajo30 > 0 ? `<span class="bajo">⚠ ${group.bajo30} bajos</span>` : ''}
+          <span class="total">${group.total.toLocaleString()} uds</span>
+          ${group.bajoCount>0 ? `<span class="bajo">⚠ ${group.bajoCount} bajo 30</span>` : ''}
+          <span>${group.items.length} SKUs</span>
         </div>
         <span class="chevron">▼</span>
       </div>
       <div class="group-body">
         <table>
-          <thead>
-            <tr>
-              <th style="width: 130px;">ID / Código</th>
-              <th>Descripción del Producto</th>
-              ${filteredItems.some(i => i.ubicacion) ? '<th>Ubicación</th>' : ''}
-              <th style="width: 200px;">Cantidad Salidas</th>
-              <th style="width: 110px;">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filteredItems.map(item => {
-              const isLow = item.qty < 30;
-              const pct = Math.min((item.qty / 100) * 100, 100);
-              return `
-                <tr>
-                  <td><span class="id-pill">${item.id}</span></td>
-                  <td><span style="font-weight:600; color:#f7fafc;">${item.desc}</span></td>
-                  ${item.ubicacion ? `<td><span style="color:#a0aec0;">${item.ubicacion}</span></td>` : (filteredItems.some(i => i.ubicacion) ? '<td>-</td>' : '')}
-                  <td>
-                    <div class="qty-bar">
-                      <div class="bar-bg"><div class="bar-fill ${isLow?'low':''}" style="width:${pct}%"></div></div>
-                      <span class="qty-num ${isLow?'low':'ok'}">${item.qty}</span>
-                    </div>
-                  </td>
-                  <td>${isLow ? '<span style="color:#fc8181;font-size:0.75rem;font-weight:700;">⚠ BAJO 30</span>' : '<span style="color:#68d391;font-size:0.75rem;">✓ OK</span>'}</td>
-                </tr>`;
-            }).join('')}
-          </tbody>
+          <thead><tr><th>ID</th><th>Producto</th><th style="min-width:180px;">Unidades</th><th>Estado</th></tr></thead>
+          <tbody>${rows}</tbody>
         </table>
       </div>
     `;
     container.appendChild(div);
   });
+
+  document.getElementById('footerNote').textContent =
+    `${data.length} SKUs · ${sorted.length} fuentes · ${data.reduce((s,i)=>s+i.cantidad,0).toLocaleString()} unidades totales`;
 }
 
-function toggleGroup(gi) {
-  const el = document.getElementById('group_' + gi);
-  if (el) el.classList.toggle('open');
-}
-
-function expandAll() {
-  document.querySelectorAll('.group').forEach(g => g.classList.add('open'));
-}
-
-function collapseAll() {
-  document.querySelectorAll('.group').forEach(g => g.classList.remove('remove'));
-  document.querySelectorAll('.group').forEach(g => g.classList.remove('open'));
+// ─── FILTERS ───────────────────────────────────────────────────
+function applyFilters() {
+  if (!rawData.length) return;
+  let f = [...rawData];
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const t = document.getElementById('filterType').value;
+  if (q) f = f.filter(i => i.producto.toLowerCase().includes(q) || i.id.toLowerCase().includes(q) || i.fuente.toLowerCase().includes(q));
+  if (t === 'propia')   f = f.filter(i => i.tipo === 'propia');
+  if (t === 'dropship') f = f.filter(i => i.tipo === 'dropship');
+  if (showLowOnly)      f = f.filter(i => i.cantidad < 30);
+  renderGroups(f);
+  renderStats(rawData);
 }
 
 function toggleLowOnly() {
@@ -552,16 +401,68 @@ function toggleLowOnly() {
   document.getElementById('toggleLow').classList.toggle('active', showLowOnly);
   applyFilters();
 }
+function expandAll()  { document.querySelectorAll('.group').forEach(g=>g.classList.add('open')); }
+function collapseAll(){ document.querySelectorAll('.group').forEach(g=>g.classList.remove('open')); }
+window.toggleG = gi => document.getElementById(`g_${gi}`)?.classList.toggle('open');
 
-function applyFilters() {
-  const search = document.getElementById('searchInput').value;
-  const type = document.getElementById('filterType').value;
-  renderGroups(search, type);
+// ─── EXPORT CSV ────────────────────────────────────────────────
+function exportCSV() {
+  if (!rawData.length) return;
+  const lines = [['Fuente','Tipo','ID','Producto','Cantidad'].join(',')];
+  rawData.forEach(i => {
+    lines.push([
+      `"${i.fuente}"`,
+      i.tipo === 'propia' ? 'Bodega Propia' : 'Dropshipping',
+      i.id,
+      `"${i.producto.replace(/"/g,'""')}"`,
+      i.cantidad
+    ].join(','));
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8;'}));
+  a.download = 'reporte_salidas.csv';
+  a.click();
 }
 
-document.getElementById('searchInput').addEventListener('input', applyFilters);
-document.getElementById('filterType').addEventListener('change', applyFilters);
-</script>
+// ─── LOAD FILE ─────────────────────────────────────────────────
+function loadFile(file) {
+  const info = document.getElementById('fileInfo');
+  info.textContent = `Procesando ${file.name}…`;
+  info.className = 'file-info';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const items = parseExcel(e.target.result);
+      if (!items.length) throw new Error("No se encontraron filas válidas");
+      rawData = items;
+      document.getElementById('controlsSection').style.display = 'flex';
+      showLowOnly = false;
+      document.getElementById('toggleLow').classList.remove('active');
+      document.getElementById('searchInput').value = '';
+      document.getElementById('filterType').value  = '';
+      document.getElementById('headerSub').textContent =
+        `${file.name} · ${new Date().toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'})} · Umbral alerta <30 uds`;
+      renderStats(rawData);
+      renderGroups(rawData);
+      info.textContent = `✅ ${file.name} cargado correctamente`;
+      info.className = 'file-info ok';
+    } catch(err) {
+      info.textContent = `❌ Error: ${err.message}`;
+      info.className = 'file-info err';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
+const zone = document.getElementById('fileZone');
+zone.addEventListener('dragover', e=>{e.preventDefault();zone.classList.add('dragover');});
+zone.addEventListener('dragleave', ()=>zone.classList.remove('dragover'));
+zone.addEventListener('drop', e=>{e.preventDefault();zone.classList.remove('dragover');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
+document.getElementById('excelInput').addEventListener('change', e=>{if(e.target.files[0])loadFile(e.target.files[0]);});
+document.getElementById('searchInput')?.addEventListener('input', applyFilters);
+document.getElementById('filterType')?.addEventListener('change', applyFilters);
+
+function escH(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+</script>
 </body>
 </html>
