@@ -642,46 +642,41 @@ function renderGroups(search = '', typeFilter = '') {
   });
 }
 
-/* ── 🚀 GENERADOR DE EXCEL MULTIHOJA INTEGRADO EN LA HERRAMIENTA ── */
+/* ── 🚀 GENERADOR DE EXCEL MULTIHOJA (Detalle SKU por SKU igual al PDF) ── */
 function exportarExcelBonito() {
-  if (!originalExcelRows || originalExcelRows.length === 0) {
-    alert("Cargue primero un archivo de movimientos para poder exportar.");
+  if (DATA.length === 0) {
+    alert("No hay datos cargados para exportar.");
     return;
   }
 
   const wb = XLSX.utils.book_new();
+
+  // 1. Crear Dashboard
   const summaryRows = [
-    ["Dashboard Consolidador de Alistamiento — Efficommerce"],
-    [`Reporte generado el: ${new Date().toLocaleString()}`],
+    ["Resumen General de Alistamiento"],
+    [`Fecha de generación: ${new Date().toLocaleString()}`],
     [],
-    ["Distribuidor / Tienda Original", "Nombre de Pestaña", "Total Unidades Alistadas", "Nivel Alertas (<30)"]
+    ["Distribuidor / Tienda", "Órdenes Únicas", "Total Salidas", "Estado de Inventario"]
   ];
 
-  const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  DATA.forEach(group => {
+    summaryRows.push([
+      group.source,
+      group.items.length, 
+      group.total,
+      group.bajo30 > 0 ? `⚠️ ${group.bajo30} SKUs Críticos` : "✅ Óptimo"
+    ]);
+  });
 
-  // Encontrar las llaves del excel original de forma flexible para el desglose interno
-  const firstRow = originalExcelRows[0];
-  const keys = Object.keys(firstRow);
-  const kDist = keys.find(k => cleanText(k).includes('distribuidor') || cleanText(k).includes('tienda'));
-  const kProv = keys.find(k => cleanText(k).includes('proveedor') || cleanText(k).includes('dropship'));
-  const kGuia = keys.find(k => cleanText(k).includes('guia') || cleanText(k).includes('tracking'));
-  const kDest = keys.find(k => cleanText(k).includes('destina'));
-  const kDoc  = keys.find(k => cleanText(k).includes('docu'));
-  const kId   = keys.find(k => cleanText(k).includes('id') || cleanText(k).includes('codigo'));
-  const kCant = keys.find(k => cleanText(k).includes('cant') || cleanText(k).includes('qty'));
-  const kDesc = keys.find(k => cleanText(k).includes('descrip') || cleanText(k).includes('producto') || cleanText(k).includes('articulo'));
-  const kFecha = keys.find(k => cleanText(k).includes('fecha'));
+  const wsDash = XLSX.utils.aoa_to_sheet(summaryRows);
+  XLSX.utils.book_append_sheet(wb, wsDash, "Resumen General");
 
-  // Ordenar la data por volumen para el Dashboard
-  const sortedGroups = [...DATA].sort((a, b) => b.total - a.total);
-
-  sortedGroups.forEach(group => {
-    // Crear un nombre limpio y válido de pestaña (máx 30 caracteres)
-    let sheetName = group.source.replace(' - ', '_');
-    sheetName = sheetName.replace(/[\\*?:/\[\]]/g, '').substring(0, 30).trim();
-    if(!sheetName) sheetName = "Canal_General";
-
-    // Evitar colisión duplicada de nombres
+  // 2. Crear una hoja por tienda con el detalle idéntico al PDF
+  DATA.forEach(group => {
+    let sheetName = group.source.replace(/[\\*?:/\[\]]/g, '').substring(0, 30).trim();
+    if(!sheetName) sheetName = "Tienda";
+    
+    // Evitar nombres duplicados
     let finalSheetName = sheetName;
     let counter = 1;
     while (wb.SheetNames.includes(finalSheetName)) {
@@ -689,84 +684,35 @@ function exportarExcelBonito() {
       counter++;
     }
 
-    // Agregar fila al Dashboard General
-    summaryRows.push([
-      group.source,
-      finalSheetName,
-      group.total,
-      group.bajo30 > 0 ? `CRÍTICO: ${group.bajo30} bajos` : "ÓPTIMO"
-    ]);
-
-    // Filtrar los movimientos individuales de este distribuidor específico desde la hoja original cargada
-    const cleanStoreName = cleanText(group.source);
-    const matchedMovements = originalExcelRows.filter(row => {
-      const rowDist = cleanText(row[kDist]);
-      const rowProv = cleanText(row[kProv]);
-      // Sincroniza con la paridad exacta de la base de datos (prov !== "" o concordancia de nombre)
-      return rowDist.includes(cleanStoreName) || cleanStoreName.includes(rowDist) || rowProv.includes(cleanStoreName);
-    });
-
-    // Construcción de la hoja individual detallada
+    // Cabeceras iguales a las del PDF
     const sheetRows = [
-      [`Reporte de Alistamiento (Picking) - ${group.source}`],
-      [`Canal logístico: ${group.tipo} · Total extraído: ${group.total} unidades`],
+      [`Reporte de Alistamiento - ${group.source}`],
       [],
-      ["Guía Transportadora", "Destinatario", "Documento", "ID Artículo", "Descripción del Artículo", "Cantidad", "Fecha Transacción"]
+      ["Código SKU", "Descripción del Artículo", "Ubicación", "Unidades Extraídas", "Estado"]
     ];
 
-    matchedMovements.forEach(m => {
+    // Llenar datos SKU por SKU
+    group.items.forEach(item => {
+      const isLow = item.qty < 30;
       sheetRows.push([
-        m[kGuia] || "S/G",
-        m[kDest] || "Consumidor Final",
-        m[kDoc] || "-",
-        m[kId] || "-",
-        m[m[kDesc] ? kDesc : kId] || "-", // Salvaguarda si cruza ID como artículo
-        parseFloat(m[kCant]) || 1,
-        m[kFecha] || "-"
+        item.id,
+        item.desc,
+        item.ubicacion || "-",
+        item.qty,
+        isLow ? "CRÍTICO (<30)" : "OK"
       ]);
     });
 
-    // Si no tiene registros físicos en el excel de este día, se listan sus SKUs base en 0 salidas
-    if (matchedMovements.length === 0) {
-      group.items.forEach(item => {
-        sheetRows.push(["-", "Sin movimientos", "-", item.id, item.desc, 0, "-"]);
-      });
-    }
+    const ws = XLSX.utils.aoa_to_sheet(sheetRows);
 
-    const wsIndividual = XLSX.utils.aoa_to_sheet(sheetRows);
+    // Auto-ajuste de columnas
+    ws['!cols'] = [{wch: 15}, {wch: 40}, {wch: 15}, {wch: 20}, {wch: 15}];
     
-    // Auto-ajuste de columnas de la hoja individual
-    const wscols = sheetRows[3].map((_, colIdx) => {
-      return { wch: Math.max(...sheetRows.slice(3).map(r => String(r[colIdx] || '').length), 12) + 3 };
-    });
-    wsIndividual['!cols'] = wscols;
-
-    XLSX.utils.book_append_sheet(wb, wsIndividual, finalSheetName);
+    XLSX.utils.book_append_sheet(wb, ws, finalSheetName);
   });
 
-  // Agregar la fila de totales globales al Dashboard
-  const dashTotalRow = summaryRows.length + 1;
-  summaryRows.push([]);
-  summaryRows.push([
-    "TOTAL GENERAL CONSOLIDADO", 
-    "-", 
-    DATA.reduce((s, g) => s + g.total, 0),
-    DATA.reduce((s, g) => s + g.bajo30, 0) > 0 ? "REVISAR ALERTAS" : "ESTABLE"
-  ]);
-
-  const wsDashboard = XLSX.utils.aoa_to_sheet(summaryRows);
-  
-  // Auto-ajuste de columnas de la pestaña Dashboard
-  const wsDashCols = summaryRows[3].map((_, colIdx) => {
-    return { wch: Math.max(...summaryRows.slice(3).map(r => String(r[colIdx] || '').length), 15) + 3 };
-  });
-  wsDashboard['!cols'] = wsDashCols;
-
-  // Insertar Dashboard como pestaña inicial del libro
-  XLSX.utils.book_append_sheet(wb, wsDashboard, "Resumen General");
-  wb.SheetNames.unshift(wb.SheetNames.pop()); // Mueve al inicio
-
-  XLSX.writeFile(wb, `Efficommerce_Consolidado_Salidas_${new Date().toISOString().slice(0,10)}.xlsx`);
+  // Descargar el archivo
+  XLSX.writeFile(wb, `Reporte_Picking_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
 // Despliega los acordeones y llama la impresión nativa adaptada para PDF
