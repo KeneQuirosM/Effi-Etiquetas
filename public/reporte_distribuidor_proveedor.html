@@ -302,6 +302,152 @@
   .empty-state { text-align: center; padding: 50px; color: var(--neutral-400); }
   .footer-note { text-align: center; padding: 24px; color: var(--neutral-600); font-size: 0.8rem; border-top: 1px solid var(--neutral-200); background: #fcfdfe; }
 
+  /* ── PANEL DE EXCLUSIÓN DE TIENDAS ── */
+  .exclusion-panel {
+    background: #fcfdfe;
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    margin: 0 32px 10px 32px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .exclusion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    cursor: pointer;
+    background: var(--neutral-50);
+    border-bottom: 1px solid transparent;
+    transition: var(--transition);
+    user-select: none;
+  }
+  .exclusion-header:hover { background: var(--neutral-100); }
+  .exclusion-header.open { border-bottom-color: var(--neutral-200); }
+
+  .exclusion-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--neutral-800);
+  }
+  .exclusion-header-left i { color: var(--brand-500); }
+
+  .exclusion-badge {
+    background: var(--danger-bg);
+    color: var(--danger-mid);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: none;
+  }
+  .exclusion-badge.visible { display: inline-block; }
+
+  .exclusion-chevron { color: var(--neutral-600); font-size: 0.75rem; transition: var(--transition); }
+  .exclusion-header.open .exclusion-chevron { transform: rotate(180deg); color: var(--brand-500); }
+
+  .exclusion-body {
+    display: none;
+    padding: 16px 20px;
+  }
+  .exclusion-body.open { display: block; }
+
+  .exclusion-info {
+    font-size: 0.78rem;
+    color: var(--neutral-600);
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    background: var(--brand-50);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--brand-300);
+  }
+
+  .exclusion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .exclusion-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--neutral-200);
+    cursor: pointer;
+    transition: var(--transition);
+    background: #fff;
+  }
+  .exclusion-item:hover { border-color: var(--brand-300); background: var(--brand-50); }
+  .exclusion-item.excluded {
+    border-color: var(--danger-mid);
+    background: var(--danger-bg);
+  }
+
+  .exclusion-item input[type="checkbox"] {
+    accent-color: var(--danger-mid);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .exclusion-item-info { flex: 1; min-width: 0; }
+  .exclusion-item-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--neutral-800);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .exclusion-item.excluded .exclusion-item-name { color: var(--danger-mid); text-decoration: line-through; }
+
+  .exclusion-item-type {
+    font-size: 0.68rem;
+    color: var(--neutral-600);
+    margin-top: 1px;
+  }
+
+  .exclusion-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--neutral-200);
+    align-items: center;
+  }
+
+  .exclusion-actions button {
+    font-size: 0.78rem;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--neutral-200);
+    cursor: pointer;
+    font-weight: 500;
+    transition: var(--transition);
+    background: #fcfdfe;
+    color: var(--neutral-800);
+    font-family: var(--font);
+  }
+  .exclusion-actions button:hover { background: var(--neutral-100); }
+  .exclusion-actions .btn-exclude-all { background: var(--danger-bg); border-color: var(--danger-mid); color: var(--danger-mid); font-weight: 600; }
+  .exclusion-actions .btn-include-all { background: var(--success-bg); border-color: var(--success-mid); color: var(--success-mid); font-weight: 600; }
+  .exclusion-actions .exclusion-count { margin-left: auto; font-size: 0.78rem; color: var(--neutral-600); font-style: italic; }
+
+  /* Scrollbar sutil para la grilla */
+  .exclusion-grid::-webkit-scrollbar { width: 4px; }
+  .exclusion-grid::-webkit-scrollbar-track { background: transparent; }
+  .exclusion-grid::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 2px; }
+
   /* ── 🖨️ CORRECCIÓN DE PDF: Forzar renderizado de colores, barras y fondos en la impresión ── */
   @media print {
     * {
@@ -309,7 +455,7 @@
       print-color-adjust: exact !important;
     }
     body { background: #ffffff !important; color: #000000 !important; padding: 0 !important; }
-    .file-zone, .controls, #excelInput, .toggle-btn, button, .chevron { display: none !important; }
+    .file-zone, .controls, #excelInput, .toggle-btn, button, .chevron, .exclusion-panel { display: none !important; }
     .main { padding: 0 !important; }
     .group { page-break-inside: avoid; border: 1px solid var(--neutral-200) !important; box-shadow: none !important; margin-bottom: 18px !important; }
     .group-header { background: var(--neutral-50) !important; border-bottom: 1px solid var(--neutral-200) !important; display: flex !important; }
@@ -349,6 +495,30 @@
 
 <div class="stats-bar" id="statsBar" style="display:none;"></div>
 
+<!-- ── PANEL DE EXCLUSIÓN DE TIENDAS ── -->
+<div class="exclusion-panel" id="exclusionPanel" style="display:none;">
+  <div class="exclusion-header" id="exclusionToggle" onclick="toggleExclusionPanel()">
+    <div class="exclusion-header-left">
+      <i class="fas fa-store-slash"></i>
+      Excluir tiendas del reporte
+      <span class="exclusion-badge" id="exclusionBadge"></span>
+    </div>
+    <i class="fas fa-chevron-down exclusion-chevron" id="exclusionChevron"></i>
+  </div>
+  <div class="exclusion-body" id="exclusionBody">
+    <div class="exclusion-info">
+      <i class="fas fa-info-circle"></i>
+      Las tiendas marcadas <strong>no aparecerán</strong> en el reporte ni en los exports. El cruce de datos se realiza exclusivamente con las tiendas activas.
+    </div>
+    <div class="exclusion-grid" id="exclusionGrid"></div>
+    <div class="exclusion-actions">
+      <button class="btn-include-all" onclick="setAllExclusion(false)"><i class="fas fa-check-double"></i> Incluir todas</button>
+      <button class="btn-exclude-all" onclick="setAllExclusion(true)"><i class="fas fa-ban"></i> Excluir todas</button>
+      <span class="exclusion-count" id="exclusionCount"></span>
+    </div>
+  </div>
+</div>
+
 <div class="controls" id="controlsSection" style="display:none;">
   <input type="text" id="searchInput" placeholder="🔍 Buscar por SKU o nombre de producto...">
   <select id="filterType">
@@ -382,8 +552,9 @@
 <script>
 let DATA = [];
 let dbData = []; 
-let originalExcelRows = []; // Almacena las filas crudas del archivo cargado para cruces detallados
+let originalExcelRows = [];
 let showLowOnly = false;
+let excludedStores = new Set(); // IDs de tiendas excluidas (usando nombre como key único)
 
 document.addEventListener('DOMContentLoaded', () => {
   loadDatabaseData();
@@ -397,6 +568,9 @@ async function loadDatabaseData() {
     
     document.getElementById('generation-p').innerHTML = `Picking & Packing · Base de datos conectada ✅ · Alerta < 30 uds`;
     document.getElementById('footerNote').innerText = `Base de datos cargada.`;
+
+    renderExclusionPanel();
+    document.getElementById('exclusionPanel').style.display = 'block';
   } catch (error) {
     console.error('Error base de datos:', error);
     document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color:var(--danger-mid); font-weight:600;">⚠️ Error de enlace BD</span>`;
@@ -463,6 +637,7 @@ function procesarArchivo(file) {
       info.textContent = `✅ ${file.name} procesado e integrado correctamente`;
       info.className = 'file-info ok';
       document.getElementById('controlsSection').style.display = 'flex';
+      document.getElementById('exclusionPanel').style.display = 'block';
     } catch (err) {
       info.textContent = `❌ Error: ${err.message}`;
       info.className = 'file-info err';
@@ -495,7 +670,9 @@ function crossReferenceData(excelRows) {
     }
   });
 
-  DATA = dbData.map(tienda => {
+  DATA = dbData
+    .filter(tienda => !excludedStores.has(tienda.nombre))
+    .map(tienda => {
     let tipo = "Distribuidor (Bodega Propia)";
     const nameUpper = tienda.nombre.toUpperCase();
     if (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO")) {
@@ -739,6 +916,118 @@ function applyFilters() {
 
 document.getElementById('searchInput').addEventListener('input', applyFilters);
 document.getElementById('filterType').addEventListener('change', applyFilters);
+
+/* ── FUNCIONES PANEL DE EXCLUSIÓN ── */
+function renderExclusionPanel() {
+  const grid = document.getElementById('exclusionGrid');
+  if (!grid || dbData.length === 0) return;
+
+  grid.innerHTML = '';
+
+  dbData.forEach(tienda => {
+    const isExcluded = excludedStores.has(tienda.nombre);
+    const nameUpper = tienda.nombre.toUpperCase();
+    const tipo = (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || 
+                  nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO"))
+      ? 'Proveedor Dropshipping' : 'Bodega Propia';
+
+    const item = document.createElement('div');
+    item.className = `exclusion-item${isExcluded ? ' excluded' : ''}`;
+    item.id = `exc_${tienda.nombre.replace(/\s+/g,'_')}`;
+    item.innerHTML = `
+      <input type="checkbox" ${isExcluded ? 'checked' : ''} 
+             onchange="toggleExcludeStore('${tienda.nombre.replace(/'/g,"\\'")}', this.checked)"
+             onclick="event.stopPropagation()">
+      <div class="exclusion-item-info">
+        <div class="exclusion-item-name" title="${tienda.nombre}">${tienda.nombre}</div>
+        <div class="exclusion-item-type">${tipo === 'Bodega Propia' ? '🏪 Bodega Propia' : '📦 Dropshipping'}</div>
+      </div>
+    `;
+    item.addEventListener('click', () => {
+      const cb = item.querySelector('input[type="checkbox"]');
+      cb.checked = !cb.checked;
+      toggleExcludeStore(tienda.nombre, cb.checked);
+    });
+    grid.appendChild(item);
+  });
+
+  updateExclusionBadge();
+}
+
+function toggleExcludeStore(nombre, excluir) {
+  if (excluir) {
+    excludedStores.add(nombre);
+  } else {
+    excludedStores.delete(nombre);
+  }
+
+  // Actualizar visual del item
+  const key = nombre.replace(/\s+/g,'_');
+  const item = document.getElementById(`exc_${key}`);
+  if (item) {
+    item.classList.toggle('excluded', excluir);
+    const cb = item.querySelector('input[type="checkbox"]');
+    if (cb) cb.checked = excluir;
+  }
+
+  updateExclusionBadge();
+
+  // Si ya hay datos cargados, recalcular el reporte
+  if (originalExcelRows.length > 0) {
+    // Reconstruir rows para crossReferenceData
+    const wb_temp = { rows: originalExcelRows };
+    // Re-usar las filas originales almacenadas
+    rebuildReport();
+  }
+}
+
+function rebuildReport() {
+  // Reconstruye el reporte completo usando los datos originales ya parseados
+  if (originalExcelRows.length === 0) return;
+
+  // Convertir originalExcelRows (array de objetos) de vuelta a formato matricial
+  const headers = Object.keys(originalExcelRows[0]);
+  const rows = [headers, ...originalExcelRows.map(r => headers.map(h => r[h] || ''))];
+  crossReferenceData(rows);
+}
+
+function setAllExclusion(excluir) {
+  dbData.forEach(tienda => {
+    if (excluir) {
+      excludedStores.add(tienda.nombre);
+    } else {
+      excludedStores.delete(tienda.nombre);
+    }
+  });
+  renderExclusionPanel();
+  if (originalExcelRows.length > 0) rebuildReport();
+}
+
+function toggleExclusionPanel() {
+  const header = document.getElementById('exclusionToggle');
+  const body = document.getElementById('exclusionBody');
+  header.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+function updateExclusionBadge() {
+  const badge = document.getElementById('exclusionBadge');
+  const count = document.getElementById('exclusionCount');
+  const n = excludedStores.size;
+
+  if (n > 0) {
+    badge.textContent = `${n} excluida${n > 1 ? 's' : ''}`;
+    badge.classList.add('visible');
+  } else {
+    badge.classList.remove('visible');
+  }
+
+  if (count) {
+    const total = dbData.length;
+    const activas = total - n;
+    count.textContent = `${activas} de ${total} tiendas activas`;
+  }
+}
 
 const zone = document.getElementById('fileZone');
 zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
