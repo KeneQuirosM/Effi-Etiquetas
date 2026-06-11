@@ -699,8 +699,10 @@ function crossReferenceData(excelRows) {
 
         if (!storeMatch) return;
 
+        // 1️⃣ Si hay SKU y coincide exacto dentro de la tienda → match directo
+        // 2️⃣ Solo si no hay SKU en la fila, fallback a nombre exacto
         const productMatch = (rowId && rowId === dbProdCodeClean) || 
-                             (rowDesc && (rowDesc.includes(dbProdNameClean) || dbProdNameClean.includes(rowDesc)));
+                             (!rowId && rowDesc && rowDesc === dbProdNameClean);
 
         if (productMatch) {
           let rowQty = 1; 
