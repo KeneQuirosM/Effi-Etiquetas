@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte Dinámico de Movimientos por Tienda</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  header {
+    background: linear-gradient(135deg, #1a1f2e 0%, #0f1117 100%);
+    border-bottom: 1px solid #2d3748;
+    padding: 24px 32px;
+  }
+  header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f7fafc;
+    letter-spacing: -0.5px;
+  }
+  header p {
+    color: #718096;
+    font-size: 0.85rem;
+    margin-top: 4px;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 16px;
+    padding: 20px 32px;
+    background: #141821;
+    border-bottom: 1px solid #2d3748;
+    flex-wrap: wrap;
+  }
+  .stat {
+    background: #1a1f2e;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 12px 20px;
+    min-width: 140px;
+  }
+  .stat-val {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #63b3ed;
+    line-height: 1;
+  }
+  .stat-val.red { color: #fc8181; }
+  .stat-label {
+    font-size: 0.72rem;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    padding: 16px 32px;
+    background: #0f1117;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid #2d3748;
+  }
+  .controls input, .controls select {
+    background: #1a1f2e;
+    border: 1px solid #2d3748;
+    border-radius: 6px;
+    color: #e2e8f0;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    outline: none;
+  }
+  .controls input { min-width: 240px; }
+  .controls input:focus, .controls select:focus {
+    border-color: #4299e1;
+  }
+  .toggle-btn {
+    background: #2d3748;
+    border: none;
+    border-radius: 6px;
+    color: #e2e8f0;
+    padding: 8px 16px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .toggle-btn:hover { background: #4a5568; }
+  .toggle-btn.active { background: #c53030; color: #fff; }
+
+  .main { padding: 24px 32px; }
+
+  .group {
+    background: #1a1f2e;
+    border: 1px solid #2d3748;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: opacity 0.2s;
+  }
+  .group.hidden { display: none; }
+
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    cursor: pointer;
+    background: #1e2438;
+    border-bottom: 1px solid #2d3748;
+    user-select: none;
+  }
+  .group-header:hover { background: #252d45; }
+
+  .badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .badge-dist { background: #2c5282; color: #90cdf4; }
+
+  .group-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #f7fafc;
+    flex: 1;
+  }
+  .group-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #718096;
+  }
+  .group-meta .total { color: #63b3ed; font-weight: 700; }
+  .group-meta .bajo { color: #fc8181; font-weight: 700; }
+  .chevron {
+    color: #4a5568;
+    transition: transform 0.2s;
+    font-size: 0.8rem;
+  }
+  .group.open .chevron { transform: rotate(180deg); }
+
+  .group-body {
+    display: none;
+    padding: 0;
+  }
+  .group.open .group-body { display: block; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  th {
+    background: #141821;
+    color: #a0aec0;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid #2d3748;
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid #1a202c;
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1e2438; }
+
+  .id-pill {
+    background: #2d3748;
+    color: #e2e8f0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+
+  .qty-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .bar-bg {
+    flex: 1;
+    height: 6px;
+    background: #2d3748;
+    border-radius: 3px;
+    max-width: 120px;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: #48bb78;
+    transition: width 0.3s;
+  }
+  .bar-fill.low { background: #c53030; }
+  .qty-num {
+    font-weight: 800;
+    min-width: 32px;
+    text-align: right;
+    font-size: 0.85rem;
+  }
+  .qty-num.low { color: #fc8181; }
+  .qty-num.ok { color: #68d391; }
+
+  .footer-note {
+    text-align: center;
+    padding: 24px;
+    color: #4a5568;
+    font-size: 0.78rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📊 Reporte General de Movimientos por Tienda</h1>
+  <p>Consulta en Tiempo Real · Conectado directamente a la Base de Datos</p>
+</header>
+
+<div class="stats-bar" id="statsBar">Cargando estadísticas...</div>
+
+<div class="controls">
+  <input type="text" id="searchInput" placeholder="🔍  Buscar por nombre o ID de producto por tienda...">
+  <select id="filterType">
+    <option value="">Todos los Estados</option>
+    <option value="con_movimiento">Solo Con Movimiento</option>
+    <option value="sin_movimiento">Solo Sin Movimiento</option>
+  </select>
+  <button class="toggle-btn" id="toggleLow" onclick="toggleLowOnly()">❌ Ver solo sin movimiento</button>
+  <button class="toggle-btn" onclick="expandAll()">Expandir todo</button>
+  <button class="toggle-btn" onclick="collapseAll()">Colapsar todo</button>
+</div>
+
+<div class="main" id="mainContent">Cargando reporte desde la BD...</div>
+
+<div class="footer-note" id="footerNote">Sincronizando información...</div>
+
+<script>
+let DATA = []; // Se llenará dinámicamente
+let showLowOnly = false;
+
+// Función para descargar los datos de tu API de Vercel
+async function inicializarReporte() {
+  try {
+    const respuesta = await fetch('/api/reporte-tiendas');
+    if (!respuesta.ok) throw new Error('Error al consultar el servidor');
+    
+    DATA = await respuesta.json();
+    
+    renderStats();
+    renderGroups();
+    
+    // Actualizar pie de página
+    const totalProductos = DATA.reduce((a, g) => a + g.items.length, 0);
+    document.getElementById('footerNote').innerText = `Total de ${totalProductos} líneas de producto analizadas en las tiendas registradas.`;
+  } catch (error) {
+    console.error(error);
+    document.getElementById('mainContent').innerHTML = `<p style="color: #fc8181; font-weight: bold;">⚠ Error al cargar los datos desde la BD: ${error.message}</p>`;
+  }
+}
+
+function renderStats() {
+  const bar = document.getElementById('statsBar');
+  const totalTiendas = DATA.length;
+  const totalProducts = DATA.reduce((a,g)=>a+g.items.length,0);
+  const totalUnits = DATA.reduce((a,g)=>a+g.total,0);
+  const totalSinMovimiento = DATA.reduce((a,g)=>a+g.bajo30,0);
+  
+  bar.innerHTML = `
+    <div class="stat"><div class="stat-val">${totalTiendas}</div><div class="stat-label">Tiendas Activas</div></div>
+    <div class="stat"><div class="stat-val" style="color: #63b3ed;">${totalProducts}</div><div class="stat-label">SKUs Totales</div></div>
+    <div class="stat"><div class="stat-val" style="color: #68d391;">${totalUnits.toLocaleString()}</div><div class="stat-label">Movimientos Totales</div></div>
+    <div class="stat"><div class="stat-val red">${totalSinMovimiento}</div><div class="stat-label">Productos Sin Movimiento</div></div>
+  `;
+}
+
+function getMaxQty(group) {
+  return Math.max(...group.items.map(i=>i.qty), 1);
+}
+
+function renderGroups(filter='', typeFilter='') {
+  const container = document.getElementById('mainContent');
+  container.innerHTML = '';
+  
+  DATA.forEach((group, gi) => {
+    const filteredItems = group.items.filter(item => {
+      const q = filter.toLowerCase();
+      const matchSearch = !q || item.desc.toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
+      
+      // Filtro del botón de alternar (Saber si tiene 0 movimientos)
+      const matchOnlySinMov = !showLowOnly || item.qty === 0;
+      
+      // Filtro del Selector Dropdown
+      let matchDropdown = true;
+      if (typeFilter === 'con_movimiento') matchDropdown = item.qty > 0;
+      if (typeFilter === 'sin_movimiento') matchDropdown = item.qty === 0;
+
+      return matchSearch && matchOnlySinMov && matchDropdown;
+    });
+    
+    if (!filteredItems.length) return;
+    
+    const maxQty = getMaxQty(group);
+    const div = document.createElement('div');
+    div.className = 'group open'; // Dejamos abierto por defecto para facilitar lectura
+    div.id = 'group_' + gi;
+    
+    const sinMovimientoEnFiltro = filteredItems.filter(i=>i.qty === 0).length;
+    
+    div.innerHTML = `
+      <div class="group-header" onclick="toggleGroup(${gi})">
+        <span class="badge badge-dist">Tienda</span>
+        <span class="group-name">${group.source}</span>
+        <div class="group-meta">
+          <span class="total">${group.total} movimientos</span>
+          ${sinMovimientoEnFiltro > 0 ? `<span class="bajo">❌ ${sinMovimientoEnFiltro} sin movimiento</span>` : ''}
+          <span>${filteredItems.length} IDs</span>
+        </div>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="group-body">
+        <table>
+          <thead>
+            <tr>
+              <th>ID por Tienda</th>
+              <th>Producto / Descripción</th>
+              <th style="min-width:200px;">Cantidad de Movimientos</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredItems.map(item => {
+              const pct = Math.round((item.qty / maxQty) * 100);
+              const noTieneMovimiento = item.qty === 0;
+              
+              return `<tr>
+                <td><span class="id-pill">${item.id}</span></td>
+                <td>${item.desc}</td>
+                <td>
+                  <div class="qty-bar">
+                    <div class="bar-bg"><div class="bar-fill ${noTieneMovimiento ? 'low':''}" style="width:${pct}%"></div></div>
+                    <span class="qty-num ${noTieneMovimiento ? 'low':'ok'}">${item.qty}</span>
+                  </div>
+                </td>
+                <td>${noTieneMovimiento ? 
+                  '<span style="color:#fc8181;font-size:0.75rem;font-weight:700;">❌ SIN MOVIMIENTO</span>' : 
+                  '<span style="color:#68d391;font-size:0.75rem;font-weight:700;">✓ ACTIVO</span>'}
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function toggleGroup(gi) {
+  const el = document.getElementById('group_' + gi);
+  if (el) el.classList.toggle('open');
+}
+
+function expandAll() {
+  document.querySelectorAll('.group').forEach(g => g.classList.add('open'));
+}
+
+function collapseAll() {
+  document.querySelectorAll('.group').forEach(g => g.classList.remove('open'));
+}
+
+function toggleLowOnly() {
+  showLowOnly = !showLowOnly;
+  document.getElementById('toggleLow').classList.toggle('active', showLowOnly);
+  applyFilters();
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchInput').value;
+  const type = document.getElementById('filterType').value;
+  renderGroups(search, type);
+}
+
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('filterType').addEventListener('change', applyFilters);
+
+// Iniciar la carga dinámica al abrir la página
+window.addEventListener('DOMContentLoaded', inicializarReporte);
+</script>
+</body>
+</html>
