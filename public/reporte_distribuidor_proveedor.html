@@ -396,7 +396,7 @@ async function loadDatabaseData() {
     dbData = result.tiendas || [];
     
     document.getElementById('generation-p').innerHTML = `Picking & Packing · Base de datos conectada ✅ · Alerta < 30 uds`;
-    document.getElementById('footerNote').innerText = `Base de datos cargada. Listo para recibir reportes locales.`;
+    document.getElementById('footerNote').innerText = `Base de datos cargada.`;
   } catch (error) {
     console.error('Error base de datos:', error);
     document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color:var(--danger-mid); font-weight:600;">⚠️ Error de enlace BD</span>`;
