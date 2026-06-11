@@ -318,65 +318,71 @@ function getExcelValue(row, keywords) {
   return null;
 }
 
-// Cruce matemático del excel contra la base de datos
 function crossReferenceData(excelRows) {
-  // Mapeamos cada tienda e inventario de la BD para construir la estructura exacta del html original
-  DATA = dbData.map(tienda => {
-    // Clasificación automática de tipo según el nombre de la tienda
-    let tipo = "Distribuidor (Bodega Propia)";
-    const nameUpper = tienda.nombre.toUpperCase();
-    if (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO") || nameUpper.includes("COMPRONAT") || nameUpper.includes("BOXIN")) {
-      tipo = "Proveedor Dropshipping";
-    }
+  // Mapeamos cada tienda de la base de datos original para reconstruir la estructura exacta
+  const updatedData = dbData.map(tienda => {
+    let tiendaTotal = 0;
+    let tiendaBajo30 = 0;
 
     const items = (tienda.inventario || []).map(prod => {
       let totalQty = 0;
 
-      // Buscar coincidencias exactas o parciales dentro del Excel subido
+      // Buscar coincidencias dentro del Excel subido
       excelRows.forEach(row => {
         const rowTienda = String(getExcelValue(row, ['tienda', 'store', 'fuente', 'distribuidor', 'proveedor']) || '').toLowerCase();
         const rowId = String(getExcelValue(row, ['id', 'codigo', 'código', 'sku', 'ref']) || '').toLowerCase();
         const rowDesc = String(getExcelValue(row, ['desc', 'producto', 'nombre', 'art']) || '').toLowerCase();
-        const rowQty = parseFloat(getExcelValue(row, ['cant', 'qty', 'guia', 'guía', 'salida', 'unidades'])) || 1;
+        
+        // 1. CORRECCIÓN: Buscamos cantidad de forma estricta (SIN usar 'guia')
+        const rawQty = getExcelValue(row, ['cant', 'qty', 'cantidad', 'unidades', 'salida']);
+        let rowQty = 1; // Por defecto, cada fila encontrada representa 1 guía saliente
+        
+        if (rawQty !== undefined && rawQty !== null && rawQty !== '') {
+          const parsed = parseFloat(rawQty);
+          // Filtro de seguridad: Si es un número válido y no es un ID masivo (menor a 10000)
+          if (!isNaN(parsed) && parsed < 10000) {
+            rowQty = parsed;
+          }
+        }
 
-        // Comprobación de tienda (si coincide nombre o ID numérico)
-        const dbStoreName = tienda.nombre.toLowerCase();
-        const storeMatch = rowTienda.includes(dbStoreName) || dbStoreName.includes(rowTienda) || rowTienda.includes(String(tienda.id));
+        // 2. Criterios de coincidencia con la Base de Datos
+        const matchTienda = rowTienda.includes(tienda.nombre.toLowerCase()) || tienda.nombre.toLowerCase().includes(rowTienda);
+        const matchId = rowId === String(prod.id).toLowerCase() || (prod.codigo && rowId === String(prod.codigo).toLowerCase());
+        const matchDesc = rowDesc.includes(prod.nombre.toLowerCase()) || prod.nombre.toLowerCase().includes(rowDesc);
 
-        // Comprobación del Producto (Por código/id o descripción)
-        const dbProdCode = String(prod.id).toLowerCase();
-        const dbProdName = String(prod.producto).toLowerCase();
-        const productMatch = (rowId && rowId === dbProdCode) || (rowDesc && (rowDesc.includes(dbProdName) || dbProdName.includes(rowDesc)));
-
-        if (storeMatch && productMatch) {
+        // Si pertenece a la tienda y coincide por ID/Código o por Descripción
+        if (matchTienda && (matchId || matchDesc)) {
           totalQty += rowQty;
         }
       });
 
+      if (totalQty < 30) {
+        tiendaBajo30++;
+      }
+      tiendaTotal += totalQty;
+
       return {
         source: tienda.nombre,
-        tipo: tipo,
-        id: prod.id, // Código del producto
-        desc: prod.producto, // Nombre
-        qty: totalQty, // Si no se encontró fila en el excel, mantendrá 0 salidas automáticamente
-        ubicacion: prod.ubicacion
+        tipo: tienda.tipo || (tienda.nombre.includes('PROV') ? 'Proveedor Dropshipping' : 'Distribuidor (Bodega Propia)'),
+        id: prod.id,
+        desc: prod.nombre,
+        qty: totalQty
       };
     });
 
-    const groupTotal = items.reduce((sum, item) => sum + item.qty, 0);
-    const bajo30 = items.filter(item => item.qty < 30).length;
-
     return {
       source: tienda.nombre,
-      tipo: tipo,
-      total: groupTotal,
-      bajo30: bajo30,
+      tipo: tienda.nombre.includes('PROV') ? 'Proveedor Dropshipping' : 'Distribuidor (Bodega Propia)',
+      total: tiendaTotal,
+      bajo30: tiendaBajo30,
       items: items
     };
   });
 
-  // Renderizar la información procesada en pantalla
-  calculateStats();
+  // Actualizar la variable global del reporte y refrescar la interfaz
+  DATA = updatedData;
+  renderStats();
+  renderGroups('', '');
 }
 
 function calculateStats() {
