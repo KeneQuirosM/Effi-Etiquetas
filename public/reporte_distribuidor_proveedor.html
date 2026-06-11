@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reporte de Salida por Distribuidor / Proveedor — Efficommerce</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -868,77 +869,290 @@ function renderGroups(search = '', typeFilter = '') {
   });
 }
 
-/* ── 🚀 GENERADOR DE EXCEL MULTIHOJA (Detalle SKU por SKU igual al PDF) ── */
-function exportarExcelBonito() {
-  if (DATA.length === 0) {
-    alert("No hay datos cargados para exportar.");
-    return;
-  }
+/* ── 🚀 GENERADOR DE EXCEL CON ESTILOS (ExcelJS) ── */
+async function exportarExcelBonito() {
+  if (DATA.length === 0) { alert("No hay datos cargados para exportar."); return; }
 
-  const wb = XLSX.utils.book_new();
+  const btn = document.querySelector('.btn-download-xlsx');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+  btn.disabled = true;
 
-  // 1. Crear Dashboard
-  const summaryRows = [
-    ["Resumen General de Alistamiento"],
-    [`Fecha de generación: ${new Date().toLocaleString()}`],
-    [],
-    ["Distribuidor / Tienda", "Órdenes Únicas", "Total Salidas", "Estado de Inventario"]
+  // ── COLORES CORPORATIVOS ──
+  const C = {
+    brandDark:   '0D1B6E',  // azul corporativo oscuro
+    brandMid:    '2A47D4',  // azul medio
+    brandLight:  'EEF2FF',  // azul muy suave
+    headerBg:    '1E2540',  // gris azulado oscuro para headers de columna
+    headerFg:    'FFFFFF',
+    rowAlt:      'F5F7FA',  // gris alternado
+    rowWhite:    'FFFFFF',
+    criticalBg:  'FCE4EC',
+    criticalFg:  'C62828',
+    okBg:        'E8F5E9',
+    okFg:        '2E7D32',
+    warningBg:   'FFF8E1',
+    warningFg:   'E65100',
+    border:      'D8DEE9',
+    titleFg:     'FFFFFF',
+    subtitleFg:  'B0BAD4',
+    metaFg:      '5A6482',
+  };
+
+  const fill  = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+  const font  = (opts) => ({ name: 'Calibri', size: 10, ...opts });
+  const border = () => ({
+    top:    { style: 'thin', color: { argb: C.border } },
+    bottom: { style: 'thin', color: { argb: C.border } },
+    left:   { style: 'thin', color: { argb: C.border } },
+    right:  { style: 'thin', color: { argb: C.border } },
+  });
+  const thick = (argb) => ({ style: 'medium', color: { argb } });
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Efficommerce';
+  wb.created = new Date();
+
+  // ══════════════════════════════════════════════
+  //  HOJA 1 — RESUMEN GENERAL
+  // ══════════════════════════════════════════════
+  const wsSummary = wb.addWorksheet('Resumen General', {
+    views: [{ state: 'frozen', ySplit: 5 }],
+    properties: { tabColor: { argb: C.brandMid } }
+  });
+
+  wsSummary.columns = [
+    { key: 'tienda',   width: 36 },
+    { key: 'tipo',     width: 24 },
+    { key: 'skus',     width: 14 },
+    { key: 'salidas',  width: 18 },
+    { key: 'criticos', width: 16 },
+    { key: 'estado',   width: 22 },
   ];
 
-  DATA.forEach(group => {
-    summaryRows.push([
-      group.source,
-      group.items.length, 
-      group.total,
-      group.bajo30 > 0 ? `⚠️ ${group.bajo30} SKUs Críticos` : "✅ Óptimo"
-    ]);
+  // Fila 1 — título grande
+  wsSummary.mergeCells('A1:F1');
+  const titleCell = wsSummary.getCell('A1');
+  titleCell.value = 'REPORTE DE ALISTAMIENTO — EFFICOMMERCE';
+  titleCell.font = font({ size: 14, bold: true, color: { argb: C.titleFg } });
+  titleCell.fill = fill(C.brandDark);
+  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  wsSummary.getRow(1).height = 32;
+
+  // Fila 2 — fecha
+  wsSummary.mergeCells('A2:F2');
+  const dateCell = wsSummary.getCell('A2');
+  dateCell.value = `Generado: ${new Date().toLocaleString('es-CR')}`;
+  dateCell.font = font({ size: 9, italic: true, color: { argb: C.subtitleFg } });
+  dateCell.fill = fill(C.brandDark);
+  dateCell.alignment = { horizontal: 'center' };
+  wsSummary.getRow(2).height = 18;
+
+  // Fila 3 — vacía decorativa
+  wsSummary.mergeCells('A3:F3');
+  wsSummary.getCell('A3').fill = fill(C.brandDark);
+  wsSummary.getRow(3).height = 6;
+
+  // Fila 4 — métricas rápidas
+  const totalSKUs    = DATA.reduce((s, g) => s + g.items.length, 0);
+  const totalSalidas = DATA.reduce((s, g) => s + g.total, 0);
+  const totalCrit    = DATA.reduce((s, g) => s + g.bajo30, 0);
+  const metaData = [
+    [`Tiendas activas: ${DATA.length}`, `SKUs totales: ${totalSKUs}`, `Unidades salidas: ${totalSalidas.toLocaleString()}`, `SKUs críticos (<30): ${totalCrit}`, '', '']
+  ];
+  const metaRow = wsSummary.addRow(metaData[0]);
+  metaRow.height = 22;
+  metaRow.eachCell((cell, col) => {
+    if (!cell.value) return;
+    cell.font = font({ bold: true, size: 10, color: { argb: C.brandDark } });
+    cell.fill = fill(C.brandLight);
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.border = { bottom: thick(C.brandMid) };
   });
 
-  const wsDash = XLSX.utils.aoa_to_sheet(summaryRows);
-  XLSX.utils.book_append_sheet(wb, wsDash, "Resumen General");
+  // Fila 5 — headers tabla
+  const hRow = wsSummary.addRow(['Distribuidor / Tienda', 'Tipo', 'SKUs', 'Total Salidas', 'SKUs Críticos', 'Estado']);
+  hRow.height = 22;
+  hRow.eachCell(cell => {
+    cell.font = font({ bold: true, color: { argb: C.headerFg } });
+    cell.fill = fill(C.headerBg);
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.border = border();
+  });
 
-  // 2. Crear una hoja por tienda con el detalle idéntico al PDF
-  DATA.forEach(group => {
-    let sheetName = group.source.replace(/[\\*?:/\[\]]/g, '').substring(0, 30).trim();
-    if(!sheetName) sheetName = "Tienda";
-    
-    // Evitar nombres duplicados
-    let finalSheetName = sheetName;
+  // Filas de datos
+  DATA.forEach((group, i) => {
+    const isAlt   = i % 2 === 1;
+    const bgColor = isAlt ? C.rowAlt : C.rowWhite;
+    const isCrit  = group.bajo30 > 0;
+
+    const row = wsSummary.addRow([
+      group.source,
+      group.tipo.includes('Bodega') ? 'Bodega Propia' : 'Dropshipping',
+      group.items.length,
+      group.total,
+      group.bajo30,
+      isCrit ? `⚠ ${group.bajo30} Crítico${group.bajo30 > 1 ? 's' : ''}` : '✓ Óptimo'
+    ]);
+    row.height = 19;
+
+    row.eachCell((cell, col) => {
+      cell.font = font({ color: { argb: C.headerBg } });
+      cell.fill = fill(bgColor);
+      cell.border = border();
+      cell.alignment = { vertical: 'middle' };
+
+      if (col === 1) { cell.font = font({ bold: true, color: { argb: C.brandDark } }); }
+      if (col === 2) { cell.alignment = { horizontal: 'center', vertical: 'middle' }; }
+      if (col >= 3 && col <= 5) { cell.alignment = { horizontal: 'center', vertical: 'middle' }; cell.numFmt = '#,##0'; }
+      if (col === 6) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.fill = fill(isCrit ? C.criticalBg : C.okBg);
+        cell.font = font({ bold: true, color: { argb: isCrit ? C.criticalFg : C.okFg } });
+      }
+    });
+  });
+
+  // Fila final totales
+  const totRow = wsSummary.addRow(['TOTAL GENERAL', '', totalSKUs, totalSalidas, totalCrit, '']);
+  totRow.height = 22;
+  totRow.eachCell((cell, col) => {
+    cell.font = font({ bold: true, size: 11, color: { argb: C.titleFg } });
+    cell.fill = fill(C.brandMid);
+    cell.border = border();
+    cell.alignment = { vertical: 'middle', horizontal: col >= 3 ? 'center' : 'left' };
+    if (col >= 3 && col <= 5) cell.numFmt = '#,##0';
+  });
+
+  // ══════════════════════════════════════════════
+  //  HOJAS POR TIENDA
+  // ══════════════════════════════════════════════
+  const usedNames = new Set(['Resumen General']);
+
+  DATA.forEach((group, gi) => {
+    let sheetName = group.source.replace(/[\\*?:/\[\]]/g, '').substring(0, 29).trim() || 'Tienda';
+    let finalName = sheetName;
     let counter = 1;
-    while (wb.SheetNames.includes(finalSheetName)) {
-      finalSheetName = `${sheetName.substring(0, 27)}_${counter}`;
-      counter++;
-    }
+    while (usedNames.has(finalName)) { finalName = `${sheetName.substring(0, 26)}_${counter++}`; }
+    usedNames.add(finalName);
 
-    // Cabeceras iguales a las del PDF
-    const sheetRows = [
-      [`Reporte de Alistamiento - ${group.source}`],
-      [],
-      ["Código SKU", "Descripción del Artículo", "Ubicación", "Unidades Extraídas", "Estado"]
-    ];
-
-    // Llenar datos SKU por SKU
-    group.items.forEach(item => {
-      const isLow = item.qty < 30;
-      sheetRows.push([
-        item.id,
-        item.desc,
-        item.ubicacion || "-",
-        item.qty,
-        isLow ? "CRÍTICO (<30)" : "OK"
-      ]);
+    const hasUbic = group.items.some(i => i.ubicacion);
+    const ws = wb.addWorksheet(finalName, {
+      views: [{ state: 'frozen', ySplit: 4 }],
+      properties: { tabColor: { argb: group.bajo30 > 0 ? 'C62828' : '2E7D32' } }
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+    const cols = [
+      { key: 'sku',    width: 18 },
+      { key: 'desc',   width: 44 },
+      ...(hasUbic ? [{ key: 'ubic', width: 16 }] : []),
+      { key: 'qty',    width: 20 },
+      { key: 'estado', width: 18 },
+    ];
+    ws.columns = cols;
+    const totalCols = cols.length;
+    const lastCol = String.fromCharCode(64 + totalCols);
 
-    // Auto-ajuste de columnas
-    ws['!cols'] = [{wch: 15}, {wch: 40}, {wch: 15}, {wch: 20}, {wch: 15}];
-    
-    XLSX.utils.book_append_sheet(wb, ws, finalSheetName);
+    // Fila 1 — nombre tienda
+    ws.mergeCells(`A1:${lastCol}1`);
+    const t1 = ws.getCell('A1');
+    t1.value = group.source.toUpperCase();
+    t1.font = font({ size: 13, bold: true, color: { argb: C.titleFg } });
+    t1.fill = fill(C.brandDark);
+    t1.alignment = { vertical: 'middle', horizontal: 'center' };
+    ws.getRow(1).height = 30;
+
+    // Fila 2 — tipo + métricas
+    ws.mergeCells(`A2:${lastCol}2`);
+    const t2 = ws.getCell('A2');
+    const tipoBadge = group.tipo.includes('Bodega') ? 'BODEGA PROPIA' : 'DROPSHIPPING';
+    t2.value = `${tipoBadge}   ·   ${group.items.length} SKUs   ·   ${group.total.toLocaleString()} unidades salidas   ·   ${group.bajo30 > 0 ? group.bajo30 + ' SKUs críticos' : 'Sin alertas'}`;
+    t2.font = font({ size: 9, color: { argb: C.subtitleFg } });
+    t2.fill = fill(C.brandDark);
+    t2.alignment = { vertical: 'middle', horizontal: 'center' };
+    ws.getRow(2).height = 18;
+
+    // Fila 3 — vacía decorativa
+    ws.mergeCells(`A3:${lastCol}3`);
+    ws.getCell('A3').fill = fill(C.brandMid);
+    ws.getRow(3).height = 4;
+
+    // Fila 4 — headers
+    const headers = ['Código SKU', 'Descripción del Artículo', ...(hasUbic ? ['Ubicación'] : []), 'Unidades Extraídas', 'Estado'];
+    const hR = ws.addRow(headers);
+    hR.height = 22;
+    hR.eachCell(cell => {
+      cell.font = font({ bold: true, color: { argb: C.headerFg } });
+      cell.fill = fill(C.headerBg);
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+      cell.border = border();
+    });
+
+    // Filas de productos
+    group.items.forEach((item, ii) => {
+      const isLow  = item.qty < 30;
+      const isAlt  = ii % 2 === 1;
+      const rowBg  = isAlt ? C.rowAlt : C.rowWhite;
+
+      const rowData = [item.id, item.desc, ...(hasUbic ? [item.ubicacion || '-'] : []), item.qty, isLow ? 'CRÍTICO (<30)' : 'OK'];
+      const r = ws.addRow(rowData);
+      r.height = 18;
+
+      r.eachCell((cell, col) => {
+        cell.fill = fill(rowBg);
+        cell.border = border();
+        cell.alignment = { vertical: 'middle' };
+        cell.font = font();
+
+        if (col === 1) {
+          cell.font = font({ bold: true, color: { argb: C.brandMid } });
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        }
+        if (col === 2) { cell.font = font({ bold: true }); }
+
+        const qtyCol = hasUbic ? 4 : 3;
+        const estCol = hasUbic ? 5 : 4;
+
+        if (col === qtyCol) {
+          cell.numFmt = '#,##0';
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.font = font({ bold: true, color: { argb: isLow ? C.criticalFg : C.brandDark } });
+          cell.fill = fill(isLow ? C.criticalBg : rowBg);
+        }
+        if (col === estCol) {
+          cell.fill = fill(isLow ? C.criticalBg : C.okBg);
+          cell.font = font({ bold: true, color: { argb: isLow ? C.criticalFg : C.okFg } });
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        }
+      });
+    });
+
+    // Fila total de la hoja
+    const totData = ['TOTAL', '', ...(hasUbic ? [''] : []), group.total, ''];
+    const totR = ws.addRow(totData);
+    totR.height = 20;
+    totR.eachCell((cell, col) => {
+      cell.font = font({ bold: true, color: { argb: C.titleFg } });
+      cell.fill = fill(C.brandMid);
+      cell.border = border();
+      cell.alignment = { vertical: 'middle', horizontal: col >= (hasUbic ? 4 : 3) ? 'center' : 'left' };
+      const qtyCol = hasUbic ? 4 : 3;
+      if (col === qtyCol) cell.numFmt = '#,##0';
+    });
   });
 
-  // Descargar el archivo
-  XLSX.writeFile(wb, `Reporte_Picking_${new Date().toISOString().slice(0,10)}.xlsx`);
+  // ── DESCARGAR ──
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Reporte_Picking_${new Date().toISOString().slice(0,10)}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  btn.innerHTML = originalText;
+  btn.disabled = false;
 }
 
 // Despliega los acordeones y llama la impresión nativa adaptada para PDF
