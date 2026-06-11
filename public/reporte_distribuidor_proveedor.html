@@ -4,10 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reporte de Salida por Distribuidor / Proveedor — Efficommerce</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
-  /* ── VARIABLES DE IDENTIDAD CORPORATIVA (EFFICOMMERCE) ── */
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
   :root {
@@ -31,10 +30,10 @@
     --danger-text:  #880e4f;
     --danger-mid:   #c62828;
 
-    --neutral-50:  #f8f9fb;
-    --neutral-100: #f1f3f7;
-    --neutral-200: #e2e6ef;
-    --neutral-400: #9aa3b8;
+    /* 👁️ Tonos suavizados anti-fatiga para proteger la vista */
+    --neutral-100: #eef2f7; /* Fondo grisáceo azulado suave */
+    --neutral-50:  #f5f7fa;
+    --neutral-200: #d8dee9;
     --neutral-600: #5a6482;
     --neutral-800: #1e2540;
 
@@ -42,14 +41,13 @@
     --radius-md: 10px;
     --radius-lg: 14px;
 
-    --shadow-sm: 0 2px 8px rgba(13,27,110,.06);
+    --shadow-sm: 0 2px 8px rgba(13,27,110,.05);
     --shadow-md: 0 4px 16px rgba(13,27,110,.08);
     
     --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
     --transition: all .18s ease;
   }
 
-  /* ── ESTILOS BASE ── */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   
   body {
@@ -60,11 +58,11 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ── HEADER PROFUNDO LOGÍSTICO ── */
+  /* ── CABECERA CORPORATIVA ── */
   header {
     background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-800) 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 22px 32px;
+    padding: 16px 32px;
     color: #ffffff;
   }
 
@@ -79,34 +77,32 @@
   .header-left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
   }
 
   .header-logo-pill {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(255,255,255,0.1);
-    border: 0.5px solid rgba(255,255,255,0.2);
-    border-radius: var(--radius-sm);
-    padding: 6px 12px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: var(--radius-md);
+    padding: 6px 14px;
   }
 
-  .header-logo-pill span {
-    color: white;
-    font-weight: 700;
-    font-size: 0.9rem;
-    letter-spacing: 0.5px;
+  .header-logo-img {
+    height: 32px;
+    object-fit: contain;
+    filter: brightness(0) invert(1); /* Pasa el logo a blanco limpio */
   }
 
   .header-divider {
     width: 1px;
-    height: 32px;
-    background: rgba(255,255,255,0.15);
+    height: 36px;
+    background: rgba(255,255,255,0.2);
   }
 
   .header-titles h1 {
-    font-size: 1.35rem;
+    font-size: 1.3rem;
     font-weight: 600;
     color: #ffffff;
     letter-spacing: -0.3px;
@@ -114,48 +110,72 @@
   }
 
   .header-titles p {
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.55);
     font-size: 0.8rem;
-    margin-top: 3px;
+    margin-top: 2px;
   }
 
-  /* ── BLOQUE DE MÉTRICAS (TARJETAS BLANCAS MODERNAS) ── */
+  /* ── ZONA DE ARRASTRE DE ARCHIVOS ── */
+  .file-zone {
+    background: #fcfdfe;
+    border: 2px dashed var(--neutral-200);
+    border-radius: var(--radius-lg);
+    margin: 24px 32px 10px 32px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+  }
+  .file-zone.dragover { border-color: var(--brand-500); background: var(--brand-50); }
+  .file-zone input { display: none; }
+  
+  .file-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--brand-800);
+    color: white;
+    padding: 10px 24px;
+    border-radius: 32px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: var(--transition);
+  }
+  .file-label:hover { background: var(--brand-700); transform: translateY(-1px); }
+  .file-info { margin-top: 10px; font-size: 0.8rem; color: var(--neutral-600); }
+  .file-info.ok { color: var(--success-mid); font-weight: 600; }
+  .file-info.err { color: var(--danger-mid); font-weight: 600; }
+
+  /* ── PANEL DE MÉTRICAS GLOBALES ── */
   .stats-bar {
     display: flex;
     gap: 16px;
-    padding: 24px 32px;
-    background: var(--neutral-50);
-    border-bottom: 1px solid var(--neutral-200);
+    padding: 14px 32px;
     flex-wrap: wrap;
   }
 
   .stat {
-    background: #ffffff;
+    background: #fcfdfe; /* Blanco opaco para mitigar brillo */
     border: 1px solid var(--neutral-200);
     border-radius: var(--radius-md);
-    padding: 16px 20px;
-    min-width: 160px;
+    padding: 14px 18px;
+    min-width: 150px;
     flex: 1;
     box-shadow: var(--shadow-sm);
-    transition: var(--transition);
-  }
-
-  .stat:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
   }
 
   .stat-val {
-    font-size: 1.8rem;
+    font-size: 1.7rem;
     font-weight: 800;
     color: var(--brand-500);
     line-height: 1.1;
   }
-
   .stat-val.red { color: var(--danger-mid); }
+  .stat-val.amber { color: var(--warning-text); }
 
   .stat-label {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--neutral-600);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -163,244 +183,137 @@
     font-weight: 600;
   }
 
-  /* ── BARRA DE CONTROL Y FILTROS ── */
+  /* ── CONTROLES Y FILTRADO ── */
   .controls {
     display: flex;
-    gap: 12px;
-    padding: 16px 32px;
-    background: #ffffff;
+    gap: 10px;
+    padding: 12px 32px;
     flex-wrap: wrap;
     align-items: center;
-    border-bottom: 1px solid var(--neutral-200);
   }
 
   .controls input[type="text"], .controls select {
-    background: #ffffff;
+    background: #fcfdfe;
     border: 1px solid var(--neutral-200);
     border-radius: var(--radius-sm);
     color: var(--neutral-800);
-    padding: 9px 14px;
-    font-size: 0.88rem;
+    padding: 8px 14px;
+    font-size: 0.85rem;
     outline: none;
     transition: var(--transition);
     font-family: var(--font);
   }
-
-  .controls input[type="text"] { min-width: 280px; }
-
+  .controls input[type="text"] { min-width: 260px; }
   .controls input[type="text"]:focus, .controls select:focus {
     border-color: var(--brand-500);
-    box-shadow: 0 0 0 3px rgba(42, 71, 212, 0.15);
+    box-shadow: 0 0 0 3px rgba(42, 71, 212, 0.12);
   }
 
-  /* ── BOTONES ESTILO MANIFIESTO ── */
   .toggle-btn {
-    background: var(--neutral-50);
+    background: #fcfdfe;
     border: 1px solid var(--neutral-200);
     border-radius: var(--radius-sm);
-    color: var(--neutral-600);
-    padding: 9px 16px;
-    font-size: 0.85rem;
+    color: var(--neutral-800);
+    padding: 8px 14px;
+    font-size: 0.82rem;
     font-weight: 500;
     cursor: pointer;
     transition: var(--transition);
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-family: var(--font);
+    gap: 6px;
   }
+  .toggle-btn:hover { background: var(--neutral-50); transform: translateY(-1px); }
+  .toggle-btn.active { background: var(--danger-bg); border-color: var(--danger-mid); color: var(--danger-mid); font-weight: 600; }
 
-  .toggle-btn:hover {
-    background: var(--neutral-200);
-    color: var(--neutral-800);
-    transform: translateY(-1px);
-  }
+  .btn-download-xlsx { background: var(--success-mid) !important; color: white !important; border: none; font-weight: 600; }
+  .btn-download-xlsx:hover { background: #1b5e20 !important; }
 
-  .toggle-btn.active {
-    background: var(--danger-bg);
-    border-color: var(--danger-mid);
-    color: var(--danger-mid);
-    font-weight: 600;
-  }
+  .btn-pdf { background: #e67e00 !important; color: white !important; border: none; font-weight: 600; }
+  .btn-pdf:hover { background: #b36200 !important; }
 
-  /* ── CONTENEDOR PRINCIPAL ── */
-  .main { padding: 32px; }
+  /* ── CONTENEDOR DE BLOQUES ── */
+  .main { padding: 16px 32px 32px 32px; }
 
-  /* ── DISEÑO DE ACORDEONES (GRUPOS) ── */
   .group {
-    background: #ffffff;
+    background: #fcfdfe;
     border: 1px solid var(--neutral-200);
     border-radius: var(--radius-md);
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
-    transition: var(--transition);
-  }
-
-  .group:hover {
-    box-shadow: var(--shadow-md);
   }
 
   .group-header {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 16px 20px;
+    gap: 12px;
+    padding: 14px 20px;
     cursor: pointer;
-    background: #ffffff;
+    background: #fcfdfe;
     user-select: none;
     transition: var(--transition);
   }
-
   .group-header:hover { background: var(--neutral-50); }
+  .group.open .group-header { border-bottom: 1px solid var(--neutral-200); background: var(--brand-50); }
 
-  .group.open {
-    border-color: var(--brand-300);
-  }
-
-  .group.open .group-header {
-    border-bottom: 1px solid var(--neutral-200);
-    background: var(--brand-50);
-  }
-
-  /* Píldoras de Distribución / Proveedor */
-  .badge {
-    font-size: 0.68rem;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-  }
+  .badge { font-size: 0.65rem; font-weight: 700; padding: 3px 9px; border-radius: 12px; text-transform: uppercase; }
   .badge-dist { background: var(--brand-100); color: var(--brand-700); }
   .badge-prov { background: var(--success-bg); color: var(--success-mid); }
 
-  .group-name {
-    font-weight: 600;
-    font-size: 0.98rem;
-    color: var(--neutral-800);
-    flex: 1;
-  }
+  .group-name { font-weight: 600; font-size: 0.95rem; color: var(--neutral-800); flex: 1; }
+  .group.open .group-name { color: var(--brand-800); font-weight: 700; }
 
-  .group.open .group-name {
-    color: var(--brand-800);
-    font-weight: 700;
-  }
-
-  .group-meta {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    font-size: 0.85rem;
-    color: var(--neutral-600);
-  }
-
+  .group-meta { display: flex; gap: 14px; align-items: center; font-size: 0.82rem; color: var(--neutral-600); }
   .group-meta .total { color: var(--brand-500); font-weight: 700; }
-  .group-meta .bajo {
-    background: var(--danger-bg);
-    color: var(--danger-mid);
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-  }
+  .group-meta .bajo { background: var(--danger-bg); color: var(--danger-mid); padding: 1px 6px; border-radius: 4px; font-weight: 600; }
 
-  .chevron {
-    color: var(--neutral-400);
-    transition: var(--transition);
-    font-size: 0.8rem;
-  }
+  .chevron { color: var(--neutral-400); transition: var(--transition); font-size: 0.75rem; }
   .group.open .chevron { transform: rotate(180deg); color: var(--brand-500); }
 
-  .group-body {
-    display: none;
-    background: #ffffff;
-  }
+  .group-body { display: none; background: #ffffff; }
   .group.open .group-body { display: block; }
 
-  /* ── TABLAS LIMPIAS Y ELEGANTES ── */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.88rem;
-  }
-
+  /* ── TABLAS REPORTE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   th {
-    background: var(--neutral-50);
-    color: var(--neutral-600);
-    text-transform: uppercase;
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-    padding: 12px 20px;
-    text-align: left;
-    border-bottom: 1px solid var(--neutral-200);
-    font-weight: 600;
+    background: var(--neutral-50); color: var(--neutral-600); text-transform: uppercase;
+    font-size: 0.7rem; letter-spacing: 0.05em; padding: 10px 20px; text-align: left;
+    border-bottom: 1px solid var(--neutral-200); font-weight: 600;
   }
-
-  td {
-    padding: 12px 20px;
-    border-bottom: 1px solid var(--neutral-100);
-    vertical-align: middle;
-    color: var(--neutral-800);
-  }
-
+  td { padding: 11px 20px; border-bottom: 1px solid var(--neutral-100); vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--neutral-50); }
 
-  /* Código / SKU Pill */
   .id-pill {
-    background: var(--neutral-50);
-    color: var(--neutral-800);
-    font-family: monospace;
-    font-size: 0.8rem;
-    padding: 3px 8px;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
+    background: var(--neutral-50); color: var(--neutral-800); font-family: monospace;
+    font-size: 0.78rem; padding: 2px 7px; border-radius: var(--radius-sm); font-weight: 600;
     border: 1px solid var(--neutral-200);
   }
 
-  /* ── SLEEK PROGRESS BAR (CANTIDADES) ── */
-  .qty-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .bar-bg {
-    flex: 1;
-    height: 8px;
-    background: var(--neutral-200);
-    border-radius: 4px;
-    max-width: 140px;
-    overflow: hidden;
-  }
-
-  .bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    background: var(--brand-500);
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
+  .qty-bar { display: flex; align-items: center; gap: 10px; }
+  .bar-bg { flex: 1; height: 7px; background: var(--neutral-200); border-radius: 4px; max-width: 130px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--brand-500); transition: width 0.3s; }
   .bar-fill.low { background: var(--danger-mid); }
-
-  .qty-num {
-    font-weight: 700;
-    min-width: 36px;
-    text-align: right;
-    font-size: 0.9rem;
-  }
+  
+  .qty-num { font-weight: 700; min-width: 32px; text-align: right; }
   .qty-num.low { color: var(--danger-mid); }
   .qty-num.ok { color: var(--success-mid); }
 
-  /* ── FOOTER INTERFAZ ── */
-  .footer-note {
-    text-align: center;
-    padding: 32px;
-    color: var(--neutral-400);
-    font-size: 0.82rem;
-    border-top: 1px solid var(--neutral-200);
-    background: #ffffff;
+  .empty-state { text-align: center; padding: 50px; color: var(--neutral-400); }
+  .footer-note { text-align: center; padding: 24px; color: var(--neutral-600); font-size: 0.8rem; border-top: 1px solid var(--neutral-200); background: #fcfdfe; }
+
+  /* ── 🖨️ ESTILOS EXCLUSIVOS PARA GENERACIÓN DE PDF ── */
+  @media print {
+    body { background: #ffffff !important; color: #000000 !important; padding: 0 !important; }
+    .file-zone, .controls, #excelInput, .toggle-btn, button, .chevron { display: none !important; }
+    .main { padding: 0 !important; }
+    .group { page-break-inside: avoid; border: 1px solid var(--neutral-200); box-shadow: none; margin-bottom: 18px; }
+    .group-header { background: var(--neutral-50) !important; border-bottom: 1px solid var(--neutral-200) !important; }
+    .group-body { display: block !important; }
+    th { background: #f0f0f0 !important; color: #000000 !important; }
+    td { border-bottom: 1px solid #e2e6ef !important; }
+    .bar-bg { border: 1px solid #aaa !important; background: #fff !important; }
   }
 </style>
 </head>
@@ -410,53 +323,56 @@
   <div class="header-container">
     <div class="header-left">
       <div class="header-logo-pill">
-        <i class="fas fa-boxes" style="color: white; font-size: 1.1rem;"></i>
-        <span>EFFICOMMERCE</span>
+        <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png" alt="Efficommerce Logo" class="header-logo-img">
       </div>
       <div class="header-divider"></div>
       <div class="header-titles">
         <h1>Reporte de Salida por Distribuidor / Proveedor</h1>
-        <p id="generation-p">Picking &amp; Packing · Cargando datos base de la BD... · Umbral de alerta: &lt;30 unidades</p>
+        <p id="generation-p">Picking &amp; Packing · Sincronizando con base de datos...</p>
       </div>
     </div>
   </div>
 </header>
 
-<div class="stats-bar" id="statsBar">
+<div class="file-zone" id="fileZone">
+  <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event)" />
+  <div class="file-label" onclick="document.getElementById('excelInput').click()">
+    <i class="fas fa-cloud-upload-alt"></i> Cargar archivo de salidas
   </div>
+  <div class="file-info" id="fileInfo">Arrastra o selecciona el archivo .xlsx o .csv de movimientos</div>
+</div>
 
-<div class="controls">
-  <input type="file" id="excelInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelUpload(event)">
-  <button class="toggle-btn" onclick="document.getElementById('excelInput').click()" style="background: var(--brand-500); color: #fff; border-color: var(--brand-500); font-weight: 600; box-shadow: var(--shadow-sm);">
-    <i class="fas fa-file-excel"></i> Cargar Excel Reporte
-  </button>
+<div class="stats-bar" id="statsBar" style="display:none;"></div>
 
-  <input type="text" id="searchInput" placeholder="🔍  Buscar por nombre o ID de producto...">
+<div class="controls" id="controlsSection" style="display:none;">
+  <input type="text" id="searchInput" placeholder="🔍 Buscar por SKU o nombre de producto...">
   <select id="filterType">
-    <option value="">Todos los tipos</option>
-    <option value="Distribuidor (Bodega Propia)">Solo Distribuidores (Bodega Propia)</option>
-    <option value="Proveedor Dropshipping">Solo Proveedores Dropshipping</option>
+    <option value="">Todos los orígenes</option>
+    <option value="Distribuidor (Bodega Propia)">🏪 Solo Bodega Propia</option>
+    <option value="Proveedor Dropshipping">📦 Solo Dropshipping</option>
   </select>
   <button class="toggle-btn" id="toggleLow" onclick="toggleLowOnly()">
     <i class="fas fa-exclamation-triangle"></i> Solo bajo 30 uds
   </button>
-  <button class="toggle-btn" onclick="expandAll()">
-    <i class="fas fa-expand-alt"></i> Expandir todo
+  <button class="toggle-btn" onclick="expandAll()"><i class="fas fa-expand-alt"></i> Expandir</button>
+  <button class="toggle-btn" onclick="collapseAll()"><i class="fas fa-compress-alt"></i> Colapsar</button>
+  
+  <button class="toggle-btn btn-download-xlsx" onclick="exportarExcelBonito()">
+    <i class="fas fa-file-excel"></i> Descargar Excel (.xlsx)
   </button>
-  <button class="toggle-btn" onclick="collapseAll()">
-    <i class="fas fa-compress-alt"></i> Colapsar todo
+  <button class="toggle-btn btn-pdf" onclick="generarPDF()">
+    <i class="fas fa-file-pdf"></i> Guardar PDF
   </button>
 </div>
 
 <div class="main" id="mainContent">
-  <div style="text-align: center; padding: 60px 40px; color: var(--neutral-400);">
-    <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: var(--brand-300); margin-bottom: 16px; display: block;"></i>
-    <p style="font-size: 1.05rem; margin-bottom: 8px; font-weight: 500; color: var(--neutral-600);">📥 Por favor, sube el archivo de Excel para generar el reporte comparativo.</p>
-    <p style="font-size: 0.85rem;">Los productos se cruzarán automáticamente contra las tiendas guardadas en la base de datos.</p>
+  <div class="empty-state">
+    <i class="fas fa-folder-open" style="font-size: 2.5rem; color: var(--neutral-400); margin-bottom: 12px; display: block;"></i>
+    Por favor, cargue un reporte de movimientos para estructurar los SKUs contra la base de datos.
   </div>
 </div>
 
-<div class="footer-note" id="footerNote">Esperando archivo de reporte...</div>
+<div class="footer-note" id="footerNote">Efficommerce · Gestión Integrada de Almacén</div>
 
 <script>
 let DATA = [];
@@ -467,45 +383,78 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDatabaseData();
 });
 
-// Carga inicial conectando al API Backend
+// Sincronización transparente con base de datos controlada por tiendas.js
 async function loadDatabaseData() {
   try {
     const response = await fetch('/api/tiendas'); 
     const result = await response.json();
     dbData = result.tiendas || [];
     
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · Conectado con Base de Datos <i class="fas fa-check-circle" style="color: #68d391;"></i> · Umbral de alerta: &lt;30 unidades`;
-    document.getElementById('footerNote').innerText = `Base de datos cargada correctamente. Listo para recibir el archivo Excel.`;
+    document.getElementById('generation-p').innerHTML = `Picking & Packing · Base de datos conectada ✅ · Alerta < 30 uds`;
+    document.getElementById('footerNote').innerText = `Base de datos cargada. Listo para procesar archivos de movimientos.`;
   } catch (error) {
-    console.error('Error al consultar base de datos:', error);
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color: var(--danger-mid); font-weight: 600;"><i class="fas fa-times-circle"></i> Error al conectar con la base de datos</span>`;
+    console.error('Error base de datos:', error);
+    document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color:var(--danger-mid); font-weight:600;">⚠️ Error de enlace BD</span>`;
   }
 }
 
 function handleExcelUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
+  procesarArchivo(file);
+}
+
+function procesarArchivo(file) {
+  const info = document.getElementById('fileInfo');
+  info.textContent = `Analizando y cruzando ${file.name}...`;
+  info.className = 'file-info';
 
   const reader = new FileReader();
   reader.onload = function(e) {
-    const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const excelRows = XLSX.utils.sheet_to_json(worksheet);
+    try {
+      const buf = e.target.result;
+      const arr = new Uint8Array(buf);
+      const isXLSX = arr[0] === 0x50 && arr[1] === 0x4B && arr[2] === 0x03 && arr[3] === 0x04;
+      
+      let rows = [];
+      if (isXLSX) {
+        const wb = XLSX.read(buf, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      } else {
+        let text = new TextDecoder('utf-8').decode(buf);
+        if (text.includes('')) text = new TextDecoder('windows-1252').decode(buf);
+        
+        const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+        if (lines.length > 0) {
+          const first = lines[0];
+          let delim = first.includes(';') ? ';' : (first.includes('\t') ? '\t' : ',');
+          
+          rows = lines.map(line => {
+            return line.split(delim).map(cell => {
+              let c = cell.trim();
+              if (c.startsWith('"') && c.endsWith('"')) c = c.slice(1, -1).trim();
+              return c.replace(/""/g, '"');
+            });
+          });
+        }
+      }
 
-    crossReferenceData(excelRows);
+      if (!rows || rows.length < 2) throw new Error("El reporte no contiene suficientes líneas de datos.");
+      crossReferenceData(rows);
+
+      info.textContent = `✅ ${file.name} procesado y cruzado con éxito`;
+      info.className = 'file-info ok';
+      document.getElementById('controlsSection').style.display = 'flex';
+    } catch (err) {
+      info.textContent = `❌ Error: ${err.message}`;
+      info.className = 'file-info err';
+    }
   };
   reader.readAsArrayBuffer(file);
 }
 
-// Comparación y cruce matemático inteligente
 function crossReferenceData(excelRows) {
-  if (!excelRows || excelRows.length === 0) {
-    document.getElementById('footerNote').innerText = 'El archivo Excel está vacío.';
-    return;
-  }
-
   const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
   let colTiendas = [];
@@ -513,37 +462,27 @@ function crossReferenceData(excelRows) {
   let colDesc = null;
   let colQty = null;
 
-  const firstRowKeys = Object.keys(excelRows[0]);
-  firstRowKeys.forEach(key => {
-    const nk = cleanText(key);
-    
+  const H = excelRows[0].map(c => cleanText(c));
+  H.forEach((nk, index) => {
     if (nk.includes('tienda') || nk.includes('store') || nk.includes('fuente') || nk.includes('distribuidor') || nk.includes('proveedor')) {
-      colTiendas.push(key);
+      colTiendas.push(excelRows[0][index]);
     }
-    
-    if ((nk.includes('id') || nk.includes('codigo') || nk.includes('sku') || nk.includes('ref')) && !nk.includes('desc') && !nk.includes('guia') && !nk.includes('transportadora')) {
-      if (!colId || nk === 'id' || nk === 'id articulo' || nk === 'codigo') {
-        colId = key;
-      }
+    if ((nk.includes('id') || nk.includes('codigo') || nk.includes('sku') || nk.includes('ref')) && !nk.includes('desc') && !nk.includes('guia')) {
+      if (!colId || nk === 'id' || nk === 'id articulo' || nk === 'codigo') colId = excelRows[0][index];
     }
-    
     if ((nk.includes('desc') || nk.includes('producto') || nk.includes('nombre') || nk.includes('art')) && !nk.includes('id') && !nk.includes('codigo')) {
-      if (!colDesc || nk.includes('desc') || nk.includes('producto')) {
-        colDesc = key;
-      }
+      if (!colDesc || nk.includes('desc') || nk.includes('producto')) colDesc = excelRows[0][index];
     }
-    
     if (nk.includes('cant') || nk.includes('qty') || nk.includes('unidades') || nk.includes('salida')) {
-      if (!nk.includes('guia') && !nk.includes('id') && !nk.includes('codigo')) {
-        colQty = key;
-      }
+      if (!nk.includes('guia') && !nk.includes('id')) colQty = excelRows[0][index];
     }
   });
 
   DATA = dbData.map(tienda => {
+    // Manteniendo la regla clave intacta de marcas de Dropshipping
     let tipo = "Distribuidor (Bodega Propia)";
     const nameUpper = tienda.nombre.toUpperCase();
-    if (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO") || nameUpper.includes("COMPRONAT") || nameUpper.includes("BOXIN")) {
+    if (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO")) {
       tipo = "Proveedor Dropshipping";
     }
 
@@ -555,14 +494,15 @@ function crossReferenceData(excelRows) {
       const dbProdCodeClean = cleanText(prod.codigo || prod.id);
       const dbProdNameClean = cleanText(prod.nombre || prod.producto);
 
-      excelRows.forEach(row => {
-        const rowTiendasText = colTiendas.map(col => cleanText(row[col])).join(' | ');
-        const rowId = colId ? cleanText(row[colId]) : '';
-        const rowDesc = colDesc ? cleanText(row[colDesc]) : '';
+      excelRows.forEach((row, idx) => {
+        if (idx === 0) return;
+        const rowTiendasText = colTiendas.map(col => cleanText(row[excelRows[0].indexOf(col)])).join(' | ');
+        const rowId = colId ? cleanText(row[excelRows[0].indexOf(colId)]) : '';
+        const rowDesc = colDesc ? cleanText(row[excelRows[0].indexOf(colDesc)]) : '';
 
         const storeMatch = rowTiendasText.includes(dbStoreNameClean) || 
                            dbStoreNameClean.includes(rowTiendasText) ||
-                           colTiendas.some(col => cleanText(row[col]) === dbStoreIdClean);
+                           colTiendas.some(col => cleanText(row[excelRows[0].indexOf(col)]) === dbStoreIdClean);
 
         if (!storeMatch) return;
 
@@ -571,10 +511,11 @@ function crossReferenceData(excelRows) {
 
         if (productMatch) {
           let rowQty = 1; 
-          if (colQty && row[colQty] !== undefined && row[colQty] !== null && row[colQty] !== '') {
-            const parsed = parseFloat(row[colQty]);
-            if (!isNaN(parsed) && parsed > 0 && parsed < 1000) {
-              rowQty = parsed;
+          if (colQty) {
+            const val = row[excelRows[0].indexOf(colQty)];
+            if (val !== undefined && val !== null && val !== '') {
+              const parsed = parseFloat(String(val).replace(',', '.'));
+              if (!isNaN(parsed) && parsed > 0 && parsed < 1000) rowQty = parsed;
             }
           }
           totalQty += rowQty;
@@ -582,8 +523,6 @@ function crossReferenceData(excelRows) {
       });
 
       return {
-        source: tienda.nombre,
-        tipo: tipo,
         id: prod.codigo || prod.id,
         desc: prod.nombre || prod.producto,
         qty: totalQty,
@@ -591,14 +530,11 @@ function crossReferenceData(excelRows) {
       };
     });
 
-    const groupTotal = items.reduce((sum, item) => sum + item.qty, 0);
-    const bajo30 = items.filter(item => item.qty < 30).length;
-
     return {
       source: tienda.nombre,
       tipo: tipo,
-      total: groupTotal,
-      bajo30: bajo30,
+      total: items.reduce((sum, item) => sum + item.qty, 0),
+      bajo30: items.filter(item => item.qty < 30).length,
       items: items
     };
   });
@@ -607,37 +543,17 @@ function crossReferenceData(excelRows) {
 }
 
 function calculateStats() {
-  let totalGuias = 0;
-  let totalProductos = 0;
-  let totalBajo30 = 0;
-  let totalFuentes = DATA.length;
+  let totalGuias = 0, totalProductos = 0, totalBajo30 = 0;
+  DATA.forEach(g => { totalGuias += g.total; totalProductos += g.items.length; totalBajo30 += g.bajo30; });
 
-  DATA.forEach(g => {
-    totalGuias += g.total;
-    totalProductos += g.items.length;
-    totalBajo30 += g.bajo30;
-  });
-
-  document.getElementById('statsBar').innerHTML = `
-    <div class="stat">
-      <div class="stat-val">${totalFuentes}</div>
-      <div class="stat-label">Fuentes / Tiendas</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val">${totalProductos}</div>
-      <div class="stat-label">Total Productos</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val" style="color: var(--success-mid);">${totalGuias}</div>
-      <div class="stat-label">Guías Salientes</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val ${totalBajo30 > 0 ? 'red' : ''}">${totalBajo30}</div>
-      <div class="stat-label">Alertas &lt; 30 Uds</div>
-    </div>
+  const bar = document.getElementById('statsBar');
+  bar.style.display = 'flex';
+  bar.innerHTML = `
+    <div class="stat"><div class="stat-val">${DATA.length}</div><div class="stat-label">Fuentes / Tiendas</div></div>
+    <div class="stat"><div class="stat-val">${totalProductos}</div><div class="stat-label">Total SKUs</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--success-mid);">${totalGuias.toLocaleString()}</div><div class="stat-label">Unidades Salidas</div></div>
+    <div class="stat"><div class="stat-val ${totalBajo30 > 0 ? 'red' : ''}">${totalBajo30}</div><div class="stat-label">Alertas < 30 Uds</div></div>
   `;
-
-  document.getElementById('footerNote').innerText = `Total de ${totalProductos} líneas analizadas de la base de datos completadas con éxito.`;
 
   applyFilters();
 }
@@ -651,31 +567,25 @@ function renderGroups(search = '', typeFilter = '') {
 
   DATA.forEach((group, gi) => {
     const filteredItems = group.items.filter(item => {
-      const matchSearch = !searchLower || 
-                          cleanText(item.id).includes(searchLower) || 
-                          cleanText(item.desc).includes(searchLower);
-      return matchSearch;
+      return !searchLower || cleanText(item.id).includes(searchLower) || cleanText(item.desc).includes(searchLower);
     });
 
-    const matchType = !typeFilter || group.tipo === typeFilter;
-
-    if (filteredItems.length === 0 || !matchType) return;
+    if (filteredItems.length === 0 || (typeFilter && group.tipo !== typeFilter)) return;
     if (showLowOnly && group.bajo30 === 0) return;
 
     const badgeClass = group.tipo.includes('Bodega Propia') ? 'badge-dist' : 'badge-prov';
-
     const div = document.createElement('div');
-    div.className = 'group';
+    div.className = 'group open';
     div.id = 'group_' + gi;
 
     div.innerHTML = `
       <div class="group-header" onclick="toggleGroup(${gi})">
-        <span class="badge ${badgeClass}">${group.tipo.includes('Bodega Propia') ? 'DIST' : 'PROV'}</span>
+        <span class="badge ${badgeClass}">${group.tipo.includes('Bodega Propia') ? 'BODEGA' : 'DROPSHIP'}</span>
         <span class="group-name">${group.source}</span>
         <div class="group-meta">
-          <span>Productos: ${filteredItems.length}</span>
+          <span>${filteredItems.length} SKUs</span>
           <span class="total">Salidas: ${group.total} uds</span>
-          ${group.bajo30 > 0 ? `<span class="bajo"><i class="fas fa-exclamation-triangle"></i> ${group.bajo30} bajos</span>` : ''}
+          ${group.bajo30 > 0 ? `<span class="bajo"><i class="fas fa-exclamation-triangle"></i> ${group.bajo30} bajo 30</span>` : ''}
         </div>
         <span class="chevron"><i class="fas fa-chevron-down"></i></span>
       </div>
@@ -683,11 +593,11 @@ function renderGroups(search = '', typeFilter = '') {
         <table>
           <thead>
             <tr>
-              <th style="width: 140px;">ID / Código</th>
-              <th>Descripción del Producto</th>
+              <th style="width:140px;">Código SKU</th>
+              <th>Descripción del Artículo</th>
               ${filteredItems.some(i => i.ubicacion) ? '<th>Ubicación</th>' : ''}
-              <th style="width: 200px;">Cantidad Salidas</th>
-              <th style="width: 120px;">Estado</th>
+              <th style="width:180px;">Unidades Extraídas</th>
+              <th style="width:120px;">Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -697,15 +607,15 @@ function renderGroups(search = '', typeFilter = '') {
               return `
                 <tr>
                   <td><span class="id-pill">${item.id}</span></td>
-                  <td><span style="font-weight: 600; color: var(--neutral-800);">${item.desc}</span></td>
-                  ${item.ubicacion ? `<td><span style="color: var(--neutral-600); font-weight: 500;">${item.ubicacion}</span></td>` : (filteredItems.some(i => i.ubicacion) ? '<td>-</td>' : '')}
+                  <td><span style="font-weight:600; color:var(--neutral-800);">${item.desc}</span></td>
+                  ${item.ubicacion ? `<td><span style="color:var(--neutral-600); font-weight:500;">${item.ubicacion}</span></td>` : (filteredItems.some(i => i.ubicacion) ? '<td>-</td>' : '')}
                   <td>
                     <div class="qty-bar">
                       <div class="bar-bg"><div class="bar-fill ${isLow?'low':''}" style="width:${pct}%"></div></div>
                       <span class="qty-num ${isLow?'low':'ok'}">${item.qty}</span>
                     </div>
                   </td>
-                  <td>${isLow ? '<span style="color: var(--danger-mid); font-size: 0.75rem; font-weight: 700;"><i class="fas fa-exclamation-circle"></i> BAJO 30</span>' : '<span style="color: var(--success-mid); font-size: 0.75rem; font-weight: 700;"><i class="fas fa-check-circle"></i> OK</span>'}</td>
+                  <td>${isLow ? '<span style="color:var(--danger-mid); font-size:0.75rem; font-weight:700;"><i class="fas fa-exclamation-circle"></i> CRÍTICO</span>' : '<span style="color:var(--success-mid); font-size:0.75rem; font-weight:700;"><i class="fas fa-check-circle"></i> OK</span>'}</td>
                 </tr>`;
             }).join('')}
           </tbody>
@@ -716,18 +626,57 @@ function renderGroups(search = '', typeFilter = '') {
   });
 }
 
-function toggleGroup(gi) {
-  const el = document.getElementById('group_' + gi);
-  if (el) el.classList.toggle('open');
+/* ── FUNCIONALIDADES DE DESCARGA AVANZADAS ── */
+
+// Genera un archivo EXCEL (.xlsx) estructurado, limpio y auto-ajustado
+function exportarExcelBonito() {
+  if (!DATA || DATA.length === 0) return;
+  
+  const rows = [
+    ["Reporte de Salidas y Alistamiento por Tienda — Efficommerce"],
+    [`Fecha de Generación: ${new Date().toLocaleString()}`],
+    [],
+    ["Fuente / Tienda", "Tipo de Gestión", "SKU / Código", "Descripción del Artículo", "Ubicación Almacén", "Cantidad de Salidas", "Estado de Alerta"]
+  ];
+
+  DATA.forEach(group => {
+    group.items.forEach(item => {
+      rows.push([
+        group.source,
+        group.tipo,
+        item.id,
+        item.desc,
+        item.ubicacion || 'Sin Ubicación',
+        item.qty,
+        item.qty < 30 ? "ALERTA: BAJO 30" : "OK"
+      ]);
+    });
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  
+  // Autoajuste dinámico de columnas para que el Excel sea inmediatamente legible
+  const colWidths = rows[3].map((_, colIdx) => {
+    return Math.max(...rows.slice(3).map(row => String(row[colIdx] || '').length), 12);
+  });
+  ws['!cols'] = colWidths.map(w => ({ w: w + 3 }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Salidas Consolidadas");
+  XLSX.writeFile(wb, `Efficommerce_Reporte_Salidas_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
-function expandAll() {
-  document.querySelectorAll('.group').forEach(g => g.classList.add('open'));
+// Despliega los acordeones y llama la impresión nativa preparada para PDF
+function generarPDF() {
+  expandAll();
+  setTimeout(() => {
+    window.print();
+  }, 300);
 }
 
-function collapseAll() {
-  document.querySelectorAll('.group').forEach(g => g.classList.remove('open'));
-}
+function toggleGroup(gi) { document.getElementById('group_' + gi)?.classList.toggle('open'); }
+function expandAll() { document.querySelectorAll('.group').forEach(g => g.classList.add('open')); }
+function collapseAll() { document.querySelectorAll('.group').forEach(g => g.classList.remove('open')); }
 
 function toggleLowOnly() {
   showLowOnly = !showLowOnly;
@@ -736,14 +685,17 @@ function toggleLowOnly() {
 }
 
 function applyFilters() {
-  const search = document.getElementById('searchInput').value;
-  const type = document.getElementById('filterType').value;
-  renderGroups(search, type);
+  renderGroups(document.getElementById('searchInput').value, document.getElementById('filterType').value);
 }
 
 document.getElementById('searchInput').addEventListener('input', applyFilters);
 document.getElementById('filterType').addEventListener('change', applyFilters);
-</script>
 
+// Módulo de arrastre de archivos por interfaz (Drag & Drop)
+const zone = document.getElementById('fileZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); if(e.dataTransfer.files[0]) procesarArchivo(e.dataTransfer.files[0]); });
+</script>
 </body>
 </html>
