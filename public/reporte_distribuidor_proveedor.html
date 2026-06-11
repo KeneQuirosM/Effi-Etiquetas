@@ -30,8 +30,8 @@
     --danger-text:  #880e4f;
     --danger-mid:   #c62828;
 
-    /* 👁️ Tonos suavizados anti-fatiga para proteger la vista */
-    --neutral-100: #eef2f7; /* Fondo grisáceo azulado suave */
+    /* 👁️ Tonos suavizados anti-fatiga ocular */
+    --neutral-100: #eef2f7; 
     --neutral-50:  #f5f7fa;
     --neutral-200: #d8dee9;
     --neutral-600: #5a6482;
@@ -92,7 +92,7 @@
   .header-logo-img {
     height: 32px;
     object-fit: contain;
-    filter: brightness(0) invert(1); /* Pasa el logo a blanco limpio */
+    filter: brightness(0) invert(1);
   }
 
   .header-divider {
@@ -156,7 +156,7 @@
   }
 
   .stat {
-    background: #fcfdfe; /* Blanco opaco para mitigar brillo */
+    background: #fcfdfe;
     border: 1px solid var(--neutral-200);
     border-radius: var(--radius-md);
     padding: 14px 18px;
@@ -172,7 +172,6 @@
     line-height: 1.1;
   }
   .stat-val.red { color: var(--danger-mid); }
-  .stat-val.amber { color: var(--warning-text); }
 
   .stat-label {
     font-size: 0.7rem;
@@ -303,17 +302,23 @@
   .empty-state { text-align: center; padding: 50px; color: var(--neutral-400); }
   .footer-note { text-align: center; padding: 24px; color: var(--neutral-600); font-size: 0.8rem; border-top: 1px solid var(--neutral-200); background: #fcfdfe; }
 
-  /* ── 🖨️ ESTILOS EXCLUSIVOS PARA GENERACIÓN DE PDF ── */
+  /* ── 🖨️ CORRECCIÓN DE PDF: Forzar renderizado de colores, barras y fondos en la impresión ── */
   @media print {
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
     body { background: #ffffff !important; color: #000000 !important; padding: 0 !important; }
     .file-zone, .controls, #excelInput, .toggle-btn, button, .chevron { display: none !important; }
     .main { padding: 0 !important; }
-    .group { page-break-inside: avoid; border: 1px solid var(--neutral-200); box-shadow: none; margin-bottom: 18px; }
-    .group-header { background: var(--neutral-50) !important; border-bottom: 1px solid var(--neutral-200) !important; }
+    .group { page-break-inside: avoid; border: 1px solid var(--neutral-200) !important; box-shadow: none !important; margin-bottom: 18px !important; }
+    .group-header { background: var(--neutral-50) !important; border-bottom: 1px solid var(--neutral-200) !important; display: flex !important; }
     .group-body { display: block !important; }
-    th { background: #f0f0f0 !important; color: #000000 !important; }
+    th { background: #f0f0f0 !important; color: #000000 !important; border-bottom: 1px solid #ccc !important; }
     td { border-bottom: 1px solid #e2e6ef !important; }
-    .bar-bg { border: 1px solid #aaa !important; background: #fff !important; }
+    .bar-bg { border: 1px solid #aaa !important; background: #e0e0e0 !important; display: block !important; height: 8px !important; }
+    .bar-fill { background: var(--brand-500) !important; height: 100% !important; }
+    .bar-fill.low { background: var(--danger-mid) !important; }
   }
 </style>
 </head>
@@ -349,7 +354,7 @@
   <select id="filterType">
     <option value="">Todos los orígenes</option>
     <option value="Distribuidor (Bodega Propia)">🏪 Solo Bodega Propia</option>
-    <option value="Proveedor Dropshipping">📦 Solo Dropshipping</option>
+    <option value="Proveedor Dropshipping">Solo Proveedores Dropshipping</option>
   </select>
   <button class="toggle-btn" id="toggleLow" onclick="toggleLowOnly()">
     <i class="fas fa-exclamation-triangle"></i> Solo bajo 30 uds
@@ -377,13 +382,13 @@
 <script>
 let DATA = [];
 let dbData = []; 
+let originalExcelRows = []; // Almacena las filas crudas del archivo cargado para cruces detallados
 let showLowOnly = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   loadDatabaseData();
 });
 
-// Sincronización transparente con base de datos controlada por tiendas.js
 async function loadDatabaseData() {
   try {
     const response = await fetch('/api/tiendas'); 
@@ -391,7 +396,7 @@ async function loadDatabaseData() {
     dbData = result.tiendas || [];
     
     document.getElementById('generation-p').innerHTML = `Picking & Packing · Base de datos conectada ✅ · Alerta < 30 uds`;
-    document.getElementById('footerNote').innerText = `Base de datos cargada. Listo para procesar archivos de movimientos.`;
+    document.getElementById('footerNote').innerText = `Base de datos cargada. Listo para recibir reportes locales.`;
   } catch (error) {
     console.error('Error base de datos:', error);
     document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color:var(--danger-mid); font-weight:600;">⚠️ Error de enlace BD</span>`;
@@ -420,6 +425,10 @@ function procesarArchivo(file) {
       if (isXLSX) {
         const wb = XLSX.read(buf, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
+        // Conservar formato de filas crudas como objetos llave-valor para facilitar sub-reportes
+        originalExcelRows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+        
+        // Formato matricial para mapeo de cabeceras estructurado
         rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
       } else {
         let text = new TextDecoder('utf-8').decode(buf);
@@ -437,13 +446,21 @@ function procesarArchivo(file) {
               return c.replace(/""/g, '"');
             });
           });
+          
+          // Convertir CSV estructurado a array de objetos para mantener paridad con XLSX
+          const headers = rows[0];
+          originalExcelRows = rows.slice(1).map(row => {
+            let obj = {};
+            headers.forEach((h, i) => { obj[h] = row[i] || ""; });
+            return obj;
+          });
         }
       }
 
       if (!rows || rows.length < 2) throw new Error("El reporte no contiene suficientes líneas de datos.");
       crossReferenceData(rows);
 
-      info.textContent = `✅ ${file.name} procesado y cruzado con éxito`;
+      info.textContent = `✅ ${file.name} procesado e integrado correctamente`;
       info.className = 'file-info ok';
       document.getElementById('controlsSection').style.display = 'flex';
     } catch (err) {
@@ -479,7 +496,6 @@ function crossReferenceData(excelRows) {
   });
 
   DATA = dbData.map(tienda => {
-    // Manteniendo la regla clave intacta de marcas de Dropshipping
     let tipo = "Distribuidor (Bodega Propia)";
     const nameUpper = tienda.nombre.toUpperCase();
     if (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO")) {
@@ -626,47 +642,134 @@ function renderGroups(search = '', typeFilter = '') {
   });
 }
 
-/* ── FUNCIONALIDADES DE DESCARGA AVANZADAS ── */
-
-// Genera un archivo EXCEL (.xlsx) estructurado, limpio y auto-ajustado
+/* ── 🚀 GENERADOR DE EXCEL MULTIHOJA INTEGRADO EN LA HERRAMIENTA ── */
 function exportarExcelBonito() {
-  if (!DATA || DATA.length === 0) return;
-  
-  const rows = [
-    ["Reporte de Salidas y Alistamiento por Tienda — Efficommerce"],
-    [`Fecha de Generación: ${new Date().toLocaleString()}`],
-    [],
-    ["Fuente / Tienda", "Tipo de Gestión", "SKU / Código", "Descripción del Artículo", "Ubicación Almacén", "Cantidad de Salidas", "Estado de Alerta"]
-  ];
-
-  DATA.forEach(group => {
-    group.items.forEach(item => {
-      rows.push([
-        group.source,
-        group.tipo,
-        item.id,
-        item.desc,
-        item.ubicacion || 'Sin Ubicación',
-        item.qty,
-        item.qty < 30 ? "ALERTA: BAJO 30" : "OK"
-      ]);
-    });
-  });
-
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  
-  // Autoajuste dinámico de columnas para que el Excel sea inmediatamente legible
-  const colWidths = rows[3].map((_, colIdx) => {
-    return Math.max(...rows.slice(3).map(row => String(row[colIdx] || '').length), 12);
-  });
-  ws['!cols'] = colWidths.map(w => ({ w: w + 3 }));
+  if (!originalExcelRows || originalExcelRows.length === 0) {
+    alert("Cargue primero un archivo de movimientos para poder exportar.");
+    return;
+  }
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Salidas Consolidadas");
-  XLSX.writeFile(wb, `Efficommerce_Reporte_Salidas_${new Date().toISOString().slice(0,10)}.xlsx`);
+  const summaryRows = [
+    ["Dashboard Consolidador de Alistamiento — Efficommerce"],
+    [`Reporte generado el: ${new Date().toLocaleString()}`],
+    [],
+    ["Distribuidor / Tienda Original", "Nombre de Pestaña", "Total Unidades Alistadas", "Nivel Alertas (<30)"]
+  ];
+
+  const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+  // Encontrar las llaves del excel original de forma flexible para el desglose interno
+  const firstRow = originalExcelRows[0];
+  const keys = Object.keys(firstRow);
+  const kDist = keys.find(k => cleanText(k).includes('distribuidor') || cleanText(k).includes('tienda'));
+  const kProv = keys.find(k => cleanText(k).includes('proveedor') || cleanText(k).includes('dropship'));
+  const kGuia = keys.find(k => cleanText(k).includes('guia') || cleanText(k).includes('tracking'));
+  const kDest = keys.find(k => cleanText(k).includes('destina'));
+  const kDoc  = keys.find(k => cleanText(k).includes('docu'));
+  const kId   = keys.find(k => cleanText(k).includes('id') || cleanText(k).includes('codigo'));
+  const kCant = keys.find(k => cleanText(k).includes('cant') || cleanText(k).includes('qty'));
+  const kDesc = keys.find(k => cleanText(k).includes('descrip') || cleanText(k).includes('producto') || cleanText(k).includes('articulo'));
+  const kFecha = keys.find(k => cleanText(k).includes('fecha'));
+
+  // Ordenar la data por volumen para el Dashboard
+  const sortedGroups = [...DATA].sort((a, b) => b.total - a.total);
+
+  sortedGroups.forEach(group => {
+    // Crear un nombre limpio y válido de pestaña (máx 30 caracteres)
+    let sheetName = group.source.replace(' - ', '_');
+    sheetName = sheetName.replace(/[\\*?:/\[\]]/g, '').substring(0, 30).trim();
+    if(!sheetName) sheetName = "Canal_General";
+
+    // Evitar colisión duplicada de nombres
+    let finalSheetName = sheetName;
+    let counter = 1;
+    while (wb.SheetNames.includes(finalSheetName)) {
+      finalSheetName = `${sheetName.substring(0, 27)}_${counter}`;
+      counter++;
+    }
+
+    // Agregar fila al Dashboard General
+    summaryRows.push([
+      group.source,
+      finalSheetName,
+      group.total,
+      group.bajo30 > 0 ? `CRÍTICO: ${group.bajo30} bajos` : "ÓPTIMO"
+    ]);
+
+    // Filtrar los movimientos individuales de este distribuidor específico desde la hoja original cargada
+    const cleanStoreName = cleanText(group.source);
+    const matchedMovements = originalExcelRows.filter(row => {
+      const rowDist = cleanText(row[kDist]);
+      const rowProv = cleanText(row[kProv]);
+      // Sincroniza con la paridad exacta de la base de datos (prov !== "" o concordancia de nombre)
+      return rowDist.includes(cleanStoreName) || cleanStoreName.includes(rowDist) || rowProv.includes(cleanStoreName);
+    });
+
+    // Construcción de la hoja individual detallada
+    const sheetRows = [
+      [`Reporte de Alistamiento (Picking) - ${group.source}`],
+      [`Canal logístico: ${group.tipo} · Total extraído: ${group.total} unidades`],
+      [],
+      ["Guía Transportadora", "Destinatario", "Documento", "ID Artículo", "Descripción del Artículo", "Cantidad", "Fecha Transacción"]
+    ];
+
+    matchedMovements.forEach(m => {
+      sheetRows.push([
+        m[kGuia] || "S/G",
+        m[kDest] || "Consumidor Final",
+        m[kDoc] || "-",
+        m[kId] || "-",
+        m[m[kDesc] ? kDesc : kId] || "-", // Salvaguarda si cruza ID como artículo
+        parseFloat(m[kCant]) || 1,
+        m[kFecha] || "-"
+      ]);
+    });
+
+    // Si no tiene registros físicos en el excel de este día, se listan sus SKUs base en 0 salidas
+    if (matchedMovements.length === 0) {
+      group.items.forEach(item => {
+        sheetRows.push(["-", "Sin movimientos", "-", item.id, item.desc, 0, "-"]);
+      });
+    }
+
+    const wsIndividual = XLSX.utils.aoa_to_sheet(sheetRows);
+    
+    // Auto-ajuste de columnas de la hoja individual
+    const wscols = sheetRows[3].map((_, colIdx) => {
+      return { wch: Math.max(...sheetRows.slice(3).map(r => String(r[colIdx] || '').length), 12) + 3 };
+    });
+    wsIndividual['!cols'] = wscols;
+
+    XLSX.utils.book_append_sheet(wb, wsIndividual, finalSheetName);
+  });
+
+  // Agregar la fila de totales globales al Dashboard
+  const dashTotalRow = summaryRows.length + 1;
+  summaryRows.push([]);
+  summaryRows.push([
+    "TOTAL GENERAL CONSOLIDADO", 
+    "-", 
+    DATA.reduce((s, g) => s + g.total, 0),
+    DATA.reduce((s, g) => s + g.bajo30, 0) > 0 ? "REVISAR ALERTAS" : "ESTABLE"
+  ]);
+
+  const wsDashboard = XLSX.utils.aoa_to_sheet(summaryRows);
+  
+  // Auto-ajuste de columnas de la pestaña Dashboard
+  const wsDashCols = summaryRows[3].map((_, colIdx) => {
+    return { wch: Math.max(...summaryRows.slice(3).map(r => String(r[colIdx] || '').length), 15) + 3 };
+  });
+  wsDashboard['!cols'] = wsDashCols;
+
+  // Insertar Dashboard como pestaña inicial del libro
+  XLSX.utils.book_append_sheet(wb, wsDashboard, "Resumen General");
+  wb.SheetNames.unshift(wb.SheetNames.pop()); // Mueve al inicio
+
+  XLSX.writeFile(wb, `Efficommerce_Consolidado_Salidas_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
-// Despliega los acordeones y llama la impresión nativa preparada para PDF
+// Despliega los acordeones y llama la impresión nativa adaptada para PDF
 function generarPDF() {
   expandAll();
   setTimeout(() => {
@@ -691,7 +794,6 @@ function applyFilters() {
 document.getElementById('searchInput').addEventListener('input', applyFilters);
 document.getElementById('filterType').addEventListener('change', applyFilters);
 
-// Módulo de arrastre de archivos por interfaz (Drag & Drop)
 const zone = document.getElementById('fileZone');
 zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
 zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
