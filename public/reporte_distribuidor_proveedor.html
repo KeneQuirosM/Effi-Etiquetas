@@ -689,13 +689,17 @@ function crossReferenceData(excelRows) {
 
       excelRows.forEach((row, idx) => {
         if (idx === 0) return;
-        const rowTiendasText = colTiendas.map(col => cleanText(row[excelRows[0].indexOf(col)])).join(' | ');
+
+        // Elimina el prefijo "ID - " que viene en el Excel (ej: "40881 - Grupo Hoshi" → "grupo hoshi")
+        const stripPrefix = (str) => String(str).replace(/^\d+\s*[-–]\s*/, '').trim();
+
+        const rowTiendasText = colTiendas.map(col => cleanText(stripPrefix(row[excelRows[0].indexOf(col)]))).join(' | ');
         const rowId = colId ? cleanText(row[excelRows[0].indexOf(colId)]) : '';
         const rowDesc = colDesc ? cleanText(row[excelRows[0].indexOf(colDesc)]) : '';
 
-        const storeMatch = rowTiendasText.includes(dbStoreNameClean) || 
-                           dbStoreNameClean.includes(rowTiendasText) ||
-                           colTiendas.some(col => cleanText(row[excelRows[0].indexOf(col)]) === dbStoreIdClean);
+        const storeMatch = rowTiendasText === dbStoreNameClean ||
+                           rowTiendasText.includes(dbStoreNameClean) ||
+                           dbStoreNameClean.includes(rowTiendasText);
 
         if (!storeMatch) return;
 
