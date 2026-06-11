@@ -241,7 +241,7 @@
   </div>
 
 <div class="controls">
-  <input type="file" id="excelInput" accept=".xlsx, .xls" style="display: none;" onchange="handleExcelUpload(event)">
+  <input type="file" id="excelInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelUpload(event)">
   <button class="toggle-btn" onclick="document.getElementById('excelInput').click()" style="background: #3182ce; color: #fff; font-weight: bold;">📁 Cargar Excel Reporte</button>
 
   <input type="text" id="searchInput" placeholder="🔍  Buscar por nombre o ID de producto...">
@@ -305,28 +305,54 @@ function handleExcelUpload(event) {
   reader.readAsArrayBuffer(file);
 }
 
-// Extractor dinámico de valores con filtros de palabras clave cruzadas
-function getExcelValue(row, keywords) {
-  const keys = Object.keys(row);
-  for (let key of keys) {
-    const normalizedKey = key.toLowerCase().trim();
-    
-    // FILTRO CRÍTICO: Si buscamos cantidad, ignorar nombres de columnas de guías, trackings o IDs numéricos largos
-    if (keywords.includes('cant') || keywords.includes('qty') || keywords.includes('cantidad')) {
-      if (normalizedKey.includes('guia') || normalizedKey.includes('guía') || normalizedKey.includes('tracking') || normalizedKey.includes('nume') || normalizedKey.includes('id') || normalizedKey.includes('codigo') || normalizedKey.includes('código')) {
-        continue; 
-      }
-    }
-
-    for (let kw of keywords) {
-      if (normalizedKey.includes(kw)) return row[key];
-    }
-  }
-  return null;
-}
-
 // Comparación y cruce matemático inteligente
 function crossReferenceData(excelRows) {
+  if (!excelRows || excelRows.length === 0) {
+    document.getElementById('footerNote').innerText = 'El archivo Excel está vacío.';
+    return;
+  }
+
+  // Función interna para limpiar textos (quita espacios, tildes y pasa a minúsculas)
+  const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+  // 1. MAPEADO INTELIGENTE DE COLUMNAS (Se ejecuta una única vez leyendo la primera fila)
+  let colTiendas = [];
+  let colId = null;
+  let colDesc = null;
+  let colQty = null;
+
+  const firstRowKeys = Object.keys(excelRows[0]);
+  firstRowKeys.forEach(key => {
+    const nk = cleanText(key);
+    
+    // Detectar columnas de tiendas (mapea Distribuidor y Proveedor de forma simultánea)
+    if (nk.includes('tienda') || nk.includes('store') || nk.includes('fuente') || nk.includes('distribuidor') || nk.includes('proveedor')) {
+      colTiendas.push(key);
+    }
+    
+    // Detectar columna de ID / Código (Evita colisiones con guías o descripciones)
+    if ((nk.includes('id') || nk.includes('codigo') || nk.includes('sku') || nk.includes('ref')) && !nk.includes('desc') && !nk.includes('guia') && !nk.includes('transportadora')) {
+      if (!colId || nk === 'id' || nk === 'id articulo' || nk === 'codigo') {
+        colId = key;
+      }
+    }
+    
+    // Detectar columna de Descripción (Excluye explícitamente palabras de ID)
+    if ((nk.includes('desc') || nk.includes('producto') || nk.includes('nombre') || nk.includes('art')) && !nk.includes('id') && !nk.includes('codigo')) {
+      if (!colDesc || nk.includes('desc') || nk.includes('producto')) {
+        colDesc = key;
+      }
+    }
+    
+    // Detectar columna de Cantidad
+    if (nk.includes('cant') || nk.includes('qty') || nk.includes('unidades') || nk.includes('salida')) {
+      if (!nk.includes('guia') && !nk.includes('id') && !nk.includes('codigo')) {
+        colQty = key;
+      }
+    }
+  });
+
+  // 2. CRUCE CON LA BASE DE DATOS
   DATA = dbData.map(tienda => {
     let tipo = "Distribuidor (Bodega Propia)";
     const nameUpper = tienda.nombre.toUpperCase();
@@ -334,36 +360,36 @@ function crossReferenceData(excelRows) {
       tipo = "Proveedor Dropshipping";
     }
 
+    const dbStoreNameClean = cleanText(tienda.nombre);
+    const dbStoreIdClean = cleanText(tienda.id);
+
     const items = (tienda.inventario || []).map(prod => {
       let totalQty = 0;
-      const dbStoreName = tienda.nombre.toLowerCase().trim();
-      const dbStoreId = String(tienda.id).toLowerCase().trim();
-      
-      // Resiliencia dual para campos de códigos y nombres de productos en la BD
-      const dbProdCode = String(prod.codigo || prod.id || '').toLowerCase().trim();
-      const dbProdName = String(prod.nombre || prod.producto || '').toLowerCase().trim();
+      const dbProdCodeClean = cleanText(prod.codigo || prod.id);
+      const dbProdNameClean = cleanText(prod.nombre || prod.producto);
 
       excelRows.forEach(row => {
-        const rowTienda = String(getExcelValue(row, ['tienda', 'store', 'fuente', 'distribuidor', 'proveedor']) || '').toLowerCase().trim();
-        const rowId = String(getExcelValue(row, ['id', 'codigo', 'código', 'sku', 'ref']) || '').toLowerCase().trim();
-        const rowDesc = String(getExcelValue(row, ['desc', 'producto', 'nombre', 'art', 'artículo']) || '').toLowerCase().trim();
+        // Concatenamos el texto de todas las columnas de tienda detectadas en esta fila
+        const rowTiendasText = colTiendas.map(col => cleanText(row[col])).join(' | ');
+        const rowId = colId ? cleanText(row[colId]) : '';
+        const rowDesc = colDesc ? cleanText(row[colDesc]) : '';
 
-        // 1. Coincidencia de Tienda (Nombre completo, parcial o ID numérico)
-        const storeMatch = rowTienda.includes(dbStoreName) || 
-                           dbStoreName.includes(rowTienda) || 
-                           (rowTienda && rowTienda === dbStoreId);
+        // Coincidencia de Tienda: Valida si se nombra en cualquiera de las columnas mapeadas
+        const storeMatch = rowTiendasText.includes(dbStoreNameClean) || 
+                           dbStoreNameClean.includes(rowTiendasText) ||
+                           colTiendas.some(col => cleanText(row[col]) === dbStoreIdClean);
 
-        // 2. Coincidencia de Producto (Por código exacto o similitud textual de descripción)
-        const productMatch = (rowId && rowId === dbProdCode) || 
-                             (rowDesc && (rowDesc.includes(dbProdName) || dbProdName.includes(rowDesc)));
+        if (!storeMatch) return;
 
-        if (storeMatch && productMatch) {
-          const rawQty = getExcelValue(row, ['cant', 'qty', 'cantidad', 'unidades', 'salida']);
-          let rowQty = 1; // Por defecto si se encuentra la línea, equivale a 1 guía saliente
+        // Coincidencia de Producto: Por código numérico exacto o por texto en descripción
+        const productMatch = (rowId && rowId === dbProdCodeClean) || 
+                             (rowDesc && (rowDesc.includes(dbProdNameClean) || dbProdNameClean.includes(rowDesc)));
 
-          if (rawQty !== undefined && rawQty !== null && rawQty !== '') {
-            const parsed = parseFloat(rawQty);
-            // Ignorar números gigantes (como trackings que se filtraron erróneamente)
+        if (productMatch) {
+          let rowQty = 1; // Por defecto cada línea es 1 guía procesada
+          if (colQty && row[colQty] !== undefined && row[colQty] !== null && row[colQty] !== '') {
+            const parsed = parseFloat(row[colQty]);
+            // Filtro estricto anti-códigos largos de rastreo erróneos
             if (!isNaN(parsed) && parsed > 0 && parsed < 1000) {
               rowQty = parsed;
             }
@@ -377,7 +403,7 @@ function crossReferenceData(excelRows) {
         tipo: tipo,
         id: prod.codigo || prod.id,
         desc: prod.nombre || prod.producto,
-        qty: totalQty, // Si no salió ninguna coincidencia, queda en 0 perfectamente
+        qty: totalQty,
         ubicacion: prod.ubicacion || ''
       };
     });
@@ -428,7 +454,7 @@ function calculateStats() {
     </div>
   `;
 
-  document.getElementById('footerNote').innerText = `Total de ${totalProductos} líneas analizadas · Cruce de base de datos finalizado con éxito.`;
+  document.getElementById('footerNote').innerText = `Total de ${totalProductos} líneas analizadas de la base de datos completadas con éxito.`;
 
   applyFilters();
 }
@@ -437,13 +463,14 @@ function renderGroups(search = '', typeFilter = '') {
   const container = document.getElementById('mainContent');
   container.innerHTML = '';
 
-  const searchLower = search.toLowerCase().trim();
+  const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const searchLower = cleanText(search);
 
   DATA.forEach((group, gi) => {
     const filteredItems = group.items.filter(item => {
       const matchSearch = !searchLower || 
-                          String(item.id).toLowerCase().includes(searchLower) || 
-                          String(item.desc).toLowerCase().includes(searchLower);
+                          cleanText(item.id).includes(searchLower) || 
+                          cleanText(item.desc).includes(searchLower);
       return matchSearch;
     });
 
@@ -516,6 +543,7 @@ function expandAll() {
 }
 
 function collapseAll() {
+  document.querySelectorAll('.group').forEach(g => g.classList.remove('remove'));
   document.querySelectorAll('.group').forEach(g => g.classList.remove('open'));
 }
 
