@@ -277,6 +277,21 @@
             display: inline-block;
         }
 
+        /* ══ ID ARTÍCULO PILLS ══ */
+        .id-pill {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: .78rem;
+            font-weight: 500;
+            background: #fff8e1;
+            color: #e65100;
+            border: 1px solid #ffe082;
+            border-radius: var(--radius-sm);
+            padding: 2px 8px;
+            margin: 2px 3px 2px 0;
+        }
+        .id-pills-wrap { display: flex; flex-wrap: wrap; gap: 2px; }
+
         /* ══ BADGES ══ */
         .badge {
             display: inline-flex; align-items: center; gap: 5px;
@@ -581,6 +596,10 @@
                     <div class="sf-label">Producto</div>
                     <div class="sf-value" id="lastProducto">—</div>
                 </div>
+                <div class="sf">
+                    <div class="sf-label">ID Artículo(s)</div>
+                    <div class="sf-value" id="lastIdArticulo">—</div>
+                </div>
                 <div class="sf" style="border-right:none;">
                     <div class="sf-label">Estado</div>
                     <div id="lastEstado">
@@ -718,6 +737,7 @@
     const lastCliente     = document.getElementById('lastCliente');
     const lastProducto    = document.getElementById('lastProducto');
     const lastEstado      = document.getElementById('lastEstado');
+    const lastIdArticulo  = document.getElementById('lastIdArticulo');
     const totalCountSpan  = document.getElementById('totalCount');
     const devueltasCountSpan = document.getElementById('devueltasCount');
     const pendientesCountSpan= document.getElementById('pendientesCount');
@@ -771,12 +791,18 @@
         if(cnt) cnt.innerText=originalRowsData.length;
     }
 
-    function showLastScan(guia,dist,prov,cliente,prod,marcada){
+    function showLastScan(guia,dist,prov,cliente,prod,marcada,ids){
         lastGuiaSpan.innerText=guia;
         lastDistribuidor.innerText=dist||'—';
         lastProveedor.innerText=prov||'—';
         lastCliente.innerText=cliente||'—';
         lastProducto.innerText=prod||'—';
+        // Mostrar IDs de artículos como pills individuales
+        if(ids && ids.length){
+            lastIdArticulo.innerHTML='<div class="id-pills-wrap">'+ids.map(id=>`<span class="id-pill">${esc(String(id))}</span>`).join('')+'</div>';
+        } else {
+            lastIdArticulo.innerText='—';
+        }
         lastEstado.innerHTML=marcada
             ?'<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Devuelta</span>'
             :'<span class="badge badge-pend"><i class="fas fa-clock"></i> Pendiente</span>';
@@ -808,13 +834,14 @@
                 const prov=r?.['Proveedor Dropshipping']||'';
                 const cliente=r?.['Destinatario']||'Desconocido';
                 const prod=r?.['Descripción original artículo']||r?.['ID artículo']||'Producto';
+                const ids=getProductIds(g);
                 if(cb.checked){
                     devolutionSet.add(g); addLog(g,dist,prov,cliente,prod,'✅ MARCADA');
-                    showLastScan(g,dist,prov,cliente,prod,true);
+                    showLastScan(g,dist,prov,cliente,prod,true,ids);
                     showToast(`Guía <strong>${g}</strong> marcada`,'ok');
                 } else {
                     devolutionSet.delete(g); addLog(g,dist,prov,cliente,prod,'❌ DESMARCADA');
-                    showLastScan(g,dist,prov,cliente,prod,false);
+                    showLastScan(g,dist,prov,cliente,prod,false,ids);
                     showToast(`Guía <strong>${g}</strong> desmarcada`,'inf');
                 }
                 saveMarks(); renderTable(); updateStats();
@@ -831,13 +858,18 @@
 
     function filtrarTabla(query){
         const term=query.trim().toLowerCase();
+        // Calcular el índice real de la columna "Guía transportadora" en la tabla
+        // columna 0 = checkbox, columna 1+ = headers
+        const guiaColIdx = headers.indexOf('Guía transportadora');
+        const tdIdx = guiaColIdx >= 0 ? guiaColIdx + 2 : 2; // +1 por checkbox, +1 porque nth-child es 1-based
         const filas=document.querySelectorAll('#tableBody tr');
         let visibles=0;
         filas.forEach(tr=>{
             if(tr.querySelector('.empty')){ tr.style.display=''; return; }
-            const celdaGuia=tr.querySelector('td:nth-child(2)');
-            if(!celdaGuia) return;
-            const coincide=!term||celdaGuia.textContent.trim().toLowerCase().includes(term);
+            if(!term){ tr.style.display=''; visibles++; return; }
+            // Buscar en toda la fila para mayor flexibilidad
+            const textoFila=tr.textContent.trim().toLowerCase();
+            const coincide=textoFila.includes(term);
             tr.style.display=coincide?'':'none';
             if(coincide) visibles++;
         });
@@ -848,6 +880,21 @@
         }
     }
 
+    function getIdColumnName(){
+        // Detecta dinámicamente el nombre de la columna de ID artículo
+        const candidates=['ID artículo','ID Artículo','Id artículo','id artículo','ID articulo','ID Articulo','id articulo'];
+        return candidates.find(c=>headers.includes(c))||null;
+    }
+
+    function getProductIds(guia){
+        // Reúne TODOS los IDs únicos de todas las filas que comparten la misma guía
+        const idCol=getIdColumnName();
+        if(!idCol) return [];
+        const rows=originalRowsData.filter(x=>String(x['Guía transportadora'])===guia);
+        const ids=[...new Set(rows.map(r=>String(r[idCol]||'').trim()).filter(Boolean))];
+        return ids;
+    }
+
     function marcarGuia(raw){
         const guia=String(raw).trim();
         if(!guia){ showToast('Ingrese un número de guía','err'); guiaInput.focus(); return false; }
@@ -856,13 +903,14 @@
         const dist=r['Distribuidor']||'', prov=r['Proveedor Dropshipping']||'';
         const cliente=r['Destinatario']||'Desconocido';
         const prod=r['Descripción original artículo']||r['ID artículo']||'Producto';
+        const ids=getProductIds(guia);
         if(!devolutionSet.has(guia)){
             devolutionSet.add(guia); addLog(guia,dist,prov,cliente,prod,'✅ MARCADA (escáner)');
-            showLastScan(guia,dist,prov,cliente,prod,true);
+            showLastScan(guia,dist,prov,cliente,prod,true,ids);
             showToast(`Guía <strong>${guia}</strong> marcada`,'ok');
             renderTable(); saveMarks();
         } else {
-            showLastScan(guia,dist,prov,cliente,prod,true);
+            showLastScan(guia,dist,prov,cliente,prod,true,ids);
             showToast(`Guía <strong>${guia}</strong> ya estaba marcada`,'inf');
         }
         guiaInput.value=''; guiaInput.focus(); return true;
