@@ -277,6 +277,32 @@
             display: inline-block;
         }
 
+        /* ══ ARTÍCULOS EN GUÍA ══ */
+        .articulo-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 4px 0;
+            border-bottom: 1px dashed var(--neutral-100);
+        }
+        .articulo-row:last-child { border-bottom: none; }
+        .articulo-id {
+            font-family: var(--mono);
+            font-size: .78rem;
+            font-weight: 600;
+            background: #fff8e1;
+            color: #e65100;
+            border: 1px solid #ffe082;
+            border-radius: var(--radius-sm);
+            padding: 2px 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .articulo-nombre {
+            font-size: .82rem;
+            color: var(--neutral-700);
+            line-height: 1.3;
+        }
         /* ══ ID ARTÍCULO PILLS ══ */
         .id-pill {
             display: inline-block;
@@ -592,15 +618,11 @@
                     <div class="sf-label">Cliente</div>
                     <div class="sf-value" id="lastCliente">—</div>
                 </div>
-                <div class="sf">
-                    <div class="sf-label">Producto</div>
-                    <div class="sf-value" id="lastProducto">—</div>
+                <div class="sf sf-articulos" style="flex:2 1 300px;">
+                    <div class="sf-label">Artículo(s) en guía</div>
+                    <div id="lastArticulos">—</div>
                 </div>
-                <div class="sf">
-                    <div class="sf-label">ID Artículo(s)</div>
-                    <div class="sf-value" id="lastIdArticulo">—</div>
-                </div>
-                <div class="sf" style="border-right:none;">
+                <div class="sf" style="border-right:none;flex:0 0 auto;">
                     <div class="sf-label">Estado</div>
                     <div id="lastEstado">
                         <span class="badge badge-ok"><i class="fas fa-check-circle"></i> Devuelta</span>
@@ -735,9 +757,8 @@
     const lastDistribuidor= document.getElementById('lastDistribuidor');
     const lastProveedor   = document.getElementById('lastProveedor');
     const lastCliente     = document.getElementById('lastCliente');
-    const lastProducto    = document.getElementById('lastProducto');
+    const lastArticulos   = document.getElementById('lastArticulos');
     const lastEstado      = document.getElementById('lastEstado');
-    const lastIdArticulo  = document.getElementById('lastIdArticulo');
     const totalCountSpan  = document.getElementById('totalCount');
     const devueltasCountSpan = document.getElementById('devueltasCount');
     const pendientesCountSpan= document.getElementById('pendientesCount');
@@ -791,17 +812,21 @@
         if(cnt) cnt.innerText=originalRowsData.length;
     }
 
-    function showLastScan(guia,dist,prov,cliente,prod,marcada,ids){
+    function showLastScan(guia,dist,prov,cliente,marcada,articulos){
         lastGuiaSpan.innerText=guia;
         lastDistribuidor.innerText=dist||'—';
         lastProveedor.innerText=prov||'—';
         lastCliente.innerText=cliente||'—';
-        lastProducto.innerText=prod||'—';
-        // Mostrar IDs de artículos como pills individuales
-        if(ids && ids.length){
-            lastIdArticulo.innerHTML='<div class="id-pills-wrap">'+ids.map(id=>`<span class="id-pill">${esc(String(id))}</span>`).join('')+'</div>';
+        // Renderizar pares ID + Nombre
+        if(articulos && articulos.length){
+            lastArticulos.innerHTML=articulos.map(a=>
+                `<div class="articulo-row">
+                    ${a.id?`<span class="articulo-id">${esc(a.id)}</span>`:''}
+                    <span class="articulo-nombre">${esc(a.nombre)||'<em style="color:var(--neutral-400)">Sin descripción</em>'}</span>
+                </div>`
+            ).join('');
         } else {
-            lastIdArticulo.innerText='—';
+            lastArticulos.innerHTML='<span style="color:var(--neutral-400)">—</span>';
         }
         lastEstado.innerHTML=marcada
             ?'<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Devuelta</span>'
@@ -833,15 +858,15 @@
                 const dist=r?.['Distribuidor']||'';
                 const prov=r?.['Proveedor Dropshipping']||'';
                 const cliente=r?.['Destinatario']||'Desconocido';
-                const prod=r?.['Descripción original artículo']||r?.['ID artículo']||'Producto';
-                const ids=getProductIds(g);
+                const articulos=getProductArticulos(g);
+                const prod=articulos.length?articulos.map(a=>a.nombre||a.id).join(', '):'Producto';
                 if(cb.checked){
                     devolutionSet.add(g); addLog(g,dist,prov,cliente,prod,'✅ MARCADA');
-                    showLastScan(g,dist,prov,cliente,prod,true,ids);
+                    showLastScan(g,dist,prov,cliente,true,articulos);
                     showToast(`Guía <strong>${g}</strong> marcada`,'ok');
                 } else {
                     devolutionSet.delete(g); addLog(g,dist,prov,cliente,prod,'❌ DESMARCADA');
-                    showLastScan(g,dist,prov,cliente,prod,false,ids);
+                    showLastScan(g,dist,prov,cliente,false,articulos);
                     showToast(`Guía <strong>${g}</strong> desmarcada`,'inf');
                 }
                 saveMarks(); renderTable(); updateStats();
@@ -886,13 +911,21 @@
         return candidates.find(c=>headers.includes(c))||null;
     }
 
-    function getProductIds(guia){
-        // Reúne TODOS los IDs únicos de todas las filas que comparten la misma guía
+    function getProductArticulos(guia){
+        // Devuelve array de {id, nombre} únicos para todas las filas de esa guía
         const idCol=getIdColumnName();
-        if(!idCol) return [];
+        const nombreCandidates=['Descripción original artículo','Descripcion original articulo','Descripción artículo','Nombre artículo','Nombre','nombre'];
+        const nombreCol=nombreCandidates.find(c=>headers.includes(c))||null;
         const rows=originalRowsData.filter(x=>String(x['Guía transportadora'])===guia);
-        const ids=[...new Set(rows.map(r=>String(r[idCol]||'').trim()).filter(Boolean))];
-        return ids;
+        const seen=new Set();
+        const articulos=[];
+        rows.forEach(r=>{
+            const id=idCol?String(r[idCol]||'').trim():'';
+            const nombre=nombreCol?String(r[nombreCol]||'').trim():'';
+            const key=id+'|'+nombre;
+            if(!seen.has(key)&&(id||nombre)){ seen.add(key); articulos.push({id,nombre}); }
+        });
+        return articulos;
     }
 
     function marcarGuia(raw){
@@ -902,15 +935,15 @@
         if(!r){ showToast(`Guía <strong>${guia}</strong> no encontrada`,'err'); guiaInput.value=''; guiaInput.focus(); return false; }
         const dist=r['Distribuidor']||'', prov=r['Proveedor Dropshipping']||'';
         const cliente=r['Destinatario']||'Desconocido';
-        const prod=r['Descripción original artículo']||r['ID artículo']||'Producto';
-        const ids=getProductIds(guia);
+        const articulos=getProductArticulos(guia);
+        const prod=articulos.length?articulos.map(a=>a.nombre||a.id).join(', '):'Producto';
         if(!devolutionSet.has(guia)){
             devolutionSet.add(guia); addLog(guia,dist,prov,cliente,prod,'✅ MARCADA (escáner)');
-            showLastScan(guia,dist,prov,cliente,prod,true,ids);
+            showLastScan(guia,dist,prov,cliente,true,articulos);
             showToast(`Guía <strong>${guia}</strong> marcada`,'ok');
             renderTable(); saveMarks();
         } else {
-            showLastScan(guia,dist,prov,cliente,prod,true,ids);
+            showLastScan(guia,dist,prov,cliente,true,articulos);
             showToast(`Guía <strong>${guia}</strong> ya estaba marcada`,'inf');
         }
         guiaInput.value=''; guiaInput.focus(); return true;
