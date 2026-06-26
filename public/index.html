@@ -94,6 +94,7 @@
     <button class="btn-bulk" onclick="openStockforge()">🏭 Gestión de Almacén</button>
     <button class="btn-bulk" onclick="openDev()">🔄 Gestión de Devoluciones</button>
     <button class="btn-bulk" onclick="openMan()">📘 Gestión de Manifiestos</button>
+    <button class="btn-bulk" onclick="openReporte()">📊 Reporte Distribuidor</button>
   </div>
 
   <div class="sidebar-footer">
@@ -119,6 +120,7 @@
       <button class="tab-btn" onclick="switchTab('tab-add-tienda')">Nueva Tienda</button>
       <button class="tab-btn" onclick="switchTab('tab-manage')">Gestionar Inventario</button>
       <button class="tab-btn" onclick="switchTab('tab-config')">Configuración</button>
+      <button class="tab-btn" onclick="switchTab('tab-users')">👤 Usuarios</button>
     </div>
 
     <!-- TAB: Agregar Producto -->
@@ -269,6 +271,34 @@
         </div>
         <button class="btn-action btn-ghost" onclick="clearImportLog()" style="margin-top:8px;font-size:11px;padding:4px 12px">🗑 Limpiar registro</button>
       </div>
+    </div>
+
+    <!-- TAB: Usuarios Coordinadores -->
+    <div id="tab-users" class="tab-content">
+      <p class="section-label" style="margin-bottom:12px">Coordinadores activos</p>
+      <div class="inv-list" id="users-list">
+        <div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+      <p class="section-label" style="margin-bottom:10px">Nuevo Coordinador</p>
+      <div class="form-row single" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="u-email" placeholder="nuevo@efficommerce.com" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="u-password" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label>Confirmar</label>
+          <input type="password" id="u-password-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+        </div>
+      </div>
+      <button class="btn-action btn-primary" onclick="createUser()">＋ Crear Coordinador</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">El coordinador podrá iniciar sesión inmediatamente con estas credenciales.</p>
     </div>
   </div>
 

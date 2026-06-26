@@ -349,10 +349,11 @@ function switchTab(id) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config'];
+  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config','tab-users'];
   const idx = tabs.indexOf(id);
   if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (id === 'tab-add-tienda') populateTiendas();
+  if (id === 'tab-users') loadUsers();
 }
 
 /* ── COORD ACTIONS ─────────────────────────────────── */
@@ -864,16 +865,90 @@ function bulkSelectNone() {
 }
 
 
-function openStockforge() {
-  window.open('/almacen4.html', '_blank');
+function openStockforge() { window.open('/almacen4.html', '_blank'); }
+function openDev()        { window.open('/devoluciones.html', '_blank'); }
+function openMan()        { window.open('/manifiesto.html', '_blank'); }
+function openReporte()    { window.open('/reporte_distribuidor_proveedor.html', '_blank'); }
+
+/* ── GESTIÓN DE USUARIOS COORDINADORES ─────────────────── */
+async function loadUsers() {
+  const container = document.getElementById('users-list');
+  if (!container) return;
+  container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>';
+
+  try {
+    const r = await fetch('/api/users', {
+      headers: { 'Authorization': `Bearer ${coordToken}` }
+    });
+    if (r.status === 401) { lockCoord(); return; }
+    const { users } = await r.json();
+
+    if (!users?.length) {
+      container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Sin usuarios registrados</span></div>';
+      return;
+    }
+
+    container.innerHTML = users.map(u => `
+      <div class="inv-item">
+        <span class="item-name">${u.email}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:8px">
+          ${new Date(u.created_at).toLocaleDateString('es-CR')}
+        </span>
+        <button onclick="deleteUser('${u.id}','${u.email.replace(/'/g,'\\\'')}')"
+          title="Eliminar coordinador"
+          style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;padding:2px 6px">✕</button>
+      </div>
+    `).join('');
+  } catch {
+    container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--danger)">Error al cargar usuarios</span></div>';
+  }
 }
 
-function openDev() {
-  window.open('/devoluciones.html', '_blank');
+async function createUser() {
+  const email   = document.getElementById('u-email').value.trim();
+  const pass    = document.getElementById('u-password').value;
+  const confirm = document.getElementById('u-password-confirm').value;
+
+  if (!email)              return showToast('Email requerido', 'danger');
+  if (!pass || pass.length < 6) return showToast('Contraseña mínimo 6 caracteres', 'danger');
+  if (pass !== confirm)    return showToast('Las contraseñas no coinciden', 'danger');
+
+  try {
+    const r = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${coordToken}` },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await r.json();
+    if (!r.ok) return showToast(data.error || 'Error al crear usuario', 'danger');
+
+    document.getElementById('u-email').value = '';
+    document.getElementById('u-password').value = '';
+    document.getElementById('u-password-confirm').value = '';
+    showToast(`✅ Coordinador "${email}" creado`, 'success');
+    loadUsers();
+  } catch {
+    showToast('Error de conexión', 'danger');
+  }
 }
 
-function openMan() {
-  window.open('/manifiesto.html', '_blank');
+async function deleteUser(id, email) {
+  if (!confirm(`¿Eliminar el coordinador "${email}"? Esta acción no se puede deshacer.`)) return;
+
+  try {
+    const r = await fetch('/api/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${coordToken}` },
+      body: JSON.stringify({ id })
+    });
+    const data = await r.json();
+    if (!r.ok) return showToast(data.error || 'Error al eliminar', 'danger');
+
+    showToast(`Coordinador "${email}" eliminado`, 'danger');
+    loadUsers();
+  } catch {
+    showToast('Error de conexión', 'danger');
+  }
 }
 
 function updateBulkCount() {
