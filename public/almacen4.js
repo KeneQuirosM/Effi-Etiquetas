@@ -12,6 +12,7 @@ const TRANSLATIONS={
     btn_transfer:'⇄ Trasladar SKU', btn_labels:'🖨 Etiquetas', btn_report:'📋 Reporte',
     btn_json:'⬇ JSON', btn_snapshots:'💾 Snapshots', btn_import:'⬆ Importar',
     btn_zone:'＋ Zona', btn_catalogs:'👥 Catálogos', btn_rack:'＋ Rack',
+    btn_bodega_config:'📐 Config. Bodega',
     btn_settings:'⚙', lock_title:'Modo coordinador', lock_active:'Coordinador activo — click para bloquear',
     // Sidebar
     stat_racks:'Racks', stat_skus:'SKUs únicos', stat_occupied:'Ocupado', stat_free:'Libre',
@@ -257,6 +258,7 @@ const TRANSLATIONS={
     btn_transfer:'⇄ Transfer SKU', btn_labels:'🖨 Labels', btn_report:'📋 Report',
     btn_json:'⬇ JSON', btn_snapshots:'💾 Snapshots', btn_import:'⬆ Import',
     btn_zone:'＋ Zone', btn_catalogs:'👥 Catalogs', btn_rack:'＋ Rack',
+    btn_bodega_config:'📐 Warehouse Setup',
     btn_settings:'⚙', lock_title:'Coordinator mode', lock_active:'Coordinator active — click to lock',
     // Sidebar
     stat_racks:'Racks', stat_skus:'Unique SKUs', stat_occupied:'Occupied', stat_free:'Free',
@@ -662,7 +664,6 @@ function openSettings(){
           <button class="btn theme-opt${currentTheme==='dark'?' on':''}" data-theme="dark" onclick="applyTheme('dark');renderSettingsModal()" style="flex:1">${t('settings_theme_dark')}</button>
           <button class="btn theme-opt${currentTheme==='light'?' on':''}" data-theme="light" onclick="applyTheme('light');renderSettingsModal()" style="flex:1">${t('settings_theme_light')}</button>
           <button class="btn theme-opt${currentTheme==='dalton'?' on':''}" data-theme="dalton" onclick="applyTheme('dalton');renderSettingsModal()" style="flex:1">${t('settings_theme_dalton')}</button>
-          <button class="btn theme-opt${currentTheme==='effi'?' on':''}" data-theme="effi" onclick="applyTheme('effi');renderSettingsModal()" style="flex:1">Effi</button>
           </div>
       </div>
       <!-- Brand -->
