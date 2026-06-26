@@ -13,6 +13,7 @@ const TRANSLATIONS={
     btn_json:'⬇ JSON', btn_snapshots:'💾 Snapshots', btn_import:'⬆ Importar',
     btn_zone:'＋ Zona', btn_catalogs:'👥 Catálogos', btn_rack:'＋ Rack',
     btn_bodega_config:'📐 Config. Bodega',
+    btn_reset_qty:'🔢 Limpiar Cantidades',
     btn_settings:'⚙', lock_title:'Modo coordinador', lock_active:'Coordinador activo — click para bloquear',
     // Sidebar
     stat_racks:'Racks', stat_skus:'SKUs únicos', stat_occupied:'Ocupado', stat_free:'Libre',
@@ -259,6 +260,7 @@ const TRANSLATIONS={
     btn_json:'⬇ JSON', btn_snapshots:'💾 Snapshots', btn_import:'⬆ Import',
     btn_zone:'＋ Zone', btn_catalogs:'👥 Catalogs', btn_rack:'＋ Rack',
     btn_bodega_config:'📐 Warehouse Setup',
+    btn_reset_qty:'🔢 Reset Quantities',
     btn_settings:'⚙', lock_title:'Coordinator mode', lock_active:'Coordinator active — click to lock',
     // Sidebar
     stat_racks:'Racks', stat_skus:'Unique SKUs', stat_occupied:'Occupied', stat_free:'Free',
@@ -931,6 +933,33 @@ async function load() {
   }
 }
   
+function limpiarCantidades() {
+  const msg = currentLang === 'en'
+    ? 'Reset ALL quantities in the warehouse?\n\nProducts and cell states are kept — only quantities are zeroed out.'
+    : '¿Limpiar TODAS las cantidades del almacén?\n\nLos productos y estados de celda permanecen — solo se resetean las cantidades.';
+
+  if (!confirm(msg)) return;
+
+  let total = 0;
+  Object.values(state.cells).forEach(arr => {
+    arr.forEach(cell => {
+      (cell.skus || []).forEach(sku => {
+        sku.qty = '';
+        total++;
+      });
+    });
+  });
+
+  save();
+  fullRender();
+  updateStats();
+
+  const ok = currentLang === 'en'
+    ? `✅ ${total} quantities cleared`
+    : `✅ ${total} cantidades limpiadas`;
+  notif(ok, 'ok');
+}
+
 function exportJSON(){
   const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);

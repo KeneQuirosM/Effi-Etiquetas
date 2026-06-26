@@ -66,6 +66,7 @@
         <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>addZone())" data-i18n="btn_zone">＋ Zona</button>
         <button class="guard-btn" style="color:var(--cyan)" onclick="closeOverflow();guardEdit(()=>openO('o-catalog'))" data-i18n="btn_catalogs">👥 Catálogos</button>
         <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>openO('o-bodega-config'))" data-i18n="btn_bodega_config">📐 Configurar Bodega</button>
+        <button class="guard-btn" style="color:var(--yellow)" onclick="closeOverflow();guardEdit(limpiarCantidades)" data-i18n="btn_reset_qty">🔢 Limpiar Cantidades</button>
       </div>
     </div>
     <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(event)">
@@ -97,6 +98,7 @@
     <button class="mob-action" onclick="closeMobileMenu();openSnapModal()" style="color:var(--green)">💾 <span data-i18n="btn_snapshots">Snapshots</span></button>
     <button class="mob-action guard-btn" onclick="closeMobileMenu();guardEdit(()=>document.getElementById('imp2').click())">⬆ <span data-i18n="btn_import">Importar</span></button>
     <input type="file" id="imp2" accept=".json" style="display:none" onchange="importJSON(event)">
+    <button class="mob-action guard-btn" style="color:var(--yellow)" onclick="closeMobileMenu();guardEdit(limpiarCantidades)">🔢 <span data-i18n="btn_reset_qty">Limpiar Cantidades</span></button>
     <div class="mob-sep"></div>
     <button class="mob-action" onclick="closeMobileMenu();openSettings()">⚙ <span data-i18n="btn_settings">Configuración</span></button>
     <button class="mob-action" onclick="closeMobileMenu();(function(){var m=document.getElementById('o-pin');if(!m)return;if(typeof toggleLock==='function'){toggleLock();}else{m.classList.add('open');}})()">🔒 <span data-i18n="lock_title">Bloquear</span></button>
