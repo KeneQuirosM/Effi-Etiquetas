@@ -544,10 +544,11 @@ const DEFAULT_DATA = {
 
 /* ── CONFIG ──────────────────────────────────────── */
 const API = '';  // vacío = mismo dominio en Vercel
-const LOGO_KEY = 'sf_logo'; 
+const LOGO_KEY = 'sf_logo';
 const ROTULO_LOGO_KEY = 'effi_rotulo_logo_v1';
 const CACHE_KEY = 'effi_inventario_cache_v1';      // offline cache
-const SESSION_KEY = 'effi_coord_session_v1';        // sessionStorage token
+const SESSION_KEY = 'effi_coord_session_v1';        // sessionStorage access token
+const REFRESH_KEY = 'effi_coord_refresh_v1';        // sessionStorage refresh token
 
 /* ── STATE ─────────────────────────────────────────── */
 let appData = { tiendas: [] };
@@ -556,6 +557,43 @@ let coordUnlocked = false;
 let pinBuffer = '';
 let isOffline = false;
 
+/* ── TOKEN HELPERS ──────────────────────────────────── */
+
+// Decodifica el payload del JWT sin librería para leer la expiración
+function jwtExpiry(token) {
+  try {
+    return JSON.parse(atob(token.split('.')[1])).exp;
+  } catch { return 0; }
+}
+
+// Devuelve true si el token ya expiró (con 30 s de margen)
+function isTokenExpired(token) {
+  return Date.now() / 1000 >= jwtExpiry(token) - 30;
+}
+
+// Intenta renovar el token con el refresh_token guardado.
+// Devuelve true si tuvo éxito, false si hubo que cerrar sesión.
+async function tryRefreshToken() {
+  const refreshToken = sessionStorage.getItem(REFRESH_KEY);
+  if (!refreshToken) { lockCoord(); return false; }
+  try {
+    const r = await fetch(API + '/api/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    if (!r.ok) { lockCoord(); return false; }
+    const data = await r.json();
+    coordToken = data.token;
+    sessionStorage.setItem(SESSION_KEY, data.token);
+    sessionStorage.setItem(REFRESH_KEY, data.refresh_token);
+    return true;
+  } catch {
+    lockCoord();
+    return false;
+  }
+}
+
 /* ── API HELPERS ───────────────────────────────────── */
 async function apiGet(path) {
   const r = await fetch(API + path);
@@ -563,52 +601,35 @@ async function apiGet(path) {
   return r.json();
 }
 
-async function apiPost(path, body) {
+// Función base que maneja el retry automático al expirar el token
+async function apiFetch(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (coordToken) headers['Authorization'] = 'Bearer ' + coordToken;
-  const r = await fetch(API + path, { method: 'POST', headers, body: JSON.stringify(body) });
-  
-  // ✅ NUEVO: detectar token expirado o inválido
+
+  const opts = { method, headers };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+
+  let r = await fetch(API + path, opts);
+
   if (r.status === 401) {
-    lockCoord(); // cierra la sesión automáticamente
-    showToast('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
-    throw new Error('Sesión expirada');
+    // Intentar renovar el token una sola vez antes de cerrar sesión
+    const renewed = await tryRefreshToken();
+    if (!renewed) {
+      showToast('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
+      throw new Error('Sesión expirada');
+    }
+    // Reintentar con el nuevo token
+    headers['Authorization'] = 'Bearer ' + coordToken;
+    r = await fetch(API + path, { ...opts, headers });
   }
-  
+
   if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
   return r.json();
 }
 
-
-async function apiPatch(path, body) {
-  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + coordToken };
-  const r = await fetch(API + path, { method: 'PATCH', headers, body: JSON.stringify(body) });
-  
-  // ✅ NUEVO: detectar token expirado o inválido
-  if (r.status === 401) {
-    lockCoord();
-    showToast('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
-    throw new Error('Sesión expirada');
-  }
-  
-  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
-  return r.json();
-}
-
-async function apiDelete(path, body) {
-  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + coordToken };
-  const r = await fetch(API + path, { method: 'DELETE', headers, body: JSON.stringify(body) });
-  
-  // ✅ NUEVO: detectar token expirado o inválido
-  if (r.status === 401) {
-    lockCoord();
-    showToast('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
-    throw new Error('Sesión expirada');
-  }
-  
-  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
-  return r.json();
-}
+async function apiPost(path, body)        { return apiFetch('POST',   path, body); }
+async function apiPatch(path, body)       { return apiFetch('PATCH',  path, body); }
+async function apiDelete(path, body)      { return apiFetch('DELETE', path, body); }
 
 /* ── OFFLINE BANNER ─────────────────────────────────── */
 function showOfflineBanner() {
@@ -677,10 +698,11 @@ function hideToast() {
 }
 
 /* ── COORDINADOR LOGIN ──────────────────────────────── */
-function activateCoord(token) {
+function activateCoord(token, refreshToken) {
   coordToken = token;
   coordUnlocked = true;
   sessionStorage.setItem(SESSION_KEY, token);
+  if (refreshToken) sessionStorage.setItem(REFRESH_KEY, refreshToken);
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.add('active');
   document.getElementById('coord-icon').textContent = '⚙️';
@@ -694,7 +716,7 @@ async function checkPin() {
 
   try {
     const data = await apiPost('/api/auth', { email, password });
-    activateCoord(data.token);
+    activateCoord(data.token, data.refresh_token);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
     showToast('✅ Sesión iniciada', 'success');
@@ -1017,6 +1039,7 @@ function lockCoord() {
   coordToken = null;
   coordUnlocked = false;
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(REFRESH_KEY);
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
   document.getElementById('coord-icon').textContent = '🔒';
@@ -1653,18 +1676,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Restaurar sesión del coordinador si existe en sessionStorage
   const savedToken = sessionStorage.getItem(SESSION_KEY);
   if (savedToken) {
-    try {
-      const res = await fetch(API + '/api/tiendas', {
-        headers: { 'Authorization': 'Bearer ' + savedToken }
-      });
-      if (res.ok) {
-        activateCoord(savedToken);
-        showToast('✅ Sesión restaurada', 'success');
-      } else {
-        sessionStorage.removeItem(SESSION_KEY);
+    if (!isTokenExpired(savedToken)) {
+      // Token vigente — restaurar sin llamada al servidor
+      activateCoord(savedToken, sessionStorage.getItem(REFRESH_KEY));
+      showToast('✅ Sesión restaurada', 'success');
+    } else {
+      // Token expirado — intentar renovar con el refresh_token
+      const renewed = await tryRefreshToken();
+      if (renewed) {
+        activateCoord(coordToken, sessionStorage.getItem(REFRESH_KEY));
+        showToast('✅ Sesión renovada', 'success');
       }
-    } catch(e) {
-      sessionStorage.removeItem(SESSION_KEY);
+      // Si falla, lockCoord() ya limpió sessionStorage
     }
   }
 

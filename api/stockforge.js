@@ -1,10 +1,8 @@
 import { supabase } from './_supabase.js';
+import { setCors } from './_cors.js';
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  setCors(res, 'GET, POST, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -166,7 +164,24 @@ export default async function handler(req, res) {
 
     // ── POST: Guardar todo el estado ─────────────────────────────
     if (req.method === 'POST') {
+      // 🔐 Validar token antes de cualquier operación destructiva
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ error: 'No autorizado' });
+      }
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+      if (authErr || !user) {
+        return res.status(401).json({ error: 'Token inválido' });
+      }
+
       const { zones, racks, cells, people, tiendas, movements } = req.body;
+
+      // Validar que el body tenga estructura mínima antes de borrar nada
+      if (!Array.isArray(zones) || !Array.isArray(racks) || typeof cells !== 'object') {
+        return res.status(400).json({
+          error: 'Body inválido: se requieren zones (array), racks (array) y cells (object)'
+        });
+      }
 
       console.log(`📤 POST - zonas:${zones?.length}, racks:${racks?.length}, people:${people?.length}, tiendas:${tiendas?.length}`);
 
