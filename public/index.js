@@ -166,6 +166,7 @@ function activateCoord(token, refreshToken) {
   coordUnlocked = true;
   sessionStorage.setItem(SESSION_KEY, token);
   if (refreshToken) sessionStorage.setItem(REFRESH_KEY, refreshToken);
+  document.querySelectorAll('.coord-only').forEach(el => el.style.display = '');
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.add('active');
   document.getElementById('coord-icon').textContent = '⚙️';
@@ -509,6 +510,7 @@ function lockCoord() {
   coordUnlocked = false;
   sessionStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(REFRESH_KEY);
+  document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
   document.getElementById('coord-icon').textContent = '🔒';
