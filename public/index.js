@@ -721,8 +721,7 @@ async function changePin() {
     }
 
     try {
-        // ✅ Endpoint correcto: /api/config
-        const response = await fetch('/api/config', {
+        const response = await fetch('/api/change-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
