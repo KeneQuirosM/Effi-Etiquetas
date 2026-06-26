@@ -288,7 +288,11 @@ body {
 #etiqueta:hover { box-shadow: var(--shadow-lg); }
 
 .label-header { text-align: center; margin-bottom: 10px; flex-shrink: 0; }
-.label-header img { max-width: 80%; max-height: 1in; display: block; margin: 0 auto; }
+#label-logo-img { max-width: 80%; max-height: 1in; display: block; object-fit: contain; }
+
+/* Cuando el QR de ubicación está visible, el logo cede espacio a la derecha */
+.label-4x6:has(.label-qr.visible) .label-header { padding-right: 0.9in; }
+.label-4x6:has(.label-qr.visible) #label-logo-img { max-width: 100%; max-height: 0.75in; }
 
 .label-body { flex-grow: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
 .label-body h1 { margin: 0; font-family: var(--sans); line-height: 1.1; }
