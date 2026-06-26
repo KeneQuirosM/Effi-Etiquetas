@@ -405,7 +405,36 @@ export default async function handler(req, res) {
         else console.log(`✅ ${movimientosMapped.length} movimientos insertados`);
       }
 
-      return res.status(200).json({ ok: true, celdas: celdasOk, errores: celdasError });
+      // 8. Actualizar productos.ubicacion para SKUs vinculados al catálogo
+      const ubicacionUpdates = [];
+      if (cells && racks?.length) {
+        for (const [rackId, cellsArr] of Object.entries(cells)) {
+          const rack = racks.find(r => r.id === rackId);
+          if (!rack) continue;
+          for (const cell of cellsArr) {
+            for (const sku of (cell.skus || [])) {
+              if (sku.producto_id) {
+                ubicacionUpdates.push({
+                  id: sku.producto_id,
+                  ubicacion: `${rack.name}-B${cell.bay + 1}-N${cell.level + 1}`
+                });
+              }
+            }
+          }
+        }
+      }
+      if (ubicacionUpdates.length) {
+        for (const upd of ubicacionUpdates) {
+          const { error: errUpd } = await supabase
+            .from('productos')
+            .update({ ubicacion: upd.ubicacion })
+            .eq('id', upd.id);
+          if (errUpd) console.error(`❌ ubicacion producto ${upd.id}:`, errUpd);
+        }
+        console.log(`✅ ${ubicacionUpdates.length} ubicaciones actualizadas en productos`);
+      }
+
+      return res.status(200).json({ ok: true, celdas: celdasOk, errores: celdasError, ubicaciones: ubicacionUpdates.length });
     }
 
     return res.status(405).json({ error: 'Método no permitido' });

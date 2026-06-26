@@ -752,6 +752,26 @@ let state = {
 };
 
 let selRack=null, zoom=1, editRackId=null, pendCells={}, cellCtx=null, viewCtx=null, bpSelection=new Set();
+
+// Catálogo de productos por tienda — cargado desde /api/tiendas
+// { "tiendaId": [{ codigo, nombre, dbId }] }
+let catalogoProductos = {};
+
+async function cargarCatalogo() {
+  try {
+    const data = await fetch('/api/tiendas').then(r => r.json());
+    catalogoProductos = {};
+    (data.tiendas || []).forEach(t => {
+      catalogoProductos[String(t.id)] = (t.inventario || []).map(p => ({
+        codigo: String(p.id),
+        nombre: p.producto,
+        dbId: p._dbId || null
+      }));
+    });
+  } catch(e) {
+    console.warn('[SF] No se pudo cargar catálogo:', e);
+  }
+}
 let pickedColor='#00ff88';
 const COLORS=['#00ff88','#f0a500','#00d4ff','#ff6b35','#ff3b5c','#ffd000','#a78bfa','#34d399','#f472b6','#60a5fa','#fb923c','#22d3ee'];
 
@@ -797,10 +817,13 @@ async function save() {
     
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(coordToken ? { 'Authorization': `Bearer ${coordToken}` } : {})
+      },
       body: JSON.stringify(payload)
     });
-    
+
     if (!response.ok) throw new Error('Error al guardar');
     
     localStorage.setItem('stockforge_v4', JSON.stringify(payload));
@@ -1602,9 +1625,18 @@ function renderSkuList(skus){
     const qty=parseFloat(s.qty)||0;const min=parseFloat(s.minStock)||0;
     const lowStock=min>0&&qty<=min;
     const row=document.createElement('div');row.className='sku-row';
+    if (s.producto_id) row.dataset.productoId = s.producto_id;
+    if (s.tienda_id)   row.dataset.tiendaId   = s.tienda_id;
     row.innerHTML=`
       <div class="sku-row-top">
-        <input placeholder="SKU" data-i18n="edit_sku_ph" data-i18n-target="placeholder" value="${s.sku||''}" data-f="sku" data-i="${i}" style="width:90px">
+        <div style="position:relative;display:inline-block">
+          <input placeholder="Código o nombre..." data-i18n="edit_sku_ph" data-i18n-target="placeholder"
+            value="${s.sku||''}" data-f="sku" data-i="${i}" style="width:110px"
+            oninput="onSkuInput(this,${i})"
+            onblur="setTimeout(()=>{const d=document.getElementById('sku-sg-${i}');if(d)d.style.display='none'},200)"
+            autocomplete="off">
+          <div id="sku-sg-${i}" class="sku-suggest"></div>
+        </div>
         <div class="sku-sep"></div>
         <input placeholder="Descripción" data-i18n="edit_desc_ph" data-i18n-target="placeholder" value="${s.desc||''}" data-f="desc" data-i="${i}" style="flex:1">
         <div class="sku-sep"></div>
@@ -1632,7 +1664,64 @@ function renderSkuList(skus){
     c.appendChild(row);
   });
 }
-function addSkuRow(){const skus=collectSkus();skus.push({sku:'',desc:'',qty:'',unit:'pcs',expiry:''});renderSkuList(skus);}
+function addSkuRow(){const skus=collectSkus();skus.push({sku:'',desc:'',qty:'',unit:'pcs',expiry:'',producto_id:null,tienda_id:null});renderSkuList(skus);}
+
+// Autocomplete: busca en el catálogo cuando el usuario escribe en el campo SKU
+function onSkuInput(input, idx) {
+  const val = input.value.trim().toLowerCase();
+  const sg = document.getElementById('sku-sg-' + idx);
+  if (!sg) return;
+  if (!val) { sg.style.display = 'none'; return; }
+
+  // Priorizar tiendas asignadas a la celda
+  const cellTiendas = collectChips('cell-shop-chips');
+  let matches = [];
+
+  if (cellTiendas.length) {
+    cellTiendas.forEach(tid => {
+      (catalogoProductos[String(tid)] || [])
+        .filter(p => p.codigo.includes(val) || p.nombre.toLowerCase().includes(val))
+        .slice(0, 6)
+        .forEach(p => matches.push({ ...p, tienda_id: tid }));
+    });
+  } else {
+    // Sin tienda asignada: buscar en todo el catálogo
+    Object.entries(catalogoProductos).forEach(([tid, prods]) => {
+      prods.filter(p => p.codigo.includes(val) || p.nombre.toLowerCase().includes(val))
+        .slice(0, 3)
+        .forEach(p => matches.push({ ...p, tienda_id: tid }));
+    });
+  }
+
+  matches = matches.slice(0, 8);
+  if (!matches.length) { sg.style.display = 'none'; return; }
+
+  sg.innerHTML = matches.map(p => {
+    const t = state.tiendas.find(t => String(t.id) === String(p.tienda_id));
+    const tNombre = t ? (t.name || t.nombre || '') : '';
+    return `<div class="sku-sg-item"
+      onmousedown="selectProductoCatalogo(${idx},'${p.codigo}','${p.nombre.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.dbId||'null'},'${p.tienda_id}')">
+      <span style="color:var(--cyan);font-weight:700">${p.codigo}</span>
+      <span style="color:var(--dim);margin:0 4px">—</span>
+      <span style="color:var(--bright)">${p.nombre}</span>
+      ${tNombre ? `<span style="color:var(--dim);font-size:.8rem;margin-left:6px">(${tNombre})</span>` : ''}
+    </div>`;
+  }).join('');
+  sg.style.display = 'block';
+}
+
+// Selecciona un producto del catálogo y rellena la fila SKU
+function selectProductoCatalogo(idx, codigo, nombre, dbId, tiendaId) {
+  const rows = document.querySelectorAll('#sku-list .sku-row');
+  const row = rows[idx];
+  if (!row) return;
+  row.querySelector('[data-f=sku]').value = codigo;
+  row.querySelector('[data-f=desc]').value = nombre;
+  if (dbId)     row.dataset.productoId = dbId;
+  if (tiendaId) row.dataset.tiendaId   = tiendaId;
+  const sg = document.getElementById('sku-sg-' + idx);
+  if (sg) sg.style.display = 'none';
+}
 function sortSkuList(mode){
   const skus=collectSkus();
   if(skus.length<2)return;
@@ -1663,13 +1752,15 @@ function removeSkuRow(i){
 }
 function collectSkus(){
   return Array.from(document.querySelectorAll('#sku-list .sku-row')).map(row=>({
-    sku:row.querySelector('[data-f=sku]').value,
-    desc:row.querySelector('[data-f=desc]').value,
-    qty:row.querySelector('[data-f=qty]').value,
-    unit:row.querySelector('[data-f=unit]').value,
-    expiry:row.querySelector('[data-f=expiry]')?.value||'',
-    minStock:row.querySelector('[data-f=minStock]')?.value||'',
-    cost:row.querySelector('[data-f=cost]')?.value||''
+    sku:       row.querySelector('[data-f=sku]').value,
+    desc:      row.querySelector('[data-f=desc]').value,
+    qty:       row.querySelector('[data-f=qty]').value,
+    unit:      row.querySelector('[data-f=unit]').value,
+    expiry:    row.querySelector('[data-f=expiry]')?.value||'',
+    minStock:  row.querySelector('[data-f=minStock]')?.value||'',
+    cost:      row.querySelector('[data-f=cost]')?.value||'',
+    producto_id: row.dataset.productoId ? parseInt(row.dataset.productoId) : null,
+    tienda_id:   row.dataset.tiendaId   || null
   }));
 }
 function collectChips(containerId){
@@ -5516,6 +5607,7 @@ function applyGuardAttrs(){}
   } catch(e) {
     console.error('load error', e);
   }
+  try { await cargarCatalogo(); } catch(e) { console.warn('cargarCatalogo error', e); }
   try { buildSwatches('zsw'); } catch(e) {}
   try { fullRender(); } catch(e) {}
   try { loadBrandFromStorage(); } catch(e) {}
