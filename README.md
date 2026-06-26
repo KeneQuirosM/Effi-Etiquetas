@@ -1,8 +1,9 @@
 # Efficommerce — Generador de Etiquetas
 
-App web para generar e imprimir etiquetas de bodega.  
-**Frontend**: HTML/CSS/JS estático  
-**Backend**: Vercel Serverless Functions  
+App web para generar e imprimir etiquetas de bodega, gestionar almacén físico (STOCKFORGE), manifiestos y devoluciones.
+
+**Frontend**: HTML/CSS/JS estático (sin frameworks)
+**Backend**: Vercel Serverless Functions (Node.js ESM)
 **Base de datos**: Supabase PostgreSQL
 
 ---
@@ -14,34 +15,34 @@ App web para generar e imprimir etiquetas de bodega.
 1. Ir a [supabase.com](https://supabase.com) → New Project
 2. Copiar la URL y las keys desde **Project Settings → API**
 3. Ir a **SQL Editor** y ejecutar el contenido de `supabase-schema.sql`
+   - Incluye las tablas core (tiendas, productos, configuracion) y las de STOCKFORGE
 4. Crear el usuario coordinador:
    - Ir a **Authentication → Users → Invite User**
-   - Ingresar el email del coordinador (ej: `coordinador@efficommerce.com`)
    - El coordinador recibirá un email para establecer su contraseña
 
 ### 2. Variables de entorno
 
-Copiar `.env.example` a `.env` y completar:
+Copiar `.env.example` a `.env` y completar los 4 valores:
 
 ```
 SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_ANON_KEY=eyJxxx...       (Project Settings → API → anon public)
-SUPABASE_SERVICE_ROLE_KEY=eyJxxx...    (Project Settings → API → service_role secret)
+SUPABASE_ANON_KEY=eyJxxx...
+SUPABASE_SERVICE_ROLE_KEY=eyJxxx...
+ALLOWED_ORIGIN=https://tu-proyecto.vercel.app   # dejar vacío en desarrollo
 ```
 
 ### 3. Vercel
 
 1. Subir el proyecto a GitHub
 2. Ir a [vercel.com](https://vercel.com) → New Project → importar repo
-3. En **Environment Variables** agregar las 3 variables del `.env`
+3. En **Environment Variables** agregar las 4 variables
 4. Deploy → listo
 
 ### 4. Migrar inventario existente
 
-Si tenés datos en el `etiquetas.html` anterior (localStorage), podés importarlos:
+Si tenés datos en un JSON exportado:
 
-1. En la app vieja: Modo Coordinador → Configuración → **Exportar JSON**
-2. En la app nueva: Modo Coordinador → Configuración → **Importar JSON**
+1. Modo Coordinador → Configuración → **Importar JSON**
 
 ---
 
@@ -50,19 +51,25 @@ Si tenés datos en el `etiquetas.html` anterior (localStorage), podés importarl
 ```
 effi-etiquetas/
 ├── api/
-│   ├── _supabase.js    
-│   ├── auth.js
-│   ├── change-password.js
-│   ├── config.js
-│   ├── productos.js
-│   └── tiendas.js
+│   ├── _supabase.js          # cliente Supabase admin compartido
+│   ├── _cors.js              # helper CORS centralizado
+│   ├── auth.js               # login con Supabase Auth
+│   ├── refresh.js            # renovar token JWT
+│   ├── change-password.js    # cambio de contraseña
+│   ├── config.js             # logo y configuración general
+│   ├── tiendas.js            # CRUD tiendas + inventario
+│   ├── productos.js          # CRUD productos
+│   ├── stockforge.js         # estado completo del almacén físico
+│   └── reporte-tiendas.js    # reporte de movimientos por tienda
 ├── public/
-│   └── index.html
+│   ├── index.html / index.js / index.css     # app de etiquetas
+│   ├── almacen4.html / almacen4.js / almacen4.css  # STOCKFORGE
+│   ├── manifiesto.html / manifiesto.js / manifiesto.css
+│   ├── devoluciones.html / script.js / styles.css
+│   └── reporte_distribuidor_proveedor.html
 ├── .env.example
-├── .gitignore
 ├── package.json
-├── README.md
-├── supabase-schema.sql
+├── supabase-schema.sql       # schema completo (16 tablas)
 └── vercel.json
 ```
 
@@ -71,7 +78,7 @@ effi-etiquetas/
 ## 🔐 Acceso
 
 - **Usuarios normales**: acceden directo, sin login. Pueden ver inventario e imprimir etiquetas.
-- **Coordinador**: hace login con email + contraseña para editar tiendas, productos y ubicaciones.
+- **Coordinador**: hace login con email + contraseña para editar tiendas, productos, configuración y STOCKFORGE.
 
 ---
 

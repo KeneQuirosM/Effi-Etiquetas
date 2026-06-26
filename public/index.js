@@ -1,546 +1,3 @@
-const DEFAULT_DATA = {
-  "tiendas": [
-    {
-      "nombre": "Hoshi",
-
-      "inventario": [
-        {"id": "2", "producto": "REPELENTE TRAMPA DE MOSQUITOS"},
-        {"id": "3", "producto": "Masajeador EMS de Pies"},
-        {"id": "4", "producto": "CHAMPÚ ANTICANAS NEGRO MILAGRO"},
-        {"id": "5", "producto": "LUZ SOLAR EXTERIOR INTELIGENTE"},
-        {"id": "6", "producto": "AUDIFONOS PRO BLUETOOTH"},
-        {"id": "7", "producto": "Proyector de Luces LaserScape RGB"},
-        {"id": "8", "producto": "MINI MÁQUINA DE COSER PORTÁTIL"},
-        {"id": "9", "producto": "DRON CON CÁMARA HD 4K"},
-        {"id": "10", "producto": "LINTERNA SÚPER BRILLANTE PLUS"},
-        {"id": "11", "producto": "Timbre inteligente con Cámara HD"},
-        {"id": "12", "producto": "Aspiradora Portátil"},
-        {"id": "13", "producto": "Crema mágica para Cicatrices"},
-        {"id": "14", "producto": "Peluche de Sueños para Bebés"},
-        {"id": "15", "producto": "Mini Plancha de Vapor Portátil"},
-        {"id": "16", "producto": "Plancha de Vapor Pro Sin Arrugas"},
-        {"id": "17", "producto": "Exprimidor Portátil Recargable"},
-        {"id": "18", "producto": "Masajeador Facial Lifting"},
-        {"id": "19", "producto": "Linterna Frontal Todo Terreno"},
-        {"id": "20", "producto": "Auriculares Inalámbricos Inteligentes"},
-        {"id": "21", "producto": "Motosierra Eléctrica Portátil"},
-        {"id": "22", "producto": "Parlante Bluetooth JBL Charge"},
-        {"id": "23", "producto": "JBL Xtreme Sonido Potente"},
-        {"id": "24", "producto": "Parlante Boombox Mini Led"},
-        {"id": "25", "producto": "JBL Boombox: Sonido Portátil"},
-        {"id": "26", "producto": "Corrector de Postura Ortopédico"},
-        {"id": "27", "producto": "Secador de Calzado Inteligente"},
-        {"id": "28", "producto": "Compresor Rápido Portátil"},
-        {"id": "29", "producto": "Amplificador WiFi Hogar Total"},
-        {"id": "30", "producto": "Impresora Bolsillo Magic Print"},
-        {"id": "31", "producto": "Mini Ventilador Plegable Verde"},
-        {"id": "34", "producto": "Secadora Portátil para Ropa"},
-        {"id": "36", "producto": "Crema Milagrosa para Manchas"},
-        {"id": "37", "producto": "Serum Antiedad Colágeno Radiante"},
-        {"id": "43", "producto": "Base de Maquillaje CC Cream"},
-        {"id": "46", "producto": "Wild Tornado Polvo Destapador"},
-        {"id": "47", "producto": "Compresor de Aire Portátil Deluxe"}
-      ]
-    },
-    {
-      "nombre": "SICOMMER",
-      "inventario": [
-        {"id": "1", "producto": "SOPORTE DE CELULAR"},
-        {"id": "2", "producto": "MOLINO DE CAFE"},
-        {"id": "3", "producto": "SARTEN 4 PUESTOS"},
-        {"id": "4", "producto": "CARGADOR DE BEBE"},
-        {"id": "5", "producto": "MINI ASPIRADORA"},
-        {"id": "6", "producto": "CINTA DOBLE FAZ"},
-        {"id": "7", "producto": "BASE ALTA COBERTURA"},
-        {"id": "8", "producto": "CORRECTOR DE JUANETES"},
-        {"id": "9", "producto": "LIMPIADOR DE OIDOS"},
-        {"id": "10", "producto": "CINTA IMPERMEABILIZANTE"},
-        {"id": "11", "producto": "BOMBA DE SUCCION"},
-        {"id": "12", "producto": "BOLSO ANTIRROBO"},
-        {"id": "13", "producto": "SERUM HIDRATANTE"},
-        {"id": "14", "producto": "SERUM DESPIGMENTANTE"},
-        {"id": "15", "producto": "TONICO CAPILAR PARA EL CRECIMIENTO DEL CABELLO"},
-        {"id": "16", "producto": "CREMA ALISADORA TERMOPROTECTOR SECRETOS"},
-        {"id": "19", "producto": "DC"},
-        {"id": "21", "producto": "AFILADOR DE CUCHILLO VERDE"},
-        {"id": "22", "producto": "LLAVE INGLESA"},
-        {"id": "23", "producto": "LEVANTA PARPADOS"},
-        {"id": "24", "producto": "SHAMPOO CUBRE CANAS"},
-        {"id": "25", "producto": "SCN"},
-        {"id": "26", "producto": "PAC"},
-        {"id": "27", "producto": "MASCARILLA FACIAL"},
-        {"id": "28", "producto": "SPRAY IMPERMEABILIZANTE"},
-        {"id": "29", "producto": "AG"},
-        {"id": "30", "producto": "GEL CI"},
-        {"id": "31", "producto": "LABIAL GELATINA"},
-        {"id": "32", "producto": "GAFLEC"},
-        {"id": "33", "producto": "CREMA LIMPIADORA MULTIUSOS"},
-        {"id": "34", "producto": "SI"},
-        {"id": "35", "producto": "TARJETERO"},
-        {"id": "36", "producto": "CEPILLO VAPOR PARA MASCOTAS"},
-        {"id": "37", "producto": "SP"},
-        {"id": "38", "producto": "CAMISA REDUCTORA PARA MUJER"},
-        {"id": "39", "producto": "BOQUILLA DE ALTA PRESION"},
-        {"id": "40", "producto": "MC"},
-        {"id": "41", "producto": "LIMPIA VIDRIOS"},
-        {"id": "42", "producto": "CREMA ALISADORA"},
-        {"id": "43", "producto": "MINI LAVADORA"},
-        {"id": "44", "producto": "CREMA PARA EL TRATAMIENTO DE HEMORROIDES"},
-        {"id": "45", "producto": "PARCHE PARA EL ACNE"},
-        {"id": "46", "producto": "PARCHE KINOKI"},
-        {"id": "47", "producto": "PELOTA PARA MASCOTAS"},
-        {"id": "48", "producto": "LOCION CON FERMONAS"},
-        {"id": "49", "producto": "VENTILADOR PARA CARRO"},
-        {"id": "50", "producto": "CASA PARA PINTAR"},
-        {"id": "51", "producto": "JUEGO DE BOTONES CON ALICATE"},
-        {"id": "52", "producto": "OBSEQUIO"},
-        {"id": "53", "producto": "PRODUCTO SORPRESA"},
-        {"id": "54", "producto": "LAMPARAL"},
-        {"id": "55", "producto": "PARCHE PARA DIABETES"},
-        {"id": "56", "producto": "SLIM PATH"},
-        {"id": "57", "producto": "CPC"},
-        {"id": "58", "producto": "CEPILLO LIMPIADOR DE VIDRIO"},
-        {"id": "59", "producto": "CLC"},
-        {"id": "60", "producto": "BASTA YA"},
-        {"id": "61", "producto": "SCI"},
-        {"id": "62", "producto": "TAPA CUCARACHA PARA PUERTAS"},
-        {"id": "63", "producto": "GT"},
-        {"id": "66", "producto": "SOPORTE DE CELULAR CON IMAN"},
-        {"id": "69", "producto": "LAMPARA LED"},
-        {"id": "70", "producto": "GAFAS DE LECTURA BIFOCALES"},
-        {"id": "71", "producto": "PAPEL ALUMINIO PARA COCINA"}
-      ]
-    },
-    {
-      "nombre": "Bambu",
-      "inventario": [
-        {"id": "2", "producto": "Tarjetero"},
-        {"id": "3", "producto": "Máquina Masajeadora de Cadera"},
-        {"id": "4", "producto": "BQ CP"},
-        {"id": "5", "producto": "Kit Limpia Oidos"},
-        {"id": "6", "producto": "Ejercitador de Antebrazo"},
-        {"id": "7", "producto": "Cepillo Corporal de Silicona para Ducha"},
-        {"id": "8", "producto": "Boquilla De Alta Presión Para Manguera"},
-        {"id": "9", "producto": "Papel Aluminio cocina"},
-        {"id": "10", "producto": "Tabletas Limpiadoras Para Lavadora"},
-        {"id": "11", "producto": "Llave para fregadero"},
-        {"id": "12", "producto": "Face Serum Extra White Chelito"},
-        {"id": "13", "producto": "Papel Autoadhesivo Tipo Marmol"},
-        {"id": "14", "producto": "Linterna De Emergencia 360°"},
-        {"id": "15", "producto": "Corrector De Postura Con Sensor Inteligente"},
-        {"id": "16", "producto": "Cepillo Magic Brush"},
-        {"id": "17", "producto": "Mini Localizador GPS magnético Fulfillment Incluido"},
-        {"id": "18", "producto": "Soporte De Telefono Para Auto"},
-        {"id": "19", "producto": "Lápiz Mágico de Belleza"},
-        {"id": "20", "producto": "Hidrata Tus Labios Y Rostro"},
-        {"id": "21", "producto": "Irrigador Bucal"},
-        {"id": "22", "producto": "Organizador de Maquillaje Acrílico 360° Rotatorio"},
-        {"id": "23", "producto": "Afeitadora Inteligente"},
-        {"id": "24", "producto": "Tira de Sellado para Puertas"},
-        {"id": "25", "producto": "Amplificador De Pantalla"},
-        {"id": "26", "producto": "Cable Multiuso 4 En 1 Carga Rapida"},
-        {"id": "27", "producto": "Sop Magnético"},
-        {"id": "28", "producto": "Cangurera Fular para Bebés"},
-        {"id": "29", "producto": "Extractor De Puntos Negros"},
-        {"id": "30", "producto": "Cinta Doble Contacto | Doble Faz Ultraresistente"},
-        {"id": "31", "producto": "Kit de Pestañas Magneticas 4D"},
-        {"id": "32", "producto": "Lámpara Mágica de Colores"},
-        {"id": "33", "producto": "Rizador Eléctrico"},
-        {"id": "34", "producto": "Boob Tape Cinta Levanta Busto"},
-        {"id": "35", "producto": "Llave Multiusos 48 En 1"},
-        {"id": "36", "producto": "Gorro Terapéutico Para Migraña Con Gel"},
-        {"id": "37", "producto": "Espuma Pol Impermeable"},
-        {"id": "38", "producto": "Cinta De Sellado Impermeable De Butillo Para Techos"},
-        {"id": "39", "producto": "Mini motosierra de mano"},
-        {"id": "40", "producto": "Cinta Lifting Invisible | Rejuvenece Tu Rostro"},
-        {"id": "41", "producto": "Brillo Labial Voluminizador"},
-        {"id": "42", "producto": "Auto Antigravedad con Control Remoto"},
-        {"id": "43", "producto": "Espuma Limp Mult"},
-        {"id": "44", "producto": "Corrector De Juanetes | Elimina Dolor En Pies"},
-        {"id": "45", "producto": "Corrector De Juanetes Pro blanco"},
-        {"id": "46", "producto": "Depilador Corporal - Micro Touch Yes"},
-        {"id": "47", "producto": "pizarra luminosa led"},
-        {"id": "48", "producto": "Paños mágicos Americanos"},
-        {"id": "49", "producto": "Depilador Sin Dolor"},
-        {"id": "50", "producto": "Removedor Con Esponja"},
-        {"id": "51", "producto": "Mini Cámara Espía A9"},
-        {"id": "52", "producto": "Plantillas Acupuntura"},
-        {"id": "53", "producto": "Parches para Pies"},
-        {"id": "54", "producto": "Crema Aclarante"},
-        {"id": "55", "producto": "Cepillo de Dientes 360° Para Niños 4x1"},
-        {"id": "56", "producto": "Cinta Invisible Levanta Parpados"},
-        {"id": "57", "producto": "Recortador de callos. Piel Muerta"},
-        {"id": "58", "producto": "DEPILADOR MAGICO AFEITADO FACIL"},
-        {"id": "59", "producto": "Elimina Canas | Shampoo Negro Instantaneo"},
-        {"id": "60", "producto": "Rubor en Barra de Pixi Beauty"},
-        {"id": "61", "producto": "Destornillador 18 en 1"},
-        {"id": "62", "producto": "Gafas de Lectura"},
-        {"id": "63", "producto": "Super Linterna De Alta Potencia 3.7 Voltios Recargable De 50W"},
-        {"id": "64", "producto": "Almohada ortopédica cervical"},
-        {"id": "65", "producto": "Polvo Destapador de Cañerías Mágico"},
-        {"id": "66", "producto": "Trenzadora Automática para Niñas"},
-        {"id": "67", "producto": "Proyector Mágico | Niños Creativos"},
-        {"id": "68", "producto": "Juego de Mesa Lógica y Colores"},
-        {"id": "69", "producto": "Rodillo Masajeador Facial"},
-        {"id": "70", "producto": "Descanso sin ronquidos"},
-        {"id": "71", "producto": "Eliminador de Pulgas"},
-        {"id": "72", "producto": "Producto Sorpresa"},
-        {"id": "73", "producto": "Cinturón Calefactor para Cólicos"},
-        {"id": "74", "producto": "Limpiavidrios Antiempañante Hidrofóbico para Autos"},
-        {"id": "75", "producto": "Máquina Depiladora Facial Portátil"},
-        {"id": "76", "producto": "Afeitadora Corporal 2 en 1 Recargable Portátil"},
-        {"id": "77", "producto": "Soporte de Celular Magnético"},
-        {"id": "78", "producto": "Lápiz de Dientes"},
-        {"id": "79", "producto": "QUITA RAYAS"},
-        {"id": "80", "producto": "collagen air"},
-        {"id": "81", "producto": "spray sellador"},
-        {"id": "82", "producto": "Plantilla Invisible"},
-        {"id": "83", "producto": "Limpiador Ultrasónico Multiusos"},
-        {"id": "84", "producto": "Alfombra"},
-        {"id": "85", "producto": "imper 1 litro"},
-        {"id": "86", "producto": "Muebles"},
-        {"id": "87", "producto": "medias"},
-        {"id": "88", "producto": "cojin"},
-        {"id": "89", "producto": "Lámparas Exteriores"},
-        {"id": "90", "producto": "Depilador Piedra"},
-        {"id": "91", "producto": "Porta vasos Universal"},
-        {"id": "92", "producto": "Audifonos"},
-        {"id": "93", "producto": "Parche Perder Peso"},
-        {"id": "94", "producto": "Lámpara UV Mata Mosquitos"},
-        {"id": "95", "producto": "Lima Eléctrica Profesional para Pies"},
-        {"id": "97", "producto": "Crema anti acné"},
-        {"id": "98", "producto": "Báscula para maleta"},
-        {"id": "99", "producto": "aspiradora 3 en 1"},
-        {"id": "100", "producto": "luces para bicicleta"},
-        {"id": "101", "producto": "Labiales de flor"},
-        {"id": "102", "producto": "Selfie stick"},
-        {"id": "103", "producto": "Rodillo Masajeador"},
-        {"id": "104", "producto": "kit antiacné"},
-        {"id": "106", "producto": "REPELENTE ELECTRÓNICO ULTRASÓNICO"},
-        {"id": "107", "producto": "ROBOT LIMPIADOR INTELIGENTE 2 EN 1"},
-        {"id": "108", "producto": "SELLANTE TRANSPARENTE"},
-        {"id": "109", "producto": "Luz solar LED"},
-        {"id": "110", "producto": "Par de espejos"},
-        {"id": "111", "producto": "Green mask"},
-        {"id": "112", "producto": "Sonrisa perfecta"}
-      ]
-    },
-    {
-      "nombre": "Compronat",
-      "inventario": [
-        {"id": "1", "producto": "PROSTATE PLUS"},
-        {"id": "2", "producto": "SHILAJIT"},
-        {"id": "3", "producto": "VIGUP"},
-        {"id": "4", "producto": "MACA (AUMENTA ENERGÍA)"},
-        {"id": "5", "producto": "ASHWAGANDHA"},
-        {"id": "6", "producto": "VIRIL MEN"},
-        {"id": "7", "producto": "TESTOGEN ULTRA"},
-        {"id": "8", "producto": "TRIBULUS TERRESTRIS"},
-        {"id": "9", "producto": "MELENA DE LEÓN"},
-        {"id": "10", "producto": "NAD RESVERATROL"},
-        {"id": "11", "producto": "OMEGA 3"},
-        {"id": "12", "producto": "SAW PALMETO"},
-        {"id": "13", "producto": "PYTHON GEL"},
-        {"id": "14", "producto": "URO (PROBIÓTICOS VAGINALES)"},
-        {"id": "15", "producto": "OMEGA 3 LEMON"},
-        {"id": "16", "producto": "MELATONIN 10MG"},
-        {"id": "17", "producto": "MOBIFLEX"},
-        {"id": "18", "producto": "TOTAL SLEEP"},
-        {"id": "19", "producto": "LIVER DETOX (LIMPIADOR HEPATICO)"},
-        {"id": "20", "producto": "MAGNESIO PLUS"},
-        {"id": "21", "producto": "COLAGENO HIDROLIZADO"},
-        {"id": "22", "producto": "ARTERIAL CLEANSE"},
-        {"id": "23", "producto": "SLIM"},
-        {"id": "25", "producto": "SERUM BIOAQUA"},
-        {"id": "27", "producto": "CARBLOCK"},
-        {"id": "28", "producto": "MEGA FRUIT X 4 TABLETAS"},
-        {"id": "29", "producto": "NAD RESVERATROL NUTRA X 60 Capsulas"},
-        {"id": "30", "producto": "NUTRA (ASHWAGANDHA) X 60 Capsulas"},
-        {"id": "31", "producto": "GLUCOMETRO"},
-        {"id": "32", "producto": "TÉ DE LOS DIOSES"},
-        {"id": "34", "producto": "GREEN FUSSION"},
-        {"id": "35", "producto": "TE SOURSOP TEA (GUANABANA GAVIOLA)"},
-        {"id": "36", "producto": "TURKESTERONE"}
-      ]
-    },
-    {
-      "nombre": "Distri",
-      "inventario": [
-        {"id": "3", "producto": "HIDROLAVADORA"},
-        {"id": "4", "producto": "LOCALIZADOR GPS"},
-        {"id": "5", "producto": "AUDIFONO AMPLIFICADOR DE SONIDO"},
-        {"id": "6", "producto": "KIT DE CALIGRAFIA PARA NIÑOS"},
-        {"id": "7", "producto": "LAPIZ ACUPUNTURA"},
-        {"id": "8", "producto": "CEPILLO GIRATORIO PARA LAVAR AUTO"},
-        {"id": "9", "producto": "ATOMIZADORA"},
-        {"id": "10", "producto": "BLANQUEADOR DENTAL DE LUZ LED"},
-        {"id": "11", "producto": "CB"},
-        {"id": "12", "producto": "SET DE MANICURE"},
-        {"id": "13", "producto": "TRITURADOR DE CAFE"},
-        {"id": "14", "producto": "MASAJEADOR COLICOS"},
-        {"id": "15", "producto": "CINTA DOBLE CARA 3 METROS"},
-        {"id": "16", "producto": "MINI AFEITADORA"},
-        {"id": "17", "producto": "ASPIRADORA 3 EN 1"},
-        {"id": "18", "producto": "TRAPOS DE ALAMBRE X 5"},
-        {"id": "19", "producto": "MEGA SET DE ARTE ROSADO"},
-        {"id": "20", "producto": "MEGA SET DE ARTE AZUL"},
-        {"id": "21", "producto": "KITCHEN RAK GRANDE"},
-        {"id": "22", "producto": "CORRECTOR DE POSTURA"},
-        {"id": "23", "producto": "CARGADOR DE BATERIA"},
-        {"id": "24", "producto": "POTAZA DESTAPA CAÑOS"},
-        {"id": "25", "producto": "DEPILADORA FLAWLESS"},
-        {"id": "26", "producto": "SPRAY IMPERMEABILIZANTE"},
-        {"id": "27", "producto": "REMOVEDOR DE RAYONES"},
-        {"id": "28", "producto": "GORRO PARA MIGRAÑA"},
-        {"id": "29", "producto": "AISLAMIENTO BAJO PUERTA"},
-        {"id": "30", "producto": "GRIFO ADAPTADOR 360"},
-        {"id": "31", "producto": "COMPRESOR"},
-        {"id": "32", "producto": "CARGADOR MULTIFUNCIONAL CARRO"},
-        {"id": "33", "producto": "HACHA"},
-        {"id": "34", "producto": "CARILLAS DENTALES"},
-        {"id": "35", "producto": "LAPIZ TESTER"},
-        {"id": "36", "producto": "KIT LIMPIA OIDOS"},
-        {"id": "37", "producto": "CORREJUGO"},
-        {"id": "38", "producto": "ANTIRONQUIDO PLASTICO"},
-        {"id": "39", "producto": "NN BLUE"},
-        {"id": "40", "producto": "CLICK NASAL ANTIRONQUIDO"},
-        {"id": "41", "producto": "LAPIZ BLANQUEADOR DE DIENTES"},
-        {"id": "42", "producto": "DILANA"},
-        {"id": "43", "producto": "RDV"},
-        {"id": "44", "producto": "PURIFICADOR DE AGUA"},
-        {"id": "45", "producto": "PROTECTOR SALPICADURAS PARA GRIFO"},
-        {"id": "46", "producto": "RUEDA ABDOMINAL"},
-        {"id": "47", "producto": "PARCHE KINOKI"},
-        {"id": "48", "producto": "SOPORTE LAVADORA"},
-        {"id": "49", "producto": "PASTA REPARADORA DE DIENTES"},
-        {"id": "50", "producto": "SOPOHO"},
-        {"id": "51", "producto": "HOT SWEAT CREAM"},
-        {"id": "52", "producto": "BALINES ACUPUNTURA"},
-        {"id": "53", "producto": "JUEGO DE BOTONES CON ALICATES"},
-        {"id": "54", "producto": "BLACK SOAP CUBRE CANAS"},
-        {"id": "55", "producto": "REPARADOR DE METALES"},
-        {"id": "56", "producto": "REPELENTE"},
-        {"id": "57", "producto": "CA21"},
-        {"id": "58", "producto": "RIZADOR DE PESTAÑAS CON PINZA"},
-        {"id": "59", "producto": "CREMA BLANQUEAMIENTO DENTAL MORADA"},
-        {"id": "60", "producto": "CEPILLO A VAPOR DE MASCOTAS"},
-        {"id": "61", "producto": "SUERO CAPILAR"},
-        {"id": "62", "producto": "MOLDE DE EMPANADAS"},
-        {"id": "63", "producto": "BOQUILLA DE ALTA PRESION"},
-        {"id": "64", "producto": "DC"},
-        {"id": "65", "producto": "ASPIRADOR DE PIOJOS"},
-        {"id": "66", "producto": "CEPILLO ELECTRICO MASAJE"},
-        {"id": "67", "producto": "POLVO DESTAPA CAÑOS"},
-        {"id": "68", "producto": "ACA"},
-        {"id": "69", "producto": "MASILLA"},
-        {"id": "70", "producto": "PLANTILLAS ORTOPEDICAS 35-40"},
-        {"id": "71", "producto": "PLANTILLAS ORTOPEDICAS 41-44"},
-        {"id": "72", "producto": "KIT QUITA RAYONES"},
-        {"id": "73", "producto": "ROLLO CONTA LEVANTA PARPADOS"},
-        {"id": "74", "producto": "BALSAMO HIDRATANTE SEBO RES"},
-        {"id": "76", "producto": "BANDA DE SILICONA"},
-        {"id": "78", "producto": "LIMPIADOR MULTIUSOS"},
-        {"id": "79", "producto": "IMPERMEABILIZANTE TERREL 500GR"},
-        {"id": "81", "producto": "CEPILLO ALISADOR 2EN1"},
-        {"id": "82", "producto": "DILATADOR NASAL 15 TIRAS"},
-        {"id": "83", "producto": "SELLADOR Y PEGAMENTO DE RELLENO PARA GRIETAS 500GR"},
-        {"id": "86", "producto": "BIFOCAL"},
-        {"id": "87", "producto": "BANDA ELASTICA"}
-      ]
-    },
-    {
-      "nombre": "VIVE",
-      "inventario": [
-        {"id": "3", "producto": "STITCH QUE RESPIRA AZUL"},
-        {"id": "4", "producto": "STITCH QUE RESPIRA ROSADO"},
-        {"id": "5", "producto": "CR GLOSS"},
-        {"id": "6", "producto": "PERFUME LIBIDHOT DE FEROMONAS"},
-        {"id": "7", "producto": "CORRECTOR DE POSTURA ELECTRICO"},
-        {"id": "8", "producto": "LIMPIADOR ULTRASONICO PUNTOS NEGROS"},
-        {"id": "9", "producto": "IRR DENT"},
-        {"id": "11", "producto": "KIT DE MANICURE"},
-        {"id": "15", "producto": "CEPILLOS DE DIENTES DE BEBE"},
-        {"id": "17", "producto": "MINI LAVADORA PORTATIL"},
-        {"id": "40", "producto": "ESPUMA MULTIUSOS"},
-        {"id": "42", "producto": "ESTIRADOR LUMBAR"},
-        {"id": "43", "producto": "RUEDA ABDOMINAL"},
-        {"id": "45", "producto": "PIZARRAS LED"},
-        {"id": "46", "producto": "QUITA MANCHAS"},
-        {"id": "50", "producto": "CEPILLO ANTI EMPAÑANTE CARRO"},
-        {"id": "55", "producto": "MINI MASAJEADOR ELECTRICO"},
-        {"id": "56", "producto": "KERATINA ALISADORA KARSELL"},
-        {"id": "58", "producto": "GORRO ANTICAIDAS BEBE"},
-        {"id": "64", "producto": "CREMA 24K ACLARANTE DR RASHEL"},
-        {"id": "65", "producto": "SET X5 CONTENEDORES HERMETICOS"},
-        {"id": "66", "producto": "ANTIRAYONES PARA CARRO"},
-        {"id": "67", "producto": "LIMPIADOR AUTOMATICO DE VASOS"},
-        {"id": "69", "producto": "LIMPIADOR DE OIDOS"},
-        {"id": "70", "producto": "LAMPARA POKE BOLA"},
-        {"id": "71", "producto": "SET DE TUBOS TERMOENCOGIBLES"},
-        {"id": "72", "producto": "CORRECTOR DE POSTURA SENCILLO"},
-        {"id": "73", "producto": "MIN.AF"},
-        {"id": "74", "producto": "MALETIN DE VIAJE MUJER"},
-        {"id": "75", "producto": "REMOVEDOR DE C"},
-        {"id": "76", "producto": "REMOVEDOR DE C PRO"},
-        {"id": "78", "producto": "SHORT ADELGAZANTE BEIGE XL"},
-        {"id": "79", "producto": "SHORT ADELGAZANTE NEGRO XL"},
-        {"id": "80", "producto": "SHORT ADELGAZANTE NEGRO L"},
-        {"id": "81", "producto": "CORRECTOR DE POSTURA PRO"},
-        {"id": "82", "producto": "FAJA DEPORTIVA PRETTY GRILL"},
-        {"id": "83", "producto": "CEPILLO ALIS"},
-        {"id": "84", "producto": "CEPILLO PARA LIMPIAR ZAPATOS"},
-        {"id": "85", "producto": "b electronico"},
-        {"id": "86", "producto": "DESMANCHADOR DE VIDRIOS"},
-        {"id": "87", "producto": "SHORT ADELGAZANTE BEIGE L"},
-        {"id": "88", "producto": "Proyector USB"},
-        {"id": "89", "producto": "Holder magne Celular"},
-        {"id": "90", "producto": "Lampara Proyector estrellas niños"},
-        {"id": "91", "producto": "Juego basta tradicional"},
-        {"id": "92", "producto": "Tapasol chofer"},
-        {"id": "93", "producto": "Quitapelusas pro"},
-        {"id": "95", "producto": "CACP"}
-      ]
-    },
-    {
-      "nombre": "Deluxe",
-      "inventario": [
-        {"id": "3", "producto": "Crema Anti Acné"},
-        {"id": "4", "producto": "Serum para Cejas y Pestañas Bioaqua"},
-        {"id": "5", "producto": "Kit Limpiador de Oidos"},
-        {"id": "6", "producto": "Crema Aclarante (Whitening Cream)"}
-      ]
-    },
-    {
-      "nombre": "Belvie",
-      "inventario": [
-        {"id": "1", "producto": "Aspiradora Para Colchones de BedBreeze"}
-      ]
-    },
-    {
-      "nombre": "UNMERCO",
-      "inventario": [
-        {"id": "2", "producto": "Mammoth"},
-        {"id": "3", "producto": "Derman"},
-        {"id": "4", "producto": "Insta Virgin"},
-        {"id": "5", "producto": "Hemo Cream"},
-        {"id": "6", "producto": "Coli Plus"}
-      ]
-    },
-    {
-      "nombre": "MARFIL",
-      "inventario": [
-        {"id": "1", "producto": "GAFAS DE SOL MARFIL ORION"}
-      ]
-    },
-    {
-      "nombre": "BOLSAS",
-      "inventario": [
-        {"id": "1", "producto": "BOLSA 20X30"},
-        {"id": "2", "producto": "BOLSA 25X35"},
-        {"id": "3", "producto": "BOLSA 30X22"},
-        {"id": "4", "producto": "BOLSA 36X53"},
-        {"id": "5", "producto": "BOLSA 60X60"},
-        {"id": "6", "producto": "BOLSA D'ANGELES"}
-      ]
-    },
-    {
-      "nombre": "Camila",
-      "inventario": [
-        {"id": "1", "producto": "POSBION"},
-        {"id": "3", "producto": "POSBION POR 3"},
-        {"id": "4", "producto": "NER MAS"},
-        {"id": "6", "producto": "POSBION BPL1"},
-        {"id": "7", "producto": "HEALENA"}
-      ]
-    },
-    {
-      "nombre": "Dangeles Jeans",
-      "inventario": [
-        {"id": "1", "producto": "Wide leg doblado ref: 9202516"},
-        {"id": "2", "producto": "Wide leg doblado ref: 9202518"},
-        {"id": "3", "producto": "Wide leg doblado ref: 9202520"},
-        {"id": "4", "producto": "Wide leg doblado ref: 9202522"},
-        {"id": "5", "producto": "Wide leg doblado ref: 9202524"},
-        {"id": "6", "producto": "Wide leg azul oscuro ref: 9202616"},
-        {"id": "7", "producto": "Wide leg azul oscuro ref: 9202618"},
-        {"id": "8", "producto": "Wide leg azul oscuro ref: 9202620"},
-        {"id": "9", "producto": "Wide leg azul oscuro ref: 9202622"},
-        {"id": "10", "producto": "Wide leg azul oscuro ref: 9202624"},
-        {"id": "11", "producto": "Jean skinny oscuro ref: 91027-116"},
-        {"id": "12", "producto": "Jean skinny oscuro ref: 91027-118"},
-        {"id": "13", "producto": "Jean skinny oscuro ref: 91027-120"},
-        {"id": "14", "producto": "Jean skinny oscuro ref: 91027-122"},
-        {"id": "15", "producto": "Jean skinny oscuro ref: 91027-124"},
-        {"id": "16", "producto": "Skinny claro rotos ref: DA-02613"},
-        {"id": "17", "producto": "Skinny claro rotos ref: DA-02615"},
-        {"id": "18", "producto": "Skinny claro rotos ref: DA-02617"},
-        {"id": "19", "producto": "Skinny claro rotos ref: DA-02619"},
-        {"id": "20", "producto": "Skinny claro rotos ref: DA-02621"},
-        {"id": "21", "producto": "Bota recta brillos ref: DA-03313"},
-        {"id": "22", "producto": "Bota recta brillos ref: DA-03315"},
-        {"id": "23", "producto": "Bota recta brillos ref: DA-03317"},
-        {"id": "24", "producto": "Bota recta brillos ref: DA-03319"},
-        {"id": "25", "producto": "Bota recta brillos ref: DA-03321"}
-      ]
-    },
-    {
-      "nombre": "BOGOCLOCK",
-      "inventario": [
-        {"id": "1", "producto": "RAYBAN AVIATOR VERDE-DORADO+ESTUCHE TIPO ORIGINAL"},
-        {"id": "2", "producto": "RAYBAN AVIATOR NEGRO+ESTUCHE TIPO ORIGINAL"},
-        {"id": "3", "producto": "RAYBAN AVIATOR NEGRO-DORADO+ESTUCHE TIPO ORIGINAL"},
-        {"id": "5", "producto": "RAYBAN HEXAGONAL NEGRO +ESTUCHE TIPO ORIGINAL"},
-        {"id": "7", "producto": "ROLEX SUBMARINER PLATEADO-NEGRO"},
-        {"id": "8", "producto": "ROLEX SUBMARINER DORADO-NEGRO"},
-        {"id": "11", "producto": "RAYBAN WAYFARER NEGRO+ESTUCHE TIPO ORIGINAL"},
-        {"id": "12", "producto": "RAYBAN ERIKA NEGRO+ESTUCHE TIPO ORIGINAL"},
-        {"id": "13", "producto": "RAYBAN ERIKA NEGRO-VERDE +ESTUCHE TIPO ORIGINAL"},
-        {"id": "14", "producto": "RAYBAN ROUND VERDE DORADA +ESTUCHE TIPO ORIGINAL"},
-        {"id": "16", "producto": "RAYBAN ROUND NEGRO +ESTUCHE TIPO ORIGINAL"},
-        {"id": "17", "producto": "RAYBAN CLUB MASTER NEGRO-DORADO +ESTUCHE TIPO ORIGINAL"},
-        {"id": "20", "producto": "RAYBAN PD NEGRO-DORADO +ESTUCHE TIPO ORIGINAL"},
-        {"id": "21", "producto": "RAYBAN PD AZUL +ESTUCHE TIPO ORIGINAL"},
-        {"id": "22", "producto": "ROLEX SUBMARINER TRENZADO PLATEADO-NEGRO"},
-        {"id": "23", "producto": "ROLEX SUBMARINER BICOLOR-DORADO"},
-        {"id": "24", "producto": "RAYBAN CHRIS NEGRO +ESTUCHE TIPO ORIGINAL"},
-        {"id": "26", "producto": "RAYBAN ROUND CAFÉ DORADA +ESTUCHE TIPO ORIGINAL"},
-        {"id": "27", "producto": "RAYBAN CLUB MASTER VERDE-DORADO +ESTUCHE TIPO ORIGINAL"},
-        {"id": "28", "producto": "RAYBAN CLUB MASTER CAFE-DORADO +ESTUCHE TIPO ORIGINAL"},
-        {"id": "29", "producto": "RAYBAN PD AZUL +ESTUCHE TIPO ORIGINAL"},
-        {"id": "30", "producto": "RAYBAN PD NEGRO +ESTUCHE TIPO ORIGINAL"},
-        {"id": "33", "producto": "ROLEX SUBMARINER TRENZADO PLATEADO-AZUL"}
-      ]
-    },
-    {
-      "nombre": "Surtidor CR",
-      "inventario": [
-        {"id": "1", "producto": "FLETE"},
-        {"id": "2", "producto": "MASAJEADOR INFRAROJO 7N1"},
-        {"id": "3", "producto": "Ventilador repelente de mosquitos"},
-        {"id": "4", "producto": "Condimento Electrico"},
-        {"id": "5", "producto": "Lonchera Electrica"},
-        {"id": "6", "producto": "Dispensador de granos y cereales(x3)"},
-        {"id": "7", "producto": "Bolso de pierna"},
-        {"id": "8", "producto": "Soporte para baño"},
-        {"id": "9", "producto": "Máquina VGR V-290"},
-        {"id": "10", "producto": "Zapatero grande"},
-        {"id": "11", "producto": "Máquina VGR V-331"},
-        {"id": "12", "producto": "Máquina Geemy GM-1021"},
-        {"id": "13", "producto": "Inflador"},
-        {"id": "14", "producto": "Masajeador con drenaje linfatico"},
-        {"id": "15", "producto": "Cepillo de limpieza"},
-        {"id": "16", "producto": "Videoportero de seguridad"},
-        {"id": "17", "producto": "Waflera"},
-        {"id": "18", "producto": "Vacuum cleaner"},
-        {"id": "19", "producto": "Portacubiertos"},
-        {"id": "20", "producto": "Condimentero x6"},
-        {"id": "21", "producto": "Topper en forma de hamburguesa"},
-        {"id": "22", "producto": "Bombillo camara"},
-        {"id": "23", "producto": "Luces para bicicletas CYGM-2218 X15"}
-      ]
-    }
-  ]
-};
 
 /* ── CONFIG ──────────────────────────────────────── */
 const API = '';  // vacío = mismo dominio en Vercel
@@ -556,6 +13,12 @@ let coordToken = null;
 let coordUnlocked = false;
 let pinBuffer = '';
 let isOffline = false;
+let mostrarUbicacion = false;
+
+/* ── TIENDA HELPER ──────────────────────────────────── */
+function getTienda(id) {
+  return appData.tiendas.find(t => String(t.id) === String(id));
+}
 
 /* ── TOKEN HELPERS ──────────────────────────────────── */
 
@@ -789,8 +252,8 @@ function populateTiendas() {
     if (!el) return;
     const cur = el.value;
     el.innerHTML = '<option value="">-- Seleccione --</option>';
-    appData.tiendas.forEach((t, i) => {
-      el.add(new Option(t.nombre, i));
+    appData.tiendas.forEach(t => {
+      el.add(new Option(t.nombre, t.id));
     });
     if (cur !== '') el.value = cur;
   });
@@ -811,7 +274,7 @@ async function renameTienda() {
   const nuevoNombre = document.getElementById('c-rename-tienda-nombre').value.trim();
   if (idx === '') return showToast('Selecciona una tienda', 'danger');
   if (!nuevoNombre) return showToast('Escribe el nombre nuevo', 'danger');
-  const tienda = appData.tiendas[idx];
+  const tienda = getTienda(idx);
   try {
     await apiPatch('/api/tiendas', { id: tienda.id, nombre: nuevoNombre });
     const nombreAnterior = tienda.nombre;
@@ -830,15 +293,16 @@ function populateInventario(tiendaIdx, prodSel, idSel) {
   prodSel.innerHTML = '<option value="">-- Producto --</option>';
   idSel.innerHTML = '<option value="">-- ID --</option>';
   
-  if (tiendaIdx === '' || !appData.tiendas[tiendaIdx]) {
+  const tienda = getTienda(tiendaIdx);
+  if (tiendaIdx === '' || !tienda) {
     inventarioCompleto = [];
     searchInput.value = '';
     searchInput.disabled = true;
     return;
   }
-  
+
   // Guardar inventario completo ordenado
-  inventarioCompleto = [...appData.tiendas[tiendaIdx].inventario]
+  inventarioCompleto = [...tienda.inventario]
     .sort((a,b) => parseInt(a.id) - parseInt(b.id));
   
   // Habilitar búsqueda
@@ -900,7 +364,7 @@ async function addProducto() {
   if (tiendaIdx === '') return showToast('Selecciona una tienda', 'danger');
   if (!newId) return showToast('El ID es requerido', 'danger');
   if (!newNombre) return showToast('El nombre es requerido', 'danger');
-  const tienda = appData.tiendas[tiendaIdx];
+  const tienda = getTienda(tiendaIdx);
   try {
     await apiPost('/api/productos', { tienda_id: tienda.id, codigo: newId, nombre: newNombre });
     await loadData();
@@ -931,7 +395,9 @@ async function addTienda() {
 
 async function removeProducto(tiendaIdx, productId) {
   if (guardOffline()) return;
-  const inv = appData.tiendas[tiendaIdx].inventario;
+  const t = getTienda(tiendaIdx);
+  if (!t) return;
+  const inv = t.inventario;
   const item = inv.find(i => i.id === productId);
   if (!item) return;
   try {
@@ -951,7 +417,8 @@ async function deleteTienda() {
   if (guardOffline()) return;
   const idx = document.getElementById('m-select-tienda').value;
   if (idx === '') return showToast('Selecciona una tienda', 'danger');
-  const tienda = appData.tiendas[idx];
+  const tienda = getTienda(idx);
+  if (!tienda) return showToast('Tienda no encontrada', 'danger');
   if (!confirm(`¿Eliminar la tienda "${tienda.nombre}" y todo su inventario?`)) return;
   try {
     await apiDelete('/api/tiendas', { id: tienda.id });
@@ -966,11 +433,12 @@ async function deleteTienda() {
 function renderManageList() {
   const idx = document.getElementById('m-select-tienda').value;
   const container = document.getElementById('manage-inv-list');
-  if (idx === '' || !appData.tiendas[idx]) {
+  const tiendaM = getTienda(idx);
+  if (idx === '' || !tiendaM) {
     container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona una tienda</span></div>';
     return;
   }
-  const inv = [...appData.tiendas[idx].inventario].sort((a,b) => parseInt(a.id) - parseInt(b.id));
+  const inv = [...tiendaM.inventario].sort((a,b) => parseInt(a.id) - parseInt(b.id));
   if (!inv.length) {
     container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Sin productos</span></div>';
     return;
@@ -1275,28 +743,35 @@ async function handleJSONImport(input) {
           }
         }
 
-        // Procesar productos de esta tienda
-        const totalProd = tienda.inventario?.length || 0;
-        logImport(`   📦 Procesando ${totalProd} productos...`, 'info');
-        
-        for (const item of (tienda.inventario || [])) {
-          try {
-            await apiPost('/api/productos', {
+        // Procesar productos en batches de 10 para acelerar la importación
+        const items = tienda.inventario || [];
+        logImport(`   📦 Procesando ${items.length} productos en lotes de 10...`, 'info');
+        const BATCH = 10;
+        for (let b = 0; b < items.length; b += BATCH) {
+          const lote = items.slice(b, b + BATCH);
+          const resultados = await Promise.allSettled(
+            lote.map(item => apiPost('/api/productos', {
               tienda_id: tiendaId,
               codigo: String(item.id),
               nombre: item.producto,
               ubicacion: item.ubicacion || null
-            });
-            productosAgregados++;
-            logImport(`      ➕ Producto agregado: [${item.id}] ${item.producto}`, 'success');
-          } catch (err) {
-            productosOmitidos++;
-            if (err.message.includes('duplicate') || err.message.includes('ya existe')) {
-              logImport(`      ⚠️ Producto omitido (duplicado): [${item.id}] ${item.producto}`, 'warn');
+            }))
+          );
+          resultados.forEach((res, j) => {
+            const item = lote[j];
+            if (res.status === 'fulfilled') {
+              productosAgregados++;
+              logImport(`      ➕ [${item.id}] ${item.producto}`, 'success');
             } else {
-              logImport(`      ❌ Error al agregar [${item.id}]: ${err.message}`, 'error');
+              productosOmitidos++;
+              const msg = res.reason?.message || '';
+              if (msg.includes('duplicate') || msg.includes('ya existe')) {
+                logImport(`      ⚠️ Duplicado omitido: [${item.id}] ${item.producto}`, 'warn');
+              } else {
+                logImport(`      ❌ Error [${item.id}]: ${msg}`, 'error');
+              }
             }
-          }
+          });
         }
         logImport(`   🏁 Tienda "${nombreTienda}" completada.`, 'info');
       }
@@ -1328,7 +803,7 @@ function openBulk() {
   // Populate tienda select
   const sel = document.getElementById('bulk-select-tienda');
   sel.innerHTML = '<option value="">-- Selecciona una tienda --</option>';
-  appData.tiendas.forEach((t, i) => sel.add(new Option(t.nombre, i)));
+  appData.tiendas.forEach(t => sel.add(new Option(t.nombre, t.id)));
   document.getElementById('bulk-list').innerHTML =
     '<div class="bulk-item"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>';
   updateBulkCount();
@@ -1342,12 +817,13 @@ function closeBulk() {
 function renderBulkList() {
   const idx = document.getElementById('bulk-select-tienda').value;
   const container = document.getElementById('bulk-list');
-  if (idx === '' || !appData.tiendas[idx]) {
+  const tiendaB = getTienda(idx);
+  if (idx === '' || !tiendaB) {
     container.innerHTML = '<div class="bulk-item"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>';
     updateBulkCount();
     return;
   }
-  const inv = [...appData.tiendas[idx].inventario].sort((a,b) => parseInt(a.id) - parseInt(b.id));
+  const inv = [...tiendaB.inventario].sort((a,b) => parseInt(a.id) - parseInt(b.id));
   if (!inv.length) {
     container.innerHTML = '<div class="bulk-item"><span style="color:var(--muted)">Sin productos</span></div>';
     return;
@@ -1412,7 +888,7 @@ function printBulk() {
   const selected = [...document.querySelectorAll('.bulk-item.selected')];
   if (!selected.length) return showToast('Selecciona al menos un producto', 'danger');
 
-  const tiendaNombre = appData.tiendas[tiendaIdx].nombre.toUpperCase();
+  const tiendaNombre = (getTienda(tiendaIdx)?.nombre || '').toUpperCase();
   const logoSrc = localStorage.getItem(LOGO_KEY);
 
   // Build one label per selected item
@@ -1570,9 +1046,10 @@ window.onload = function() {
 </html>`;
 
   closeRotulo();
-  const win = window.open('', '_blank', 'width=1056,height=816');
-  win.document.write(html);
-  win.document.close();
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, '_blank', 'width=1056,height=816');
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 }
 
 /* ── QR CODE (minimal, no internet needed) ──────────── */
@@ -1631,12 +1108,13 @@ function updatePreview() {
   const tiendaIdx = selTienda.value;
 
   let ubicacion = '';
-  if (tiendaIdx !== '' && selId.value && appData.tiendas[tiendaIdx]) {
-    const item = appData.tiendas[tiendaIdx].inventario.find(i => i.id === selId.value);
+  const tiendaActual = getTienda(tiendaIdx);
+  if (tiendaIdx !== '' && selId.value && tiendaActual) {
+    const item = tiendaActual.inventario.find(i => i.id === selId.value);
     if (item && item.ubicacion) ubicacion = item.ubicacion;
   }
 
-  if (ubicacion) {
+  if (ubicacion && mostrarUbicacion) {
     qrCode.innerHTML = QRCode.generate(ubicacion, 72);
     qrText.textContent = ubicacion;
     qrArea.classList.add('visible');
@@ -1653,12 +1131,48 @@ function updatePreview() {
   }
 } // ← CIERRE CORRECTO DE LA FUNCIÓN
 
+/* ── TOGGLE UBICACIÓN QR ────────────────────────────── */
+const UBICACION_KEY = 'mostrar_ubicacion';
+
+async function loadUbicacionToggle() {
+  try {
+    const config = await apiGet('/api/config');
+    mostrarUbicacion = config[UBICACION_KEY] === 'true';
+  } catch {
+    mostrarUbicacion = false;
+  }
+  applyUbicacionToggle();
+}
+
+function applyUbicacionToggle() {
+  const toggle = document.getElementById('toggle-ubicacion');
+  const label  = document.getElementById('toggle-ubicacion-label');
+  if (toggle) toggle.checked = mostrarUbicacion;
+  if (label) {
+    label.textContent = mostrarUbicacion ? 'Activado' : 'Desactivado';
+    label.style.color = mostrarUbicacion ? 'var(--accent)' : 'var(--muted)';
+  }
+  updatePreview();
+}
+
+async function saveUbicacionToggle(value) {
+  mostrarUbicacion = value;
+  applyUbicacionToggle();
+  try {
+    await apiPost('/api/config', { clave: UBICACION_KEY, valor: String(value) });
+    showToast(value ? '✅ QR de ubicaciones activado' : 'QR de ubicaciones desactivado', value ? 'success' : '');
+  } catch {
+    showToast('Error al guardar configuración', 'danger');
+  }
+}
+
 /* ── INIT ──────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   // Cargar datos iniciales
   await loadData();
   await loadLogo();
   await loadRotuloLogo();
+  await loadUbicacionToggle();
 
   // Referencias a elementos del DOM
   const selTienda = document.getElementById('select-tienda');

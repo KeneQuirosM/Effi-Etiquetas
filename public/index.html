@@ -222,6 +222,18 @@
       <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Logo independiente del rótulo. Si no se sube, usa el mismo que la etiqueta.</p>
       <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
 
+      <!-- QR de Ubicación -->
+      <p class="section-label" style="margin-bottom:10px">QR de Ubicación en Etiquetas</p>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <label class="switch-toggle">
+          <input type="checkbox" id="toggle-ubicacion" onchange="saveUbicacionToggle(this.checked)">
+          <span class="switch-track"></span>
+        </label>
+        <span id="toggle-ubicacion-label" style="font-size:13px;font-weight:500;color:var(--muted)">Desactivado</span>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Muestra el código QR con la ubicación física del producto en la etiqueta. Activar cuando tengas ubicaciones asignadas en STOCKFORGE.</p>
+      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
+
       <!-- Contraseña -->
       <p class="section-label" style="margin-bottom:10px">Cambiar Contraseña</p>
       <div class="form-row">
