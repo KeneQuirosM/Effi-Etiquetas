@@ -1656,11 +1656,10 @@ function openCellEdit(bay,level,rackId){
 
   const rackResps=rack?(rack.responsables||[]):[];
   const rackTiendas=rack?(rack.tiendas||[]):[];
+    // Filter catalog to only show people/tiendas assigned to this rack
+  const availPeople=state.people.filter(p=>rackResps.includes(p.id));
+  const availTiendas=state.tiendas.filter(t=>rackTiendas.includes(t.id));  
     
-    // Show all catalog items; rack-assigned ones appear first
-  const availPeople=[...state.people].sort((a,b)=>(rackResps.includes(b.id)?1:0)-(rackResps.includes(a.id)?1:0));
-  const availTiendas=[...state.tiendas].sort((a,b)=>(rackTiendas.includes(b.id)?1:0)-(rackTiendas.includes(a.id)?1:0));
-  
   renderChipGroup('cell-resp-wrap','cell-resp-chips', availPeople, cell.responsables||[], true);
   renderChipGroup('cell-shops-wrap','cell-shop-chips', availTiendas, cell.tiendas||[], false);
 
