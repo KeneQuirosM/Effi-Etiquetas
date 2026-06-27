@@ -1574,9 +1574,9 @@ function openCellEdit(bay,level,rackId){
   const rackResps=rack?(rack.responsables||[]):[];
   const rackTiendas=rack?(rack.tiendas||[]):[];
   // Filter catalog to only show people/tiendas assigned to this rack
-  const availPeople=state.people.filter(p=>rackResps.includes(p.id));
-  const availTiendas=state.tiendas.filter(t=>rackTiendas.includes(t.id));
-
+ const availPeople=state.people.filter(p=>!rackResps.length||rackResps.includes(p.id));
+const availTiendas=state.tiendas.filter(t=>!rackTiendas.length||rackTiendas.includes(t.id));
+  
   renderChipGroup('cell-resp-wrap','cell-resp-chips', availPeople, cell.responsables||[], true);
   renderChipGroup('cell-shops-wrap','cell-shop-chips', availTiendas, cell.tiendas||[], false);
 
