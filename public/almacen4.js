@@ -963,10 +963,6 @@ function limpiarCantidades() {
         sku.qty = '';
         total++;
       });
-      // Celda sin cantidades ya no es full/partial
-      if (cell.state === 'full' || cell.state === 'partial') {
-        cell.state = 'empty';
-      }
     });
   });
 
