@@ -70,6 +70,13 @@ export default async function handler(req, res) {
         .select('*')
         .order('ts', { ascending: false });
       if (errM) throw errM;
+
+      // Configuración de bodega
+      const { data: bodegaCfg } = await supabase
+        .from('bodega_config')
+        .select('area_total_m2, area_pasillos_m2')
+        .eq('id', 1)
+        .maybeSingle();
       
       const movementsMapped = (movimientos || []).map(m => ({
         id: m.id,
@@ -158,7 +165,10 @@ export default async function handler(req, res) {
         cells: cellsObj,
         people: responsables || [],
         tiendas: tiendas || [],
-        movements: movementsMapped
+        movements: movementsMapped,
+        bodega: bodegaCfg
+          ? { area_total_m2: bodegaCfg.area_total_m2, area_pasillos_m2: bodegaCfg.area_pasillos_m2, area_excluida_m2: 0 }
+          : { area_total_m2: 500, area_pasillos_m2: 80, area_excluida_m2: 0 }
       });
     }
 
@@ -432,6 +442,15 @@ export default async function handler(req, res) {
           if (errUpd) console.error(`❌ ubicacion producto ${upd.id}:`, errUpd);
         }
         console.log(`✅ ${ubicacionUpdates.length} ubicaciones actualizadas en productos`);
+      }
+
+      // 9. Persistir configuración de bodega
+      if (req.body.bodega) {
+        await supabase.from('bodega_config').upsert({
+          id: 1,
+          area_total_m2:    parseFloat(req.body.bodega.area_total_m2)    || 500,
+          area_pasillos_m2: parseFloat(req.body.bodega.area_pasillos_m2) || 80
+        });
       }
 
       return res.status(200).json({ ok: true, celdas: celdasOk, errores: celdasError, ubicaciones: ubicacionUpdates.length });

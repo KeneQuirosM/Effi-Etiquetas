@@ -740,6 +740,17 @@ const STORE_KEY='stockforge_v4';
 const API_URL = '/api/stockforge';
 let isOffline = false;
 
+// Escapa caracteres HTML para prevenir XSS en innerHTML
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let state = {
   zones: [],       // cada zona ahora tendrá: area_m2, tipo (operativa/excluida)
   racks: [],       // cada rack ahora tendrá: largo_m, ancho_m
@@ -827,8 +838,13 @@ async function save() {
       body: JSON.stringify(payload)
     });
 
+    if (response.status === 401) {
+      notif('Sesión expirada — inicia sesión nuevamente para guardar', 'err');
+      desactivarCoordinador();
+      return;
+    }
     if (!response.ok) throw new Error('Error al guardar');
-    
+
     localStorage.setItem('stockforge_v4', JSON.stringify(payload));
     
     const i = document.getElementById('save-ind');
@@ -947,6 +963,10 @@ function limpiarCantidades() {
         sku.qty = '';
         total++;
       });
+      // Celda sin cantidades ya no es full/partial
+      if (cell.state === 'full' || cell.state === 'partial') {
+        cell.state = 'empty';
+      }
     });
   });
 
@@ -997,7 +1017,7 @@ function importExcelStock(ev){
     <div class="mhd"><span class="mttl">📊 Importar Stock Excel</span><button class="cls" id="excel-tienda-cls">✕</button></div>
     <div class="mbdy" style="padding:20px;display:flex;flex-direction:column;gap:14px">
       <div style="font-size:.94rem;color:var(--dim)">
-        ¿De qué tienda es el archivo <strong style="color:var(--bright)">${file.name}</strong>?<br>
+        ¿De qué tienda es el archivo <strong style="color:var(--bright)">${esc(file.name)}</strong>?<br>
         <span style="font-size:.87rem">Solo se actualizarán celdas asignadas a esa tienda.</span>
       </div>
       <select id="excel-tienda-sel" class="fi" style="font-size:1rem">
@@ -1009,7 +1029,6 @@ function importExcelStock(ev){
   </div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open');});
   document.body.appendChild(ov);
-  window.__xlsxFileRef=file;
   requestAnimationFrame(()=>{
     ov.classList.add('open');
     document.getElementById('excel-tienda-cls').addEventListener('click',()=>closeO('o-excel-tienda'));
@@ -1017,7 +1036,7 @@ function importExcelStock(ev){
       const sel=document.getElementById('excel-tienda-sel');
       if(!sel||!sel.value){notif('Seleccioná una tienda','warn');return;}
       closeO('o-excel-tienda');
-      _doExcelImport(sel.value, ext, window.__xlsxFileRef);
+      _doExcelImport(sel.value, ext, file);
     });
   });
 }
@@ -1101,7 +1120,7 @@ function _doExcelImport(tiendaId, ext, file){
     const ov2=document.createElement('div');
     ov2.className='ov';ov2.id='o-import-result';
     ov2.innerHTML=`<div class="modal" style="max-width:420px">
-      <div class="mhd"><span class="mttl">📊 Resultado — ${tienda.name}</span><button class="cls" onclick="closeO('o-import-result')">✕</button></div>
+      <div class="mhd"><span class="mttl">📊 Resultado — ${esc(tienda.name)}</span><button class="cls" onclick="closeO('o-import-result')">✕</button></div>
       <div class="mbdy" style="padding:16px;display:flex;flex-direction:column;gap:10px">
         <div style="display:flex;gap:10px">
           <div style="flex:1;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:6px;padding:12px;text-align:center">
@@ -1115,7 +1134,7 @@ function _doExcelImport(tiendaId, ext, file){
         </div>
         ${notFoundSkus.length?`<div>
           <div style="font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">IDs sin celda asignada en ${tienda.name}</div>
-          <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--dim);max-height:160px;overflow-y:auto;line-height:1.8">${notFoundSkus.join('<br>')}</div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--dim);max-height:160px;overflow-y:auto;line-height:1.8">${notFoundSkus.map(esc).join('<br>')}</div>
         </div>`:''}
         <button class="btn bp" onclick="closeO('o-import-result')" style="width:100%">OK</button>
       </div>
@@ -1286,9 +1305,9 @@ function renderCatalogPeople(){
   c.innerHTML='';
   valid.forEach(p=>{
     const d=document.createElement('div');d.className='cat-item';
-    d.innerHTML='<span class="cat-item-name">'+p.name+'</span>'
-      +(p.role?'<span class="cat-item-role">'+p.role+'</span>':'')
-      +'<button class="cat-item-del" onclick="deleteCatalogPerson(\''+p.id+'\')" title="Eliminar">✕</button>';
+    d.innerHTML='<span class="cat-item-name">'+esc(p.name)+'</span>'
+      +(p.role?'<span class="cat-item-role">'+esc(p.role)+'</span>':'')
+      +'<button class="cat-item-del" onclick="deleteCatalogPerson(\''+esc(p.id)+'\')" title="Eliminar">✕</button>';
     c.appendChild(d);
   });
 }
@@ -1299,9 +1318,9 @@ function renderCatalogShops(){
   c.innerHTML='';
   valid.forEach(s=>{
     const d=document.createElement('div');d.className='cat-item';
-    d.innerHTML='<span class="cat-item-name">'+s.name+'</span>'
-      +(s.code?'<span class="cat-item-role" style="color:var(--accent)">'+s.code+'</span>':'')
-      +'<button class="cat-item-del" onclick="deleteCatalogShop(\''+s.id+'\')" title="Eliminar">✕</button>';
+    d.innerHTML='<span class="cat-item-name">'+esc(s.name)+'</span>'
+      +(s.code?'<span class="cat-item-role" style="color:var(--accent)">'+esc(s.code)+'</span>':'')
+      +'<button class="cat-item-del" onclick="deleteCatalogShop(\''+esc(s.id)+'\')" title="Eliminar">✕</button>';
     c.appendChild(d);
   });
 }
@@ -1506,7 +1525,7 @@ function renderZoneList(){
   state.zones.forEach(z=>{
     const cnt=state.racks.filter(r=>r.zone===z.id).length;
     const el=document.createElement('div');el.className='zpill';
-    el.innerHTML=`<div class="zdot" style="background:${z.color}"></div><div class="zname">${z.name}</div><div class="zcnt"></div><button class="zdel btn-go" style="width:auto;padding:0 6px;font-size:.9rem;letter-spacing:1px;color:var(--cyan);border-color:transparent" title="${t('zone_go')}">${t('zone_go')}</button><button class="zdel btn-edit" style="width:auto;padding:0 6px;font-size:.9rem;color:var(--accent);border-color:transparent" title="Editar zona">✎</button><button class="zdel btn-del">✕</button>`;
+    el.innerHTML=`<div class="zdot" style="background:${esc(z.color)}"></div><div class="zname">${esc(z.name)}</div><div class="zcnt"></div><button class="zdel btn-go" style="width:auto;padding:0 6px;font-size:.9rem;letter-spacing:1px;color:var(--cyan);border-color:transparent" title="${t('zone_go')}">${t('zone_go')}</button><button class="zdel btn-edit" style="width:auto;padding:0 6px;font-size:.9rem;color:var(--accent);border-color:transparent" title="Editar zona">✎</button><button class="zdel btn-del">✕</button>`;
     el.querySelector('.btn-go').onclick=()=>goToZone(z.id);
     el.querySelector('.btn-edit').onclick=()=>guardEdit(()=>openEditZone(z.id));
     el.querySelector('.btn-del').onclick=()=>deleteZone(z.id);
@@ -1730,11 +1749,11 @@ function onSkuInput(input, idx) {
     const t = state.tiendas.find(t => String(t.id) === String(p.tienda_id));
     const tNombre = t ? (t.name || t.nombre || '') : '';
     return `<div class="sku-sg-item"
-      onmousedown="selectProductoCatalogo(${idx},'${p.codigo}','${p.nombre.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.dbId||'null'},'${p.tienda_id}')">
-      <span style="color:var(--cyan);font-weight:700">${p.codigo}</span>
+      onmousedown="selectProductoCatalogo(${idx},'${esc(p.codigo)}','${p.nombre.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${p.dbId||'null'},'${esc(p.tienda_id)}')">
+      <span style="color:var(--cyan);font-weight:700">${esc(p.codigo)}</span>
       <span style="color:var(--dim);margin:0 4px">—</span>
-      <span style="color:var(--bright)">${p.nombre}</span>
-      ${tNombre ? `<span style="color:var(--dim);font-size:.8rem;margin-left:6px">(${tNombre})</span>` : ''}
+      <span style="color:var(--bright)">${esc(p.nombre)}</span>
+      ${tNombre ? `<span style="color:var(--dim);font-size:.8rem;margin-left:6px">(${esc(tNombre)})</span>` : ''}
     </div>`;
   }).join('');
   sg.style.display = 'block';
@@ -1891,11 +1910,11 @@ function openViewCell(rackId,bay,level){
       const el=daysS===null?'':(daysS<0?t('exp_expired')+' '+Math.abs(daysS)+t('exp_ago_suffix'):(daysS===0?t('exp_today'):t('exp_days')+' '+daysS+t('exp_days_suffix')));
       return `<div style="background:var(--bg);border:1px solid ${daysS!==null&&daysS<=30?ec:'var(--border2)'};border-radius:3px;padding:7px 10px;margin-bottom:4px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${s.sku||'—'}</span>
-          <span style="font-size:1.02rem;color:var(--dim)">${s.qty?s.qty+' '+s.unit:''}</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${esc(s.sku)||'—'}</span>
+          <span style="font-size:1.02rem;color:var(--dim)">${s.qty?esc(s.qty)+' '+esc(s.unit):''}</span>
         </div>
-        ${s.desc?`<div style="font-size:1.05rem;color:var(--dim);margin-top:2px">${s.desc}</div>`:''}
-        ${s.expiry?`<div style="font-size:.98rem;color:${ec};font-weight:700;margin-top:4px">📅 ${s.expiry} — ${el}</div>`:''}
+        ${s.desc?`<div style="font-size:1.05rem;color:var(--dim);margin-top:2px">${esc(s.desc)}</div>`:''}
+        ${s.expiry?`<div style="font-size:.98rem;color:${ec};font-weight:700;margin-top:4px">📅 ${esc(s.expiry)} — ${el}</div>`:''}
       </div>`;}).join('')
     :`<div style="font-size:1.05rem;color:var(--dim);text-align:center;padding:10px 0">${t('view_no_products')}</div>`;
   document.getElementById('view-body').innerHTML=`
@@ -1903,17 +1922,17 @@ function openViewCell(rackId,bay,level){
       <div class="drow"><span class="dk">${t('view_state')}</span><span class="dv" style="color:${sc}">${sl[cell.state]||t('state_empty')}</span></div>
       <div class="drow"><span class="dk">${t('view_loc')}</span><span class="dv" style="font-family:'Share Tech Mono',monospace">${rack.name} · ${t('bay_short')}${bay+1} · ${t('level_short')}${level+1}</span></div>
       ${zone?`<div class="drow"><span class="dk">${t('view_zone')}</span><span class="dv" style="color:${zone.color}">${zone.name}</span></div>`:''}
-      ${cell.notes?`<div class="drow"><span class="dk">${t('view_notes')}</span><span class="dv" style="font-size:1.02rem">${cell.notes}</span></div>`:''}
-      ${(cell.audits&&cell.audits.length)?`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--green);font-size:.98rem">${cell.audits[cell.audits.length-1].date} — ${cell.audits[cell.audits.length-1].who}${cell.audits[cell.audits.length-1].notes?' · '+cell.audits[cell.audits.length-1].notes:''} <span style="color:var(--dim)">(${cell.audits.length} ${t('view_count_total')})</span></span></div>`:`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--dim);font-size:.98rem">${t('view_no_count')}</span></div>`}
+      ${cell.notes?`<div class="drow"><span class="dk">${t('view_notes')}</span><span class="dv" style="font-size:1.02rem">${esc(cell.notes)}</span></div>`:''}
+      ${(cell.audits&&cell.audits.length)?`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--green);font-size:.98rem">${esc(cell.audits[cell.audits.length-1].date)} — ${esc(cell.audits[cell.audits.length-1].who)}${cell.audits[cell.audits.length-1].notes?' · '+esc(cell.audits[cell.audits.length-1].notes):''} <span style="color:var(--dim)">(${cell.audits.length} ${t('view_count_total')})</span></span></div>`:`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--dim);font-size:.98rem">${t('view_no_count')}</span></div>`}
     </div>
     ${cellResps.length||cellShops.length?`<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       ${cellResps.length?`<div style="flex:1;min-width:120px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.18);border-radius:4px;padding:8px 10px">
         <div style="font-size:1rem;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('view_resp_cell')}</div>
-        ${cellResps.map(r=>`<div style="font-size:1.08rem;color:var(--bright);padding:2px 0">${r}</div>`).join('')}
+        ${cellResps.map(r=>`<div style="font-size:1.08rem;color:var(--bright);padding:2px 0">${esc(r)}</div>`).join('')}
       </div>`:''}
       ${cellShops.length?`<div style="flex:1;min-width:120px;background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.18);border-radius:4px;padding:8px 10px">
         <div style="font-size:1rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('view_shops')}</div>
-        ${cellShops.map(s=>`<div style="font-size:1.08rem;color:var(--bright);padding:2px 0">${s}</div>`).join('')}
+        ${cellShops.map(s=>`<div style="font-size:1.08rem;color:var(--bright);padding:2px 0">${esc(s)}</div>`).join('')}
       </div>`:''}
     </div>`:''}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
@@ -1931,8 +1950,8 @@ function openViewCell(rackId,bay,level){
       <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px;max-height:140px;overflow-y:auto">
         ${[...cell.changelog].reverse().map(e=>`
           <div style="display:flex;gap:8px;align-items:flex-start;padding:5px 8px;background:var(--bg3);border-radius:3px;border:1px solid var(--border)">
-            <span style="font-family:'Share Tech Mono',monospace;font-size:.85rem;color:var(--dim);white-space:nowrap;flex-shrink:0">${e.date}</span>
-            <span style="font-size:.95rem;color:var(--text)">${e.changes.join(' · ')}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.85rem;color:var(--dim);white-space:nowrap;flex-shrink:0">${esc(e.date)}</span>
+            <span style="font-size:.95rem;color:var(--text)">${e.changes.map(esc).join(' · ')}</span>
           </div>`).join('')}
       </div>
     </details>`:''}`;
@@ -1966,11 +1985,11 @@ function sortViewSkus(mode){
     const expiryLabel=daysS===null?'':(daysS<0?t('exp_expired')+' '+Math.abs(daysS)+t('exp_ago_suffix'):(daysS===0?t('exp_today'):t('exp_days')+' '+daysS+t('exp_days_suffix')));
     return `<div style="background:var(--bg);border:1px solid ${daysS!==null&&daysS<=30?ec:'var(--border2)'};border-radius:3px;padding:7px 10px;margin-bottom:4px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${s.sku||'—'}</span>
-        <span style="font-size:1.02rem;color:var(--dim)">${s.qty?s.qty+' '+s.unit:''}</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${esc(s.sku)||'—'}</span>
+        <span style="font-size:1.02rem;color:var(--dim)">${s.qty?esc(s.qty)+' '+esc(s.unit):''}</span>
       </div>
-      ${s.desc?`<div style="font-size:1.05rem;color:var(--dim);margin-top:2px">${s.desc}</div>`:''}
-      ${s.expiry?`<div style="font-size:.98rem;color:${ec};font-weight:700;margin-top:4px">📅 ${s.expiry} — ${expiryLabel}</div>`:''}
+      ${s.desc?`<div style="font-size:1.05rem;color:var(--dim);margin-top:2px">${esc(s.desc)}</div>`:''}
+      ${s.expiry?`<div style="font-size:.98rem;color:${ec};font-weight:700;margin-top:4px">📅 ${esc(s.expiry)} — ${expiryLabel}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -2727,12 +2746,12 @@ function buildTransferOriginPicker(filter){
     const rDiv=document.createElement('div');rDiv.className='cpick-rack';
     const hd=document.createElement('div');hd.className='cpick-rack-hd';
     const zone=state.zones.find(z=>z.id===rack.zone);
-    hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?zone.color:'var(--dim)'}"></div><span style="font-family:'Share Tech Mono',monospace;font-size:1.16rem">${rack.name}</span><span style="font-size:1.1rem;color:var(--dim);margin-left:auto">${rCells.length} ${t('transfer_cells_with')}</span>`;
+    hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?esc(zone.color):'var(--dim)'}"></div><span style="font-family:'Share Tech Mono',monospace;font-size:1.16rem">${esc(rack.name)}</span><span style="font-size:1.1rem;color:var(--dim);margin-left:auto">${rCells.length} ${t('transfer_cells_with')}</span>`;
     const cells=document.createElement('div');cells.className='cpick-cells open';cells.style.gridTemplateColumns='repeat(auto-fill,minmax(120px,1fr))';
     rCells.forEach(cell=>{
       const skus=cell.skus||[];
       const btn=document.createElement('div');btn.className='cpick-cell'+(tOrigin&&tOrigin.rackId===rack.id&&tOrigin.bay===cell.bay&&tOrigin.level===cell.level?' chosen':'');
-      btn.innerHTML=`B${cell.bay+1}·N${cell.level+1} — ${skus.map(s=>s.sku||'?').join(', ')}`;
+      btn.innerHTML=`B${cell.bay+1}·N${cell.level+1} — ${skus.map(s=>esc(s.sku||'?')).join(', ')}`;
       btn.onclick=()=>{tOrigin={rackId:rack.id,bay:cell.bay,level:cell.level};document.querySelectorAll('.cpick-cell').forEach(b=>b.classList.remove('chosen'));btn.classList.add('chosen');};
       cells.appendChild(btn);
     });
@@ -2750,7 +2769,7 @@ function buildSkuChecks(){
   const c=document.getElementById('t-sku-checks');c.innerHTML='';
   (cell?.skus||[]).forEach(s=>{
     const row=document.createElement('div');row.className='sku-chk';
-    row.innerHTML=`<input type="checkbox" data-sku="${s.sku}" checked>
+    row.innerHTML=`<input type="checkbox" data-sku="${esc(s.sku)}" checked>
       <div class="sku-chk-info"><div class="sku-chk-code">${s.sku||'—'}</div><div class="sku-chk-desc">${s.desc||''}</div></div>
       <div class="sku-chk-qty">${s.qty?s.qty+' '+s.unit:''}</div>`;
     row.querySelector('input').addEventListener('change',()=>row.classList.toggle('on',row.querySelector('input').checked));
@@ -2766,7 +2785,7 @@ function buildTransferDestPicker(){
     const rDiv=document.createElement('div');rDiv.className='cpick-rack';
     const hd=document.createElement('div');hd.className='cpick-rack-hd';
     const zone=state.zones.find(z=>z.id===rack.zone);
-    hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?zone.color:'var(--dim)'}"></div><span style="font-family:'Share Tech Mono',monospace;font-size:1.16rem">${rack.name}</span>`;
+    hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?esc(zone.color):'var(--dim)'}"></div><span style="font-family:'Share Tech Mono',monospace;font-size:1.16rem">${esc(rack.name)}</span>`;
     const cells=document.createElement('div');cells.className='cpick-cells open';cells.style.gridTemplateColumns='repeat(auto-fill,minmax(120px,1fr))';
     const rCells=state.cells[rack.id]||[];
     for(let b=0;b<rack.bays;b++) for(let l=0;l<rack.levels;l++){
@@ -4872,7 +4891,7 @@ function updateBPPreview(){
     chip.className='bp-chip '+(on?'on':'off');
     chip.dataset.key=k;
     const sc=stateColors[cell.state]||'var(--dim)';
-    chip.innerHTML=`<span style="width:6px;height:6px;border-radius:50%;background:${sc};flex-shrink:0"></span>${rack.name} B${cell.bay+1}·N${cell.level+1}`;
+    chip.innerHTML=`<span style="width:6px;height:6px;border-radius:50%;background:${sc};flex-shrink:0"></span>${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}`;
     chip.onclick=()=>{
       if(bpSelection.has(k)){bpSelection.delete(k);chip.className='bp-chip off';}
       else{bpSelection.add(k);chip.className='bp-chip on';}
@@ -5419,6 +5438,7 @@ function restaurarSesion() {
 
 function cerrarSesion() {
   sessionStorage.removeItem('sf_coord_token');
+  localStorage.removeItem('sf_refresh_token');
   coordToken = null;
   coordUnlocked = false;
 }
@@ -5430,10 +5450,11 @@ function tokenExpirado(token) {
   } catch(e) { return true; }
 }
 
-function activarCoordinador(token) {
+function activarCoordinador(token, refreshToken) {
   coordToken = token;
   coordUnlocked = true;
   guardarSesion(token);
+  if (refreshToken) localStorage.setItem('sf_refresh_token', refreshToken);
   const btn = document.getElementById('lock-btn');
   if (btn) {
     btn.textContent = '🔓';
@@ -5476,7 +5497,7 @@ async function loginCoordinador(email, password) {
       throw new Error(err.error || 'Credenciales incorrectas');
     }
     const data = await response.json();
-    activarCoordinador(data.token);
+    activarCoordinador(data.token, data.refresh_token);
     notif('✅ Sesión iniciada como coordinador', 'ok');
     return true;
   } catch(e) {
@@ -5499,7 +5520,7 @@ async function renovarTokenSiEsNecesario() {
       return false;
     }
     const data = await response.json();
-    activarCoordinador(data.token);
+    activarCoordinador(data.token, data.refresh_token);
     return true;
   } catch(e) {
     desactivarCoordinador();
@@ -5638,6 +5659,8 @@ function applyGuardAttrs(){}
     console.error('load error', e);
   }
   try { await cargarCatalogo(); } catch(e) { console.warn('cargarCatalogo error', e); }
+  // Refresca el catálogo de productos en segundo plano cada 5 minutos
+  setInterval(() => cargarCatalogo().catch(() => {}), 5 * 60 * 1000);
   try { buildSwatches('zsw'); } catch(e) {}
   try { fullRender(); } catch(e) {}
   try { loadBrandFromStorage(); } catch(e) {}
@@ -5666,13 +5689,7 @@ function applyGuardAttrs(){}
       toggleLock();
     });
   }
-  document.querySelectorAll('.hbtn[data-edit]').forEach(function(b){
-    var action = b.getAttribute('data-edit');
-    b.addEventListener('click', function(e){
-      e.stopPropagation();
-      guardEdit(function(){ eval(action); });
-    });
-  });
+  // Nota: bloque eval() eliminado — era dead code y patrón inseguro
 })();
 
 if (!state.bodega) {

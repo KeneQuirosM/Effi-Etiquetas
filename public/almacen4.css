@@ -671,4 +671,24 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
 }
 .sku-sg-item:hover{background:var(--bg2);color:var(--bright);}
 .sku-sg-item:last-child{border-bottom:none;}
+
+/* ══ RESPONSIVE FIXES ══ */
+
+/* Catalog modal: stack 2 columns on mobile */
+@media (max-width:600px) {
+  #o-catalog .mbdy { grid-template-columns: 1fr !important; }
+}
+
+/* Bulk-print modal: stack 3-col filter grid on mobile */
+@media (max-width:600px) {
+  #o-bulk-print .mbdy { display: flex !important; flex-direction: column !important; gap: 10px !important; }
+}
+
+/* SKU autocomplete: never overflow viewport */
+.sku-suggest { width: min(340px, calc(100vw - 40px)); }
+
+/* Report tabs: fade hint on right so user knows there's more */
+@media (max-width:768px) {
+  .report-tabs { -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%); mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%); }
+}
 </style>
