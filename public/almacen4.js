@@ -949,12 +949,18 @@ async function load() {
   }
 }
   
-function limpiarCantidades() {
+async function limpiarCantidades() {
   const msg = currentLang === 'en'
     ? 'Reset ALL quantities in the warehouse?\n\nProducts and cell states are kept — only quantities are zeroed out.'
     : '¿Limpiar TODAS las cantidades del almacén?\n\nLos productos y estados de celda permanecen — solo se resetean las cantidades.';
 
   if (!confirm(msg)) return;
+
+  // Guardar estados antes de cualquier operación
+  const estadosPrevios = {};
+  Object.entries(state.cells).forEach(([rackId, arr]) => {
+    estadosPrevios[rackId] = arr.map(c => ({ bay: c.bay, level: c.level, estado: c.state }));
+  });
 
   let total = 0;
   Object.values(state.cells).forEach(arr => {
@@ -966,7 +972,16 @@ function limpiarCantidades() {
     });
   });
 
-  save();
+  // Restaurar estados explícitamente — solo se modificaron las cantidades
+  Object.entries(estadosPrevios).forEach(([rackId, lista]) => {
+    const arr = state.cells[rackId] || [];
+    lista.forEach(({ bay, level, estado }) => {
+      const cell = arr.find(c => c.bay === bay && c.level === level);
+      if (cell) cell.state = estado;
+    });
+  });
+
+  await save();
   fullRender();
   updateStats();
 
