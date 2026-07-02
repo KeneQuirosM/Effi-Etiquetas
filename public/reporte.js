@@ -695,9 +695,6 @@ function toggleExcludeStore(nombre, excluir) {
 
   // Si ya hay datos cargados, recalcular el reporte
   if (originalExcelRows.length > 0) {
-    // Reconstruir rows para crossReferenceData
-    const wb_temp = { rows: originalExcelRows };
-    // Re-usar las filas originales almacenadas
     rebuildReport();
   }
 }

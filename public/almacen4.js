@@ -1475,30 +1475,6 @@ function guardarConfigBodega(){
   notif('✅ Configuración de bodega actualizada','ok');
 }
 
-function actualizarMetricasEspacio(){
-  if(!state.bodega)state.bodega={area_total_m2:500,area_pasillos_m2:80,area_excluida_m2:0};
-  let areaExcluida=0;
-  state.zones.forEach(z=>{if(z.tipo==='excluida'||z.tipo==='pasillo')areaExcluida+=parseFloat(z.area_m2||0);});
-  let areaOcupada=0;
-  state.racks.forEach(r=>{const largo=parseFloat(r.largo_m||0);const ancho=parseFloat(r.ancho_m||0);areaOcupada+=largo*ancho;});
-  const areaPasillos=parseFloat(state.bodega.area_pasillos_m2||80);
-  const areaTotal=parseFloat(state.bodega.area_total_m2||500);
-  const areaUtil=Math.max(0,areaTotal-areaPasillos-areaExcluida);
-  const pctOcupado=areaUtil>0?Math.round((areaOcupada/areaUtil)*100):0;
-
-  const elUtil=document.getElementById('st-util');
-  const elOcup=document.getElementById('st-ocupado-area');
-  const elDisp=document.getElementById('st-disponible');
-  if(elUtil)elUtil.innerHTML=`${areaUtil.toFixed(0)}<small>m²</small>`;
-  if(elOcup)elOcup.innerHTML=`${areaOcupada.toFixed(1)}<small>m²</small>`;
-  if(elDisp)elDisp.innerHTML=`${(areaUtil-areaOcupada).toFixed(1)}<small>m²</small>`;
-
-  const mbOcup=document.getElementById('mb-ocupado-area');
-  const mbDisp=document.getElementById('mb-disponible');
-  if(mbOcup)mbOcup.style.width=`${pctOcupado}%`;
-  if(mbDisp)mbDisp.style.width=`${100-pctOcupado}%`;
-}
-
 function saveZone(){
   if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');return;}
   const name=document.getElementById('zn').value.trim();
