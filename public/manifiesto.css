@@ -81,7 +81,7 @@ body {
   border: 1px solid var(--neutral-200);
 }
 
-/* ── HEADER (controlado por index.html inline styles) ── */
+/* ── HEADER (ver estilos ampliados de header al final del archivo) ── */
 .app-header {
   background: var(--brand-800);
 }
@@ -761,3 +761,250 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   body { background: white; padding: 0; }
   .app-container { box-shadow: none; border: none; border-radius: 0; }
 }
+
+/* ============================================================
+   HEADER (versión ampliada), TABLA DE GUÍAS, BADGES Y BUSCADOR
+   Consolidado desde el <style> inline de manifiesto.html —
+   se preservan los !important originales para no alterar
+   el orden de cascada existente.
+   ============================================================ */
+    /* ── HEADER OPCIÓN A ── */
+    .app-header {
+      background: #0d1b6e !important;
+      padding: 0 !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+    .header-main-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 22px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .header-logo-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.1);
+      border: 0.5px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 6px 12px;
+    }
+    .header-logo-img {
+      height: 28px;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+    .header-divider {
+      width: 1px;
+      height: 30px;
+      background: rgba(255,255,255,0.15);
+    }
+    .header-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .header-titles h1 {
+      font-size: 1rem;
+      font-weight: 500;
+      margin: 0;
+      color: white;
+      letter-spacing: 0.2px;
+    }
+    .header-sub {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.5);
+      font-weight: 400;
+    }
+    .header-status-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 22px;
+      background: rgba(0,0,0,0.15);
+      border-top: 0.5px solid rgba(255,255,255,0.08);
+    }
+    .header-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #4caf50;
+      flex-shrink: 0;
+    }
+    .header-status-text {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* ── TABLA DE GUÍAS ── */
+    .guias-section {
+      margin-top: 20px;
+    }
+    .guias-table-wrapper {
+      overflow-x: auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .guias-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      background: white;
+    }
+    .guias-table thead th {
+      background: #1a237e;
+      color: white;
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      white-space: nowrap;
+    }
+    .guias-table tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+      transition: background .15s;
+    }
+    .guias-table tbody tr:hover { background: #f8f9ff; }
+    .guias-table tbody td {
+      padding: 10px 14px;
+      vertical-align: middle;
+    }
+    .guias-table tbody tr:nth-child(even) { background: #fafbff; }
+    .guias-table tbody tr:nth-child(even):hover { background: #f0f2ff; }
+
+    /* badges de estado */
+    .badge-estado {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-correcta  { background: #e8f5e9; color: #2e7d32; }
+    .badge-faltante  { background: #fff8e1; color: #f57f17; }
+    .badge-nomanif   { background: #fce4ec; color: #c62828; }
+
+    /* checkbox paquete abierto */
+    .check-abierto {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .check-abierto input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      accent-color: #e53935;
+      cursor: pointer;
+    }
+    .guias-table tr.paquete-abierto td {
+      background: #fff3e0 !important;
+    }
+
+    /* fila vacía */
+    .tabla-vacia {
+      text-align: center;
+      color: #aaa;
+      padding: 32px !important;
+      font-size: 14px;
+    }
+
+    /* botón exportar */
+    .btn-exportar-excel {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      background: linear-gradient(135deg, #1b5e20, #43a047);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(27,94,32,0.3);
+      transition: all .2s;
+      margin-top: 14px;
+    }
+    .btn-exportar-excel:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 16px rgba(27,94,32,0.4);
+    }
+
+    .guias-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .guias-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .guias-counter {
+      font-size: 13px;
+      color: #666;
+    }
+    .guias-counter strong { color: #1a237e; }
+
+    /* buscador */
+    .tabla-search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .tabla-search-wrapper i {
+      position: absolute;
+      left: 10px;
+      color: #aaa;
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .tabla-search {
+      padding: 7px 12px 7px 30px;
+      border: 1.5px solid #dde3f0;
+      border-radius: 8px;
+      font-size: 13px;
+      width: 220px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      background: #f8f9ff;
+    }
+    .tabla-search:focus {
+      border-color: #1a237e;
+      box-shadow: 0 0 0 3px rgba(26,35,126,.1);
+      background: white;
+    }
+    .tabla-search::placeholder { color: #bbb; }
+
+    /* botón limpiar búsqueda */
+    .btn-clear-search {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0;
+      display: none;
+    }
+    .btn-clear-search:hover { color: #555; }
+
+    /* fila resaltada por búsqueda */
+    .guias-table tbody tr.fila-highlight td {
+      background: #fffde7 !important;
+    }
