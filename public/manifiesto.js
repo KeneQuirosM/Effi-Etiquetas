@@ -587,9 +587,20 @@ function showToast(message, type = 'info', duration = 5000) {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   const icon = type === 'success' ? '✅' : (type === 'warning' ? '⚠️' : (type === 'error' ? '❌' : 'ℹ️'));
-  toast.innerHTML = `${icon} ${message}`;
+  toast.innerHTML = `${icon} ${esc(message)}`;
   const container = document.getElementById('toastContainer');
   if (container) { container.appendChild(toast); setTimeout(() => toast.remove(), duration); }
+}
+
+// Escapa caracteres HTML para prevenir XSS en innerHTML
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function abrirModalFaltantes() {
@@ -600,7 +611,7 @@ function abrirModalFaltantes() {
   if (total) total.textContent = faltantesSet.size;
   if (lista) {
     lista.innerHTML = faltantesSet.size === 0 ? '<div><p>No hay guías faltantes</p></div>' : 
-      Array.from(faltantesSet).map(g => `<div class="faltante-item"><span class="faltante-number">${g}</span><button class="btn-action btn-marcar" onclick="marcarComoEscaneada('${g}')"><i class="fas fa-check"></i> Marcar</button></div>`).join('');
+      Array.from(faltantesSet).map(g => `<div class="faltante-item"><span class="faltante-number">${esc(g)}</span><button class="btn-action btn-marcar" onclick="marcarComoEscaneada('${esc(g.replace(/'/g,"\\'"))}')"><i class="fas fa-check"></i> Marcar</button></div>`).join('');
   }
   modal.style.display = 'block';
 }
@@ -615,7 +626,7 @@ function abrirModalNoManifestadas() {
   const total = document.getElementById('modalTotalNoManif');
   if (!modal) return;
   if (total) total.textContent = noManifestadasSet.size;
-  if (lista) lista.innerHTML = noManifestadasSet.size === 0 ? '<div><p>No hay guías no manifestadas</p></div>' : Array.from(noManifestadasSet).map(g => `<div>${g}</div>`).join('');
+  if (lista) lista.innerHTML = noManifestadasSet.size === 0 ? '<div><p>No hay guías no manifestadas</p></div>' : Array.from(noManifestadasSet).map(g => `<div>${esc(g)}</div>`).join('');
   modal.style.display = 'block';
 }
 function cerrarModalNoManifestadas() { document.getElementById('noManifestadasModal') && (document.getElementById('noManifestadasModal').style.display = 'none'); }
@@ -626,7 +637,7 @@ function abrirModalRepetidas() {
   if (!modal) return;
   const repetidas = Array.from(guiasEscaneadas.entries()).filter(([_, d]) => d.veces > 1);
   if (total) total.textContent = repetidas.length;
-  if (lista) lista.innerHTML = repetidas.length === 0 ? '<div><p>No hay guías repetidas</p></div>' : repetidas.map(([g, d]) => `<div><strong>${g}</strong> - ${d.veces} veces</div>`).join('');
+  if (lista) lista.innerHTML = repetidas.length === 0 ? '<div><p>No hay guías repetidas</p></div>' : repetidas.map(([g, d]) => `<div><strong>${esc(g)}</strong> - ${d.veces} veces</div>`).join('');
   modal.style.display = 'block';
 }
 function cerrarModalRepetidas() { document.getElementById('repetidasModal') && (document.getElementById('repetidasModal').style.display = 'none'); }
@@ -673,18 +684,18 @@ function openComparativoWindow() {
   for (let i = 0; i < maxLen; i++) {
     const esCorrecta = pistoleadas[i] && correctasSet.has(pistoleadas[i]);
     filasComparativo += `<tr>
-      <td>${manifestadas[i] || '<span style="color:#aaa">—</span>'}</td>
-      <td style="color:${esCorrecta ? '#198754' : '#dc3545'}; font-weight:600">${pistoleadas[i] || '<span style="color:#aaa">—</span>'}</td>
+      <td>${manifestadas[i] ? esc(manifestadas[i]) : '<span style="color:#aaa">—</span>'}</td>
+      <td style="color:${esCorrecta ? '#198754' : '#dc3545'}; font-weight:600">${pistoleadas[i] ? esc(pistoleadas[i]) : '<span style="color:#aaa">—</span>'}</td>
     </tr>`;
   }
 
   let filasNoManif = noManif.length === 0
     ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Ninguna guía fuera de manifiesto ✅</td></tr>'
-    : noManif.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#dc3545;font-weight:600">${g}</td></tr>`).join('');
+    : noManif.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#dc3545;font-weight:600">${esc(g)}</td></tr>`).join('');
 
   let filаsFaltantes = faltantes.length === 0
     ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Todas las guías fueron escaneadas ✅</td></tr>'
-    : faltantes.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#e67e00;font-weight:600">${g}</td></tr>`).join('');
+    : faltantes.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#e67e00;font-weight:600">${esc(g)}</td></tr>`).join('');
 
   const porcentaje = manifiesto.length > 0 ? Math.round((correctasSet.size / manifiesto.length) * 100) : 0;
 
@@ -692,7 +703,7 @@ function openComparativoWindow() {
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Reporte Comparativo — ${window.nombreRuta}</title>
+  <title>Reporte Comparativo — ${esc(window.nombreRuta)}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Segoe UI', sans-serif; background:#f0f2f5; color:#333; }
@@ -815,18 +826,18 @@ function openComparativoWindow() {
       <div class="sub">Efficommerce — Transportadora</div>
       <div class="fecha">📅 ${fecha} &nbsp;|&nbsp; 🕐 ${hora}</div>
     </div>
-    <div class="badge-ruta">🚚 Ruta: ${window.nombreRuta}</div>
+    <div class="badge-ruta">🚚 Ruta: ${esc(window.nombreRuta)}</div>
   </div>
 
   <!-- Info ruta -->
   <div class="info-bar">
     <div class="info-bar-item">
       <span class="label">Piloto</span>
-      <span class="value">${window.piloto}</span>
+      <span class="value">${esc(window.piloto)}</span>
     </div>
     <div class="info-bar-item">
       <span class="label">Bodeguero</span>
-      <span class="value">${window.bodeguero}</span>
+      <span class="value">${esc(window.bodeguero)}</span>
     </div>
     <div class="info-bar-item">
       <span class="label">Fecha generación</span>
@@ -926,7 +937,7 @@ const lhDestinatarios = {
 function extraerLHCodes(rows) { const codes = new Set(); rows.forEach(row => { if(Array.isArray(row)) row.forEach(cell => { const v = String(cell).trim(); if(/^LH\d{2,3}$/i.test(v)) codes.add(v.toUpperCase()); const m = v.match(/ruta\s*[:\-]\s*(LH\d{2,3})/i); if(m) codes.add(m[1].toUpperCase()); }); }); return Array.from(codes); }
 function extraerDestinatarios(rows) { const dest = new Set(); for(let i=2; i<rows.length; i++) { const row = rows[i]; if(Array.isArray(row) && row[3]) { const d = String(row[3]).trim().toUpperCase(); if(d && d !== "DESTINATARIO" && d.length > 2) dest.add(d); } } return Array.from(dest); }
 function verificarCrucesDeRuta(lhCodes, destinatarios) { const cruces = []; lhCodes.forEach(code => { if(!lhDestinatarios[code]) cruces.push({ tipo: "LH_INEXISTENTE", motivo: `${code} no existe` }); }); return cruces; }
-function mostrarModalCruces(cruces) { let modal = document.getElementById('crucesModal'); if(!modal){ modal=document.createElement('div'); modal.id='crucesModal'; modal.className='modal'; document.body.appendChild(modal); } modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>⚠️ Cruces</h3><span onclick="cerrarModalCruces()">&times;</span></div><div class="modal-body">${cruces.map(c=>`<div>${c.motivo}</div>`).join('')}</div></div>`; modal.style.display='block'; }
+function mostrarModalCruces(cruces) { let modal = document.getElementById('crucesModal'); if(!modal){ modal=document.createElement('div'); modal.id='crucesModal'; modal.className='modal'; document.body.appendChild(modal); } modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>⚠️ Cruces</h3><span onclick="cerrarModalCruces()">&times;</span></div><div class="modal-body">${cruces.map(c=>`<div>${esc(c.motivo)}</div>`).join('')}</div></div>`; modal.style.display='block'; }
 function cerrarModalCruces() { const m = document.getElementById('crucesModal'); if(m) m.style.display='none'; }
 let crucesActivos = [];
 function mostrarIconoNotificacion(cruces) { crucesActivos=cruces; const icono=document.getElementById('notificationIcon'); if(icono && cruces.length) icono.style.display='flex'; }
@@ -1047,13 +1058,13 @@ function renderTablaGuias() {
     const abierto = paquetesAbiertos[f.guia] || false;
     return `<tr class="${abierto ? 'paquete-abierto' : ''}">
       <td style="color:#999;font-size:12px;">${i + 1}</td>
-      <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${f.guia}</td>
+      <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${esc(f.guia)}</td>
       <td><span class="badge-estado ${badgeClass}">${badgeText}</span></td>
-      <td style="color:#888;font-size:12px;">${f.hora}</td>
+      <td style="color:#888;font-size:12px;">${esc(f.hora)}</td>
       <td style="text-align:center;">
         <label class="check-abierto">
           <input type="checkbox" ${abierto ? 'checked' : ''}
-            onchange="togglePaqueteAbierto('${f.guia}', this.checked)" />
+            onchange="togglePaqueteAbierto('${esc(f.guia.replace(/'/g,"\\'"))}', this.checked)" />
         </label>
       </td>
     </tr>`;

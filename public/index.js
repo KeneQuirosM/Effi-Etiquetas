@@ -20,6 +20,17 @@ function getTienda(id) {
   return appData.tiendas.find(t => String(t.id) === String(id));
 }
 
+// Escapa caracteres HTML para prevenir XSS en innerHTML
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /* ── TOKEN HELPERS ──────────────────────────────────── */
 
 // Decodifica el payload del JWT sin librería para leer la expiración
@@ -446,15 +457,15 @@ function renderManageList() {
     return;
   }
   container.innerHTML = inv.map(item => `
-    <div class="inv-item" data-original-id="${item.id}" data-db-id="${item._dbId}">
-      <input class="input-id" value="${item.id}" title="ID"
+    <div class="inv-item" data-original-id="${esc(item.id)}" data-db-id="${esc(item._dbId)}">
+      <input class="input-id" value="${esc(item.id)}" title="ID"
         onkeydown="if(event.key==='Enter') this.nextElementSibling.focus()">
-      <input class="input-name" value="${item.producto.replace(/"/g,'&quot;')}" title="Nombre"
+      <input class="input-name" value="${esc(item.producto)}" title="Nombre"
         onkeydown="if(event.key==='Enter') this.nextElementSibling.focus()">
-      <input class="input-ubic" value="${item.ubicacion||''}" title="Ubicación (ej: A-3-2)" placeholder="Ubic."
+      <input class="input-ubic" value="${esc(item.ubicacion||'')}" title="Ubicación (ej: A-3-2)" placeholder="Ubic."
         onkeydown="if(event.key==='Enter') this.nextElementSibling.click()">
-      <button class="btn-save-item" onclick="saveProductoEdit(${idx}, '${item.id}', this.closest('.inv-item'))" title="Guardar">💾</button>
-      <button onclick="removeProducto(${idx}, '${item.id}')" title="Eliminar">✕</button>
+      <button class="btn-save-item" onclick="saveProductoEdit(${idx}, '${esc(String(item.id).replace(/'/g,"\\'"))}', this.closest('.inv-item'))" title="Guardar">💾</button>
+      <button onclick="removeProducto(${idx}, '${esc(String(item.id).replace(/'/g,"\\'"))}')" title="Eliminar">✕</button>
     </div>
   `).join('');
 }
@@ -834,8 +845,8 @@ function renderBulkList() {
   container.innerHTML = inv.map(item => `
     <div class="bulk-item" onclick="toggleBulkItem(this)">
       <input type="checkbox" onclick="event.stopPropagation();toggleBulkItem(this.closest('.bulk-item'))">
-      <span class="b-id">#${item.id}</span>
-      <span>${item.producto}</span>
+      <span class="b-id">#${esc(item.id)}</span>
+      <span>${esc(item.producto)}</span>
     </div>
   `).join('');
   updateBulkCount();
@@ -892,11 +903,11 @@ async function loadUsers() {
 
     container.innerHTML = users.map(u => `
       <div class="inv-item">
-        <span class="item-name">${u.email}</span>
+        <span class="item-name">${esc(u.email)}</span>
         <span style="font-size:11px;color:var(--muted);margin-left:8px">
           ${new Date(u.created_at).toLocaleDateString('es-CR')}
         </span>
-        <button onclick="deleteUser('${u.id}','${u.email.replace(/'/g,'\\\'')}')"
+        <button onclick="deleteUser('${esc(String(u.id).replace(/'/g,"\\'"))}','${esc(u.email.replace(/'/g,"\\'"))}')"
           title="Eliminar coordinador"
           style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;padding:2px 6px">✕</button>
       </div>

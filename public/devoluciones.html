@@ -787,7 +787,7 @@
         if(!auditLog.length){ logEntriesDiv.innerHTML='<span style="color:rgba(255,255,255,.15)">Sin registros</span>'; return; }
         logEntriesDiv.innerHTML=auditLog.slice(0,60).map(l=>{
             const cls=l.action.includes('MARCADA')?'log-ok':'log-er';
-            return `<div class="log-row"><span class="log-ts">[${l.ts}]</span> <span class="${cls}">${l.action}</span> — <span class="log-gu">Guía: ${l.guia}</span> | ${l.cliente}</div>`;
+            return `<div class="log-row"><span class="log-ts">[${esc(l.ts)}]</span> <span class="${cls}">${esc(l.action)}</span> — <span class="log-gu">Guía: ${esc(l.guia)}</span> | ${esc(l.cliente)}</div>`;
         }).join('');
     }
 
@@ -863,11 +863,11 @@
                 if(cb.checked){
                     devolutionSet.add(g); addLog(g,dist,prov,cliente,prod,'✅ MARCADA');
                     showLastScan(g,dist,prov,cliente,true,articulos);
-                    showToast(`Guía <strong>${g}</strong> marcada`,'ok');
+                    showToast(`Guía <strong>${esc(g)}</strong> marcada`,'ok');
                 } else {
                     devolutionSet.delete(g); addLog(g,dist,prov,cliente,prod,'❌ DESMARCADA');
                     showLastScan(g,dist,prov,cliente,false,articulos);
-                    showToast(`Guía <strong>${g}</strong> desmarcada`,'inf');
+                    showToast(`Guía <strong>${esc(g)}</strong> desmarcada`,'inf');
                 }
                 saveMarks(); renderTable(); updateStats();
             });
@@ -932,7 +932,7 @@
         const guia=String(raw).trim();
         if(!guia){ showToast('Ingrese un número de guía','err'); guiaInput.focus(); return false; }
         const r=originalRowsData.find(x=>String(x['Guía transportadora'])===guia);
-        if(!r){ showToast(`Guía <strong>${guia}</strong> no encontrada`,'err'); guiaInput.value=''; guiaInput.focus(); return false; }
+        if(!r){ showToast(`Guía <strong>${esc(guia)}</strong> no encontrada`,'err'); guiaInput.value=''; guiaInput.focus(); return false; }
         const dist=r['Distribuidor']||'', prov=r['Proveedor Dropshipping']||'';
         const cliente=r['Destinatario']||'Desconocido';
         const articulos=getProductArticulos(guia);
@@ -940,11 +940,11 @@
         if(!devolutionSet.has(guia)){
             devolutionSet.add(guia); addLog(guia,dist,prov,cliente,prod,'✅ MARCADA (escáner)');
             showLastScan(guia,dist,prov,cliente,true,articulos);
-            showToast(`Guía <strong>${guia}</strong> marcada`,'ok');
+            showToast(`Guía <strong>${esc(guia)}</strong> marcada`,'ok');
             renderTable(); saveMarks();
         } else {
             showLastScan(guia,dist,prov,cliente,true,articulos);
-            showToast(`Guía <strong>${guia}</strong> ya estaba marcada`,'inf');
+            showToast(`Guía <strong>${esc(guia)}</strong> ya estaba marcada`,'inf');
         }
         guiaInput.value=''; guiaInput.focus(); return true;
     }
@@ -1001,7 +1001,7 @@
         showToast('Marcas reiniciadas','inf');
     }
 
-    function esc(s){ return String(s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+    function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
     marcarBtn.addEventListener('click',()=>marcarGuia(guiaInput.value));
     guiaInput.addEventListener('keypress',e=>{ if(e.key==='Enter'){ e.preventDefault(); marcarGuia(guiaInput.value); } });

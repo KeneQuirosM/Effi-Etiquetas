@@ -1125,7 +1125,7 @@ function _doExcelImport(tiendaId, ext, file){
       rack:'',rackId:'',bay:0,level:0,note:file.name});
     if(state.movements.length>1000)state.movements=state.movements.slice(-1000);
     save();
-    addAct(`Stock <strong>${tienda.name}</strong> importado — ${updated} actualizado${updated!==1?'s':''}${notFound?' · '+notFound+' no encontrados':''}`, 'var(--green)');
+    addAct(`Stock <strong>${esc(tienda.name)}</strong> importado — ${updated} actualizado${updated!==1?'s':''}${notFound?' · '+notFound+' no encontrados':''}`, 'var(--green)');
 
     // Result modal
     const ov2=document.createElement('div');
@@ -1642,7 +1642,7 @@ function openCellEdit(bay,level,rackId){
         else{chip.style.background='var(--bg3)';chip.style.borderColor='var(--border2)';chip.style.color='var(--dim)';}
       };
       applyStyle(on);
-      chip.innerHTML='<span style="font-size:.85rem">'+(on?'✓':'')+'</span> '+item.name+(item.role||item.code?'<span style="font-size:.8rem;opacity:.55;margin-left:3px">'+(item.role||item.code)+'</span>':'');
+      chip.innerHTML='<span style="font-size:.85rem">'+(on?'✓':'')+'</span> '+esc(item.name)+(item.role||item.code?'<span style="font-size:.8rem;opacity:.55;margin-left:3px">'+esc(item.role||item.code)+'</span>':'');
       chip.dataset.id=item.id;chip.dataset.on=on?'1':'0';
       chip.onclick=()=>{
         const isOn=chip.dataset.on==='1';
@@ -1691,16 +1691,16 @@ function renderSkuList(skus){
       <div class="sku-row-top">
         <div style="position:relative;display:inline-block">
           <input placeholder="Código o nombre..." data-i18n="edit_sku_ph" data-i18n-target="placeholder"
-            value="${s.sku||''}" data-f="sku" data-i="${i}" style="width:110px"
+            value="${esc(s.sku||'')}" data-f="sku" data-i="${i}" style="width:110px"
             oninput="onSkuInput(this,${i})"
             onblur="setTimeout(()=>{const d=document.getElementById('sku-sg-${i}');if(d)d.style.display='none'},200)"
             autocomplete="off">
           <div id="sku-sg-${i}" class="sku-suggest"></div>
         </div>
         <div class="sku-sep"></div>
-        <input placeholder="Descripción" data-i18n="edit_desc_ph" data-i18n-target="placeholder" value="${s.desc||''}" data-f="desc" data-i="${i}" style="flex:1">
+        <input placeholder="Descripción" data-i18n="edit_desc_ph" data-i18n-target="placeholder" value="${esc(s.desc||'')}" data-f="desc" data-i="${i}" style="flex:1">
         <div class="sku-sep"></div>
-        <input placeholder="Cant." data-i18n="edit_qty_ph" data-i18n-target="placeholder" value="${s.qty||''}" data-f="qty" data-i="${i}" style="width:40px${lowStock?';color:var(--red)':''}">
+        <input placeholder="Cant." data-i18n="edit_qty_ph" data-i18n-target="placeholder" value="${esc(s.qty||'')}" data-f="qty" data-i="${i}" style="width:40px${lowStock?';color:var(--red)':''}">
         <select data-f="unit" data-i="${i}" style="background:none;border:none;outline:none;color:var(--dim);font-family:'Barlow Condensed',sans-serif;font-size:1rem;cursor:pointer;width:50px">
           ${['pcs','cajas','kg','pallets','L','sacos','rollos','sets'].map(u=>`<option ${s.unit===u?'selected':''}>${u}</option>`).join('')}
         </select>
@@ -1708,16 +1708,16 @@ function renderSkuList(skus){
       </div>
       <div class="sku-row-bot">
         <span class="sku-exp-lbl">📅 Vence:</span>
-        <input type="date" class="sku-exp-inp" data-f="expiry" data-i="${i}" value="${s.expiry||''}" style="color:${expColor}">
+        <input type="date" class="sku-exp-inp" data-f="expiry" data-i="${i}" value="${esc(s.expiry||'')}" style="color:${expColor}">
         ${days!==null?`<span style="font-size:.95rem;font-weight:700;color:${expColor};margin-left:4px">${days<0?'VENCIDO hace '+Math.abs(days)+'d':days===0?'HOY':days+'d'}</span>`:''}
         <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
           <span style="display:flex;align-items:center;gap:4px" title="${currentLang==='en'?'Unit cost (for inventory value report)':'Costo unitario (para reporte de valor de inventario)'}">
             <span style="font-size:.9rem;color:var(--dim)">💲</span>
-            <input type="number" placeholder="0.00" value="${s.cost||''}" data-f="cost" data-i="${i}" min="0" step="0.01" style="width:64px;background:none;border:none;border-bottom:1px solid var(--border2);outline:none;color:var(--cyan);font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:right">
+            <input type="number" placeholder="0.00" value="${esc(s.cost||'')}" data-f="cost" data-i="${i}" min="0" step="0.01" style="width:64px;background:none;border:none;border-bottom:1px solid var(--border2);outline:none;color:var(--cyan);font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:right">
           </span>
           <span style="display:flex;align-items:center;gap:4px">
             <span style="font-size:.9rem;color:var(--dim)">⚠ Mín:</span>
-            <input type="number" placeholder="0" value="${s.minStock||''}" data-f="minStock" data-i="${i}" min="0" style="width:48px;background:none;border:none;border-bottom:1px solid ${lowStock?'var(--red)':'var(--border2)'};outline:none;color:${lowStock?'var(--red)':'var(--dim)'};font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:center" title="Stock mínimo — alerta cuando la cantidad esté en o por debajo de este valor">
+            <input type="number" placeholder="0" value="${esc(s.minStock||'')}" data-f="minStock" data-i="${i}" min="0" style="width:48px;background:none;border:none;border-bottom:1px solid ${lowStock?'var(--red)':'var(--border2)'};outline:none;color:${lowStock?'var(--red)':'var(--dim)'};font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:center" title="Stock mínimo — alerta cuando la cantidad esté en o por debajo de este valor">
           </span>
         </span>
       </div>`;
@@ -2082,8 +2082,8 @@ function printLabel(fmt){
 
   // shared HTML snippets
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="width:44px;height:44px;object-fit:contain;border-radius:4px;">'):'<div style="width:44px;height:44px;background:#f0a500;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#000">B</div>';
-  const chipResp=resps.map(r=>`<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:${is4x6?'14':'16'}px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">${r}</span>`).join('');
-  const chipShop=cellShops.map(s=>`<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:${is4x6?'14':'16'}px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">${s}</span>`).join('');
+  const chipResp=resps.map(r=>`<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:${is4x6?'14':'16'}px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">${esc(r)}</span>`).join('');
+  const chipShop=cellShops.map(s=>`<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:${is4x6?'14':'16'}px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">${esc(s)}</span>`).join('');
 
   const pageSize=is4x6?'6in 4in':'210mm 297mm';
   const winW=is4x6?860:680; const winH=is4x6?600:900;
@@ -2096,7 +2096,7 @@ function printLabel(fmt){
 
   const win=window.open('','_blank',`width=${winW},height=${winH}`);
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Etiqueta ${fmt?.toUpperCase()||'4X6'} — ${rack.name} B${viewCtx.bay+1}N${viewCtx.level+1}</title>
+<title>Etiqueta ${fmt?.toUpperCase()||'4X6'} — ${esc(rack.name)} B${viewCtx.bay+1}N${viewCtx.level+1}</title>
 <style>
   @page{size:${pageSize};margin:${is4x6?'0':'15mm'};}
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -2144,7 +2144,7 @@ function printLabel(fmt){
 <div class="lbl">
   <div class="hd">
     <div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${bname}<small>${t('lbl_location')}</small></div></div>
-    <div style="text-align:right"><div class="hd-rack">${rack.name}</div><div class="hd-coord">BAHÍA ${viewCtx.bay+1} &nbsp;·&nbsp; NIVEL ${viewCtx.level+1}</div></div>
+    <div style="text-align:right"><div class="hd-rack">${esc(rack.name)}</div><div class="hd-coord">BAHÍA ${viewCtx.bay+1} &nbsp;·&nbsp; NIVEL ${viewCtx.level+1}</div></div>
   </div>
   <div class="body">
     <div class="col-nums">
@@ -2153,20 +2153,20 @@ function printLabel(fmt){
     </div>
     <div class="col-info">
       <div class="info-top">
-        <div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?zone.name:t('no_zone')}</div></div>
+        <div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?esc(zone.name):t('no_zone')}</div></div>
         <div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${sn}</span></div>
       </div>
       <div class="people">
         ${resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+chipResp+'</div></div>'):''}
         ${cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+chipShop+'</div></div>'):(!resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${t('catalog_no_people').replace(' registrados','')+'/'+t('catalog_no_shops').replace(' registradas','')}</div>`:'')}
       </div>
-      ${cell.notes?('<div class="notes">📝 '+cell.notes+'</div>'):''}
+      ${cell.notes?('<div class="notes">📝 '+esc(cell.notes)+'</div>'):''}
     </div>
   </div>
   <div class="ft">
     <span class="ft-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>
     <div style="display:flex;align-items:center;gap:12px">
-      <span class="ft-code">${rack.name}-B${viewCtx.bay+1}N${viewCtx.level+1}</span>
+      <span class="ft-code">${esc(rack.name)}-B${viewCtx.bay+1}N${viewCtx.level+1}</span>
       <img src="https://api.qrserver.com/v1/create-qr-code/?size=${is4x6?'72x72':'90x90'}&data=${encodeURIComponent(rack.name+'-B'+(viewCtx.bay+1)+'N'+(viewCtx.level+1)+(zone?' ('+zone.name+')':''))}" style="width:${is4x6?'52':'68'}px;height:${is4x6?'52':'68'}px;border-radius:3px;" alt="QR">
     </div>
   </div>
@@ -2186,12 +2186,12 @@ function printRackSign(rackId){
   const logoSrc=localStorage.getItem('sf_logo')||'';
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="height:52px;width:52px;object-fit:contain;border-radius:6px;">'):'<div style="width:52px;height:52px;background:#f0a500;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#000;font-family:Arial">B</div>';
   const bayLabels=Array.from({length:rack.bays},(_,b)=>'<div style="flex:1;text-align:center;background:#1a1a1a;color:#f0a500;font-family:\'Courier New\',monospace;font-size:22px;font-weight:900;padding:8px 0;border-right:1px solid #333;letter-spacing:2px">B'+(b+1)+'</div>').join('');
-  const respChips=resps.map(r=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:40px;font-size:16px;font-weight:700;background:#e6f0ff;border:2px solid #88bbff;color:#003388;margin:4px 6px 4px 0">'+r+'</span>').join('');
-  const shopChips=shops.map(s=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:40px;font-size:16px;font-weight:700;background:#fff5e0;border:2px solid #ffc840;color:#885500;margin:4px 6px 4px 0">'+s+'</span>').join('');
+  const respChips=resps.map(r=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:40px;font-size:16px;font-weight:700;background:#e6f0ff;border:2px solid #88bbff;color:#003388;margin:4px 6px 4px 0">'+esc(r)+'</span>').join('');
+  const shopChips=shops.map(s=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:40px;font-size:16px;font-weight:700;background:#fff5e0;border:2px solid #ffc840;color:#885500;margin:4px 6px 4px 0">'+esc(s)+'</span>').join('');
 
   const win=window.open('','_blank','width=700,height=860');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Letrero — ${rack.name}</title>
+<title>Letrero — ${esc(rack.name)}</title>
 <style>
   @page{size:A4;margin:0;}
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -2236,11 +2236,11 @@ function printRackSign(rackId){
 <div class="sign">
   <div class="s-top">
     <div class="s-brand">${logoEl}<div class="s-brand-txt"><strong>${bname}</strong>${currentLang==='en'?'Rack Sign':'Letrero de Identificación'}</div></div>
-    ${zone?('<div class="s-zone"><div class="s-zone-dot" style="background:'+zoneColor+'"></div><div class="s-zone-name" style="color:'+zoneColor+'">'+zone.name+'</div></div>'):'<div></div>'}
+    ${zone?('<div class="s-zone"><div class="s-zone-dot" style="background:'+zoneColor+'"></div><div class="s-zone-name" style="color:'+zoneColor+'">'+esc(zone.name)+'</div></div>'):'<div></div>'}
   </div>
   <div class="s-hero">
     <div class="s-rack-label">Rack</div>
-    <div class="s-rack-name">${rack.name}</div>
+    <div class="s-rack-name">${esc(rack.name)}</div>
     <div class="s-dims">${rack.bays} Bahías &nbsp;·&nbsp; ${rack.levels} Niveles</div>
   </div>
   <div class="s-bays">${bayLabels}</div>
@@ -2256,7 +2256,7 @@ function printRackSign(rackId){
       </div>
     </div>
     <div class="s-footer-bottom">
-      <span class="s-footer-code">${rack.name}</span>
+      <span class="s-footer-code">${esc(rack.name)}</span>
       <span class="s-footer-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>
     </div>
   </div>
@@ -2291,10 +2291,10 @@ function saveRack(){
       if(cl.tiendas&&cl.tiendas.length)
         cl.tiendas=cl.tiendas.filter(id=>tiendas.includes(id));
     });
-    buildCells(editRackId);addAct(`Rack <strong>${name}</strong> ${currentLang==='en'?'updated':'actualizado'}`,'var(--cyan)');notif(`"${name}" ${currentLang==='en'?'updated':'actualizado'}`,'ok');
+    buildCells(editRackId);addAct(`Rack <strong>${esc(name)}</strong> ${currentLang==='en'?'updated':'actualizado'}`,'var(--cyan)');notif(`"${name}" ${currentLang==='en'?'updated':'actualizado'}`,'ok');
   }else{
     const id='R'+Date.now();state.racks.push({id,name,bays,levels,w,h,x,y,zone,responsables,tiendas,largo_m:largoReal,ancho_m:anchoReal});
-    buildCells(id);addAct(`Rack <strong>${name}</strong> ${currentLang==='en'?'created':'creado'}`,'var(--green)');notif(`"${name}" ${currentLang==='en'?'added':'agregado'}`,'ok');
+    buildCells(id);addAct(`Rack <strong>${esc(name)}</strong> ${currentLang==='en'?'created':'creado'}`,'var(--green)');notif(`"${name}" ${currentLang==='en'?'added':'agregado'}`,'ok');
   }
   closeO('o-rack');save();renderFloor();renderZoneList();updateStats();actualizarMetricasEspacio();updateExpiryPanel();updateLowStockPanel();
 }
@@ -2399,7 +2399,7 @@ function setupDrag(wrap,rack){
   });
   document.addEventListener('mouseup',()=>{
     if(!drag)return;drag=false;wrap.classList.remove('dragging');
-    if(moved){save();renderZoneBgs();resizeFloor();addAct(`Rack <strong>${rack.name}</strong> reubicado`,'var(--dim)');}
+    if(moved){save();renderZoneBgs();resizeFloor();addAct(`Rack <strong>${esc(rack.name)}</strong> reubicado`,'var(--dim)');}
     else selectRack(rack.id);
   });
 }
@@ -2447,7 +2447,7 @@ function deleteRack(id){
   state.racks=state.racks.filter(r=>r.id!==id);delete state.cells[id];
   state.movements=(state.movements||[]).filter(m=>m.rackId!==id&&m.destRackId!==id);
   if(selRack===id){selRack=null;document.getElementById('tinfo').textContent=t('sel_rack');document.getElementById('det-name').textContent='— '+t('sel_rack')+' —';document.getElementById('det-body').innerHTML=`<div style="color:var(--dim);font-size:.94rem;text-align:center;padding:8px 0">${t('sel_rack')}</div>`;}
-  save();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();notif(`Rack "${r?.name}" ${t('notif_rack_deleted')}`,'warn');addAct(`Rack <strong>${r?.name}</strong> ${t('notif_rack_deleted')}`,'var(--red)');
+  save();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();notif(`Rack "${r?.name}" ${t('notif_rack_deleted')}`,'warn');addAct(`Rack <strong>${esc(r?.name)}</strong> ${t('notif_rack_deleted')}`,'var(--red)');
 }
 function duplicateRack(id){
   if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');return;}
@@ -2471,7 +2471,7 @@ function duplicateRack(id){
   save();renderFloor();updateStats();
   selectRack(newId);
   notif(`Rack "${copy.name}" ${currentLang==='en'?'created':'creado'}`,'ok');
-  addAct(`Rack <strong>${copy.name}</strong> duplicado desde ${src.name}`,'var(--green)');
+  addAct(`Rack <strong>${esc(copy.name)}</strong> duplicado desde ${esc(src.name)}`,'var(--green)');
 }
 
 // ═══════════════ AUDIT ═══════════════
@@ -2523,7 +2523,7 @@ function saveAudit(){
   closeO('o-audit');
   openViewCell(viewCtx.rackId,viewCtx.bay,viewCtx.level);
   notif(t('notif_audit_done'),'ok');
-  addAct(`Conteo B${viewCtx.bay+1}N${viewCtx.level+1} verificado por <strong>${who}</strong>`,'var(--green)');
+  addAct(`Conteo B${viewCtx.bay+1}N${viewCtx.level+1} verificado por <strong>${esc(who)}</strong>`,'var(--green)');
 }
 
 // ═══════════════ REPORT EXPIRY SHORTCUT ═══════════════
@@ -2895,7 +2895,7 @@ function doTransfer(){
   save();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();
   closeO('o-transfer');resetTransfer();
   notif(`${movedSkus.join(', ')} trasladado`,'ok');
-  addAct(`Traslado: <strong>${movedSkus.join(', ')}</strong> → ${dRack?.name} B${tDest.bay+1}N${tDest.level+1}`,'var(--accent)');
+  addAct(`Traslado: <strong>${esc(movedSkus.join(', '))}</strong> → ${esc(dRack?.name)} B${tDest.bay+1}N${tDest.level+1}`,'var(--accent)');
 }
 
 // ═══════════════ REPORT ═══════════════
@@ -3566,8 +3566,8 @@ function printRackA4(){
       ${expAlert?`<span style="font-size:7.5px;font-weight:800;color:${expColor}">📅${minExp<0?'VENC':minExp+'d'}</span>`:''}
     </div>
     ${(cellShopNames.length||cellRespNames.length)?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px">
-      ${cellShopNames.map(s=>`<span style="display:inline-block;background:#fff3e0;border:1px solid #f7c87a;color:#7a4500;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">🏪 ${s}</span>`).join('')}
-      ${cellRespNames.map(r=>`<span style="display:inline-block;background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">👤 ${r}</span>`).join('')}
+      ${cellShopNames.map(s=>`<span style="display:inline-block;background:#fff3e0;border:1px solid #f7c87a;color:#7a4500;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">🏪 ${esc(s)}</span>`).join('')}
+      ${cellRespNames.map(r=>`<span style="display:inline-block;background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">👤 ${esc(r)}</span>`).join('')}
     </div>`:''}`;
 
 
@@ -3577,14 +3577,14 @@ function printRackA4(){
     } else {
       skus.forEach(s=>{
         inner+=`<div style="display:flex;gap:3px;align-items:baseline;margin-bottom:2px">
-          ${s.sku?`<span style="font-family:'Courier New',monospace;font-weight:800;font-size:8.5px;color:#b06000;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52px">${s.sku}</span>`:''}
-          ${s.desc?`<span style="font-size:7.5px;color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.desc}">${s.desc}</span>`:''}
+          ${s.sku?`<span style="font-family:'Courier New',monospace;font-weight:800;font-size:8.5px;color:#b06000;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52px">${esc(s.sku)}</span>`:''}
+          ${s.desc?`<span style="font-size:7.5px;color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.desc)}">${esc(s.desc)}</span>`:''}
           ${s.qty?`<span style="font-family:'Courier New',monospace;font-size:7.5px;color:#555;flex-shrink:0;white-space:nowrap">${s.qty}${s.unit?' '+s.unit:''}</span>`:''}
         </div>`;
       });
     }
     if(showNotes&&cell.notes){
-      inner+=`<div style="margin-top:2px;font-size:7px;color:#888;font-style:italic;border-top:1px solid #eee;padding-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${cell.notes}</div>`;
+      inner+=`<div style="margin-top:2px;font-size:7px;color:#888;font-style:italic;border-top:1px solid #eee;padding-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${esc(cell.notes)}</div>`;
     }
     return `<td style="padding:3px;vertical-align:top;overflow:hidden">
       <div style="border:1px solid #dde;border-left:3px solid ${sc};border-radius:3px;padding:4px 5px;min-height:46px;background:#fff;overflow:hidden;word-break:break-word">
@@ -3615,7 +3615,7 @@ function printRackA4(){
   const logoEl=logoSrc?`<img src="${logoSrc}" style="height:34px;object-fit:contain">`:`<div style="font-size:16px;font-weight:900;letter-spacing:3px;color:#1a2030">SF</div>`;
 
   const html=`<!DOCTYPE html><html><head>
-<meta charset="UTF-8"><title>${rack.name} — ${bname}</title>
+<meta charset="UTF-8"><title>${esc(rack.name)} — ${bname}</title>
 <style>
   @page{size:A4 landscape;margin:12mm 15mm;}
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -3640,15 +3640,15 @@ function printRackA4(){
 <div class="toolbar">
   <button onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
-  <span style="color:#aaa;font-size:10px;margin-left:6px">${rack.name} · ${rack.bays} bahías × ${rack.levels} niveles · A4 horizontal</span>
+  <span style="color:#aaa;font-size:10px;margin-left:6px">${esc(rack.name)} · ${rack.bays} bahías × ${rack.levels} niveles · A4 horizontal</span>
 </div>
 <div style="padding:0 3mm">
   <div class="rack-hd">
     ${logoEl}
     <div>
-      <div class="rack-name">${rack.name}</div>
+      <div class="rack-name">${esc(rack.name)}</div>
       <div class="rack-sub">
-        ${bname}${zone?` &nbsp;·&nbsp; <span style="color:${zone.color};font-weight:700">${zone.name}</span>`:''}${resps.length?` &nbsp;·&nbsp; 👤 ${resps.join(', ')}`:''}${shops.length?` &nbsp;·&nbsp; 🏪 ${shops.join(', ')}`:''}
+        ${bname}${zone?` &nbsp;·&nbsp; <span style="color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}${resps.length?` &nbsp;·&nbsp; 👤 ${esc(resps.join(', '))}`:''}${shops.length?` &nbsp;·&nbsp; 🏪 ${esc(shops.join(', '))}`:''}
       </div>
     </div>
     <div class="stats">
@@ -3771,22 +3771,22 @@ function printReportTab(tab){
         const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
         const sc=stateColor[cell.state]||'#aaa';
         const skuHtml=skus.length
-          ? skus.map(s=>`<div class="cell-sku"><span class="cell-sku-id">${s.sku||''}</span>${s.sku&&s.desc?' ':''}<span class="cell-sku-desc">${s.desc||''}</span>${s.qty?`<span class="cell-sku-qty">${s.qty} ${s.unit||''}</span>`:''}</div>`).join('')
+          ? skus.map(s=>`<div class="cell-sku"><span class="cell-sku-id">${esc(s.sku||'')}</span>${s.sku&&s.desc?' ':''}<span class="cell-sku-desc">${esc(s.desc||'')}</span>${s.qty?`<span class="cell-sku-qty">${esc(s.qty)} ${esc(s.unit||'')}</span>`:''}</div>`).join('')
           : `<span style="color:#bbb;font-size:9px;font-style:italic">${STATE_LABELS[cell.state]||'—'}</span>`;
         rows+=`<tr>
           <td class="mono" style="color:#1a4a8a;white-space:nowrap">B${b+1}·N${l+1}</td>
           <td><span class="badge ${stateClass[cell.state]||'badge-empty'}">${STATE_LABELS[cell.state]||cell.state}</span></td>
           <td>${skuHtml}</td>
-          <td style="font-size:10px;color:#888">${(cell.notes||'')}</td>
+          <td style="font-size:10px;color:#888">${esc(cell.notes||'')}</td>
         </tr>`;
       }
       body+=`<div class="section">
         <div class="section-hd">
           ${zone?`<div style="width:10px;height:10px;border-radius:2px;background:${zone.color};flex-shrink:0"></div>`:''}
-          <div class="section-name">${rack.name}</div>
-          ${zone?`<span class="chip tag-zone">${zone.name}</span>`:''}
-          ${resps.map(r=>`<span class="chip tag-resp">👤 ${r}</span>`).join('')}
-          ${shops.map(s=>`<span class="chip tag-shop">🏪 ${s}</span>`).join('')}
+          <div class="section-name">${esc(rack.name)}</div>
+          ${zone?`<span class="chip tag-zone">${esc(zone.name)}</span>`:''}
+          ${resps.map(r=>`<span class="chip tag-resp">👤 ${esc(r)}</span>`).join('')}
+          ${shops.map(s=>`<span class="chip tag-shop">🏪 ${esc(s)}</span>`).join('')}
           <span class="section-meta">${occ}/${total} celdas &nbsp;
             <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span>
             &nbsp;${pct}%
@@ -3813,10 +3813,10 @@ function printReportTab(tab){
         const totalQty=locs.reduce((a,l)=>a+(parseFloat(l.qty)||0),0);
         const locStr=locs.map(l=>`${l.rack} B${l.bay+1}·N${l.level+1}`).join(', ');
         rows+=`<tr>
-          <td class="mono sku-id">${sku||'—'}</td>
-          <td>${desc||'—'}</td>
+          <td class="mono sku-id">${esc(sku)||'—'}</td>
+          <td>${esc(desc)||'—'}</td>
           <td class="mono" style="text-align:center">${totalQty||'—'}</td>
-          <td style="font-size:10px;color:#666">${locStr}</td>
+          <td style="font-size:10px;color:#666">${esc(locStr)}</td>
           <td style="text-align:center">${locs.length}</td>
         </tr>`;
       });
@@ -3847,11 +3847,11 @@ function printReportTab(tab){
         const dc=r.days<0?'#c00':r.days<=7?'#d04000':r.days<=30?'#a07000':'#226622';
         const dl=r.days<0?`Vencido hace ${Math.abs(r.days)}d`:r.days===0?'HOY':`${r.days}d`;
         return `<tr>
-          <td class="mono" style="color:#1a4a8a">${r.rack}</td>
+          <td class="mono" style="color:#1a4a8a">${esc(r.rack)}</td>
           <td class="mono" style="text-align:center">B${r.bay}·N${r.level}</td>
-          <td class="mono sku-id">${r.sku||'—'}</td>
-          <td>${r.desc||'—'}</td>
-          <td class="mono" style="text-align:center">${r.expiry}</td>
+          <td class="mono sku-id">${esc(r.sku)||'—'}</td>
+          <td>${esc(r.desc)||'—'}</td>
+          <td class="mono" style="text-align:center">${esc(r.expiry)}</td>
           <td style="text-align:center;font-weight:700;color:${dc}">${dl}</td>
           <td style="text-align:center">${r.qty} ${r.unit}</td>
         </tr>`;
@@ -3870,14 +3870,14 @@ function printReportTab(tab){
     else{
       const typeColor={entrada:'#00a860',salida:'#e03030',traslado:'#0088cc',ajuste:'#888'};
       const rows=movs.map(m=>`<tr>
-        <td style="font-size:10px;color:#888;white-space:nowrap">${m.date||''}</td>
-        <td><span class="badge" style="background:${typeColor[m.type]||'#888'}22;color:${typeColor[m.type]||'#888'};border:1px solid ${typeColor[m.type]||'#888'}44">${m.type||''}</span></td>
-        <td class="mono sku-id">${m.sku||'—'}</td>
-        <td style="font-size:10px">${m.desc||'—'}</td>
-        <td class="mono" style="text-align:center;font-weight:700">${m.qty||''}</td>
-        <td style="font-size:10px;color:#555">${m.rack||''}</td>
+        <td style="font-size:10px;color:#888;white-space:nowrap">${esc(m.date||'')}</td>
+        <td><span class="badge" style="background:${typeColor[m.type]||'#888'}22;color:${typeColor[m.type]||'#888'};border:1px solid ${typeColor[m.type]||'#888'}44">${esc(m.type||'')}</span></td>
+        <td class="mono sku-id">${esc(m.sku)||'—'}</td>
+        <td style="font-size:10px">${esc(m.desc)||'—'}</td>
+        <td class="mono" style="text-align:center;font-weight:700">${esc(m.qty||'')}</td>
+        <td style="font-size:10px;color:#555">${esc(m.rack||'')}</td>
         <td class="mono" style="text-align:center;font-size:10px">B${(m.bay||0)+1}·N${(m.level||0)+1}</td>
-        <td style="font-size:10px;color:#888">${m.note||''}</td>
+        <td style="font-size:10px;color:#888">${esc(m.note||'')}</td>
       </tr>`).join('');
       body=`<div class="section-body"><table>
         <thead><tr><th>Fecha</th><th>Tipo</th><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th>Rack</th><th style="text-align:center">Celda</th><th>Nota</th></tr></thead>
@@ -3901,11 +3901,11 @@ function printReportTab(tab){
         const rOcc=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
         const rTotal=r.bays*r.levels;
         const rPct=rTotal?Math.round(rOcc/rTotal*100):0;
-        return `<tr><td class="mono" style="color:#1a4a8a">${r.name}</td><td style="text-align:center">${r.bays}×${r.levels}</td><td style="text-align:center">${rOcc}/${rTotal}</td><td style="text-align:center;font-weight:700;color:${rPct>80?'#e03030':rPct>55?'#e08000':'#00a860'}">${rPct}%</td></tr>`;
+        return `<tr><td class="mono" style="color:#1a4a8a">${esc(r.name)}</td><td style="text-align:center">${r.bays}×${r.levels}</td><td style="text-align:center">${rOcc}/${rTotal}</td><td style="text-align:center;font-weight:700;color:${rPct>80?'#e03030':rPct>55?'#e08000':'#00a860'}">${rPct}%</td></tr>`;
       }).join('');
       body+=`<div class="section">
         <div class="section-hd" style="background:${zone.color||'#1a2030'}">
-          <div class="section-name">${zone.name}</div>
+          <div class="section-name">${esc(zone.name)}</div>
           <span class="section-meta">${zRacks.length} racks · ${occ}/${total} celdas · ${skusSet.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
         </div>
         <div class="section-body"><table>
@@ -3942,15 +3942,15 @@ function printReportTab(tab){
       if(!rackIds.size)return;
       const pct=total?Math.round(occ/total*100):0;
       const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
-      const rackNames=[...rackIds].map(id=>state.racks.find(r=>r.id===id)?.name||id).join(', ');
+      const rackNames=esc([...rackIds].map(id=>state.racks.find(r=>r.id===id)?.name||id).join(', '));
       const skuRows=[...skuMap.values()].map(s=>`<tr>
-        <td class="mono sku-id">${s.sku||'—'}</td>
-        <td>${s.desc||'—'}</td>
-        <td style="text-align:center">${s.qty||''} ${s.unit}</td>
+        <td class="mono sku-id">${esc(s.sku)||'—'}</td>
+        <td>${esc(s.desc)||'—'}</td>
+        <td style="text-align:center">${esc(s.qty||'')} ${esc(s.unit)}</td>
       </tr>`).join('');
       body+=`<div class="section">
         <div class="section-hd">
-          <div class="section-name">👤 ${person.name}${person.role?` — <span style="font-weight:400;font-size:11px">${person.role}</span>`:''}</div>
+          <div class="section-name">👤 ${esc(person.name)}${person.role?` — <span style="font-weight:400;font-size:11px">${esc(person.role)}</span>`:''}</div>
           <span class="section-meta">${rackIds.size} racks · ${occ}/${total} celdas · ${skuMap.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
         </div>
         <div class="section-body">
@@ -3982,10 +3982,10 @@ function printReportTab(tab){
       });
       if(!racks.size)return;
       const pct=total?Math.round(occ/total*100):0;
-      const skuRows=[...skuMap.values()].map(s=>`<tr><td class="mono sku-id">${s.sku||'—'}</td><td>${s.desc||'—'}</td><td style="text-align:center">${s.qty||''} ${s.unit}</td></tr>`).join('');
+      const skuRows=[...skuMap.values()].map(s=>`<tr><td class="mono sku-id">${esc(s.sku)||'—'}</td><td>${esc(s.desc)||'—'}</td><td style="text-align:center">${esc(s.qty||'')} ${esc(s.unit)}</td></tr>`).join('');
       body+=`<div class="section">
         <div class="section-hd">
-          <div class="section-name">🏪 ${tienda.name}${tienda.code?` (${tienda.code})`:''}</div>
+          <div class="section-name">🏪 ${esc(tienda.name)}${tienda.code?` (${esc(tienda.code)})`:''}</div>
           <span class="section-meta">${racks.size} racks · ${occ}/${total} · ${skuMap.size} SKUs · ${pct}%</span>
         </div>
         <div class="section-body"><table>
@@ -4004,12 +4004,12 @@ function printReportTab(tab){
     else{
       const total=all.reduce((a,r)=>a+r.subtotal,0);
       const rows=all.map(r=>`<tr>
-        <td class="mono sku-id">${r.sku||'—'}</td>
-        <td>${r.desc||'—'}</td>
-        <td style="text-align:center">${r.qty}</td>
+        <td class="mono sku-id">${esc(r.sku)||'—'}</td>
+        <td>${esc(r.desc)||'—'}</td>
+        <td style="text-align:center">${esc(r.qty)}</td>
         <td class="mono" style="text-align:right">$${r.cost?.toFixed(2)||'—'}</td>
         <td class="mono" style="text-align:right;font-weight:700;color:${r.subtotal>0?'#1a6a3a':'#888'}">$${r.subtotal.toFixed(2)}</td>
-        <td style="font-size:10px;color:#666">${r.rack||''}</td>
+        <td style="font-size:10px;color:#666">${esc(r.rack||'')}</td>
       </tr>`).join('');
       body=`<div style="display:flex;gap:12px;margin-bottom:14px">
         <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
@@ -4032,7 +4032,7 @@ function printReportTab(tab){
   // ── OPEN WINDOW ──
   const win=window.open('','_blank','width=960,height=750');
   if(!win){alert('Bloqueado por el navegador — permitir popups para esta página');return;}
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title} — ${bname}</title><style>${baseCss}</style></head><body>${toolbar}<div style="padding:10px 20px 30px">${pageHd}${body}</div></body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)} — ${bname}</title><style>${baseCss}</style></head><body>${toolbar}<div style="padding:10px 20px 30px">${pageHd}${body}</div></body></html>`);
   win.document.close();
 }
 
@@ -4088,15 +4088,15 @@ function exportReportAudit(){
 
   const tableRows=rows.map((r,i)=>`
     <tr style="background:${i%2===0?'#fff':'#f8f9fb'}">
-      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-weight:700;font-size:12px;color:#1a4a8a">${r.rack}</td>
-      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#555">${r.zone}</td>
+      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-weight:700;font-size:12px;color:#1a4a8a">${esc(r.rack)}</td>
+      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#555">${esc(r.zone)}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center;font-family:'Courier New',monospace;font-weight:700;font-size:13px">${r.bay}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center;font-family:'Courier New',monospace;font-weight:700;font-size:13px">${r.level}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:${stateColors[Object.keys(STATE_LABELS).find(k=>STATE_LABELS[k]===r.state)]||'#eee'}">${r.state}</span></td>
-      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#111;font-weight:600">${r.lastWho}</td>
-      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:11px;color:#666;font-family:'Courier New',monospace">${r.lastDate}</td>
+      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#111;font-weight:600">${esc(r.lastWho)}</td>
+      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:11px;color:#666;font-family:'Courier New',monospace">${esc(r.lastDate)}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center;font-size:12px;font-weight:700;color:${r.daysSince==='NUNCA'?'#cc0022':parseInt(r.daysSince)>=30?'#cc0022':parseInt(r.daysSince)>=15?'#cc7700':'#226622'}">${r.daysSince}</td>
-      ${!isUnverif?`<td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:11px;color:#888">${r.notes||''}</td>`:''}
+      ${!isUnverif?`<td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:11px;color:#888">${esc(r.notes||'')}</td>`:''}
     </tr>`).join('');
 
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -4218,8 +4218,8 @@ function renderReportResp(filter){
       +'<div style="width:6px;background:'+(isNone?'#4a5a78':'var(--cyan)')+';flex-shrink:0;border-radius:6px 0 0 6px"></div>'
       +'<div style="flex:1;padding:14px 16px">'
         +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
-          +'<div><span style="font-size:1.05rem;font-weight:700;color:'+(isNone?'var(--dim)':'var(--bright)')+'">'+(isNone?displayName:'👤 '+displayName)+'</span>'
-          +(displayRole?'<span style="font-size:.9rem;color:var(--dim);margin-left:7px">'+displayRole+'</span>':'')+'</div>'
+          +'<div><span style="font-size:1.05rem;font-weight:700;color:'+(isNone?'var(--dim)':'var(--bright)')+'">'+(isNone?esc(displayName):'👤 '+esc(displayName))+'</span>'
+          +(displayRole?'<span style="font-size:.9rem;color:var(--dim);margin-left:7px">'+esc(displayRole)+'</span>':'')+'</div>'
           +'<div style="margin-left:auto;display:flex;align-items:center;gap:8px">'
             +'<div style="width:100px;height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px"></div></div>'
             +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:1.14rem;color:'+bc+'">'+pct+'%</span>'
@@ -4231,9 +4231,9 @@ function renderReportResp(filter){
           +'<div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--cyan);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">SKUs</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--cyan)">'+data.skus.size+'</div></div>'
           +'<div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">'+t('state_blocked')+'</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--red)">'+data.blocked+'</div></div>'
         +'</div>'
-        +(tiendaNames.length?`<div style="margin-bottom:10px"><div style="font-size:1.16rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`+tiendaNames.map(s=>'<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:3px 12px;font-size:1.02rem;color:var(--accent)">'+s+'</span>').join('')+'</div></div>':'')
+        +(tiendaNames.length?`<div style="margin-bottom:10px"><div style="font-size:1.16rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`+tiendaNames.map(s=>'<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:3px 12px;font-size:1.02rem;color:var(--accent)">'+esc(s)+'</span>').join('')+'</div></div>':'')
         +`<div><div style="font-size:1.16rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">📦 ${t('rep_assigned_racks')}</div>`
-          +'<div style="display:flex;flex-wrap:wrap;gap:5px">'+data.racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return '<span onclick="closeO(\'o-report\');selectRack(\''+r.id+'\')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:\'Share Tech Mono\',monospace;font-size:1.02rem;color:'+(z?z.color:'var(--dim)')+';cursor:pointer">'+r.name+'</span>';}).join('')+'</div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:5px">'+data.racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return '<span onclick="closeO(\'o-report\');selectRack(\''+r.id+'\')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:\'Share Tech Mono\',monospace;font-size:1.02rem;color:'+(z?z.color:'var(--dim)')+';cursor:pointer">'+esc(r.name)+'</span>';}).join('')+'</div>'
         +'</div>'
       +'</div>'
       +'</div>';
@@ -4292,7 +4292,7 @@ function renderReportTiendas(filter){
     const isNone=tid==='__none__';
     const tienda=isNone?null:state.tiendas.find(x=>x.id===tid);
     if(!isNone&&!tienda)return; // orphan
-    const displayName=isNone?'Sin tienda asignada':(tienda.name+(tienda.code?` (${tienda.code})`:''));
+    const displayName=isNone?'Sin tienda asignada':esc(tienda.name+(tienda.code?` (${tienda.code})`:''));
     if(filter&&!displayName.toLowerCase().includes(filter))return;
     shown++;
 
@@ -4306,9 +4306,9 @@ function renderReportTiendas(filter){
     const skuList=skus.map(s=>`
       <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:3px;cursor:pointer"
       onclick="closeO('o-report');setTimeout(()=>openViewCell('${s.locs[0]?.rackId}',${s.locs[0]?.bay??0},${s.locs[0]?.level??0}),120)">
-        ${s.sku?`<span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--accent);font-weight:700">${s.sku}</span>`:''}
-        <span style="font-size:.95rem;color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.desc||t('no_desc')}</span>
-        ${s.qty?`<span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--bright);flex-shrink:0">${s.qty} ${s.unit||''}</span>`:''}
+        ${s.sku?`<span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--accent);font-weight:700">${esc(s.sku)}</span>`:''}
+        <span style="font-size:.95rem;color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.desc)||t('no_desc')}</span>
+        ${s.qty?`<span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--bright);flex-shrink:0">${esc(s.qty)} ${esc(s.unit||'')}</span>`:''}
         <span style="font-size:.88rem;color:var(--dim);flex-shrink:0">${s.locs.length} celda${s.locs.length!==1?'s':''}</span>
       </div>`).join('');
     const moreSkus='';
@@ -4335,7 +4335,7 @@ function renderReportTiendas(filter){
           +`<div style="background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Unidades</div><div style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${totalQty}</div></div>`
         +'</div>'
         // Racks chips
-        +(racksArr.length?'<div style="margin-bottom:10px"><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">📍 Racks</div><div style="display:flex;flex-wrap:wrap;gap:5px">'+racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return`<span onclick="closeO('o-report');selectRack('${r.id}')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:.95rem;color:${z?z.color:'var(--dim)'};cursor:pointer">${r.name}</span>`;}).join('')+'</div></div>':'')
+        +(racksArr.length?'<div style="margin-bottom:10px"><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">📍 Racks</div><div style="display:flex;flex-wrap:wrap;gap:5px">'+racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return`<span onclick="closeO('o-report');selectRack('${r.id}')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:.95rem;color:${z?z.color:'var(--dim)'};cursor:pointer">${esc(r.name)}</span>`;}).join('')+'</div></div>':'')
         // SKU list
         +(totalSkus?`<div><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">📦 Productos (${totalSkus})</div><div style="display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto">${skuList}</div></div>`:'')
       +'</div>'
@@ -4369,15 +4369,15 @@ function exportReportCSV(){
 
   const tableRows=rows.map((r,i)=>`
     <tr style="background:${i%2===0?'#fff':'#f8f9fb'}">
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-weight:700;font-size:13px;color:#111">${r.sku}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:13px;color:#333">${r.desc}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-size:13px;text-align:right;color:#111">${r.qty} <span style="color:#888;font-size:11px">${r.unit}</span></td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#1a4a8a">${r.rack}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-weight:700;font-size:13px;color:#111">${esc(r.sku)}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:13px;color:#333">${esc(r.desc)}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-size:13px;text-align:right;color:#111">${esc(r.qty)} <span style="color:#888;font-size:11px">${esc(r.unit)}</span></td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#1a4a8a">${esc(r.rack)}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center;font-size:14px;font-weight:700;font-family:'Courier New',monospace">${r.bay}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center;font-size:14px;font-weight:700;font-family:'Courier New',monospace">${r.level}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center"><span style="display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:${stateColors[r.state]||'#eee'}">${stateNames[r.state]||r.state}</span></td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#336">${r.resps}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#663300">${r.shops}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#336">${esc(r.resps)}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#663300">${esc(r.shops)}</td>
     </tr>`).join('');
 
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="height:48px;width:48px;object-fit:contain;border-radius:5px;">'):'<div style="width:48px;height:48px;background:#f0a500;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:#000;font-family:Arial">B</div>';
@@ -4658,19 +4658,19 @@ function printMovementsPDF(){
 
   const rowsHTML=rows.map((m,i)=>{
     const tc=typeColor[m.type]||'#999';
-    const dest=m.destRack?`→ ${m.destRack} B${m.destBay+1}N${m.destLevel+1}`:'';
+    const dest=m.destRack?`→ ${esc(m.destRack)} B${m.destBay+1}N${m.destLevel+1}`:'';
     return `<tr style="background:${i%2===0?'#fff':'#f8f9fb'}">
-      <td style="padding:6px 8px;font-size:10px;color:#888;white-space:nowrap">${m.date||''}</td>
+      <td style="padding:6px 8px;font-size:10px;color:#888;white-space:nowrap">${esc(m.date||'')}</td>
       <td style="padding:6px 8px;text-align:center">
-        <span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:800;letter-spacing:.5px;background:${tc}22;color:${tc};border:1px solid ${tc}55;text-transform:uppercase">${m.type||''}</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:800;letter-spacing:.5px;background:${tc}22;color:${tc};border:1px solid ${tc}55;text-transform:uppercase">${esc(m.type||'')}</span>
       </td>
-      <td style="padding:6px 8px;font-family:'Courier New',monospace;font-size:10px;font-weight:800;color:#c07000">${m.sku||''}</td>
-      <td style="padding:6px 8px;font-size:10px;color:#333;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.desc||''}</td>
-      <td style="padding:6px 8px;text-align:right;font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:#1a2030">${m.qty||''} <span style="color:#888;font-weight:400">${m.unit||''}</span></td>
-      <td style="padding:6px 8px;font-size:10px;color:#555">${m.rack||''}</td>
+      <td style="padding:6px 8px;font-family:'Courier New',monospace;font-size:10px;font-weight:800;color:#c07000">${esc(m.sku||'')}</td>
+      <td style="padding:6px 8px;font-size:10px;color:#333;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.desc||'')}</td>
+      <td style="padding:6px 8px;text-align:right;font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:#1a2030">${esc(m.qty||'')} <span style="color:#888;font-weight:400">${esc(m.unit||'')}</span></td>
+      <td style="padding:6px 8px;font-size:10px;color:#555">${esc(m.rack||'')}</td>
       <td style="padding:6px 8px;font-family:'Courier New',monospace;font-size:9.5px;color:#777">B${m.bay+1}·N${m.level+1}</td>
       <td style="padding:6px 8px;font-size:9.5px;color:#3a7bd5">${dest}</td>
-      <td style="padding:6px 8px;font-size:9px;color:#888;font-style:italic;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.note||''}</td>
+      <td style="padding:6px 8px;font-size:9px;color:#888;font-style:italic;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.note||'')}</td>
     </tr>`;
   }).join('');
 
@@ -4977,18 +4977,18 @@ function doBulkPrint(){
     const sn=stateNames[cell.state]||'VACÍO';
     const resps=resolvePeople((cell.responsables||[]).length?(cell.responsables||[]):(rack.responsables||[]));
     const cellShops=resolveTiendas(cell.tiendas||[]);
-    const chipResp=resps.map(r=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">'+r+'</span>').join('');
-    const chipShop=cellShops.map(s=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">'+s+'</span>').join('');
+    const chipResp=resps.map(r=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">'+esc(r)+'</span>').join('');
+    const chipShop=cellShops.map(s=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">'+esc(s)+'</span>').join('');
     const skuExpiryRows=(cell.skus||[]).filter(s=>s.expiry).map(s=>{
       const d=expiryDays(s.expiry);const ec=d<0?'#ff3344':d<=30?'#ff9900':'#00aa44';
-      return '<div class="notes" style="display:flex;justify-content:space-between;align-items:center">📅 '+(s.sku||s.desc||'SKU')+': '+s.expiry+'<span style="font-weight:900;color:'+ec+'">'+(d<0?'VENCIDO':d===0?'HOY':d+'d')+'</span></div>';
+      return '<div class="notes" style="display:flex;justify-content:space-between;align-items:center">📅 '+esc(s.sku||s.desc||'SKU')+': '+esc(s.expiry)+'<span style="font-weight:900;color:'+ec+'">'+(d<0?'VENCIDO':d===0?'HOY':d+'d')+'</span></div>';
     }).join('');
-    const notesRow=cell.notes?('<div class="notes">📝 '+cell.notes+'</div>'):'';
+    const notesRow=cell.notes?('<div class="notes">📝 '+esc(cell.notes)+'</div>'):'';
 
     return '<div class="lbl">'
       +'<div class="hd">'
         +`<div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${bname}<small>${t('lbl_location')}</small></div></div>`
-        +`<div style="text-align:right"><div class="hd-rack">${rack.name}</div><div class="hd-coord">${t('lbl_bay').toUpperCase()} ${cell.bay+1} &nbsp;·&nbsp; ${t('lbl_level').toUpperCase()} ${cell.level+1}</div></div>`
+        +`<div style="text-align:right"><div class="hd-rack">${esc(rack.name)}</div><div class="hd-coord">${t('lbl_bay').toUpperCase()} ${cell.bay+1} &nbsp;·&nbsp; ${t('lbl_level').toUpperCase()} ${cell.level+1}</div></div>`
       +'</div>'
       +'<div class="body">'
         +'<div class="col-nums">'
@@ -4997,7 +4997,7 @@ function doBulkPrint(){
         +'</div>'
         +'<div class="col-info">'
           +'<div class="info-top">'
-            +`<div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?zone.name:t('no_zone')}</div></div>`
+            +`<div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?esc(zone.name):t('no_zone')}</div></div>`
             +`<div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${sn}</span></div>`
           +'</div>'
           +'<div class="people">'
@@ -5010,14 +5010,14 @@ function doBulkPrint(){
       +'</div>'
       +'<div class="ft">'
         +`<span class="ft-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>`
-        +'<div style="display:flex;align-items:center;gap:10px"><span class="ft-code">'+rack.name+'-B'+(cell.bay+1)+'N'+(cell.level+1)+'</span>'
+        +'<div style="display:flex;align-items:center;gap:10px"><span class="ft-code">'+esc(rack.name)+'-B'+(cell.bay+1)+'N'+(cell.level+1)+'</span>'
         +'<img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data='+encodeURIComponent(rack.name+'-B'+(cell.bay+1)+'N'+(cell.level+1))+'" style="width:44px;height:44px;border-radius:3px" alt="QR"></div>'
       +'</div>'
     +'</div>';
   }).join('');
 
   const win=window.open('','_blank','width=900,height=700');
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiquetas Masivas — '+bname+'</title>'
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc('Etiquetas Masivas — '+bname)+'</title>'
   +'<style>'
   +'@page{size:'+pageSize+';margin:'+(is4x6?'0':'15mm')+';}'
   +'*{margin:0;padding:0;box-sizing:border-box;}'
@@ -5449,7 +5449,7 @@ function restaurarSesion() {
 
 function cerrarSesion() {
   sessionStorage.removeItem('sf_coord_token');
-  localStorage.removeItem('sf_refresh_token');
+  sessionStorage.removeItem('sf_refresh_token');
   coordToken = null;
   coordUnlocked = false;
 }
@@ -5465,7 +5465,7 @@ function activarCoordinador(token, refreshToken) {
   coordToken = token;
   coordUnlocked = true;
   guardarSesion(token);
-  if (refreshToken) localStorage.setItem('sf_refresh_token', refreshToken);
+  if (refreshToken) sessionStorage.setItem('sf_refresh_token', refreshToken);
   const btn = document.getElementById('lock-btn');
   if (btn) {
     btn.textContent = '🔓';
@@ -5524,7 +5524,7 @@ async function renovarTokenSiEsNecesario() {
     const response = await fetch('/api/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: localStorage.getItem('sf_refresh_token') })
+      body: JSON.stringify({ refresh_token: sessionStorage.getItem('sf_refresh_token') })
     });
     if (!response.ok) {
       desactivarCoordinador();

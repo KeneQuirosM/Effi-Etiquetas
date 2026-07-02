@@ -557,6 +557,17 @@ let originalExcelRows = [];
 let showLowOnly = false;
 let excludedStores = new Set(); // IDs de tiendas excluidas (usando nombre como key único)
 
+// Escapa caracteres HTML para prevenir XSS en innerHTML
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadDatabaseData();
 });
@@ -786,7 +797,7 @@ function calculateStats(unmatchedStores = []) {
         ${unmatchedStores.length} tienda${unmatchedStores.length > 1 ? 's' : ''} sin datos en este reporte
       </div>
       <div style="color:var(--neutral-800); font-size:0.78rem; line-height:1.7;">
-        ${unmatchedStores.map(n => `<span style="background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:4px; margin-right:6px; display:inline-block;">${n}</span>`).join('')}
+        ${unmatchedStores.map(n => `<span style="background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:4px; margin-right:6px; display:inline-block;">${esc(n)}</span>`).join('')}
       </div>
       <div style="margin-top:8px; color:var(--neutral-600); font-size:0.74rem;">
         <i class="fas fa-info-circle"></i> Verificá que el nombre en la BD coincida exactamente con el nombre en el Excel (después del guión).
@@ -824,7 +835,7 @@ function renderGroups(search = '', typeFilter = '') {
     div.innerHTML = `
       <div class="group-header" onclick="toggleGroup(${gi})">
         <span class="badge ${badgeClass}">${group.tipo.includes('Bodega Propia') ? 'BODEGA' : 'DROPSHIP'}</span>
-        <span class="group-name">${group.source}</span>
+        <span class="group-name">${esc(group.source)}</span>
         <div class="group-meta">
           <span>${filteredItems.length} SKUs</span>
           <span class="total">Salidas: ${group.total} uds</span>
@@ -849,9 +860,9 @@ function renderGroups(search = '', typeFilter = '') {
               const pct = Math.min((item.qty / 100) * 100, 100);
               return `
                 <tr>
-                  <td><span class="id-pill">${item.id}</span></td>
-                  <td><span style="font-weight:600; color:var(--neutral-800);">${item.desc}</span></td>
-                  ${item.ubicacion ? `<td><span style="color:var(--neutral-600); font-weight:500;">${item.ubicacion}</span></td>` : (filteredItems.some(i => i.ubicacion) ? '<td>-</td>' : '')}
+                  <td><span class="id-pill">${esc(item.id)}</span></td>
+                  <td><span style="font-weight:600; color:var(--neutral-800);">${esc(item.desc)}</span></td>
+                  ${item.ubicacion ? `<td><span style="color:var(--neutral-600); font-weight:500;">${esc(item.ubicacion)}</span></td>` : (filteredItems.some(i => i.ubicacion) ? '<td>-</td>' : '')}
                   <td>
                     <div class="qty-bar">
                       <div class="bar-bg"><div class="bar-fill ${isLow?'low':''}" style="width:${pct}%"></div></div>
@@ -1198,11 +1209,11 @@ function renderExclusionPanel() {
     item.className = `exclusion-item${isExcluded ? ' excluded' : ''}`;
     item.id = `exc_${tienda.nombre.replace(/\s+/g,'_')}`;
     item.innerHTML = `
-      <input type="checkbox" ${isExcluded ? 'checked' : ''} 
-             onchange="toggleExcludeStore('${tienda.nombre.replace(/'/g,"\\'")}', this.checked)"
+      <input type="checkbox" ${isExcluded ? 'checked' : ''}
+             onchange="toggleExcludeStore('${esc(tienda.nombre.replace(/'/g,"\\'"))}', this.checked)"
              onclick="event.stopPropagation()">
       <div class="exclusion-item-info">
-        <div class="exclusion-item-name" title="${tienda.nombre}">${tienda.nombre}</div>
+        <div class="exclusion-item-name" title="${esc(tienda.nombre)}">${esc(tienda.nombre)}</div>
         <div class="exclusion-item-type">${tipo === 'Bodega Propia' ? '🏪 Bodega Propia' : '📦 Dropshipping'}</div>
       </div>
     `;
