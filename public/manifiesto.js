@@ -197,7 +197,6 @@ async function handleFile(event) {
         try {
           const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
           const totalPaginas = pdf.numPages;
-          console.log("PDF cargado, páginas:", totalPaginas);
 
           let textoCompleto = '';
           let usandoOCR = false;
@@ -229,24 +228,18 @@ async function handleFile(event) {
                 try {
                   // Primer intento: rotación normal
                   let canvas = await renderCanvas(0);
-                  let result = await Tesseract.recognize(canvas, 'spa', {
-                    logger: m => { if (m.status === 'recognizing text') console.log(`OCR p${i}: ${Math.round(m.progress * 100)}%`); }
-                  });
+                  let result = await Tesseract.recognize(canvas, 'spa');
                   pageText = result.data.text;
 
                   // Si no encontró guías (1000XXXXXX), intentar rotado 180°
                   const guiasEnPagina = pageText.match(/\b1000\d{6}\b/g) || [];
                   if (guiasEnPagina.length === 0) {
-                    console.log(`Página ${i}: sin guías en orientación normal, intentando 180°...`);
                     showToast(`🔄 Página ${i}: reintentando rotada 180°...`, 'info');
                     canvas = await renderCanvas(180);
-                    result = await Tesseract.recognize(canvas, 'spa', {
-                      logger: m => { if (m.status === 'recognizing text') console.log(`OCR p${i} rot180: ${Math.round(m.progress * 100)}%`); }
-                    });
+                    result = await Tesseract.recognize(canvas, 'spa');
                     const pageText180 = result.data.text;
                     const guias180 = pageText180.match(/\b1000\d{6}\b/g) || [];
                     if (guias180.length > guiasEnPagina.length) {
-                      console.log(`Página ${i}: rotación 180° encontró ${guias180.length} guías`);
                       pageText = pageText180;
                     }
                   }
@@ -259,12 +252,8 @@ async function handleFile(event) {
               }
             }
 
-            console.log(`Página ${i} texto (${pageText.length} chars):`, pageText.substring(0, 200));
             textoCompleto += pageText + '\n';
           }
-
-          console.log("--- TEXTO COMPLETO EXTRAÍDO ---");
-          console.log(textoCompleto);
 
           // Extraer guías con múltiples patrones
           const pat1000  = /\b(1000\d{6})\b/g;           // guías tipo 1000XXXXXX
@@ -278,7 +267,6 @@ async function handleFile(event) {
           ];
 
           guias = [...new Set(guiasEncontradas)];
-          console.log("Guías encontradas:", guias);
 
           if (guias.length === 0) {
             const detalle = usandoOCR

@@ -3251,25 +3251,6 @@ function renderReportZones(filter){
   if(!hasAny)c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}</div>`;
 }
 
-function debugResp(resp){
-  console.group('🔍 DEBUG - Responsable: '+resp);
-  state.racks.forEach(rack=>{
-    const cells=(state.cells[rack.id]||[]).filter(cl=>{
-      const cr=cl.responsables||[];
-      return cr.includes(resp)||(cr.length===0&&(rack.responsables||[]).includes(resp));
-    });
-    if(cells.length){
-      console.group('Rack: '+rack.name+' | rack.tiendas='+JSON.stringify(rack.tiendas||[]));
-      cells.forEach(cl=>{
-        console.log('B'+(cl.bay+1)+'N'+(cl.level+1)+' | cell.responsables='+JSON.stringify(cl.responsables||[])+' | cell.tiendas='+JSON.stringify(cl.tiendas||[]));
-      });
-      console.groupEnd();
-    }
-  });
-  console.groupEnd();
-  notif('Debug de "'+resp+'" en consola (F12)','ok');
-}
-
 function renderReportExpiry(){
   const filter=document.getElementById('rep-exp-filter')?.value||'all';
   const c=document.getElementById('rep-expiry-cards');c.innerHTML='';
