@@ -5635,25 +5635,14 @@ function toggleLock() {
   }
 }
 
-// PIN keyboard capture
+// Cierra el modal de acceso de coordinador con Escape (mientras el foco no esté en un input)
 document.addEventListener('keydown',function(e){
   const modal=document.getElementById('o-pin');
   if(!modal||!modal.classList.contains('open'))return;
-  // Don't intercept if focus is on a text/email/password input inside the modal
   const active=document.activeElement;
   if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA'))return;
-  if(e.key>='0'&&e.key<='9'){e.preventDefault();e.stopPropagation();if(typeof pinKey==='function')pinKey(e.key);}
-  else if(e.key==='Backspace'){e.preventDefault();e.stopPropagation();if(typeof pinDel==='function')pinDel();}
-  else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();modal.classList.remove('open');}
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();modal.classList.remove('open');}
 },true);
-
-function openPinChange(){ notif('Cambio de PIN no disponible en este modo','warn'); }
-function initPinSession(){
-  // PIN system replaced by email/password login — nothing to restore
-}
-
-
-function applyGuardAttrs(){}
 
 // Inicialización asíncrona corregida
 (async function(){
@@ -5686,7 +5675,6 @@ function applyGuardAttrs(){}
   try { applyTheme(currentTheme); } catch(e) {}
   try { applyI18n(); } catch(e) {}
   try { addAct(currentLang==='en'?'System started':'Sistema iniciado', 'var(--green)'); } catch(e) {}
-  try { applyGuardAttrs(); initPinSession(); } catch(e) {}
   try { initPanels(); } catch(e) {}
 })();
 
