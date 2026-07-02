@@ -751,6 +751,21 @@ function esc(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Nombre de marca guardado por el coordinador (usado en etiquetas/reportes impresos)
+function getBrandName(defaultPrefix, defaultAccent) {
+  try {
+    const n = JSON.parse(localStorage.getItem('sf_bname'));
+    return ((n?.prefix || defaultPrefix) + ' ' + (n?.accent || defaultAccent)).trim();
+  } catch {
+    return (defaultPrefix + ' ' + defaultAccent).trim();
+  }
+}
+
+// Logo guardado por el coordinador (usado en etiquetas/reportes impresos)
+function getBrandLogo() {
+  return localStorage.getItem('sf_logo') || '';
+}
+
 let state = {
   zones: [],       // cada zona ahora tendrá: area_m2, tipo (operativa/excluida)
   racks: [],       // cada rack ahora tendrá: largo_m, ancho_m
@@ -773,7 +788,7 @@ let catalogoProductos = {};
 
 async function cargarCatalogo() {
   try {
-    const data = await fetch('/api/tiendas').then(r => r.json());
+    const data = await apiRequestJSON('/api/tiendas');
     catalogoProductos = {};
     (data.tiendas || []).forEach(t => {
       catalogoProductos[String(t.id)] = (t.inventario || []).map(p => ({
@@ -894,11 +909,7 @@ async function load() {
 
   // 2. Luego, en segundo plano, obtener datos frescos del servidor
   try {
-    const response = await fetch(API_URL);
-    if (!response.ok) throw new Error('Error al cargar');
-    const data = await response.json();
-    
-    console.log('[StockForge] Respuesta del servidor:', data);
+    const data = await apiRequestJSON(API_URL);
     
     // Normalizar racks y zonas del servidor
     const racksNorm = (data.racks||[]).map(r=>({...r,zone:r.zone||r.zone_id||'',w:r.w||r.width||180,h:r.h||r.height||150}));
@@ -1052,6 +1063,98 @@ function importExcelStock(ev){
   });
 }
 
+// Detecta la fila de encabezado y las columnas de id/descripción/cantidad en un Excel/CSV de stock
+function detectExcelImportColumns(rows){
+  let headerIdx=0, colId=0, colDesc=1, colQty=2;
+  for(let i=0;i<Math.min(5,rows.length);i++){
+    const row=rows[i].map(v=>(v||'').toString().toLowerCase().trim());
+    const idC=row.findIndex(v=>v.includes('id')||v.includes('codigo')||v.includes('código')||v.includes('articulo')||v.includes('artículo'));
+    const qC=row.findIndex(v=>v.includes('costa rica')||v.includes('cr')||v.includes('cantidad')||v.includes('stock')||v.includes('existencia'));
+    const dC=row.findIndex(v=>v.includes('nombre')||v.includes('desc')||v.includes('product')||v.includes('detalle'));
+    if(idC>=0&&qC>=0){headerIdx=i;colId=idC;colQty=qC;colDesc=dC>=0?dC:-1;break;}
+  }
+  return {headerIdx, colId, colDesc, colQty};
+}
+
+// Mapa sku -> ubicaciones (rack/bay/level/índice) solo para las celdas asignadas a esa tienda
+function buildSkuLocationMap(tiendaId){
+  const skuLocMap=new Map();
+  state.racks.forEach(rack=>{
+    (state.cells[rack.id]||[]).forEach(cell=>{
+      // Only match cells that explicitly have this tienda assigned — no rack fallback
+      const cellTiendas=cell.tiendas||[];
+      if(!cellTiendas.includes(tiendaId))return;
+      (cell.skus||[]).forEach((s,si)=>{
+        if(!s.sku)return;
+        const key=s.sku.toString().trim().replace(/^0+(\d)/,'$1').toLowerCase();
+        if(!skuLocMap.has(key))skuLocMap.set(key,[]);
+        skuLocMap.get(key).push({rackId:rack.id,bay:cell.bay,level:cell.level,skuIdx:si});
+      });
+    });
+  });
+  return skuLocMap;
+}
+
+// Aplica las cantidades del Excel/CSV a las celdas encontradas, devuelve el resumen del import
+function applyExcelImportRows(dataRows, colId, colQty, skuLocMap){
+  let updated=0, notFound=0;
+  const notFoundSkus=[];
+
+  dataRows.forEach(row=>{
+    if(!row||!row.length)return;
+    const rawId=(row[colId]||'').toString().trim();
+    if(!rawId)return;
+    const rawQty=colQty>=0?(row[colQty]||'').toString().trim():'';
+    const qty=rawQty===''?0:parseFloat(rawQty.replace(',','.'));
+    if(isNaN(qty))return;
+
+    const key=rawId.replace(/^0+(\d)/,'$1').toLowerCase();
+    const locs=skuLocMap.get(key);
+    if(!locs||!locs.length){
+      notFound++;
+      notFoundSkus.push(rawId);
+      return;
+    }
+    locs.forEach(({rackId,bay,level,skuIdx})=>{
+      const cell=(state.cells[rackId]||[]).find(c=>c.bay===bay&&c.level===level);
+      if(!cell||!cell.skus[skuIdx])return;
+      cell.skus[skuIdx].qty=String(qty);
+      updated++;
+    });
+  });
+
+  return {updated, notFound, notFoundSkus};
+}
+
+// Muestra el modal con el resumen de resultados de una importación de Excel/CSV
+function showExcelImportResultModal(tienda, updated, notFound, notFoundSkus){
+  const ov2=document.createElement('div');
+  ov2.className='ov';ov2.id='o-import-result';
+  ov2.innerHTML=`<div class="modal" style="max-width:420px">
+    <div class="mhd"><span class="mttl">📊 Resultado — ${esc(tienda.name)}</span><button class="cls" onclick="closeO('o-import-result')">✕</button></div>
+    <div class="mbdy" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px">
+        <div style="flex:1;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:6px;padding:12px;text-align:center">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--green);font-weight:900">${updated}</div>
+          <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Actualizados</div>
+        </div>
+        <div style="flex:1;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:6px;padding:12px;text-align:center">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--accent);font-weight:900">${notFound}</div>
+          <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Sin ubicar</div>
+        </div>
+      </div>
+      ${notFoundSkus.length?`<div>
+        <div style="font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">IDs sin celda asignada en ${tienda.name}</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--dim);max-height:160px;overflow-y:auto;line-height:1.8">${notFoundSkus.map(esc).join('<br>')}</div>
+      </div>`:''}
+      <button class="btn bp" onclick="closeO('o-import-result')" style="width:100%">OK</button>
+    </div>
+  </div>`;
+  ov2.addEventListener('click',e=>{if(e.target===ov2)ov2.classList.remove('open');});
+  document.body.appendChild(ov2);
+  requestAnimationFrame(()=>ov2.classList.add('open'));
+}
+
 function _doExcelImport(tiendaId, ext, file){
   const tienda=state.tiendas.find(t=>t.id===tiendaId);
   if(!tienda){notif('Tienda no encontrada','err');return;}
@@ -1059,60 +1162,15 @@ function _doExcelImport(tiendaId, ext, file){
   const processRows=(rows)=>{
     if(!rows.length){notif('Archivo vacío','err');return;}
 
-    // Detect header row
-    let headerIdx=0, colId=0, colDesc=1, colQty=2;
-    for(let i=0;i<Math.min(5,rows.length);i++){
-      const row=rows[i].map(v=>(v||'').toString().toLowerCase().trim());
-      const idC=row.findIndex(v=>v.includes('id')||v.includes('codigo')||v.includes('código')||v.includes('articulo')||v.includes('artículo'));
-      const qC=row.findIndex(v=>v.includes('costa rica')||v.includes('cr')||v.includes('cantidad')||v.includes('stock')||v.includes('existencia'));
-      const dC=row.findIndex(v=>v.includes('nombre')||v.includes('desc')||v.includes('product')||v.includes('detalle'));
-      if(idC>=0&&qC>=0){headerIdx=i;colId=idC;colQty=qC;colDesc=dC>=0?dC:-1;break;}
-    }
+    const {headerIdx, colId, colQty}=detectExcelImportColumns(rows);
     // Skip header row if first value is non-numeric
     const startRow=headerIdx+( (!rows[headerIdx]||isNaN(parseFloat((rows[headerIdx][colId]||'').toString().trim())))?1:0 );
     const dataRows=rows.slice(startRow);
 
     // Build SKU lookup — ONLY cells assigned to selected tienda
-    const skuLocMap=new Map();
-    state.racks.forEach(rack=>{
-      (state.cells[rack.id]||[]).forEach(cell=>{
-        // Only match cells that explicitly have this tienda assigned — no rack fallback
-        const cellTiendas=cell.tiendas||[];
-        if(!cellTiendas.includes(tiendaId))return;
-        (cell.skus||[]).forEach((s,si)=>{
-          if(!s.sku)return;
-          const key=s.sku.toString().trim().replace(/^0+(\d)/,'$1').toLowerCase();
-          if(!skuLocMap.has(key))skuLocMap.set(key,[]);
-          skuLocMap.get(key).push({rackId:rack.id,bay:cell.bay,level:cell.level,skuIdx:si});
-        });
-      });
-    });
+    const skuLocMap=buildSkuLocationMap(tiendaId);
 
-    let updated=0, notFound=0;
-    const notFoundSkus=[];
-
-    dataRows.forEach(row=>{
-      if(!row||!row.length)return;
-      const rawId=(row[colId]||'').toString().trim();
-      if(!rawId)return;
-      const rawQty=colQty>=0?(row[colQty]||'').toString().trim():'';
-      const qty=rawQty===''?0:parseFloat(rawQty.replace(',','.'));
-      if(isNaN(qty))return;
-
-      const key=rawId.replace(/^0+(\d)/,'$1').toLowerCase();
-      const locs=skuLocMap.get(key);
-      if(!locs||!locs.length){
-        notFound++;
-        notFoundSkus.push(rawId);
-        return;
-      }
-      locs.forEach(({rackId,bay,level,skuIdx})=>{
-        const cell=(state.cells[rackId]||[]).find(c=>c.bay===bay&&c.level===level);
-        if(!cell||!cell.skus[skuIdx])return;
-        cell.skus[skuIdx].qty=String(qty);
-        updated++;
-      });
-    });
+    const {updated, notFound, notFoundSkus}=applyExcelImportRows(dataRows, colId, colQty, skuLocMap);
 
     if(!updated&&!notFound){notif('No se encontraron filas válidas','warn');return;}
 
@@ -1125,34 +1183,9 @@ function _doExcelImport(tiendaId, ext, file){
       rack:'',rackId:'',bay:0,level:0,note:file.name});
     if(state.movements.length>1000)state.movements=state.movements.slice(-1000);
     save();
-    addAct(`Stock <strong>${tienda.name}</strong> importado — ${updated} actualizado${updated!==1?'s':''}${notFound?' · '+notFound+' no encontrados':''}`, 'var(--green)');
+    addAct(`Stock <strong>${esc(tienda.name)}</strong> importado — ${updated} actualizado${updated!==1?'s':''}${notFound?' · '+notFound+' no encontrados':''}`, 'var(--green)');
 
-    // Result modal
-    const ov2=document.createElement('div');
-    ov2.className='ov';ov2.id='o-import-result';
-    ov2.innerHTML=`<div class="modal" style="max-width:420px">
-      <div class="mhd"><span class="mttl">📊 Resultado — ${esc(tienda.name)}</span><button class="cls" onclick="closeO('o-import-result')">✕</button></div>
-      <div class="mbdy" style="padding:16px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;gap:10px">
-          <div style="flex:1;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:6px;padding:12px;text-align:center">
-            <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--green);font-weight:900">${updated}</div>
-            <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Actualizados</div>
-          </div>
-          <div style="flex:1;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:6px;padding:12px;text-align:center">
-            <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--accent);font-weight:900">${notFound}</div>
-            <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Sin ubicar</div>
-          </div>
-        </div>
-        ${notFoundSkus.length?`<div>
-          <div style="font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">IDs sin celda asignada en ${tienda.name}</div>
-          <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--dim);max-height:160px;overflow-y:auto;line-height:1.8">${notFoundSkus.map(esc).join('<br>')}</div>
-        </div>`:''}
-        <button class="btn bp" onclick="closeO('o-import-result')" style="width:100%">OK</button>
-      </div>
-    </div>`;
-    ov2.addEventListener('click',e=>{if(e.target===ov2)ov2.classList.remove('open');});
-    document.body.appendChild(ov2);
-    requestAnimationFrame(()=>ov2.classList.add('open'));
+    showExcelImportResultModal(tienda, updated, notFound, notFoundSkus);
   };
 
   if(ext==='csv'){
@@ -1464,30 +1497,6 @@ function guardarConfigBodega(){
   notif('✅ Configuración de bodega actualizada','ok');
 }
 
-function actualizarMetricasEspacio(){
-  if(!state.bodega)state.bodega={area_total_m2:500,area_pasillos_m2:80,area_excluida_m2:0};
-  let areaExcluida=0;
-  state.zones.forEach(z=>{if(z.tipo==='excluida'||z.tipo==='pasillo')areaExcluida+=parseFloat(z.area_m2||0);});
-  let areaOcupada=0;
-  state.racks.forEach(r=>{const largo=parseFloat(r.largo_m||0);const ancho=parseFloat(r.ancho_m||0);areaOcupada+=largo*ancho;});
-  const areaPasillos=parseFloat(state.bodega.area_pasillos_m2||80);
-  const areaTotal=parseFloat(state.bodega.area_total_m2||500);
-  const areaUtil=Math.max(0,areaTotal-areaPasillos-areaExcluida);
-  const pctOcupado=areaUtil>0?Math.round((areaOcupada/areaUtil)*100):0;
-
-  const elUtil=document.getElementById('st-util');
-  const elOcup=document.getElementById('st-ocupado-area');
-  const elDisp=document.getElementById('st-disponible');
-  if(elUtil)elUtil.innerHTML=`${areaUtil.toFixed(0)}<small>m²</small>`;
-  if(elOcup)elOcup.innerHTML=`${areaOcupada.toFixed(1)}<small>m²</small>`;
-  if(elDisp)elDisp.innerHTML=`${(areaUtil-areaOcupada).toFixed(1)}<small>m²</small>`;
-
-  const mbOcup=document.getElementById('mb-ocupado-area');
-  const mbDisp=document.getElementById('mb-disponible');
-  if(mbOcup)mbOcup.style.width=`${pctOcupado}%`;
-  if(mbDisp)mbDisp.style.width=`${100-pctOcupado}%`;
-}
-
 function saveZone(){
   if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');return;}
   const name=document.getElementById('zn').value.trim();
@@ -1642,7 +1651,7 @@ function openCellEdit(bay,level,rackId){
         else{chip.style.background='var(--bg3)';chip.style.borderColor='var(--border2)';chip.style.color='var(--dim)';}
       };
       applyStyle(on);
-      chip.innerHTML='<span style="font-size:.85rem">'+(on?'✓':'')+'</span> '+item.name+(item.role||item.code?'<span style="font-size:.8rem;opacity:.55;margin-left:3px">'+(item.role||item.code)+'</span>':'');
+      chip.innerHTML='<span style="font-size:.85rem">'+(on?'✓':'')+'</span> '+esc(item.name)+(item.role||item.code?'<span style="font-size:.8rem;opacity:.55;margin-left:3px">'+esc(item.role||item.code)+'</span>':'');
       chip.dataset.id=item.id;chip.dataset.on=on?'1':'0';
       chip.onclick=()=>{
         const isOn=chip.dataset.on==='1';
@@ -1691,16 +1700,16 @@ function renderSkuList(skus){
       <div class="sku-row-top">
         <div style="position:relative;display:inline-block">
           <input placeholder="Código o nombre..." data-i18n="edit_sku_ph" data-i18n-target="placeholder"
-            value="${s.sku||''}" data-f="sku" data-i="${i}" style="width:110px"
+            value="${esc(s.sku||'')}" data-f="sku" data-i="${i}" style="width:110px"
             oninput="onSkuInput(this,${i})"
             onblur="setTimeout(()=>{const d=document.getElementById('sku-sg-${i}');if(d)d.style.display='none'},200)"
             autocomplete="off">
           <div id="sku-sg-${i}" class="sku-suggest"></div>
         </div>
         <div class="sku-sep"></div>
-        <input placeholder="Descripción" data-i18n="edit_desc_ph" data-i18n-target="placeholder" value="${s.desc||''}" data-f="desc" data-i="${i}" style="flex:1">
+        <input placeholder="Descripción" data-i18n="edit_desc_ph" data-i18n-target="placeholder" value="${esc(s.desc||'')}" data-f="desc" data-i="${i}" style="flex:1">
         <div class="sku-sep"></div>
-        <input placeholder="Cant." data-i18n="edit_qty_ph" data-i18n-target="placeholder" value="${s.qty||''}" data-f="qty" data-i="${i}" style="width:40px${lowStock?';color:var(--red)':''}">
+        <input placeholder="Cant." data-i18n="edit_qty_ph" data-i18n-target="placeholder" value="${esc(s.qty||'')}" data-f="qty" data-i="${i}" style="width:40px${lowStock?';color:var(--red)':''}">
         <select data-f="unit" data-i="${i}" style="background:none;border:none;outline:none;color:var(--dim);font-family:'Barlow Condensed',sans-serif;font-size:1rem;cursor:pointer;width:50px">
           ${['pcs','cajas','kg','pallets','L','sacos','rollos','sets'].map(u=>`<option ${s.unit===u?'selected':''}>${u}</option>`).join('')}
         </select>
@@ -1708,16 +1717,16 @@ function renderSkuList(skus){
       </div>
       <div class="sku-row-bot">
         <span class="sku-exp-lbl">📅 Vence:</span>
-        <input type="date" class="sku-exp-inp" data-f="expiry" data-i="${i}" value="${s.expiry||''}" style="color:${expColor}">
+        <input type="date" class="sku-exp-inp" data-f="expiry" data-i="${i}" value="${esc(s.expiry||'')}" style="color:${expColor}">
         ${days!==null?`<span style="font-size:.95rem;font-weight:700;color:${expColor};margin-left:4px">${days<0?'VENCIDO hace '+Math.abs(days)+'d':days===0?'HOY':days+'d'}</span>`:''}
         <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
           <span style="display:flex;align-items:center;gap:4px" title="${currentLang==='en'?'Unit cost (for inventory value report)':'Costo unitario (para reporte de valor de inventario)'}">
             <span style="font-size:.9rem;color:var(--dim)">💲</span>
-            <input type="number" placeholder="0.00" value="${s.cost||''}" data-f="cost" data-i="${i}" min="0" step="0.01" style="width:64px;background:none;border:none;border-bottom:1px solid var(--border2);outline:none;color:var(--cyan);font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:right">
+            <input type="number" placeholder="0.00" value="${esc(s.cost||'')}" data-f="cost" data-i="${i}" min="0" step="0.01" style="width:64px;background:none;border:none;border-bottom:1px solid var(--border2);outline:none;color:var(--cyan);font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:right">
           </span>
           <span style="display:flex;align-items:center;gap:4px">
             <span style="font-size:.9rem;color:var(--dim)">⚠ Mín:</span>
-            <input type="number" placeholder="0" value="${s.minStock||''}" data-f="minStock" data-i="${i}" min="0" style="width:48px;background:none;border:none;border-bottom:1px solid ${lowStock?'var(--red)':'var(--border2)'};outline:none;color:${lowStock?'var(--red)':'var(--dim)'};font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:center" title="Stock mínimo — alerta cuando la cantidad esté en o por debajo de este valor">
+            <input type="number" placeholder="0" value="${esc(s.minStock||'')}" data-f="minStock" data-i="${i}" min="0" style="width:48px;background:none;border:none;border-bottom:1px solid ${lowStock?'var(--red)':'var(--border2)'};outline:none;color:${lowStock?'var(--red)':'var(--dim)'};font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:center" title="Stock mínimo — alerta cuando la cantidad esté en o por debajo de este valor">
           </span>
         </span>
       </div>`;
@@ -2061,9 +2070,8 @@ function openTransferFromView(){
   closeO('o-view');openTransferWithOrigin(viewCtx);
 }
 
-// ═══════════════ PRINT LABEL 6×4" LANDSCAPE ═══════════════
-function printLabel(fmt){
-  if(!viewCtx)return;
+// Calcula todos los datos derivados (colores, tamaños, chips) para imprimir una etiqueta de celda
+function computePrintLabelData(fmt){
   const rack=state.racks.find(r=>r.id===viewCtx.rackId);
   const cell=(state.cells[viewCtx.rackId]||[]).find(c=>c.bay===viewCtx.bay&&c.level===viewCtx.level)||{state:'empty',skus:[],notes:'',tiendas:[],responsables:[]};
   const zone=state.zones.find(z=>z.id===rack.zone);
@@ -2072,8 +2080,8 @@ function printLabel(fmt){
   const stateNames={empty:'VACÍO',full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO'};
   const stateColors={empty:'#ddd',full:'#00cc66',partial:'#ffcc00',reserved:'#00aaff',blocked:'#ff3344'};
   const stateTxt={empty:'#444',full:'#000',partial:'#000',reserved:'#000',blocked:'#fff'};
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const zoneColor=zone?(zone.color.startsWith('var(')?'#555':zone.color):'#aaa';
   const sc=stateColors[cell.state]||'#ddd';
   const st=stateTxt[cell.state]||'#000';
@@ -2082,8 +2090,8 @@ function printLabel(fmt){
 
   // shared HTML snippets
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="width:44px;height:44px;object-fit:contain;border-radius:4px;">'):'<div style="width:44px;height:44px;background:#f0a500;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#000">B</div>';
-  const chipResp=resps.map(r=>`<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:${is4x6?'14':'16'}px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">${r}</span>`).join('');
-  const chipShop=cellShops.map(s=>`<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:${is4x6?'14':'16'}px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">${s}</span>`).join('');
+  const chipResp=resps.map(r=>`<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:${is4x6?'14':'16'}px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">${esc(r)}</span>`).join('');
+  const chipShop=cellShops.map(s=>`<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:${is4x6?'14':'16'}px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">${esc(s)}</span>`).join('');
 
   const pageSize=is4x6?'6in 4in':'210mm 297mm';
   const winW=is4x6?860:680; const winH=is4x6?600:900;
@@ -2094,11 +2102,19 @@ function printLabel(fmt){
   const headRackSize=is4x6?'30px':'44px';
   const headCoordSize=is4x6?'16px':'22px';
 
-  const win=window.open('','_blank',`width=${winW},height=${winH}`);
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Etiqueta ${fmt?.toUpperCase()||'4X6'} — ${rack.name} B${viewCtx.bay+1}N${viewCtx.level+1}</title>
+  return {
+    fmt, rack, cell, zone, resps, cellShops, bname, logoSrc, zoneColor, sc, st, sn, is4x6,
+    logoEl, chipResp, chipShop, pageSize, winW, winH, lblW, lblH, numSize, numSmSize,
+    colNumW, headRackSize, headCoordSize
+  };
+}
+
+// Construye el documento HTML completo de la etiqueta a partir de los datos calculados
+function buildPrintLabelHtml(d){
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Etiqueta ${d.fmt?.toUpperCase()||'4X6'} — ${esc(d.rack.name)} B${viewCtx.bay+1}N${viewCtx.level+1}</title>
 <style>
-  @page{size:${pageSize};margin:${is4x6?'0':'15mm'};}
+  @page{size:${d.pageSize};margin:${d.is4x6?'0':'15mm'};}
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{background:#e8e8e8;font-family:Arial,sans-serif;}
   body{display:flex;flex-direction:column;align-items:center;}
@@ -2108,43 +2124,43 @@ function printLabel(fmt){
   .fmt-badge{display:inline-block;background:#333;color:#f0a500;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:2px;vertical-align:middle;margin-left:10px;}
   @media print{.toolbar{display:none;}html,body{background:#fff;}}
   /* LABEL */
-  .lbl{width:${lblW};${is4x6?('height:'+lblH+';'):''}background:#fff;display:${is4x6?'grid':'flex'};${is4x6?'grid-template-rows:auto 1fr auto;':'flex-direction:column;'}border:${is4x6?'0':'2px solid #ddd'};overflow:hidden;margin:${is4x6?'0':'20px auto'};}
-  .hd{background:#111;color:#fff;padding:${is4x6?'12px 20px':'18px 24px'};display:flex;align-items:center;justify-content:space-between;}
-  .hd-brand{font-size:${is4x6?'13':'15'}px;letter-spacing:3px;text-transform:uppercase;opacity:.85;line-height:1.5;}
-  .hd-brand small{display:block;font-size:${is4x6?'9':'11'}px;opacity:.5;letter-spacing:2px;}
-  .hd-rack{font-size:${headRackSize};font-weight:900;letter-spacing:3px;color:#f0a500;line-height:1;}
-  .hd-coord{font-size:${headCoordSize};font-weight:700;color:#bbb;letter-spacing:3px;margin-top:4px;}
-  .body{display:flex;overflow:hidden;${is4x6?'':'min-height:160mm;'}}
-  .col-nums{width:${colNumW};flex-shrink:0;background:#f7f7f7;border-right:2px solid #ddd;display:flex;flex-direction:column;justify-content:center;gap:${is4x6?'10':'16'}px;padding:${is4x6?'14px 16px':'20px 18px'};}
-  .num-box{background:#fff;border:2.5px solid #333;border-radius:8px;text-align:center;padding:${is4x6?'10px 8px':'16px 10px'};}
-  .num-lbl{font-size:${is4x6?'11':'14'}px;text-transform:uppercase;letter-spacing:3px;color:#999;margin-bottom:${is4x6?'4':'6'}px;font-weight:700;}
-  .num-val{font-size:${numSize};font-weight:900;font-family:'Courier New',monospace;color:#111;line-height:1;}
-  .num-val-sm{font-size:${numSmSize};font-weight:900;font-family:'Courier New',monospace;color:#111;letter-spacing:2px;}
-  .num-val-rack{font-size:${numSmSize};font-weight:900;font-family:'Courier New',monospace;color:#111;letter-spacing:1px;word-break:break-word;overflow-wrap:break-word;line-height:1.15;hyphens:auto;}
+  .lbl{width:${d.lblW};${d.is4x6?('height:'+d.lblH+';'):''}background:#fff;display:${d.is4x6?'grid':'flex'};${d.is4x6?'grid-template-rows:auto 1fr auto;':'flex-direction:column;'}border:${d.is4x6?'0':'2px solid #ddd'};overflow:hidden;margin:${d.is4x6?'0':'20px auto'};}
+  .hd{background:#111;color:#fff;padding:${d.is4x6?'12px 20px':'18px 24px'};display:flex;align-items:center;justify-content:space-between;}
+  .hd-brand{font-size:${d.is4x6?'13':'15'}px;letter-spacing:3px;text-transform:uppercase;opacity:.85;line-height:1.5;}
+  .hd-brand small{display:block;font-size:${d.is4x6?'9':'11'}px;opacity:.5;letter-spacing:2px;}
+  .hd-rack{font-size:${d.headRackSize};font-weight:900;letter-spacing:3px;color:#f0a500;line-height:1;}
+  .hd-coord{font-size:${d.headCoordSize};font-weight:700;color:#bbb;letter-spacing:3px;margin-top:4px;}
+  .body{display:flex;overflow:hidden;${d.is4x6?'':'min-height:160mm;'}}
+  .col-nums{width:${d.colNumW};flex-shrink:0;background:#f7f7f7;border-right:2px solid #ddd;display:flex;flex-direction:column;justify-content:center;gap:${d.is4x6?'10':'16'}px;padding:${d.is4x6?'14px 16px':'20px 18px'};}
+  .num-box{background:#fff;border:2.5px solid #333;border-radius:8px;text-align:center;padding:${d.is4x6?'10px 8px':'16px 10px'};}
+  .num-lbl{font-size:${d.is4x6?'11':'14'}px;text-transform:uppercase;letter-spacing:3px;color:#999;margin-bottom:${d.is4x6?'4':'6'}px;font-weight:700;}
+  .num-val{font-size:${d.numSize};font-weight:900;font-family:'Courier New',monospace;color:#111;line-height:1;}
+  .num-val-sm{font-size:${d.numSmSize};font-weight:900;font-family:'Courier New',monospace;color:#111;letter-spacing:2px;}
+  .num-val-rack{font-size:${d.numSmSize};font-weight:900;font-family:'Courier New',monospace;color:#111;letter-spacing:1px;word-break:break-word;overflow-wrap:break-word;line-height:1.15;hyphens:auto;}
   .col-info{flex:1;display:flex;flex-direction:column;}
   .info-top{display:flex;border-bottom:1.5px solid #eee;}
-  .ibox{flex:1;padding:${is4x6?'13px 16px':'18px 20px'};border-right:1.5px solid #eee;}
+  .ibox{flex:1;padding:${d.is4x6?'13px 16px':'18px 20px'};border-right:1.5px solid #eee;}
   .ibox:last-child{border-right:none;}
-  .i-lbl{font-size:${is4x6?'11':'13'}px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:${is4x6?'6':'8'}px;font-weight:700;}
-  .i-val{font-size:${is4x6?'20':'26'}px;font-weight:800;color:#111;}
-  .state-pill{display:inline-block;padding:${is4x6?'6px 20px':'10px 28px'};border-radius:40px;font-size:${is4x6?'16':'20'}px;font-weight:900;letter-spacing:2px;text-transform:uppercase;background:${sc};color:${st};}
-  .people{flex:1;padding:${is4x6?'13px 16px':'18px 20px'};display:flex;gap:16px;flex-wrap:wrap;overflow:hidden;}
-  .pgroup{flex:1;min-width:${is4x6?'0':'120px'};}
-  .p-lbl{font-size:${is4x6?'11':'13'}px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:${is4x6?'8':'10'}px;font-weight:700;}
-  .notes{background:#fffbe6;border-top:1.5px solid #ffe066;padding:${is4x6?'8px 16px':'12px 20px'};font-size:${is4x6?'13':'16'}px;color:#664400;font-style:italic;flex-shrink:0;}
-  .ft{background:#f5f5f5;border-top:2px solid #ddd;padding:${is4x6?'7px 20px':'10px 24px'};display:flex;justify-content:space-between;align-items:center;}
-  .ft-date{font-size:${is4x6?'11':'13'}px;color:#aaa;}
-  .ft-code{font-family:'Courier New',monospace;font-size:${is4x6?'14':'16'}px;letter-spacing:5px;color:#555;font-weight:700;}
+  .i-lbl{font-size:${d.is4x6?'11':'13'}px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:${d.is4x6?'6':'8'}px;font-weight:700;}
+  .i-val{font-size:${d.is4x6?'20':'26'}px;font-weight:800;color:#111;}
+  .state-pill{display:inline-block;padding:${d.is4x6?'6px 20px':'10px 28px'};border-radius:40px;font-size:${d.is4x6?'16':'20'}px;font-weight:900;letter-spacing:2px;text-transform:uppercase;background:${d.sc};color:${d.st};}
+  .people{flex:1;padding:${d.is4x6?'13px 16px':'18px 20px'};display:flex;gap:16px;flex-wrap:wrap;overflow:hidden;}
+  .pgroup{flex:1;min-width:${d.is4x6?'0':'120px'};}
+  .p-lbl{font-size:${d.is4x6?'11':'13'}px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:${d.is4x6?'8':'10'}px;font-weight:700;}
+  .notes{background:#fffbe6;border-top:1.5px solid #ffe066;padding:${d.is4x6?'8px 16px':'12px 20px'};font-size:${d.is4x6?'13':'16'}px;color:#664400;font-style:italic;flex-shrink:0;}
+  .ft{background:#f5f5f5;border-top:2px solid #ddd;padding:${d.is4x6?'7px 20px':'10px 24px'};display:flex;justify-content:space-between;align-items:center;}
+  .ft-date{font-size:${d.is4x6?'11':'13'}px;color:#aaa;}
+  .ft-code{font-family:'Courier New',monospace;font-size:${d.is4x6?'14':'16'}px;letter-spacing:5px;color:#555;font-weight:700;}
 </style></head><body>
 <div class="toolbar">
-  <button onclick="window.print()">🖨&nbsp; IMPRIMIR ${is4x6?'6×4"':'A4'}</button>
+  <button onclick="window.print()">🖨&nbsp; IMPRIMIR ${d.is4x6?'6×4"':'A4'}</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
-  <span class="fmt-badge">${is4x6?'LANDSCAPE 6×4"':'A4 PORTRAIT'}</span>
+  <span class="fmt-badge">${d.is4x6?'LANDSCAPE 6×4"':'A4 PORTRAIT'}</span>
 </div>
 <div class="lbl">
   <div class="hd">
-    <div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${bname}<small>${t('lbl_location')}</small></div></div>
-    <div style="text-align:right"><div class="hd-rack">${rack.name}</div><div class="hd-coord">BAHÍA ${viewCtx.bay+1} &nbsp;·&nbsp; NIVEL ${viewCtx.level+1}</div></div>
+    <div style="display:flex;align-items:center;gap:12px">${d.logoEl}<div class="hd-brand">${d.bname}<small>${t('lbl_location')}</small></div></div>
+    <div style="text-align:right"><div class="hd-rack">${esc(d.rack.name)}</div><div class="hd-coord">BAHÍA ${viewCtx.bay+1} &nbsp;·&nbsp; NIVEL ${viewCtx.level+1}</div></div>
   </div>
   <div class="body">
     <div class="col-nums">
@@ -2153,25 +2169,33 @@ function printLabel(fmt){
     </div>
     <div class="col-info">
       <div class="info-top">
-        <div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?zone.name:t('no_zone')}</div></div>
-        <div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${sn}</span></div>
+        <div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${d.zoneColor}">${d.zone?esc(d.zone.name):t('no_zone')}</div></div>
+        <div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${d.sn}</span></div>
       </div>
       <div class="people">
-        ${resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+chipResp+'</div></div>'):''}
-        ${cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+chipShop+'</div></div>'):(!resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${t('catalog_no_people').replace(' registrados','')+'/'+t('catalog_no_shops').replace(' registradas','')}</div>`:'')}
+        ${d.resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+d.chipResp+'</div></div>'):''}
+        ${d.cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+d.chipShop+'</div></div>'):(!d.resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${t('catalog_no_people').replace(' registrados','')+'/'+t('catalog_no_shops').replace(' registradas','')}</div>`:'')}
       </div>
-      ${cell.notes?('<div class="notes">📝 '+cell.notes+'</div>'):''}
+      ${d.cell.notes?('<div class="notes">📝 '+esc(d.cell.notes)+'</div>'):''}
     </div>
   </div>
   <div class="ft">
     <span class="ft-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>
     <div style="display:flex;align-items:center;gap:12px">
-      <span class="ft-code">${rack.name}-B${viewCtx.bay+1}N${viewCtx.level+1}</span>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=${is4x6?'72x72':'90x90'}&data=${encodeURIComponent(rack.name+'-B'+(viewCtx.bay+1)+'N'+(viewCtx.level+1)+(zone?' ('+zone.name+')':''))}" style="width:${is4x6?'52':'68'}px;height:${is4x6?'52':'68'}px;border-radius:3px;" alt="QR">
+      <span class="ft-code">${esc(d.rack.name)}-B${viewCtx.bay+1}N${viewCtx.level+1}</span>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=${d.is4x6?'72x72':'90x90'}&data=${encodeURIComponent(d.rack.name+'-B'+(viewCtx.bay+1)+'N'+(viewCtx.level+1)+(d.zone?' ('+d.zone.name+')':''))}" style="width:${d.is4x6?'52':'68'}px;height:${d.is4x6?'52':'68'}px;border-radius:3px;" alt="QR">
     </div>
   </div>
 </div>
-</body></html>`);
+</body></html>`;
+}
+
+// ═══════════════ PRINT LABEL 6×4" LANDSCAPE ═══════════════
+function printLabel(fmt){
+  if(!viewCtx)return;
+  const d=computePrintLabelData(fmt);
+  const win=window.open('','_blank',`width=${d.winW},height=${d.winH}`);
+  win.document.write(buildPrintLabelHtml(d));
   win.document.close();
 }
 // ═══════════════ RACK SIGN ═══════════════
@@ -2182,16 +2206,16 @@ function printRackSign(rackId){
   const zoneColor=zone?(zone.color.startsWith('var(')?'#555':zone.color):'#aaa';
   const resps=resolvePeople(rack.responsables||[]);
   const shops=resolveTiendas(rack.tiendas||[]);
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="height:52px;width:52px;object-fit:contain;border-radius:6px;">'):'<div style="width:52px;height:52px;background:#f0a500;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#000;font-family:Arial">B</div>';
   const bayLabels=Array.from({length:rack.bays},(_,b)=>'<div style="flex:1;text-align:center;background:#1a1a1a;color:#f0a500;font-family:\'Courier New\',monospace;font-size:22px;font-weight:900;padding:8px 0;border-right:1px solid #333;letter-spacing:2px">B'+(b+1)+'</div>').join('');
-  const respChips=resps.map(r=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:40px;font-size:16px;font-weight:700;background:#e6f0ff;border:2px solid #88bbff;color:#003388;margin:4px 6px 4px 0">'+r+'</span>').join('');
-  const shopChips=shops.map(s=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:40px;font-size:16px;font-weight:700;background:#fff5e0;border:2px solid #ffc840;color:#885500;margin:4px 6px 4px 0">'+s+'</span>').join('');
+  const respChips=resps.map(r=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:40px;font-size:16px;font-weight:700;background:#e6f0ff;border:2px solid #88bbff;color:#003388;margin:4px 6px 4px 0">'+esc(r)+'</span>').join('');
+  const shopChips=shops.map(s=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:40px;font-size:16px;font-weight:700;background:#fff5e0;border:2px solid #ffc840;color:#885500;margin:4px 6px 4px 0">'+esc(s)+'</span>').join('');
 
   const win=window.open('','_blank','width=700,height=860');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Letrero — ${rack.name}</title>
+<title>Letrero — ${esc(rack.name)}</title>
 <style>
   @page{size:A4;margin:0;}
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -2236,11 +2260,11 @@ function printRackSign(rackId){
 <div class="sign">
   <div class="s-top">
     <div class="s-brand">${logoEl}<div class="s-brand-txt"><strong>${bname}</strong>${currentLang==='en'?'Rack Sign':'Letrero de Identificación'}</div></div>
-    ${zone?('<div class="s-zone"><div class="s-zone-dot" style="background:'+zoneColor+'"></div><div class="s-zone-name" style="color:'+zoneColor+'">'+zone.name+'</div></div>'):'<div></div>'}
+    ${zone?('<div class="s-zone"><div class="s-zone-dot" style="background:'+zoneColor+'"></div><div class="s-zone-name" style="color:'+zoneColor+'">'+esc(zone.name)+'</div></div>'):'<div></div>'}
   </div>
   <div class="s-hero">
     <div class="s-rack-label">Rack</div>
-    <div class="s-rack-name">${rack.name}</div>
+    <div class="s-rack-name">${esc(rack.name)}</div>
     <div class="s-dims">${rack.bays} Bahías &nbsp;·&nbsp; ${rack.levels} Niveles</div>
   </div>
   <div class="s-bays">${bayLabels}</div>
@@ -2256,7 +2280,7 @@ function printRackSign(rackId){
       </div>
     </div>
     <div class="s-footer-bottom">
-      <span class="s-footer-code">${rack.name}</span>
+      <span class="s-footer-code">${esc(rack.name)}</span>
       <span class="s-footer-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>
     </div>
   </div>
@@ -2291,10 +2315,10 @@ function saveRack(){
       if(cl.tiendas&&cl.tiendas.length)
         cl.tiendas=cl.tiendas.filter(id=>tiendas.includes(id));
     });
-    buildCells(editRackId);addAct(`Rack <strong>${name}</strong> ${currentLang==='en'?'updated':'actualizado'}`,'var(--cyan)');notif(`"${name}" ${currentLang==='en'?'updated':'actualizado'}`,'ok');
+    buildCells(editRackId);addAct(`Rack <strong>${esc(name)}</strong> ${currentLang==='en'?'updated':'actualizado'}`,'var(--cyan)');notif(`"${name}" ${currentLang==='en'?'updated':'actualizado'}`,'ok');
   }else{
     const id='R'+Date.now();state.racks.push({id,name,bays,levels,w,h,x,y,zone,responsables,tiendas,largo_m:largoReal,ancho_m:anchoReal});
-    buildCells(id);addAct(`Rack <strong>${name}</strong> ${currentLang==='en'?'created':'creado'}`,'var(--green)');notif(`"${name}" ${currentLang==='en'?'added':'agregado'}`,'ok');
+    buildCells(id);addAct(`Rack <strong>${esc(name)}</strong> ${currentLang==='en'?'created':'creado'}`,'var(--green)');notif(`"${name}" ${currentLang==='en'?'added':'agregado'}`,'ok');
   }
   closeO('o-rack');save();renderFloor();renderZoneList();updateStats();actualizarMetricasEspacio();updateExpiryPanel();updateLowStockPanel();
 }
@@ -2399,7 +2423,7 @@ function setupDrag(wrap,rack){
   });
   document.addEventListener('mouseup',()=>{
     if(!drag)return;drag=false;wrap.classList.remove('dragging');
-    if(moved){save();renderZoneBgs();resizeFloor();addAct(`Rack <strong>${rack.name}</strong> reubicado`,'var(--dim)');}
+    if(moved){save();renderZoneBgs();resizeFloor();addAct(`Rack <strong>${esc(rack.name)}</strong> reubicado`,'var(--dim)');}
     else selectRack(rack.id);
   });
 }
@@ -2447,7 +2471,7 @@ function deleteRack(id){
   state.racks=state.racks.filter(r=>r.id!==id);delete state.cells[id];
   state.movements=(state.movements||[]).filter(m=>m.rackId!==id&&m.destRackId!==id);
   if(selRack===id){selRack=null;document.getElementById('tinfo').textContent=t('sel_rack');document.getElementById('det-name').textContent='— '+t('sel_rack')+' —';document.getElementById('det-body').innerHTML=`<div style="color:var(--dim);font-size:.94rem;text-align:center;padding:8px 0">${t('sel_rack')}</div>`;}
-  save();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();notif(`Rack "${r?.name}" ${t('notif_rack_deleted')}`,'warn');addAct(`Rack <strong>${r?.name}</strong> ${t('notif_rack_deleted')}`,'var(--red)');
+  save();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();notif(`Rack "${r?.name}" ${t('notif_rack_deleted')}`,'warn');addAct(`Rack <strong>${esc(r?.name)}</strong> ${t('notif_rack_deleted')}`,'var(--red)');
 }
 function duplicateRack(id){
   if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');return;}
@@ -2471,7 +2495,7 @@ function duplicateRack(id){
   save();renderFloor();updateStats();
   selectRack(newId);
   notif(`Rack "${copy.name}" ${currentLang==='en'?'created':'creado'}`,'ok');
-  addAct(`Rack <strong>${copy.name}</strong> duplicado desde ${src.name}`,'var(--green)');
+  addAct(`Rack <strong>${esc(copy.name)}</strong> duplicado desde ${esc(src.name)}`,'var(--green)');
 }
 
 // ═══════════════ AUDIT ═══════════════
@@ -2523,7 +2547,7 @@ function saveAudit(){
   closeO('o-audit');
   openViewCell(viewCtx.rackId,viewCtx.bay,viewCtx.level);
   notif(t('notif_audit_done'),'ok');
-  addAct(`Conteo B${viewCtx.bay+1}N${viewCtx.level+1} verificado por <strong>${who}</strong>`,'var(--green)');
+  addAct(`Conteo B${viewCtx.bay+1}N${viewCtx.level+1} verificado por <strong>${esc(who)}</strong>`,'var(--green)');
 }
 
 // ═══════════════ REPORT EXPIRY SHORTCUT ═══════════════
@@ -2895,7 +2919,7 @@ function doTransfer(){
   save();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();
   closeO('o-transfer');resetTransfer();
   notif(`${movedSkus.join(', ')} trasladado`,'ok');
-  addAct(`Traslado: <strong>${movedSkus.join(', ')}</strong> → ${dRack?.name} B${tDest.bay+1}N${tDest.level+1}`,'var(--accent)');
+  addAct(`Traslado: <strong>${esc(movedSkus.join(', '))}</strong> → ${esc(dRack?.name)} B${tDest.bay+1}N${tDest.level+1}`,'var(--accent)');
 }
 
 // ═══════════════ REPORT ═══════════════
@@ -3027,166 +3051,177 @@ function _appendSkuPage(c){
   }
 }
 
+// Determina si un rack debe mostrarse dado el texto de búsqueda (nombre, zona, SKU/desc, responsables)
+function rackMatchesFilter(rack, filter){
+  if(!filter) return true;
+  if(rack.name.toLowerCase().includes(filter)) return true;
+  const zone=state.zones.find(z=>z.id===rack.zone);
+  return (state.cells[rack.id]||[]).some(cl=>{
+    if((cl.skus||[]).some(s=>(s.sku||'').toLowerCase().includes(filter)||(s.desc||'').toLowerCase().includes(filter)))return true;
+    if(zone&&zone.name.toLowerCase().includes(filter))return true;
+    const names=resolvePeople(cl.responsables||[]).concat(resolvePeople(rack.responsables||[]));
+    return names.some(n=>n.toLowerCase().includes(filter));
+  });
+}
+
+// Construye la tabla de celdas (bahía × nivel) de un rack para el panel de reporte
+function buildRackCellsTable(rack, rCells){
+  const COL_W = Math.max(80, Math.min(160, Math.floor(460 / rack.bays)));
+  const tbl = document.createElement('table');
+  tbl.style.cssText = `width:100%;border-collapse:separate;border-spacing:4px;table-layout:fixed`;
+
+  // Bay header row
+  const thead = document.createElement('thead');
+  let thHtml = `<th style="width:36px;padding:0"></th>`;
+  for(let b=0;b<rack.bays;b++){
+    thHtml += `<th style="width:${COL_W}px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;padding:3px 0;border-bottom:2px solid var(--border);font-weight:700">B${b+1}</th>`;
+  }
+  thead.innerHTML = `<tr>${thHtml}</tr>`;
+  tbl.appendChild(thead);
+
+  // Rows: one per level
+  const tbody = document.createElement('tbody');
+  for(let l=0;l<rack.levels;l++){
+    const tr = document.createElement('tr');
+
+    // Level label cell
+    const tdLbl = document.createElement('td');
+    tdLbl.style.cssText = `text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;border-right:2px solid var(--border);padding-right:4px;vertical-align:middle;white-space:nowrap`;
+    tdLbl.textContent = `N${l+1}`;
+    tr.appendChild(tdLbl);
+
+    for(let b=0;b<rack.bays;b++){
+      const cell=rCells.find(cl=>cl.bay===b&&cl.level===l)||{bay:b,level:l,state:'empty',skus:[]};
+      const sc2=STATE_COLORS[cell.state]||'var(--dim)';
+      const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
+      const hasExpiry=(cell.skus||[]).some(s=>s.expiry);
+      const expiryDaysMin=hasExpiry?Math.min(...(cell.skus||[]).filter(s=>s.expiry).map(s=>expiryDays(s.expiry)).filter(d=>d!==null)):null;
+      const expiryAlert=expiryDaysMin!==null&&expiryDaysMin<=30;
+
+      const td = document.createElement('td');
+      td.style.cssText = `vertical-align:top;padding:0;width:${COL_W}px`;
+
+      const btn=document.createElement('div');
+      btn.style.cssText=`position:relative;background:${sc2}0d;border:1px solid ${sc2}44;border-radius:4px;padding:6px 7px 6px 10px;cursor:pointer;transition:all .15s;min-height:54px;overflow:hidden`;
+
+      // Left color strip
+      let html=`<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${sc2};border-radius:4px 0 0 4px"></div>`;
+      // Coord + expiry badge
+      html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);font-weight:700">B${b+1}·N${l+1}</span>
+        ${expiryAlert?`<span style="font-size:.65rem;color:${expiryDaysMin<0?'var(--red)':'var(--yellow)'}">📅</span>`:''}
+      </div>`;
+
+      if(skus.length===0){
+        html+=`<div style="font-size:.72rem;color:var(--border2);font-style:italic">${STATE_LABELS[cell.state]||'Vacío'}</div>`;
+      } else {
+        skus.forEach(s=>{
+          html+=`<div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;min-width:0">`;
+          if(s.sku) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--accent);font-weight:700;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.sku}</span>`;
+          if(s.desc) html+=`<span style="font-size:.7rem;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0" title="${s.desc}">${s.desc}</span>`;
+          if(s.qty) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--text);flex-shrink:0">${s.qty}</span>`;
+          html+=`</div>`;
+        });
+      }
+      btn.innerHTML=html;
+      btn.onclick=()=>{closeO('o-report');openViewCell(rack.id,b,l);};
+      btn.onmouseover=()=>{btn.style.background=`${sc2}1a`;btn.style.borderColor=sc2;btn.style.boxShadow=`0 3px 10px ${sc2}33`;};
+      btn.onmouseleave=()=>{btn.style.background=`${sc2}0d`;btn.style.borderColor=`${sc2}44`;btn.style.boxShadow='';};
+      td.appendChild(btn);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  tbl.appendChild(tbody);
+  return tbl;
+}
+
+// Construye la tarjeta (header + grilla plegable) de un rack completo para el panel de reporte por celda
+function buildRackReportGroup(rack){
+  const zone=state.zones.find(z=>z.id===rack.zone);
+  const rCells=state.cells[rack.id]||[];
+  const total=rack.bays*rack.levels;
+  const occ=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
+  const blocked=rCells.filter(c=>c.state==='blocked').length;
+  const pct=total?Math.round(occ/total*100):0;
+  const bc=pct>80?'var(--red)':pct>55?'var(--yellow)':'var(--green)';
+  const resps=resolvePeople(rack.responsables||[]);
+  const shops=resolveTiendas(rack.tiendas||[]);
+  const zoneColor=zone?zone.color:'var(--dim)';
+
+  const group=document.createElement('div');
+  group.style.cssText='border-radius:8px;overflow:hidden;margin-bottom:8px;box-shadow:0 2px 12px rgba(0,0,0,.25)';
+
+  // ── HEADER ──
+  const hd=document.createElement('div');
+  hd.style.cssText=`padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;transition:background .15s`;
+  hd.innerHTML=`
+    <div style="width:4px;align-self:stretch;border-radius:4px;background:${zoneColor};flex-shrink:0;min-height:36px"></div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:1.18rem;color:var(--bright);font-weight:700;letter-spacing:1px">${rack.name}</span>
+        ${zone?`<span style="font-size:.82rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${zoneColor};background:${zoneColor}18;border:1px solid ${zoneColor}33;border-radius:20px;padding:1px 9px">${zone.name}</span>`:''}
+        ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;padding:1px 9px">👤 ${resps.slice(0,2).join(' · ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
+        ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">🏪 ${shops.slice(0,2).join(' · ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
+        <div style="flex:1;max-width:160px;height:4px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .6s"></div>
+        </div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;color:${bc};font-weight:700">${pct}%</span>
+        <span style="font-size:.82rem;color:var(--dim)">${occ}/${total} celdas</span>
+        ${blocked?`<span style="font-size:.8rem;color:var(--red);background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.25);border-radius:20px;padding:1px 8px">⊘ ${blocked} bloq.</span>`:''}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:1.4rem;color:var(--bright);line-height:1">${rack.bays}×${rack.levels}</span>
+      <span style="font-size:.75rem;color:var(--dim);letter-spacing:1px">BAH×NIV</span>
+    </div>
+    <div id="caret-${rack.id}" style="color:var(--dim);font-size:1.1rem;flex-shrink:0;transition:transform .2s">▼</div>`;
+
+  // ── BODY ──
+  const body=document.createElement('div');
+  body.style.cssText='display:none;background:var(--bg);border:1px solid var(--border2);border-top:none;border-radius:0 0 8px 8px;max-height:480px;overflow-y:auto';
+
+  const wrapper=document.createElement('div');
+  wrapper.style.cssText='padding:14px 16px';
+  wrapper.appendChild(buildRackCellsTable(rack, rCells));
+  body.appendChild(wrapper);
+
+  // auto-open racks that have occupied cells
+  const hasContent = rCells.some(cl => cl.state !== 'empty' || (cl.skus||[]).length > 0);
+  let open = hasContent;
+  body.style.display = open ? 'block' : 'none';
+  if(open){
+    hd.style.borderRadius='8px 8px 0 0';
+    hd.style.borderBottom='1px solid var(--border)';
+  }
+
+  hd.onclick=()=>{
+    open=!open;
+    body.style.display=open?'block':'none';
+    hd.style.borderRadius=open?'8px 8px 0 0':'8px';
+    hd.style.borderBottom=open?'1px solid var(--border)':'1px solid var(--border2)';
+    const caret=hd.querySelector(`#caret-${rack.id}`);
+    caret.style.transform=open?'rotate(180deg)':'';
+  };
+  // init caret if open
+  if(open){ const caret=hd.querySelector(`#caret-${rack.id}`); if(caret) caret.style.transform='rotate(180deg)'; }
+  hd.onmouseover=()=>{if(!open)hd.style.background='var(--bg2,var(--bg3))';};
+  hd.onmouseleave=()=>{hd.style.background='var(--bg3)';};
+  group.appendChild(hd);group.appendChild(body);
+  return group;
+}
+
 function renderReportCells(filter){
   filter=(filter||'').toLowerCase();
   const c=document.getElementById('rep-cell-cards');c.innerHTML='';
   if(!state.racks.length){c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}</div>`;return;}
   let shown=0;
   state.racks.forEach(rack=>{
-    if(filter&&!rack.name.toLowerCase().includes(filter)){
-      const zone=state.zones.find(z=>z.id===rack.zone);
-      const hasMatch=(state.cells[rack.id]||[]).some(cl=>{
-        if((cl.skus||[]).some(s=>(s.sku||'').toLowerCase().includes(filter)||(s.desc||'').toLowerCase().includes(filter)))return true;
-        if(zone&&zone.name.toLowerCase().includes(filter))return true;
-        const names=resolvePeople(cl.responsables||[]).concat(resolvePeople(rack.responsables||[]));
-        return names.some(n=>n.toLowerCase().includes(filter));
-      });
-      if(!hasMatch)return;
-    }
-    const zone=state.zones.find(z=>z.id===rack.zone);
-    const rCells=state.cells[rack.id]||[];
-    const total=rack.bays*rack.levels;
-    const occ=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
-    const blocked=rCells.filter(c=>c.state==='blocked').length;
-    const pct=total?Math.round(occ/total*100):0;
-    const bc=pct>80?'var(--red)':pct>55?'var(--yellow)':'var(--green)';
-    const resps=resolvePeople(rack.responsables||[]);
-    const shops=resolveTiendas(rack.tiendas||[]);
-    const zoneColor=zone?zone.color:'var(--dim)';
-
-    const group=document.createElement('div');
-    group.style.cssText='border-radius:8px;overflow:hidden;margin-bottom:8px;box-shadow:0 2px 12px rgba(0,0,0,.25)';
-
-    // ── HEADER ──
-    const hd=document.createElement('div');
-    hd.style.cssText=`padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;transition:background .15s`;
-    hd.innerHTML=`
-      <div style="width:4px;align-self:stretch;border-radius:4px;background:${zoneColor};flex-shrink:0;min-height:36px"></div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:1.18rem;color:var(--bright);font-weight:700;letter-spacing:1px">${rack.name}</span>
-          ${zone?`<span style="font-size:.82rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${zoneColor};background:${zoneColor}18;border:1px solid ${zoneColor}33;border-radius:20px;padding:1px 9px">${zone.name}</span>`:''}
-          ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;padding:1px 9px">👤 ${resps.slice(0,2).join(' · ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
-          ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">🏪 ${shops.slice(0,2).join(' · ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
-          <div style="flex:1;max-width:160px;height:4px;background:var(--border);border-radius:4px;overflow:hidden">
-            <div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .6s"></div>
-          </div>
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;color:${bc};font-weight:700">${pct}%</span>
-          <span style="font-size:.82rem;color:var(--dim)">${occ}/${total} celdas</span>
-          ${blocked?`<span style="font-size:.8rem;color:var(--red);background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.25);border-radius:20px;padding:1px 8px">⊘ ${blocked} bloq.</span>`:''}
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:1.4rem;color:var(--bright);line-height:1">${rack.bays}×${rack.levels}</span>
-        <span style="font-size:.75rem;color:var(--dim);letter-spacing:1px">BAH×NIV</span>
-      </div>
-      <div id="caret-${rack.id}" style="color:var(--dim);font-size:1.1rem;flex-shrink:0;transition:transform .2s">▼</div>`;
-
-    // ── BODY ──
-    const body=document.createElement('div');
-    body.style.cssText='display:none;background:var(--bg);border:1px solid var(--border2);border-top:none;border-radius:0 0 8px 8px;max-height:480px;overflow-y:auto';
-
-    // level labels + grid
-    // Build column-per-bay, row-per-level layout (level 1 at top)
-    const wrapper=document.createElement('div');
-    wrapper.style.cssText='padding:14px 16px';
-
-    // Rack grid — use a real table so column widths stay fixed regardless of cell content
-    const COL_W = Math.max(80, Math.min(160, Math.floor(460 / rack.bays)));
-    const tbl = document.createElement('table');
-    tbl.style.cssText = `width:100%;border-collapse:separate;border-spacing:4px;table-layout:fixed`;
-
-    // Bay header row
-    const thead = document.createElement('thead');
-    let thHtml = `<th style="width:36px;padding:0"></th>`;
-    for(let b=0;b<rack.bays;b++){
-      thHtml += `<th style="width:${COL_W}px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;padding:3px 0;border-bottom:2px solid var(--border);font-weight:700">B${b+1}</th>`;
-    }
-    thead.innerHTML = `<tr>${thHtml}</tr>`;
-    tbl.appendChild(thead);
-
-    // Rows: one per level
-    const tbody = document.createElement('tbody');
-    for(let l=0;l<rack.levels;l++){
-      const tr = document.createElement('tr');
-
-      // Level label cell
-      const tdLbl = document.createElement('td');
-      tdLbl.style.cssText = `text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;border-right:2px solid var(--border);padding-right:4px;vertical-align:middle;white-space:nowrap`;
-      tdLbl.textContent = `N${l+1}`;
-      tr.appendChild(tdLbl);
-
-      for(let b=0;b<rack.bays;b++){
-        const cell=rCells.find(cl=>cl.bay===b&&cl.level===l)||{bay:b,level:l,state:'empty',skus:[]};
-        const sc2=STATE_COLORS[cell.state]||'var(--dim)';
-        const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
-        const hasExpiry=(cell.skus||[]).some(s=>s.expiry);
-        const expiryDaysMin=hasExpiry?Math.min(...(cell.skus||[]).filter(s=>s.expiry).map(s=>expiryDays(s.expiry)).filter(d=>d!==null)):null;
-        const expiryAlert=expiryDaysMin!==null&&expiryDaysMin<=30;
-
-        const td = document.createElement('td');
-        td.style.cssText = `vertical-align:top;padding:0;width:${COL_W}px`;
-
-        const btn=document.createElement('div');
-        btn.style.cssText=`position:relative;background:${sc2}0d;border:1px solid ${sc2}44;border-radius:4px;padding:6px 7px 6px 10px;cursor:pointer;transition:all .15s;min-height:54px;overflow:hidden`;
-
-        // Left color strip
-        let html=`<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${sc2};border-radius:4px 0 0 4px"></div>`;
-        // Coord + expiry badge
-        html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);font-weight:700">B${b+1}·N${l+1}</span>
-          ${expiryAlert?`<span style="font-size:.65rem;color:${expiryDaysMin<0?'var(--red)':'var(--yellow)'}">📅</span>`:''}
-        </div>`;
-
-        if(skus.length===0){
-          html+=`<div style="font-size:.72rem;color:var(--border2);font-style:italic">${STATE_LABELS[cell.state]||'Vacío'}</div>`;
-        } else {
-          skus.forEach(s=>{
-            html+=`<div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;min-width:0">`;
-            if(s.sku) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--accent);font-weight:700;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.sku}</span>`;
-            if(s.desc) html+=`<span style="font-size:.7rem;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0" title="${s.desc}">${s.desc}</span>`;
-            if(s.qty) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--text);flex-shrink:0">${s.qty}</span>`;
-            html+=`</div>`;
-          });
-        }
-        btn.innerHTML=html;
-        btn.onclick=()=>{closeO('o-report');openViewCell(rack.id,b,l);};
-        btn.onmouseover=()=>{btn.style.background=`${sc2}1a`;btn.style.borderColor=sc2;btn.style.boxShadow=`0 3px 10px ${sc2}33`;};
-        btn.onmouseleave=()=>{btn.style.background=`${sc2}0d`;btn.style.borderColor=`${sc2}44`;btn.style.boxShadow='';};
-        td.appendChild(btn);
-        tr.appendChild(td);
-      }
-      tbody.appendChild(tr);
-    }
-    tbl.appendChild(tbody);
-    wrapper.appendChild(tbl);
-    body.appendChild(wrapper);
-
-    // auto-open racks that have occupied cells
-    const hasContent = rCells.some(cl => cl.state !== 'empty' || (cl.skus||[]).length > 0);
-    let open = hasContent;
-    body.style.display = open ? 'block' : 'none';
-    if(open){
-      hd.style.borderRadius='8px 8px 0 0';
-      hd.style.borderBottom='1px solid var(--border)';
-    }
-
-    hd.onclick=()=>{
-      open=!open;
-      body.style.display=open?'block':'none';
-      hd.style.borderRadius=open?'8px 8px 0 0':'8px';
-      hd.style.borderBottom=open?'1px solid var(--border)':'1px solid var(--border2)';
-      const caret=hd.querySelector(`#caret-${rack.id}`);
-      caret.style.transform=open?'rotate(180deg)':'';
-    };
-    // init caret if open
-    if(open){ const caret=hd.querySelector(`#caret-${rack.id}`); if(caret) caret.style.transform='rotate(180deg)'; }
-    hd.onmouseover=()=>{if(!open)hd.style.background='var(--bg2,var(--bg3))';};
-    hd.onmouseleave=()=>{hd.style.background='var(--bg3)';};
-    group.appendChild(hd);group.appendChild(body);
-    c.appendChild(group);shown++;
+    if(!rackMatchesFilter(rack, filter)) return;
+    c.appendChild(buildRackReportGroup(rack));
+    shown++;
   });
   if(!shown)c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}: "${filter}"</div>`;
 }
@@ -3262,25 +3297,6 @@ function renderReportZones(filter){
     c.appendChild(card);
   });
   if(!hasAny)c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}</div>`;
-}
-
-function debugResp(resp){
-  console.group('🔍 DEBUG - Responsable: '+resp);
-  state.racks.forEach(rack=>{
-    const cells=(state.cells[rack.id]||[]).filter(cl=>{
-      const cr=cl.responsables||[];
-      return cr.includes(resp)||(cr.length===0&&(rack.responsables||[]).includes(resp));
-    });
-    if(cells.length){
-      console.group('Rack: '+rack.name+' | rack.tiendas='+JSON.stringify(rack.tiendas||[]));
-      cells.forEach(cl=>{
-        console.log('B'+(cl.bay+1)+'N'+(cl.level+1)+' | cell.responsables='+JSON.stringify(cl.responsables||[])+' | cell.tiendas='+JSON.stringify(cl.tiendas||[]));
-      });
-      console.groupEnd();
-    }
-  });
-  console.groupEnd();
-  notif('Debug de "'+resp+'" en consola (F12)','ok');
 }
 
 function renderReportExpiry(){
@@ -3519,6 +3535,83 @@ function openPrintByRack(){
   requestAnimationFrame(()=>ov.classList.add('open'));
 }
 
+// Construye el <td> de una celda (bay,level) para la impresión A4 de un rack
+function buildRackA4CellHtml(b, l, rack, rCells, showEmpty, showNotes){
+  const stateColor={full:'#00c875',partial:'#f0c000',reserved:'#00aaff',blocked:'#ff3b5c',empty:'#cccccc'};
+  const stateName={full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO',empty:'VACÍO'};
+  const stateTextColor={full:'#003a1a',partial:'#4a3800',reserved:'#003060',blocked:'#fff',empty:'#888'};
+
+  const cell=rCells.find(c=>c.bay===b&&c.level===l)||{bay:b,level:l,state:'empty',skus:[],notes:''};
+  const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
+  const sc=stateColor[cell.state]||'#ccc';
+  const st=stateTextColor[cell.state]||'#333';
+  const sn=stateName[cell.state]||'VACÍO';
+  const expItems=(cell.skus||[]).filter(s=>s.expiry);
+  const minExp=expItems.length?Math.min(...expItems.map(s=>expiryDays(s.expiry)).filter(d=>d!==null)):null;
+  const expAlert=minExp!==null&&minExp<=30;
+  const expColor=minExp!==null&&minExp<0?'#cc0022':minExp<=7?'#d04000':'#a07000';
+
+  const effTiendas=(cell.tiendas&&cell.tiendas.length)?cell.tiendas:(rack.tiendas||[]);
+  const cellShopNames=resolveTiendas(effTiendas);
+  const effResps=(cell.responsables&&cell.responsables.length)?cell.responsables:(rack.responsables||[]);
+  const cellRespNames=resolvePeople(effResps);
+
+  if(skus.length===0&&!showEmpty){
+    return `<td style="padding:3px;vertical-align:top;overflow:hidden"><div style="min-height:46px;background:#f5f5f5;border:1px dashed #ddd;border-radius:3px"></div></td>`;
+  }
+
+  let inner=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+    <span style="display:inline-block;background:${sc};color:${st};font-size:7.5px;font-weight:800;letter-spacing:.6px;padding:1px 5px;border-radius:8px;text-transform:uppercase">${sn}</span>
+    ${expAlert?`<span style="font-size:7.5px;font-weight:800;color:${expColor}">📅${minExp<0?'VENC':minExp+'d'}</span>`:''}
+  </div>
+  ${(cellShopNames.length||cellRespNames.length)?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px">
+    ${cellShopNames.map(s=>`<span style="display:inline-block;background:#fff3e0;border:1px solid #f7c87a;color:#7a4500;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">🏪 ${esc(s)}</span>`).join('')}
+    ${cellRespNames.map(r=>`<span style="display:inline-block;background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">👤 ${esc(r)}</span>`).join('')}
+  </div>`:''}`;
+
+  if(skus.length===0){
+    inner+=`<div style="color:#bbb;font-size:8px;font-style:italic;text-align:center;padding:3px 0">—</div>`;
+  } else {
+    skus.forEach(s=>{
+      inner+=`<div style="display:flex;gap:3px;align-items:baseline;margin-bottom:2px">
+        ${s.sku?`<span style="font-family:'Courier New',monospace;font-weight:800;font-size:8.5px;color:#b06000;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52px">${esc(s.sku)}</span>`:''}
+        ${s.desc?`<span style="font-size:7.5px;color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.desc)}">${esc(s.desc)}</span>`:''}
+        ${s.qty?`<span style="font-family:'Courier New',monospace;font-size:7.5px;color:#555;flex-shrink:0;white-space:nowrap">${s.qty}${s.unit?' '+s.unit:''}</span>`:''}
+      </div>`;
+    });
+  }
+  if(showNotes&&cell.notes){
+    inner+=`<div style="margin-top:2px;font-size:7px;color:#888;font-style:italic;border-top:1px solid #eee;padding-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${esc(cell.notes)}</div>`;
+  }
+  return `<td style="padding:3px;vertical-align:top;overflow:hidden">
+    <div style="border:1px solid #dde;border-left:3px solid ${sc};border-radius:3px;padding:4px 5px;min-height:46px;background:#fff;overflow:hidden;word-break:break-word">
+      ${inner}
+    </div>
+  </td>`;
+}
+
+// Construye la tabla completa (bahías × niveles) de un rack para la impresión A4
+function buildRackA4TableHtml(rack, rCells, showEmpty, showNotes){
+  let tableHTML=`<table style="width:100%;max-width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed;overflow:hidden">
+    <colgroup>
+      <col style="width:28px">
+      ${Array.from({length:rack.bays},()=>`<col>`).join('')}
+    </colgroup>
+    <thead><tr>
+      <th style="padding:0 0 4px;border-bottom:2px solid #1a2030"></th>
+      ${Array.from({length:rack.bays},(_,b)=>`<th style="text-align:center;font-family:'Courier New',monospace;font-size:9.5px;font-weight:900;color:#1a2030;padding:2px 0 5px;border-bottom:2px solid #1a2030;letter-spacing:.5px">B${b+1}</th>`).join('')}
+    </tr></thead>
+    <tbody>`;
+  for(let l=rack.levels-1;l>=0;l--){
+    tableHTML+=`<tr>
+      <td style="text-align:center;font-family:'Courier New',monospace;font-size:8.5px;font-weight:800;color:#999;padding:0 5px 0 0;border-right:2px solid #1a2030;vertical-align:middle;white-space:nowrap">N${l+1}</td>
+      ${Array.from({length:rack.bays},(_,b)=>buildRackA4CellHtml(b,l,rack,rCells,showEmpty,showNotes)).join('')}
+    </tr>`;
+  }
+  tableHTML+=`</tbody></table>`;
+  return tableHTML;
+}
+
 function printRackA4(){
   const rackId=document.getElementById('pbr-rack').value;
   const showEmpty=document.getElementById('pbr-show-empty').checked;
@@ -3533,89 +3626,16 @@ function printRackA4(){
   const pct=total?Math.round(occ/total*100):0;
   const resps=resolvePeople(rack.responsables||[]);
   const shops=resolveTiendas(rack.tiendas||[]);
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'')).trim();}catch{return'BODEGA';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','');
+  const logoSrc=getBrandLogo();
   const dateStr=new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'});
   const bcColor=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
-  const stateColor={full:'#00c875',partial:'#f0c000',reserved:'#00aaff',blocked:'#ff3b5c',empty:'#cccccc'};
-  const stateName={full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO',empty:'VACÍO'};
-  const stateTextColor={full:'#003a1a',partial:'#4a3800',reserved:'#003060',blocked:'#fff',empty:'#888'};
 
-  function cellHTML(b,l){
-    const cell=rCells.find(c=>c.bay===b&&c.level===l)||{bay:b,level:l,state:'empty',skus:[],notes:''};
-    const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
-    const sc=stateColor[cell.state]||'#ccc';
-    const st=stateTextColor[cell.state]||'#333';
-    const sn=stateName[cell.state]||'VACÍO';
-    const expItems=(cell.skus||[]).filter(s=>s.expiry);
-    const minExp=expItems.length?Math.min(...expItems.map(s=>expiryDays(s.expiry)).filter(d=>d!==null)):null;
-    const expAlert=minExp!==null&&minExp<=30;
-    const expColor=minExp!==null&&minExp<0?'#cc0022':minExp<=7?'#d04000':'#a07000';
-
-    const effTiendas=(cell.tiendas&&cell.tiendas.length)?cell.tiendas:(rack.tiendas||[]);
-    const cellShopNames=resolveTiendas(effTiendas);
-    const effResps=(cell.responsables&&cell.responsables.length)?cell.responsables:(rack.responsables||[]);
-    const cellRespNames=resolvePeople(effResps);
-
-    if(skus.length===0&&!showEmpty){
-      return `<td style="padding:3px;vertical-align:top;overflow:hidden"><div style="min-height:46px;background:#f5f5f5;border:1px dashed #ddd;border-radius:3px"></div></td>`;
-    }
-
-    let inner=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-      <span style="display:inline-block;background:${sc};color:${st};font-size:7.5px;font-weight:800;letter-spacing:.6px;padding:1px 5px;border-radius:8px;text-transform:uppercase">${sn}</span>
-      ${expAlert?`<span style="font-size:7.5px;font-weight:800;color:${expColor}">📅${minExp<0?'VENC':minExp+'d'}</span>`:''}
-    </div>
-    ${(cellShopNames.length||cellRespNames.length)?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px">
-      ${cellShopNames.map(s=>`<span style="display:inline-block;background:#fff3e0;border:1px solid #f7c87a;color:#7a4500;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">🏪 ${s}</span>`).join('')}
-      ${cellRespNames.map(r=>`<span style="display:inline-block;background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">👤 ${r}</span>`).join('')}
-    </div>`:''}`;
-
-
-
-    if(skus.length===0){
-      inner+=`<div style="color:#bbb;font-size:8px;font-style:italic;text-align:center;padding:3px 0">—</div>`;
-    } else {
-      skus.forEach(s=>{
-        inner+=`<div style="display:flex;gap:3px;align-items:baseline;margin-bottom:2px">
-          ${s.sku?`<span style="font-family:'Courier New',monospace;font-weight:800;font-size:8.5px;color:#b06000;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52px">${s.sku}</span>`:''}
-          ${s.desc?`<span style="font-size:7.5px;color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.desc}">${s.desc}</span>`:''}
-          ${s.qty?`<span style="font-family:'Courier New',monospace;font-size:7.5px;color:#555;flex-shrink:0;white-space:nowrap">${s.qty}${s.unit?' '+s.unit:''}</span>`:''}
-        </div>`;
-      });
-    }
-    if(showNotes&&cell.notes){
-      inner+=`<div style="margin-top:2px;font-size:7px;color:#888;font-style:italic;border-top:1px solid #eee;padding-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${cell.notes}</div>`;
-    }
-    return `<td style="padding:3px;vertical-align:top;overflow:hidden">
-      <div style="border:1px solid #dde;border-left:3px solid ${sc};border-radius:3px;padding:4px 5px;min-height:46px;background:#fff;overflow:hidden;word-break:break-word">
-        ${inner}
-      </div>
-    </td>`;
-  }
-
-  // Table: cols = bays, rows = levels
-  let tableHTML=`<table style="width:100%;max-width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed;overflow:hidden">
-    <colgroup>
-      <col style="width:28px">
-      ${Array.from({length:rack.bays},()=>`<col>`).join('')}
-    </colgroup>
-    <thead><tr>
-      <th style="padding:0 0 4px;border-bottom:2px solid #1a2030"></th>
-      ${Array.from({length:rack.bays},(_,b)=>`<th style="text-align:center;font-family:'Courier New',monospace;font-size:9.5px;font-weight:900;color:#1a2030;padding:2px 0 5px;border-bottom:2px solid #1a2030;letter-spacing:.5px">B${b+1}</th>`).join('')}
-    </tr></thead>
-    <tbody>`;
-  for(let l=rack.levels-1;l>=0;l--){
-    tableHTML+=`<tr>
-      <td style="text-align:center;font-family:'Courier New',monospace;font-size:8.5px;font-weight:800;color:#999;padding:0 5px 0 0;border-right:2px solid #1a2030;vertical-align:middle;white-space:nowrap">N${l+1}</td>
-      ${Array.from({length:rack.bays},(_,b)=>cellHTML(b,l)).join('')}
-    </tr>`;
-  }
-  tableHTML+=`</tbody></table>`;
-
+  const tableHTML=buildRackA4TableHtml(rack, rCells, showEmpty, showNotes);
   const logoEl=logoSrc?`<img src="${logoSrc}" style="height:34px;object-fit:contain">`:`<div style="font-size:16px;font-weight:900;letter-spacing:3px;color:#1a2030">SF</div>`;
 
   const html=`<!DOCTYPE html><html><head>
-<meta charset="UTF-8"><title>${rack.name} — ${bname}</title>
+<meta charset="UTF-8"><title>${esc(rack.name)} — ${bname}</title>
 <style>
   @page{size:A4 landscape;margin:12mm 15mm;}
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -3640,15 +3660,15 @@ function printRackA4(){
 <div class="toolbar">
   <button onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
-  <span style="color:#aaa;font-size:10px;margin-left:6px">${rack.name} · ${rack.bays} bahías × ${rack.levels} niveles · A4 horizontal</span>
+  <span style="color:#aaa;font-size:10px;margin-left:6px">${esc(rack.name)} · ${rack.bays} bahías × ${rack.levels} niveles · A4 horizontal</span>
 </div>
 <div style="padding:0 3mm">
   <div class="rack-hd">
     ${logoEl}
     <div>
-      <div class="rack-name">${rack.name}</div>
+      <div class="rack-name">${esc(rack.name)}</div>
       <div class="rack-sub">
-        ${bname}${zone?` &nbsp;·&nbsp; <span style="color:${zone.color};font-weight:700">${zone.name}</span>`:''}${resps.length?` &nbsp;·&nbsp; 👤 ${resps.join(', ')}`:''}${shops.length?` &nbsp;·&nbsp; 🏪 ${shops.join(', ')}`:''}
+        ${bname}${zone?` &nbsp;·&nbsp; <span style="color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}${resps.length?` &nbsp;·&nbsp; 👤 ${esc(resps.join(', '))}`:''}${shops.length?` &nbsp;·&nbsp; 🏪 ${esc(shops.join(', '))}`:''}
       </div>
     </div>
     <div class="stats">
@@ -3684,15 +3704,9 @@ function printRackA4(){
 }
 
 
-function printReportTab(tab){
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
-  const dateStr=new Date().toLocaleDateString(currentLang==='en'?'en-US':'es-CR',{day:'2-digit',month:'long',year:'numeric'});
-  const tabNames={skus:'Por SKU',cells:'Por Celda',zones:'Por Zona',resp:'Responsables',tiendas:'Por Tienda',expiry:'Vencimientos',movements:'Movimientos',valor:'Valor Inventario'};
-  const title=tabNames[tab]||tab;
-
-  // ── shared print CSS ──
-  const baseCss=`
+// CSS compartido por las pestañas de reporte impreso (printReportTab). Texto estático, sin interpolación.
+function buildReportTabCss(){
+  return `
     @page{size:A4;margin:14mm 12mm;}
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -3741,6 +3755,300 @@ function printReportTab(tab){
     .cell-sku-qty{color:#888;float:right;}
     .left-strip{display:inline-block;width:3px;height:100%;vertical-align:top;border-radius:2px;margin-right:5px;}
   `;
+}
+
+// ── Cada builder devuelve el HTML del cuerpo ("body") de una pestaña del reporte impreso ──
+
+function buildCellsReportBody(){
+  const stateClass={full:'badge-full',partial:'badge-partial',reserved:'badge-reserved',blocked:'badge-blocked',empty:'badge-empty'};
+  const stateColor={full:'#00c875',partial:'#f0c000',reserved:'#00aaff',blocked:'#ff3b5c',empty:'#aaa'};
+  let body='';
+  state.racks.forEach(rack=>{
+    const zone=state.zones.find(z=>z.id===rack.zone);
+    const rCells=state.cells[rack.id]||[];
+    const total=rack.bays*rack.levels;
+    const occ=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
+    const pct=total?Math.round(occ/total*100):0;
+    const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
+    const resps=resolvePeople(rack.responsables||[]);
+    const shops=resolveTiendas(rack.tiendas||[]);
+    let rows='';
+    for(let l=0;l<rack.levels;l++) for(let b=0;b<rack.bays;b++){
+      const cell=rCells.find(c=>c.bay===b&&c.level===l)||{bay:b,level:l,state:'empty',skus:[]};
+      const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
+      const sc=stateColor[cell.state]||'#aaa';
+      const skuHtml=skus.length
+        ? skus.map(s=>`<div class="cell-sku"><span class="cell-sku-id">${esc(s.sku||'')}</span>${s.sku&&s.desc?' ':''}<span class="cell-sku-desc">${esc(s.desc||'')}</span>${s.qty?`<span class="cell-sku-qty">${esc(s.qty)} ${esc(s.unit||'')}</span>`:''}</div>`).join('')
+        : `<span style="color:#bbb;font-size:9px;font-style:italic">${STATE_LABELS[cell.state]||'—'}</span>`;
+      rows+=`<tr>
+        <td class="mono" style="color:#1a4a8a;white-space:nowrap">B${b+1}·N${l+1}</td>
+        <td><span class="badge ${stateClass[cell.state]||'badge-empty'}">${STATE_LABELS[cell.state]||cell.state}</span></td>
+        <td>${skuHtml}</td>
+        <td style="font-size:10px;color:#888">${esc(cell.notes||'')}</td>
+      </tr>`;
+    }
+    body+=`<div class="section">
+      <div class="section-hd">
+        ${zone?`<div style="width:10px;height:10px;border-radius:2px;background:${zone.color};flex-shrink:0"></div>`:''}
+        <div class="section-name">${esc(rack.name)}</div>
+        ${zone?`<span class="chip tag-zone">${esc(zone.name)}</span>`:''}
+        ${resps.map(r=>`<span class="chip tag-resp">👤 ${esc(r)}</span>`).join('')}
+        ${shops.map(s=>`<span class="chip tag-shop">🏪 ${esc(s)}</span>`).join('')}
+        <span class="section-meta">${occ}/${total} celdas &nbsp;
+          <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span>
+          &nbsp;${pct}%
+        </span>
+      </div>
+      <div class="section-body">
+        <table>
+          <thead><tr><th>Celda</th><th>Estado</th><th>Productos</th><th>Notas</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  });
+  return body || `<div class="empty-msg">Sin datos</div>`;
+}
+
+function buildSkusReportBody(){
+  const map=buildSkuMap();
+  if(!map.size) return `<div class="empty-msg">Sin SKUs registrados</div>`;
+  let rows='';
+  map.forEach(({sku,desc,locs})=>{
+    const totalQty=locs.reduce((a,l)=>a+(parseFloat(l.qty)||0),0);
+    const locStr=locs.map(l=>`${l.rack} B${l.bay+1}·N${l.level+1}`).join(', ');
+    rows+=`<tr>
+      <td class="mono sku-id">${esc(sku)||'—'}</td>
+      <td>${esc(desc)||'—'}</td>
+      <td class="mono" style="text-align:center">${totalQty||'—'}</td>
+      <td style="font-size:10px;color:#666">${esc(locStr)}</td>
+      <td style="text-align:center">${locs.length}</td>
+    </tr>`;
+  });
+  return `<div class="section-body"><table>
+    <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th>Ubicaciones</th><th style="text-align:center">Celdas</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function buildExpiryReportBody(){
+  const items=[];
+  state.racks.forEach(rack=>{
+    (state.cells[rack.id]||[]).forEach(cell=>{
+      (cell.skus||[]).forEach(s=>{
+        if(!s.expiry)return;
+        const d=expiryDays(s.expiry);
+        if(d===null)return;
+        items.push({rack:rack.name,bay:cell.bay+1,level:cell.level+1,sku:s.sku||'',desc:s.desc||'',expiry:s.expiry,days:d,qty:s.qty||'',unit:s.unit||''});
+      });
+    });
+  });
+  items.sort((a,b)=>a.days-b.days);
+  if(!items.length) return `<div class="empty-msg">Sin vencimientos registrados</div>`;
+  const rows=items.map(r=>{
+    const dc=r.days<0?'#c00':r.days<=7?'#d04000':r.days<=30?'#a07000':'#226622';
+    const dl=r.days<0?`Vencido hace ${Math.abs(r.days)}d`:r.days===0?'HOY':`${r.days}d`;
+    return `<tr>
+      <td class="mono" style="color:#1a4a8a">${esc(r.rack)}</td>
+      <td class="mono" style="text-align:center">B${r.bay}·N${r.level}</td>
+      <td class="mono sku-id">${esc(r.sku)||'—'}</td>
+      <td>${esc(r.desc)||'—'}</td>
+      <td class="mono" style="text-align:center">${esc(r.expiry)}</td>
+      <td style="text-align:center;font-weight:700;color:${dc}">${dl}</td>
+      <td style="text-align:center">${r.qty} ${r.unit}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="section-body"><table>
+    <thead><tr><th>Rack</th><th style="text-align:center">Celda</th><th>SKU</th><th>Descripción</th><th style="text-align:center">Vence</th><th style="text-align:center">Estado</th><th style="text-align:center">Cant.</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function buildMovementsReportBody(){
+  const movs=(state.movements||[]).slice().reverse().slice(0,300);
+  if(!movs.length) return `<div class="empty-msg">Sin movimientos registrados</div>`;
+  const typeColor={entrada:'#00a860',salida:'#e03030',traslado:'#0088cc',ajuste:'#888'};
+  const rows=movs.map(m=>`<tr>
+    <td style="font-size:10px;color:#888;white-space:nowrap">${esc(m.date||'')}</td>
+    <td><span class="badge" style="background:${typeColor[m.type]||'#888'}22;color:${typeColor[m.type]||'#888'};border:1px solid ${typeColor[m.type]||'#888'}44">${esc(m.type||'')}</span></td>
+    <td class="mono sku-id">${esc(m.sku)||'—'}</td>
+    <td style="font-size:10px">${esc(m.desc)||'—'}</td>
+    <td class="mono" style="text-align:center;font-weight:700">${esc(m.qty||'')}</td>
+    <td style="font-size:10px;color:#555">${esc(m.rack||'')}</td>
+    <td class="mono" style="text-align:center;font-size:10px">B${(m.bay||0)+1}·N${(m.level||0)+1}</td>
+    <td style="font-size:10px;color:#888">${esc(m.note||'')}</td>
+  </tr>`).join('');
+  return `<div class="section-body"><table>
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th>Rack</th><th style="text-align:center">Celda</th><th>Nota</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function buildZonesReportBody(){
+  let body='';
+  const groups=[...state.zones,{id:'',name:'Sin zona',color:'#888'}];
+  groups.forEach(zone=>{
+    const zRacks=state.racks.filter(r=>r.zone===zone.id);
+    if(!zRacks.length)return;
+    let total=0,occ=0,skusSet=new Set();
+    zRacks.forEach(r=>{(state.cells[r.id]||[]).forEach(cl=>{total++;if(cl.state==='full'||cl.state==='partial')occ++;(cl.skus||[]).forEach(s=>{if(s.sku)skusSet.add(s.sku);});});});
+    const pct=total?Math.round(occ/total*100):0;
+    const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
+    const rows=zRacks.map(r=>{
+      const rCells=state.cells[r.id]||[];
+      const rOcc=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
+      const rTotal=r.bays*r.levels;
+      const rPct=rTotal?Math.round(rOcc/rTotal*100):0;
+      return `<tr><td class="mono" style="color:#1a4a8a">${esc(r.name)}</td><td style="text-align:center">${r.bays}×${r.levels}</td><td style="text-align:center">${rOcc}/${rTotal}</td><td style="text-align:center;font-weight:700;color:${rPct>80?'#e03030':rPct>55?'#e08000':'#00a860'}">${rPct}%</td></tr>`;
+    }).join('');
+    body+=`<div class="section">
+      <div class="section-hd" style="background:${zone.color||'#1a2030'}">
+        <div class="section-name">${esc(zone.name)}</div>
+        <span class="section-meta">${zRacks.length} racks · ${occ}/${total} celdas · ${skusSet.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
+      </div>
+      <div class="section-body"><table>
+        <thead><tr><th>Rack</th><th style="text-align:center">Bah×Niv</th><th style="text-align:center">Ocupadas</th><th style="text-align:center">%</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  });
+  return body || `<div class="empty-msg">Sin zonas definidas</div>`;
+}
+
+function buildRespReportBody(){
+  let body='';
+  state.people.forEach(person=>{
+    const rackIds=new Set();
+    const skuMap=new Map(); // sku -> {sku,desc,qty,unit,locs[]}
+    let total=0,occ=0;
+    state.racks.forEach(rack=>{
+      const rackResps=rack.responsables||[];
+      (state.cells[rack.id]||[]).forEach(cl=>{
+        const cellResps=(cl.responsables||[]).filter(id=>rackResps.includes(id));
+        const eff=cellResps.length?cellResps:rackResps;
+        if(!eff.includes(person.id))return;
+        rackIds.add(rack.id);total++;
+        if(cl.state==='full'||cl.state==='partial')occ++;
+        (cl.skus||[]).forEach(s=>{
+          if(!s.sku&&!s.desc)return;
+          const k=(s.sku||'')+'|||'+(s.desc||'');
+          if(!skuMap.has(k))skuMap.set(k,{sku:s.sku||'',desc:s.desc||'',qty:0,unit:s.unit||''});
+          skuMap.get(k).qty+=(parseFloat(s.qty)||0);
+        });
+      });
+    });
+    if(!rackIds.size)return;
+    const pct=total?Math.round(occ/total*100):0;
+    const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
+    const rackNames=esc([...rackIds].map(id=>state.racks.find(r=>r.id===id)?.name||id).join(', '));
+    const skuRows=[...skuMap.values()].map(s=>`<tr>
+      <td class="mono sku-id">${esc(s.sku)||'—'}</td>
+      <td>${esc(s.desc)||'—'}</td>
+      <td style="text-align:center">${esc(s.qty||'')} ${esc(s.unit)}</td>
+    </tr>`).join('');
+    body+=`<div class="section">
+      <div class="section-hd">
+        <div class="section-name">👤 ${esc(person.name)}${person.role?` — <span style="font-weight:400;font-size:11px">${esc(person.role)}</span>`:''}</div>
+        <span class="section-meta">${rackIds.size} racks · ${occ}/${total} celdas · ${skuMap.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
+      </div>
+      <div class="section-body">
+        <div style="padding:6px 12px;font-size:10px;color:#666;border-bottom:1px solid #eef;background:#fafbff"><b>Racks:</b> ${rackNames}</div>
+        ${skuRows?`<table><thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant. total</th></tr></thead><tbody>${skuRows}</tbody></table>`:'<div style="padding:10px 12px;color:#bbb;font-size:10px;font-style:italic">Sin productos asignados</div>'}
+      </div>
+    </div>`;
+  });
+  return body || `<div class="empty-msg">Sin responsables asignados</div>`;
+}
+
+function buildTiendasReportBody(){
+  let body='';
+  state.tiendas.forEach(tienda=>{
+    const racks=new Set(),skuMap=new Map();let total=0,occ=0;
+    state.racks.forEach(rack=>{
+      (state.cells[rack.id]||[]).forEach(cl=>{
+        const eff=(cl.tiendas||[]).length?(cl.tiendas||[]):(rack.tiendas||[]);
+        if(!eff.includes(tienda.id))return;
+        racks.add(rack.id);total++;
+        if(cl.state==='full'||cl.state==='partial')occ++;
+        (cl.skus||[]).forEach(s=>{
+          if(!s.sku&&!s.desc)return;
+          const k=(s.sku||'')+'|||'+(s.desc||'');
+          if(!skuMap.has(k))skuMap.set(k,{sku:s.sku||'',desc:s.desc||'',qty:0,unit:s.unit||''});
+          skuMap.get(k).qty+=(parseFloat(s.qty)||0);
+        });
+      });
+    });
+    if(!racks.size)return;
+    const pct=total?Math.round(occ/total*100):0;
+    const skuRows=[...skuMap.values()].map(s=>`<tr><td class="mono sku-id">${esc(s.sku)||'—'}</td><td>${esc(s.desc)||'—'}</td><td style="text-align:center">${esc(s.qty||'')} ${esc(s.unit)}</td></tr>`).join('');
+    body+=`<div class="section">
+      <div class="section-hd">
+        <div class="section-name">🏪 ${esc(tienda.name)}${tienda.code?` (${esc(tienda.code)})`:''}</div>
+        <span class="section-meta">${racks.size} racks · ${occ}/${total} · ${skuMap.size} SKUs · ${pct}%</span>
+      </div>
+      <div class="section-body"><table>
+        <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th></tr></thead>
+        <tbody>${skuRows||`<tr><td colspan="3" style="text-align:center;color:#aaa;padding:10px">Sin productos</td></tr>`}</tbody>
+      </table></div>
+    </div>`;
+  });
+  return body || `<div class="empty-msg">Sin tiendas asignadas</div>`;
+}
+
+function buildValorReportBody(){
+  const all=buildValorData();
+  if(!all.length) return `<div class="empty-msg">Sin datos de valor — asigná costos a los productos</div>`;
+  const total=all.reduce((a,r)=>a+r.subtotal,0);
+  const rows=all.map(r=>`<tr>
+    <td class="mono sku-id">${esc(r.sku)||'—'}</td>
+    <td>${esc(r.desc)||'—'}</td>
+    <td style="text-align:center">${esc(r.qty)}</td>
+    <td class="mono" style="text-align:right">$${r.cost?.toFixed(2)||'—'}</td>
+    <td class="mono" style="text-align:right;font-weight:700;color:${r.subtotal>0?'#1a6a3a':'#888'}">$${r.subtotal.toFixed(2)}</td>
+    <td style="font-size:10px;color:#666">${esc(r.rack||'')}</td>
+  </tr>`).join('');
+  return `<div style="display:flex;gap:12px;margin-bottom:14px">
+    <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Valor Total</div>
+      <div style="font-size:22px;font-weight:800;color:#1a6a3a;font-family:'Courier New',monospace">$${total.toFixed(2)}</div>
+    </div>
+    <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">SKUs con Costo</div>
+      <div style="font-size:22px;font-weight:800;color:#1a4a8a;font-family:'Courier New',monospace">${all.filter(r=>r.hasCost).length}</div>
+    </div>
+  </div>
+  <div class="section-body"><table>
+    <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th style="text-align:right">Costo Unit.</th><th style="text-align:right">Subtotal</th><th>Rack</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr style="background:#f0f4f8"><td colspan="4" style="padding:8px 10px;font-weight:700;text-align:right">TOTAL</td><td class="mono" style="padding:8px 10px;font-weight:800;font-size:13px;color:#1a6a3a;text-align:right">$${total.toFixed(2)}</td><td></td></tr></tfoot>
+  </table></div>`;
+}
+
+// Elige el builder de body correspondiente a la pestaña de reporte seleccionada
+function buildReportTabBody(tab){
+  const builders={
+    cells: buildCellsReportBody,
+    skus: buildSkusReportBody,
+    expiry: buildExpiryReportBody,
+    movements: buildMovementsReportBody,
+    zones: buildZonesReportBody,
+    resp: buildRespReportBody,
+    tiendas: buildTiendasReportBody,
+    valor: buildValorReportBody
+  };
+  const builder=builders[tab];
+  return builder ? builder() : '';
+}
+
+function printReportTab(tab){
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
+  const dateStr=new Date().toLocaleDateString(currentLang==='en'?'en-US':'es-CR',{day:'2-digit',month:'long',year:'numeric'});
+  const tabNames={skus:'Por SKU',cells:'Por Celda',zones:'Por Zona',resp:'Responsables',tiendas:'Por Tienda',expiry:'Vencimientos',movements:'Movimientos',valor:'Valor Inventario'};
+  const title=tabNames[tab]||tab;
+
+  // ── shared print CSS ──
+  const baseCss=buildReportTabCss();
 
   const logoEl=logoSrc?`<img src="${logoSrc}" class="page-logo">`:`<div class="page-logo-txt">SF</div>`;
   const pageHd=`<div class="page-hd">
@@ -3749,297 +4057,19 @@ function printReportTab(tab){
   </div>`;
   const toolbar=`<div class="toolbar"><button onclick="window.print()">🖨 Imprimir / Guardar PDF</button><button class="cls" onclick="window.close()">✕ Cerrar</button></div>`;
 
-  const stateClass={full:'badge-full',partial:'badge-partial',reserved:'badge-reserved',blocked:'badge-blocked',empty:'badge-empty'};
-  const stateColor={full:'#00c875',partial:'#f0c000',reserved:'#00aaff',blocked:'#ff3b5c',empty:'#aaa'};
-
-  let body='';
-
-  // ── POR CELDA ──
-  if(tab==='cells'){
-    state.racks.forEach(rack=>{
-      const zone=state.zones.find(z=>z.id===rack.zone);
-      const rCells=state.cells[rack.id]||[];
-      const total=rack.bays*rack.levels;
-      const occ=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
-      const pct=total?Math.round(occ/total*100):0;
-      const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
-      const resps=resolvePeople(rack.responsables||[]);
-      const shops=resolveTiendas(rack.tiendas||[]);
-      let rows='';
-      for(let l=0;l<rack.levels;l++) for(let b=0;b<rack.bays;b++){
-        const cell=rCells.find(c=>c.bay===b&&c.level===l)||{bay:b,level:l,state:'empty',skus:[]};
-        const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
-        const sc=stateColor[cell.state]||'#aaa';
-        const skuHtml=skus.length
-          ? skus.map(s=>`<div class="cell-sku"><span class="cell-sku-id">${s.sku||''}</span>${s.sku&&s.desc?' ':''}<span class="cell-sku-desc">${s.desc||''}</span>${s.qty?`<span class="cell-sku-qty">${s.qty} ${s.unit||''}</span>`:''}</div>`).join('')
-          : `<span style="color:#bbb;font-size:9px;font-style:italic">${STATE_LABELS[cell.state]||'—'}</span>`;
-        rows+=`<tr>
-          <td class="mono" style="color:#1a4a8a;white-space:nowrap">B${b+1}·N${l+1}</td>
-          <td><span class="badge ${stateClass[cell.state]||'badge-empty'}">${STATE_LABELS[cell.state]||cell.state}</span></td>
-          <td>${skuHtml}</td>
-          <td style="font-size:10px;color:#888">${(cell.notes||'')}</td>
-        </tr>`;
-      }
-      body+=`<div class="section">
-        <div class="section-hd">
-          ${zone?`<div style="width:10px;height:10px;border-radius:2px;background:${zone.color};flex-shrink:0"></div>`:''}
-          <div class="section-name">${rack.name}</div>
-          ${zone?`<span class="chip tag-zone">${zone.name}</span>`:''}
-          ${resps.map(r=>`<span class="chip tag-resp">👤 ${r}</span>`).join('')}
-          ${shops.map(s=>`<span class="chip tag-shop">🏪 ${s}</span>`).join('')}
-          <span class="section-meta">${occ}/${total} celdas &nbsp;
-            <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span>
-            &nbsp;${pct}%
-          </span>
-        </div>
-        <div class="section-body">
-          <table>
-            <thead><tr><th>Celda</th><th>Estado</th><th>Productos</th><th>Notas</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-      </div>`;
-    });
-    if(!body) body=`<div class="empty-msg">Sin datos</div>`;
-  }
-
-  // ── POR SKU ──
-  else if(tab==='skus'){
-    const map=buildSkuMap();
-    if(!map.size){body=`<div class="empty-msg">Sin SKUs registrados</div>`;}
-    else{
-      let rows='';
-      map.forEach(({sku,desc,locs})=>{
-        const totalQty=locs.reduce((a,l)=>a+(parseFloat(l.qty)||0),0);
-        const locStr=locs.map(l=>`${l.rack} B${l.bay+1}·N${l.level+1}`).join(', ');
-        rows+=`<tr>
-          <td class="mono sku-id">${sku||'—'}</td>
-          <td>${desc||'—'}</td>
-          <td class="mono" style="text-align:center">${totalQty||'—'}</td>
-          <td style="font-size:10px;color:#666">${locStr}</td>
-          <td style="text-align:center">${locs.length}</td>
-        </tr>`;
-      });
-      body=`<div class="section-body"><table>
-        <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th>Ubicaciones</th><th style="text-align:center">Celdas</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`;
-    }
-  }
-
-  // ── VENCIMIENTOS ──
-  else if(tab==='expiry'){
-    const items=[];
-    state.racks.forEach(rack=>{
-      (state.cells[rack.id]||[]).forEach(cell=>{
-        (cell.skus||[]).forEach(s=>{
-          if(!s.expiry)return;
-          const d=expiryDays(s.expiry);
-          if(d===null)return;
-          items.push({rack:rack.name,bay:cell.bay+1,level:cell.level+1,sku:s.sku||'',desc:s.desc||'',expiry:s.expiry,days:d,qty:s.qty||'',unit:s.unit||''});
-        });
-      });
-    });
-    items.sort((a,b)=>a.days-b.days);
-    if(!items.length){body=`<div class="empty-msg">Sin vencimientos registrados</div>`;}
-    else{
-      const rows=items.map(r=>{
-        const dc=r.days<0?'#c00':r.days<=7?'#d04000':r.days<=30?'#a07000':'#226622';
-        const dl=r.days<0?`Vencido hace ${Math.abs(r.days)}d`:r.days===0?'HOY':`${r.days}d`;
-        return `<tr>
-          <td class="mono" style="color:#1a4a8a">${r.rack}</td>
-          <td class="mono" style="text-align:center">B${r.bay}·N${r.level}</td>
-          <td class="mono sku-id">${r.sku||'—'}</td>
-          <td>${r.desc||'—'}</td>
-          <td class="mono" style="text-align:center">${r.expiry}</td>
-          <td style="text-align:center;font-weight:700;color:${dc}">${dl}</td>
-          <td style="text-align:center">${r.qty} ${r.unit}</td>
-        </tr>`;
-      }).join('');
-      body=`<div class="section-body"><table>
-        <thead><tr><th>Rack</th><th style="text-align:center">Celda</th><th>SKU</th><th>Descripción</th><th style="text-align:center">Vence</th><th style="text-align:center">Estado</th><th style="text-align:center">Cant.</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`;
-    }
-  }
-
-  // ── MOVIMIENTOS ──
-  else if(tab==='movements'){
-    const movs=(state.movements||[]).slice().reverse().slice(0,300);
-    if(!movs.length){body=`<div class="empty-msg">Sin movimientos registrados</div>`;}
-    else{
-      const typeColor={entrada:'#00a860',salida:'#e03030',traslado:'#0088cc',ajuste:'#888'};
-      const rows=movs.map(m=>`<tr>
-        <td style="font-size:10px;color:#888;white-space:nowrap">${m.date||''}</td>
-        <td><span class="badge" style="background:${typeColor[m.type]||'#888'}22;color:${typeColor[m.type]||'#888'};border:1px solid ${typeColor[m.type]||'#888'}44">${m.type||''}</span></td>
-        <td class="mono sku-id">${m.sku||'—'}</td>
-        <td style="font-size:10px">${m.desc||'—'}</td>
-        <td class="mono" style="text-align:center;font-weight:700">${m.qty||''}</td>
-        <td style="font-size:10px;color:#555">${m.rack||''}</td>
-        <td class="mono" style="text-align:center;font-size:10px">B${(m.bay||0)+1}·N${(m.level||0)+1}</td>
-        <td style="font-size:10px;color:#888">${m.note||''}</td>
-      </tr>`).join('');
-      body=`<div class="section-body"><table>
-        <thead><tr><th>Fecha</th><th>Tipo</th><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th>Rack</th><th style="text-align:center">Celda</th><th>Nota</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`;
-    }
-  }
-
-  // ── ZONAS ──
-  else if(tab==='zones'){
-    const groups=[...state.zones,{id:'',name:'Sin zona',color:'#888'}];
-    groups.forEach(zone=>{
-      const zRacks=state.racks.filter(r=>r.zone===zone.id);
-      if(!zRacks.length)return;
-      let total=0,occ=0,skusSet=new Set();
-      zRacks.forEach(r=>{(state.cells[r.id]||[]).forEach(cl=>{total++;if(cl.state==='full'||cl.state==='partial')occ++;(cl.skus||[]).forEach(s=>{if(s.sku)skusSet.add(s.sku);});});});
-      const pct=total?Math.round(occ/total*100):0;
-      const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
-      const rows=zRacks.map(r=>{
-        const rCells=state.cells[r.id]||[];
-        const rOcc=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
-        const rTotal=r.bays*r.levels;
-        const rPct=rTotal?Math.round(rOcc/rTotal*100):0;
-        return `<tr><td class="mono" style="color:#1a4a8a">${r.name}</td><td style="text-align:center">${r.bays}×${r.levels}</td><td style="text-align:center">${rOcc}/${rTotal}</td><td style="text-align:center;font-weight:700;color:${rPct>80?'#e03030':rPct>55?'#e08000':'#00a860'}">${rPct}%</td></tr>`;
-      }).join('');
-      body+=`<div class="section">
-        <div class="section-hd" style="background:${zone.color||'#1a2030'}">
-          <div class="section-name">${zone.name}</div>
-          <span class="section-meta">${zRacks.length} racks · ${occ}/${total} celdas · ${skusSet.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
-        </div>
-        <div class="section-body"><table>
-          <thead><tr><th>Rack</th><th style="text-align:center">Bah×Niv</th><th style="text-align:center">Ocupadas</th><th style="text-align:center">%</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>
-      </div>`;
-    });
-    if(!body) body=`<div class="empty-msg">Sin zonas definidas</div>`;
-  }
-
-  // ── RESPONSABLES ──
-  else if(tab==='resp'){
-    state.people.forEach(person=>{
-      const rackIds=new Set();
-      const skuMap=new Map(); // sku -> {sku,desc,qty,unit,locs[]}
-      let total=0,occ=0;
-      state.racks.forEach(rack=>{
-        const rackResps=rack.responsables||[];
-        (state.cells[rack.id]||[]).forEach(cl=>{
-          const cellResps=(cl.responsables||[]).filter(id=>rackResps.includes(id));
-          const eff=cellResps.length?cellResps:rackResps;
-          if(!eff.includes(person.id))return;
-          rackIds.add(rack.id);total++;
-          if(cl.state==='full'||cl.state==='partial')occ++;
-          (cl.skus||[]).forEach(s=>{
-            if(!s.sku&&!s.desc)return;
-            const k=(s.sku||'')+'|||'+(s.desc||'');
-            if(!skuMap.has(k))skuMap.set(k,{sku:s.sku||'',desc:s.desc||'',qty:0,unit:s.unit||''});
-            skuMap.get(k).qty+=(parseFloat(s.qty)||0);
-          });
-        });
-      });
-      if(!rackIds.size)return;
-      const pct=total?Math.round(occ/total*100):0;
-      const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
-      const rackNames=[...rackIds].map(id=>state.racks.find(r=>r.id===id)?.name||id).join(', ');
-      const skuRows=[...skuMap.values()].map(s=>`<tr>
-        <td class="mono sku-id">${s.sku||'—'}</td>
-        <td>${s.desc||'—'}</td>
-        <td style="text-align:center">${s.qty||''} ${s.unit}</td>
-      </tr>`).join('');
-      body+=`<div class="section">
-        <div class="section-hd">
-          <div class="section-name">👤 ${person.name}${person.role?` — <span style="font-weight:400;font-size:11px">${person.role}</span>`:''}</div>
-          <span class="section-meta">${rackIds.size} racks · ${occ}/${total} celdas · ${skuMap.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
-        </div>
-        <div class="section-body">
-          <div style="padding:6px 12px;font-size:10px;color:#666;border-bottom:1px solid #eef;background:#fafbff"><b>Racks:</b> ${rackNames}</div>
-          ${skuRows?`<table><thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant. total</th></tr></thead><tbody>${skuRows}</tbody></table>`:'<div style="padding:10px 12px;color:#bbb;font-size:10px;font-style:italic">Sin productos asignados</div>'}
-        </div>
-      </div>`;
-    });
-    if(!body) body=`<div class="empty-msg">Sin responsables asignados</div>`;
-  }
-
-  // ── TIENDAS ──
-  else if(tab==='tiendas'){
-    state.tiendas.forEach(tienda=>{
-      const racks=new Set(),skuMap=new Map();let total=0,occ=0;
-      state.racks.forEach(rack=>{
-        (state.cells[rack.id]||[]).forEach(cl=>{
-          const eff=(cl.tiendas||[]).length?(cl.tiendas||[]):(rack.tiendas||[]);
-          if(!eff.includes(tienda.id))return;
-          racks.add(rack.id);total++;
-          if(cl.state==='full'||cl.state==='partial')occ++;
-          (cl.skus||[]).forEach(s=>{
-            if(!s.sku&&!s.desc)return;
-            const k=(s.sku||'')+'|||'+(s.desc||'');
-            if(!skuMap.has(k))skuMap.set(k,{sku:s.sku||'',desc:s.desc||'',qty:0,unit:s.unit||''});
-            skuMap.get(k).qty+=(parseFloat(s.qty)||0);
-          });
-        });
-      });
-      if(!racks.size)return;
-      const pct=total?Math.round(occ/total*100):0;
-      const skuRows=[...skuMap.values()].map(s=>`<tr><td class="mono sku-id">${s.sku||'—'}</td><td>${s.desc||'—'}</td><td style="text-align:center">${s.qty||''} ${s.unit}</td></tr>`).join('');
-      body+=`<div class="section">
-        <div class="section-hd">
-          <div class="section-name">🏪 ${tienda.name}${tienda.code?` (${tienda.code})`:''}</div>
-          <span class="section-meta">${racks.size} racks · ${occ}/${total} · ${skuMap.size} SKUs · ${pct}%</span>
-        </div>
-        <div class="section-body"><table>
-          <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th></tr></thead>
-          <tbody>${skuRows||`<tr><td colspan="3" style="text-align:center;color:#aaa;padding:10px">Sin productos</td></tr>`}</tbody>
-        </table></div>
-      </div>`;
-    });
-    if(!body) body=`<div class="empty-msg">Sin tiendas asignadas</div>`;
-  }
-
-  // ── VALOR ──
-  else if(tab==='valor'){
-    const all=buildValorData();
-    if(!all.length){body=`<div class="empty-msg">Sin datos de valor — asigná costos a los productos</div>`;}
-    else{
-      const total=all.reduce((a,r)=>a+r.subtotal,0);
-      const rows=all.map(r=>`<tr>
-        <td class="mono sku-id">${r.sku||'—'}</td>
-        <td>${r.desc||'—'}</td>
-        <td style="text-align:center">${r.qty}</td>
-        <td class="mono" style="text-align:right">$${r.cost?.toFixed(2)||'—'}</td>
-        <td class="mono" style="text-align:right;font-weight:700;color:${r.subtotal>0?'#1a6a3a':'#888'}">$${r.subtotal.toFixed(2)}</td>
-        <td style="font-size:10px;color:#666">${r.rack||''}</td>
-      </tr>`).join('');
-      body=`<div style="display:flex;gap:12px;margin-bottom:14px">
-        <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Valor Total</div>
-          <div style="font-size:22px;font-weight:800;color:#1a6a3a;font-family:'Courier New',monospace">$${total.toFixed(2)}</div>
-        </div>
-        <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">SKUs con Costo</div>
-          <div style="font-size:22px;font-weight:800;color:#1a4a8a;font-family:'Courier New',monospace">${all.filter(r=>r.hasCost).length}</div>
-        </div>
-      </div>
-      <div class="section-body"><table>
-        <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th style="text-align:right">Costo Unit.</th><th style="text-align:right">Subtotal</th><th>Rack</th></tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot><tr style="background:#f0f4f8"><td colspan="4" style="padding:8px 10px;font-weight:700;text-align:right">TOTAL</td><td class="mono" style="padding:8px 10px;font-weight:800;font-size:13px;color:#1a6a3a;text-align:right">$${total.toFixed(2)}</td><td></td></tr></tfoot>
-      </table></div>`;
-    }
-  }
+  const body=buildReportTabBody(tab);
 
   // ── OPEN WINDOW ──
   const win=window.open('','_blank','width=960,height=750');
   if(!win){alert('Bloqueado por el navegador — permitir popups para esta página');return;}
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title} — ${bname}</title><style>${baseCss}</style></head><body>${toolbar}<div style="padding:10px 20px 30px">${pageHd}${body}</div></body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)} — ${bname}</title><style>${baseCss}</style></head><body>${toolbar}<div style="padding:10px 20px 30px">${pageHd}${body}</div></body></html>`);
   win.document.close();
 }
 
 
 function exportReportAudit(){
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const now=new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR');
   const filterUnverif=document.getElementById('rep-audit-unverif')?.value||'';
   const filterRack=document.getElementById('rep-audit-rack')?.value||'';
@@ -4088,15 +4118,15 @@ function exportReportAudit(){
 
   const tableRows=rows.map((r,i)=>`
     <tr style="background:${i%2===0?'#fff':'#f8f9fb'}">
-      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-weight:700;font-size:12px;color:#1a4a8a">${r.rack}</td>
-      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#555">${r.zone}</td>
+      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-weight:700;font-size:12px;color:#1a4a8a">${esc(r.rack)}</td>
+      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#555">${esc(r.zone)}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center;font-family:'Courier New',monospace;font-weight:700;font-size:13px">${r.bay}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center;font-family:'Courier New',monospace;font-weight:700;font-size:13px">${r.level}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:${stateColors[Object.keys(STATE_LABELS).find(k=>STATE_LABELS[k]===r.state)]||'#eee'}">${r.state}</span></td>
-      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#111;font-weight:600">${r.lastWho}</td>
-      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:11px;color:#666;font-family:'Courier New',monospace">${r.lastDate}</td>
+      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#111;font-weight:600">${esc(r.lastWho)}</td>
+      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:11px;color:#666;font-family:'Courier New',monospace">${esc(r.lastDate)}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center;font-size:12px;font-weight:700;color:${r.daysSince==='NUNCA'?'#cc0022':parseInt(r.daysSince)>=30?'#cc0022':parseInt(r.daysSince)>=15?'#cc7700':'#226622'}">${r.daysSince}</td>
-      ${!isUnverif?`<td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:11px;color:#888">${r.notes||''}</td>`:''}
+      ${!isUnverif?`<td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:11px;color:#888">${esc(r.notes||'')}</td>`:''}
     </tr>`).join('');
 
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -4218,8 +4248,8 @@ function renderReportResp(filter){
       +'<div style="width:6px;background:'+(isNone?'#4a5a78':'var(--cyan)')+';flex-shrink:0;border-radius:6px 0 0 6px"></div>'
       +'<div style="flex:1;padding:14px 16px">'
         +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
-          +'<div><span style="font-size:1.05rem;font-weight:700;color:'+(isNone?'var(--dim)':'var(--bright)')+'">'+(isNone?displayName:'👤 '+displayName)+'</span>'
-          +(displayRole?'<span style="font-size:.9rem;color:var(--dim);margin-left:7px">'+displayRole+'</span>':'')+'</div>'
+          +'<div><span style="font-size:1.05rem;font-weight:700;color:'+(isNone?'var(--dim)':'var(--bright)')+'">'+(isNone?esc(displayName):'👤 '+esc(displayName))+'</span>'
+          +(displayRole?'<span style="font-size:.9rem;color:var(--dim);margin-left:7px">'+esc(displayRole)+'</span>':'')+'</div>'
           +'<div style="margin-left:auto;display:flex;align-items:center;gap:8px">'
             +'<div style="width:100px;height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px"></div></div>'
             +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:1.14rem;color:'+bc+'">'+pct+'%</span>'
@@ -4231,9 +4261,9 @@ function renderReportResp(filter){
           +'<div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--cyan);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">SKUs</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--cyan)">'+data.skus.size+'</div></div>'
           +'<div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">'+t('state_blocked')+'</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--red)">'+data.blocked+'</div></div>'
         +'</div>'
-        +(tiendaNames.length?`<div style="margin-bottom:10px"><div style="font-size:1.16rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`+tiendaNames.map(s=>'<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:3px 12px;font-size:1.02rem;color:var(--accent)">'+s+'</span>').join('')+'</div></div>':'')
+        +(tiendaNames.length?`<div style="margin-bottom:10px"><div style="font-size:1.16rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`+tiendaNames.map(s=>'<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:3px 12px;font-size:1.02rem;color:var(--accent)">'+esc(s)+'</span>').join('')+'</div></div>':'')
         +`<div><div style="font-size:1.16rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">📦 ${t('rep_assigned_racks')}</div>`
-          +'<div style="display:flex;flex-wrap:wrap;gap:5px">'+data.racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return '<span onclick="closeO(\'o-report\');selectRack(\''+r.id+'\')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:\'Share Tech Mono\',monospace;font-size:1.02rem;color:'+(z?z.color:'var(--dim)')+';cursor:pointer">'+r.name+'</span>';}).join('')+'</div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:5px">'+data.racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return '<span onclick="closeO(\'o-report\');selectRack(\''+r.id+'\')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:\'Share Tech Mono\',monospace;font-size:1.02rem;color:'+(z?z.color:'var(--dim)')+';cursor:pointer">'+esc(r.name)+'</span>';}).join('')+'</div>'
         +'</div>'
       +'</div>'
       +'</div>';
@@ -4292,7 +4322,7 @@ function renderReportTiendas(filter){
     const isNone=tid==='__none__';
     const tienda=isNone?null:state.tiendas.find(x=>x.id===tid);
     if(!isNone&&!tienda)return; // orphan
-    const displayName=isNone?'Sin tienda asignada':(tienda.name+(tienda.code?` (${tienda.code})`:''));
+    const displayName=isNone?'Sin tienda asignada':esc(tienda.name+(tienda.code?` (${tienda.code})`:''));
     if(filter&&!displayName.toLowerCase().includes(filter))return;
     shown++;
 
@@ -4306,9 +4336,9 @@ function renderReportTiendas(filter){
     const skuList=skus.map(s=>`
       <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:3px;cursor:pointer"
       onclick="closeO('o-report');setTimeout(()=>openViewCell('${s.locs[0]?.rackId}',${s.locs[0]?.bay??0},${s.locs[0]?.level??0}),120)">
-        ${s.sku?`<span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--accent);font-weight:700">${s.sku}</span>`:''}
-        <span style="font-size:.95rem;color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.desc||t('no_desc')}</span>
-        ${s.qty?`<span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--bright);flex-shrink:0">${s.qty} ${s.unit||''}</span>`:''}
+        ${s.sku?`<span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--accent);font-weight:700">${esc(s.sku)}</span>`:''}
+        <span style="font-size:.95rem;color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.desc)||t('no_desc')}</span>
+        ${s.qty?`<span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--bright);flex-shrink:0">${esc(s.qty)} ${esc(s.unit||'')}</span>`:''}
         <span style="font-size:.88rem;color:var(--dim);flex-shrink:0">${s.locs.length} celda${s.locs.length!==1?'s':''}</span>
       </div>`).join('');
     const moreSkus='';
@@ -4335,7 +4365,7 @@ function renderReportTiendas(filter){
           +`<div style="background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Unidades</div><div style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${totalQty}</div></div>`
         +'</div>'
         // Racks chips
-        +(racksArr.length?'<div style="margin-bottom:10px"><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">📍 Racks</div><div style="display:flex;flex-wrap:wrap;gap:5px">'+racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return`<span onclick="closeO('o-report');selectRack('${r.id}')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:.95rem;color:${z?z.color:'var(--dim)'};cursor:pointer">${r.name}</span>`;}).join('')+'</div></div>':'')
+        +(racksArr.length?'<div style="margin-bottom:10px"><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">📍 Racks</div><div style="display:flex;flex-wrap:wrap;gap:5px">'+racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return`<span onclick="closeO('o-report');selectRack('${r.id}')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:.95rem;color:${z?z.color:'var(--dim)'};cursor:pointer">${esc(r.name)}</span>`;}).join('')+'</div></div>':'')
         // SKU list
         +(totalSkus?`<div><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">📦 Productos (${totalSkus})</div><div style="display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto">${skuList}</div></div>`:'')
       +'</div>'
@@ -4348,8 +4378,8 @@ function renderReportTiendas(filter){
 
 function exportReportCSV(){
   const map=buildSkuMap();
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const now=new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR');
   const stateColors={empty:'#e0e0e0',full:'#b3f0d4',partial:'#fff3b3',reserved:'#b3e8ff',blocked:'#ffb3be'};
   const stateNames={empty:'Vacío',full:'Ocupado',partial:'Parcial',reserved:'Reservado',blocked:'Bloqueado'};
@@ -4369,15 +4399,15 @@ function exportReportCSV(){
 
   const tableRows=rows.map((r,i)=>`
     <tr style="background:${i%2===0?'#fff':'#f8f9fb'}">
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-weight:700;font-size:13px;color:#111">${r.sku}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:13px;color:#333">${r.desc}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-size:13px;text-align:right;color:#111">${r.qty} <span style="color:#888;font-size:11px">${r.unit}</span></td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#1a4a8a">${r.rack}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-weight:700;font-size:13px;color:#111">${esc(r.sku)}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:13px;color:#333">${esc(r.desc)}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-size:13px;text-align:right;color:#111">${esc(r.qty)} <span style="color:#888;font-size:11px">${esc(r.unit)}</span></td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#1a4a8a">${esc(r.rack)}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center;font-size:14px;font-weight:700;font-family:'Courier New',monospace">${r.bay}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center;font-size:14px;font-weight:700;font-family:'Courier New',monospace">${r.level}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center"><span style="display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:${stateColors[r.state]||'#eee'}">${stateNames[r.state]||r.state}</span></td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#336">${r.resps}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#663300">${r.shops}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#336">${esc(r.resps)}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#663300">${esc(r.shops)}</td>
     </tr>`).join('');
 
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="height:48px;width:48px;object-fit:contain;border-radius:5px;">'):'<div style="width:48px;height:48px;background:#f0a500;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:#000;font-family:Arial">B</div>';
@@ -4581,7 +4611,7 @@ function renderReportValor(filter){
 function exportValorExcel(){
   if(typeof XLSX==='undefined'){notif(currentLang==='en'?'Excel library not loaded':'Librería Excel no cargada','err');return;}
   const rows=buildValorData();
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'STOCKFORGE')+' '+(n?.accent||'')).trim();}catch{return'STOCKFORGE';}})();
+  const bname=getBrandName('STOCKFORGE','');
 
   const data=[[
     'SKU',t('csv_description'),t('csv_qty'),t('csv_unit')||'Unidad',
@@ -4618,7 +4648,7 @@ function exportValorExcel(){
 function exportSkusExcel(){
   if(typeof XLSX==='undefined'){notif(currentLang==='en'?'Excel library not loaded':'Librería Excel no cargada','err');return;}
   const map=buildSkuMap();
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'STOCKFORGE')+' '+(n?.accent||'')).trim();}catch{return'STOCKFORGE';}})();
+  const bname=getBrandName('STOCKFORGE','');
   const data=[[
     'SKU',t('csv_description'),t('csv_qty'),'Unidad',
     'Rack',t('csv_zone'),t('csv_bay'),t('csv_level'),t('csv_state'),
@@ -4649,8 +4679,8 @@ function exportSkusExcel(){
 
 function printMovementsPDF(){
   const rows=getFilteredMovements();
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'')).trim();}catch{return'BODEGA';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','');
+  const logoSrc=getBrandLogo();
   const dateStr=new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'});
   const typeIcon={entrada:'🟢',salida:'🔴',traslado:'🔵',ajuste:'🟡',conteo:'🟣'};
   const typeColor={entrada:'#00c875',salida:'#ff3b5c',traslado:'#00aaff',ajuste:'#f0c000',conteo:'#a855f7'};
@@ -4658,19 +4688,19 @@ function printMovementsPDF(){
 
   const rowsHTML=rows.map((m,i)=>{
     const tc=typeColor[m.type]||'#999';
-    const dest=m.destRack?`→ ${m.destRack} B${m.destBay+1}N${m.destLevel+1}`:'';
+    const dest=m.destRack?`→ ${esc(m.destRack)} B${m.destBay+1}N${m.destLevel+1}`:'';
     return `<tr style="background:${i%2===0?'#fff':'#f8f9fb'}">
-      <td style="padding:6px 8px;font-size:10px;color:#888;white-space:nowrap">${m.date||''}</td>
+      <td style="padding:6px 8px;font-size:10px;color:#888;white-space:nowrap">${esc(m.date||'')}</td>
       <td style="padding:6px 8px;text-align:center">
-        <span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:800;letter-spacing:.5px;background:${tc}22;color:${tc};border:1px solid ${tc}55;text-transform:uppercase">${m.type||''}</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:800;letter-spacing:.5px;background:${tc}22;color:${tc};border:1px solid ${tc}55;text-transform:uppercase">${esc(m.type||'')}</span>
       </td>
-      <td style="padding:6px 8px;font-family:'Courier New',monospace;font-size:10px;font-weight:800;color:#c07000">${m.sku||''}</td>
-      <td style="padding:6px 8px;font-size:10px;color:#333;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.desc||''}</td>
-      <td style="padding:6px 8px;text-align:right;font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:#1a2030">${m.qty||''} <span style="color:#888;font-weight:400">${m.unit||''}</span></td>
-      <td style="padding:6px 8px;font-size:10px;color:#555">${m.rack||''}</td>
+      <td style="padding:6px 8px;font-family:'Courier New',monospace;font-size:10px;font-weight:800;color:#c07000">${esc(m.sku||'')}</td>
+      <td style="padding:6px 8px;font-size:10px;color:#333;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.desc||'')}</td>
+      <td style="padding:6px 8px;text-align:right;font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:#1a2030">${esc(m.qty||'')} <span style="color:#888;font-weight:400">${esc(m.unit||'')}</span></td>
+      <td style="padding:6px 8px;font-size:10px;color:#555">${esc(m.rack||'')}</td>
       <td style="padding:6px 8px;font-family:'Courier New',monospace;font-size:9.5px;color:#777">B${m.bay+1}·N${m.level+1}</td>
       <td style="padding:6px 8px;font-size:9.5px;color:#3a7bd5">${dest}</td>
-      <td style="padding:6px 8px;font-size:9px;color:#888;font-style:italic;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.note||''}</td>
+      <td style="padding:6px 8px;font-size:9px;color:#888;font-style:italic;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.note||'')}</td>
     </tr>`;
   }).join('');
 
@@ -4746,7 +4776,7 @@ function getFilteredMovements(){
 function exportReportExcel(){
   if(typeof XLSX==='undefined'){notif(currentLang==='en'?'Excel library not loaded':'Librería Excel no cargada','err');return;}
   // Full workbook with all tabs
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'STOCKFORGE')+' '+(n?.accent||'')).trim();}catch{return'STOCKFORGE';}})();
+  const bname=getBrandName('STOCKFORGE','');
   const wb=XLSX.utils.book_new();
 
   // Sheet 1: SKUs
@@ -4948,18 +4978,68 @@ function updateBPCount(){
   const n=bpSelection.size;
   document.getElementById('bp-count').textContent=n+' '+t('rep_labels_selected');
 }
+// Construye el HTML de una etiqueta individual dentro de la impresión masiva
+function buildBulkLabelHtml(rack, cell, is4x6, bname, logoEl){
+  const stateNames={empty:'VACÍO',full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO'};
+  const stateColors={empty:'#ddd',full:'#00cc66',partial:'#ffcc00',reserved:'#00aaff',blocked:'#ff3344'};
+  const stateTxt={empty:'#444',full:'#000',partial:'#000',reserved:'#000',blocked:'#fff'};
+
+  const zone=state.zones.find(z=>z.id===rack.zone);
+  const zoneColor=zone?(zone.color.startsWith('var(')?'#555':zone.color):'#aaa';
+  const sc=stateColors[cell.state]||'#ddd';
+  const st=stateTxt[cell.state]||'#000';
+  const sn=stateNames[cell.state]||'VACÍO';
+  const resps=resolvePeople((cell.responsables||[]).length?(cell.responsables||[]):(rack.responsables||[]));
+  const cellShops=resolveTiendas(cell.tiendas||[]);
+  const chipResp=resps.map(r=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">'+esc(r)+'</span>').join('');
+  const chipShop=cellShops.map(s=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">'+esc(s)+'</span>').join('');
+  const skuExpiryRows=(cell.skus||[]).filter(s=>s.expiry).map(s=>{
+    const d=expiryDays(s.expiry);const ec=d<0?'#ff3344':d<=30?'#ff9900':'#00aa44';
+    return '<div class="notes" style="display:flex;justify-content:space-between;align-items:center">📅 '+esc(s.sku||s.desc||'SKU')+': '+esc(s.expiry)+'<span style="font-weight:900;color:'+ec+'">'+(d<0?'VENCIDO':d===0?'HOY':d+'d')+'</span></div>';
+  }).join('');
+  const notesRow=cell.notes?('<div class="notes">📝 '+esc(cell.notes)+'</div>'):'';
+
+  return '<div class="lbl">'
+    +'<div class="hd">'
+      +`<div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${bname}<small>${t('lbl_location')}</small></div></div>`
+      +`<div style="text-align:right"><div class="hd-rack">${esc(rack.name)}</div><div class="hd-coord">${t('lbl_bay').toUpperCase()} ${cell.bay+1} &nbsp;·&nbsp; ${t('lbl_level').toUpperCase()} ${cell.level+1}</div></div>`
+    +'</div>'
+    +'<div class="body">'
+      +'<div class="col-nums">'
+        +`<div class="num-box"><div class="num-lbl">${t('lbl_bay')}</div><div class="num-val">${cell.bay+1}</div></div>`
+        +`<div class="num-box"><div class="num-lbl">${t('lbl_level')}</div><div class="num-val">${cell.level+1}</div></div>`
+      +'</div>'
+      +'<div class="col-info">'
+        +'<div class="info-top">'
+          +`<div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?esc(zone.name):t('no_zone')}</div></div>`
+          +`<div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${sn}</span></div>`
+        +'</div>'
+        +'<div class="people">'
+          +(resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+chipResp+'</div></div>'):'')
+          +(cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+chipShop+'</div></div>'):(!resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${currentLang==='en'?'No assignees':'Sin responsables ni tiendas'}</div>`:''))
+        +'</div>'
+        +notesRow
+        +skuExpiryRows
+      +'</div>'
+    +'</div>'
+    +'<div class="ft">'
+      +`<span class="ft-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>`
+      +'<div style="display:flex;align-items:center;gap:10px"><span class="ft-code">'+esc(rack.name)+'-B'+(cell.bay+1)+'N'+(cell.level+1)+'</span>'
+      +'<img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data='+encodeURIComponent(rack.name+'-B'+(cell.bay+1)+'N'+(cell.level+1))+'" style="width:44px;height:44px;border-radius:3px" alt="QR"></div>'
+    +'</div>'
+  +'</div>';
+}
+
 function doBulkPrint(){
   const allCells=getBPCells();
   const cells=allCells.filter(({rack,cell})=>bpSelection.has(bpKey(rack,cell)));
   if(!cells.length){notif(t('notif_select_label'),'warn');return;}
   const fmt=document.getElementById('bp-fmt').value;
   const is4x6=(fmt!=='a4');
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="width:44px;height:44px;object-fit:contain;border-radius:4px;">'):'<div style="width:44px;height:44px;background:#f0a500;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#000">B</div>';
-  const stateNames={empty:'VACÍO',full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO'};
   const stateColors={empty:'#ddd',full:'#00cc66',partial:'#ffcc00',reserved:'#00aaff',blocked:'#ff3344'};
-  const stateTxt={empty:'#444',full:'#000',partial:'#000',reserved:'#000',blocked:'#fff'};
 
   const pageSize=is4x6?'6in 4in':'210mm 297mm';
   const lblW=is4x6?'6in':'190mm'; const lblH=is4x6?'4in':'auto';
@@ -4969,55 +5049,10 @@ function doBulkPrint(){
   const headRackSize=is4x6?'30px':'44px';
   const headCoordSize=is4x6?'16px':'22px';
 
-  const labelsHtml=cells.map(({rack,cell})=>{
-    const zone=state.zones.find(z=>z.id===rack.zone);
-    const zoneColor=zone?(zone.color.startsWith('var(')?'#555':zone.color):'#aaa';
-    const sc=stateColors[cell.state]||'#ddd';
-    const st=stateTxt[cell.state]||'#000';
-    const sn=stateNames[cell.state]||'VACÍO';
-    const resps=resolvePeople((cell.responsables||[]).length?(cell.responsables||[]):(rack.responsables||[]));
-    const cellShops=resolveTiendas(cell.tiendas||[]);
-    const chipResp=resps.map(r=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">'+r+'</span>').join('');
-    const chipShop=cellShops.map(s=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">'+s+'</span>').join('');
-    const skuExpiryRows=(cell.skus||[]).filter(s=>s.expiry).map(s=>{
-      const d=expiryDays(s.expiry);const ec=d<0?'#ff3344':d<=30?'#ff9900':'#00aa44';
-      return '<div class="notes" style="display:flex;justify-content:space-between;align-items:center">📅 '+(s.sku||s.desc||'SKU')+': '+s.expiry+'<span style="font-weight:900;color:'+ec+'">'+(d<0?'VENCIDO':d===0?'HOY':d+'d')+'</span></div>';
-    }).join('');
-    const notesRow=cell.notes?('<div class="notes">📝 '+cell.notes+'</div>'):'';
-
-    return '<div class="lbl">'
-      +'<div class="hd">'
-        +`<div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${bname}<small>${t('lbl_location')}</small></div></div>`
-        +`<div style="text-align:right"><div class="hd-rack">${rack.name}</div><div class="hd-coord">${t('lbl_bay').toUpperCase()} ${cell.bay+1} &nbsp;·&nbsp; ${t('lbl_level').toUpperCase()} ${cell.level+1}</div></div>`
-      +'</div>'
-      +'<div class="body">'
-        +'<div class="col-nums">'
-          +`<div class="num-box"><div class="num-lbl">${t('lbl_bay')}</div><div class="num-val">${cell.bay+1}</div></div>`
-          +`<div class="num-box"><div class="num-lbl">${t('lbl_level')}</div><div class="num-val">${cell.level+1}</div></div>`
-        +'</div>'
-        +'<div class="col-info">'
-          +'<div class="info-top">'
-            +`<div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?zone.name:t('no_zone')}</div></div>`
-            +`<div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${sn}</span></div>`
-          +'</div>'
-          +'<div class="people">'
-            +(resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+chipResp+'</div></div>'):'')
-            +(cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+chipShop+'</div></div>'):(!resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${currentLang==='en'?'No assignees':'Sin responsables ni tiendas'}</div>`:''))
-          +'</div>'
-          +notesRow
-          +skuExpiryRows
-        +'</div>'
-      +'</div>'
-      +'<div class="ft">'
-        +`<span class="ft-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>`
-        +'<div style="display:flex;align-items:center;gap:10px"><span class="ft-code">'+rack.name+'-B'+(cell.bay+1)+'N'+(cell.level+1)+'</span>'
-        +'<img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data='+encodeURIComponent(rack.name+'-B'+(cell.bay+1)+'N'+(cell.level+1))+'" style="width:44px;height:44px;border-radius:3px" alt="QR"></div>'
-      +'</div>'
-    +'</div>';
-  }).join('');
+  const labelsHtml=cells.map(({rack,cell})=>buildBulkLabelHtml(rack, cell, is4x6, bname, logoEl)).join('');
 
   const win=window.open('','_blank','width=900,height=700');
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiquetas Masivas — '+bname+'</title>'
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc('Etiquetas Masivas — '+bname)+'</title>'
   +'<style>'
   +'@page{size:'+pageSize+';margin:'+(is4x6?'0':'15mm')+';}'
   +'*{margin:0;padding:0;box-sizing:border-box;}'
@@ -5401,15 +5436,12 @@ function finishEditName(){
 async function loadBrandFromStorage() {
   try {
     // Intentar obtener logo desde Supabase
-    const res = await fetch('/api/config');
-    if (res.ok) {
-      const config = await res.json();
-      if (config.sf_logo) {
-        localStorage.setItem('sf_logo', config.sf_logo);
-        document.getElementById('logo-img').src = config.sf_logo;
-        document.getElementById('logo-img').style.display = 'block';
-        document.getElementById('logo-placeholder').style.display = 'none';
-      }
+    const config = await apiRequestJSON('/api/config');
+    if (config.sf_logo) {
+      localStorage.setItem('sf_logo', config.sf_logo);
+      document.getElementById('logo-img').src = config.sf_logo;
+      document.getElementById('logo-img').style.display = 'block';
+      document.getElementById('logo-placeholder').style.display = 'none';
     }
   } catch (e) {
     console.warn('Usando logo local');
@@ -5449,7 +5481,7 @@ function restaurarSesion() {
 
 function cerrarSesion() {
   sessionStorage.removeItem('sf_coord_token');
-  localStorage.removeItem('sf_refresh_token');
+  sessionStorage.removeItem('sf_refresh_token');
   coordToken = null;
   coordUnlocked = false;
 }
@@ -5465,7 +5497,7 @@ function activarCoordinador(token, refreshToken) {
   coordToken = token;
   coordUnlocked = true;
   guardarSesion(token);
-  if (refreshToken) localStorage.setItem('sf_refresh_token', refreshToken);
+  if (refreshToken) sessionStorage.setItem('sf_refresh_token', refreshToken);
   const btn = document.getElementById('lock-btn');
   if (btn) {
     btn.textContent = '🔓';
@@ -5524,7 +5556,7 @@ async function renovarTokenSiEsNecesario() {
     const response = await fetch('/api/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: localStorage.getItem('sf_refresh_token') })
+      body: JSON.stringify({ refresh_token: sessionStorage.getItem('sf_refresh_token') })
     });
     if (!response.ok) {
       desactivarCoordinador();
@@ -5635,25 +5667,14 @@ function toggleLock() {
   }
 }
 
-// PIN keyboard capture
+// Cierra el modal de acceso de coordinador con Escape (mientras el foco no esté en un input)
 document.addEventListener('keydown',function(e){
   const modal=document.getElementById('o-pin');
   if(!modal||!modal.classList.contains('open'))return;
-  // Don't intercept if focus is on a text/email/password input inside the modal
   const active=document.activeElement;
   if(active&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA'))return;
-  if(e.key>='0'&&e.key<='9'){e.preventDefault();e.stopPropagation();if(typeof pinKey==='function')pinKey(e.key);}
-  else if(e.key==='Backspace'){e.preventDefault();e.stopPropagation();if(typeof pinDel==='function')pinDel();}
-  else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();modal.classList.remove('open');}
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();modal.classList.remove('open');}
 },true);
-
-function openPinChange(){ notif('Cambio de PIN no disponible en este modo','warn'); }
-function initPinSession(){
-  // PIN system replaced by email/password login — nothing to restore
-}
-
-
-function applyGuardAttrs(){}
 
 // Inicialización asíncrona corregida
 (async function(){
@@ -5686,7 +5707,6 @@ function applyGuardAttrs(){}
   try { applyTheme(currentTheme); } catch(e) {}
   try { applyI18n(); } catch(e) {}
   try { addAct(currentLang==='en'?'System started':'Sistema iniciado', 'var(--green)'); } catch(e) {}
-  try { applyGuardAttrs(); initPinSession(); } catch(e) {}
   try { initPanels(); } catch(e) {}
 })();
 

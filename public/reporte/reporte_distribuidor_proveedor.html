@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte de Salida por Distribuidor / Proveedor — Efficommerce</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="reporte.css">
+</head>
+<body>
+
+<header>
+  <div class="header-container">
+    <div class="header-left">
+      <div class="header-logo-pill">
+        <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png" alt="Efficommerce Logo" class="header-logo-img">
+      </div>
+      <div class="header-divider"></div>
+      <div class="header-titles">
+        <h1>Reporte de Salida por Distribuidor / Proveedor</h1>
+        <p id="generation-p">Picking &amp; Packing · Sincronizando con base de datos...</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="file-zone" id="fileZone">
+  <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event)" />
+  <div class="file-label" onclick="document.getElementById('excelInput').click()">
+    <i class="fas fa-cloud-upload-alt"></i> Cargar archivo de salidas
+  </div>
+  <div class="file-info" id="fileInfo">Arrastra o selecciona el archivo .xlsx o .csv de movimientos</div>
+</div>
+
+<div class="stats-bar" id="statsBar" style="display:none;"></div>
+
+<!-- ── PANEL DE EXCLUSIÓN DE TIENDAS ── -->
+<div class="exclusion-panel" id="exclusionPanel" style="display:none;">
+  <div class="exclusion-header" id="exclusionToggle" onclick="toggleExclusionPanel()">
+    <div class="exclusion-header-left">
+      <i class="fas fa-store-slash"></i>
+      Excluir tiendas del reporte
+      <span class="exclusion-badge" id="exclusionBadge"></span>
+    </div>
+    <i class="fas fa-chevron-down exclusion-chevron" id="exclusionChevron"></i>
+  </div>
+  <div class="exclusion-body" id="exclusionBody">
+    <div class="exclusion-info">
+      <i class="fas fa-info-circle"></i>
+      Las tiendas marcadas <strong>no aparecerán</strong> en el reporte ni en los exports. El cruce de datos se realiza exclusivamente con las tiendas activas.
+    </div>
+    <div class="exclusion-grid" id="exclusionGrid"></div>
+    <div class="exclusion-actions">
+      <button class="btn-include-all" onclick="setAllExclusion(false)"><i class="fas fa-check-double"></i> Incluir todas</button>
+      <button class="btn-exclude-all" onclick="setAllExclusion(true)"><i class="fas fa-ban"></i> Excluir todas</button>
+      <span class="exclusion-count" id="exclusionCount"></span>
+    </div>
+  </div>
+</div>
+
+<div class="controls" id="controlsSection" style="display:none;">
+  <input type="text" id="searchInput" placeholder="🔍 Buscar por SKU o nombre de producto...">
+  <select id="filterType">
+    <option value="">Todos los orígenes</option>
+    <option value="Distribuidor (Bodega Propia)">🏪 Solo Bodega Propia</option>
+    <option value="Proveedor Dropshipping">Solo Proveedores Dropshipping</option>
+  </select>
+  <button class="toggle-btn" id="toggleLow" onclick="toggleLowOnly()">
+    <i class="fas fa-exclamation-triangle"></i> Solo bajo 30 uds
+  </button>
+  <button class="toggle-btn" onclick="expandAll()"><i class="fas fa-expand-alt"></i> Expandir</button>
+  <button class="toggle-btn" onclick="collapseAll()"><i class="fas fa-compress-alt"></i> Colapsar</button>
+  
+  <button class="toggle-btn btn-download-xlsx" onclick="exportarExcelBonito()">
+    <i class="fas fa-file-excel"></i> Descargar Excel (.xlsx)
+  </button>
+  <button class="toggle-btn btn-pdf" onclick="generarPDF()">
+    <i class="fas fa-file-pdf"></i> Guardar PDF
+  </button>
+</div>
+
+<div class="main" id="mainContent">
+  <div class="empty-state">
+    <i class="fas fa-folder-open" style="font-size: 2.5rem; color: var(--neutral-400); margin-bottom: 12px; display: block;"></i>
+    Por favor, cargue un reporte de movimientos para estructurar los SKUs contra la base de datos.
+  </div>
+</div>
+
+<div class="footer-note" id="footerNote">Efficommerce · Gestión Integrada de Almacén</div>
+
+<script src="reporte.js"></script>
+</body>
+</html>

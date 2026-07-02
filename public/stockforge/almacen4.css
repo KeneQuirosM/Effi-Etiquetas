@@ -41,16 +41,6 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
 .btn.locked{opacity:.35;cursor:not-allowed;filter:grayscale(.7);}
 .btn.locked:hover{background:transparent;border-color:var(--border2);color:var(--dim);}
 .lock-badge{font-size:.85rem;margin-left:3px;vertical-align:middle;opacity:.7;}
-/* PIN modal */
-.pin-dots{display:flex;gap:10px;justify-content:center;margin:18px 0 6px;}
-.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border2);background:transparent;transition:all .2s;}
-.pin-dot.filled{background:var(--accent);border-color:var(--accent);box-shadow:0 0 8px var(--accent);}
-.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px;margin:0 auto;}
-.pin-key{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:14px 0;font-family:'Share Tech Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--text);cursor:pointer;transition:all .15s;text-align:center;}
-.pin-key:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.06);}
-.pin-key:active{transform:scale(.93);}
-.pin-key.del{color:var(--dim);font-size:1rem;}
-.pin-status{text-align:center;font-family:'Share Tech Mono',monospace;font-size:1rem;min-height:22px;margin-bottom:4px;}
 /* lock icon in header */
 #lock-btn{transition:all .2s;}
 #lock-btn.unlocked{border-color:var(--green);color:var(--green);}
@@ -691,4 +681,3 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
 @media (max-width:768px) {
   .report-tabs { -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%); mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%); }
 }
-</style>

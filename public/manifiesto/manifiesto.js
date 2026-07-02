@@ -1,60 +1,3 @@
-// script.js - PARTE 1/3
-// ====== FUNCIONES PRINCIPALES Y GENERADOR GUÍAS ======
-
-function generateGuide() {
-  const guideNumber = document.getElementById("guideNumber").value.trim();
-  const codeType = document.getElementById("codeType").value;
-  const displayGuideNumber = document.getElementById("displayGuideNumber");
-  const qrcodeContainer = document.getElementById("qrcode");
-  const courierGuide = document.getElementById("courierGuide");
-  const actions = document.getElementById("actions");
-
-  if (guideNumber) {
-    guardarEnHistorial('guia', {
-      numeroGuia: guideNumber,
-      tipoCodigo: codeType,
-      fechaGeneracion: new Date().toLocaleString()
-    });
-  }
-
-  qrcodeContainer.innerHTML = "";
-  displayGuideNumber.textContent = guideNumber || "-";
-
-  if (!guideNumber) {
-    showToast('⚠️ Ingresa un número de guía.', 'warning');
-    return;
-  }
-
-  courierGuide.style.display = "block";
-  actions.style.display = "block";
-
-  if (codeType === "qr") {
-    new QRCode(qrcodeContainer, { text: guideNumber, width: 200, height: 200 });
-  } else if (codeType === "barcode") {
-    const canvas = document.createElement("canvas");
-    qrcodeContainer.appendChild(canvas);
-    JsBarcode(canvas, guideNumber, { format: "CODE128", width: 2, height: 80, displayValue: true });
-  }
-}
-
-function newGuide() {
-  document.getElementById("guideNumber").value = "";
-  document.getElementById("courierGuide").style.display = "none";
-  document.getElementById("actions").style.display = "none";
-  document.getElementById("qrcode").innerHTML = "";
-  document.getElementById("displayGuideNumber").textContent = "-";
-}
-
-function imprimirGuia() {
-  const courierGuide = document.getElementById('courierGuide');
-  const wasHidden = courierGuide.style.display !== 'flex';
-  if (wasHidden) courierGuide.style.display = 'flex';
-  setTimeout(() => {
-    window.print();
-    if (wasHidden) setTimeout(() => courierGuide.style.display = 'none', 100);
-  }, 100);
-}
-
 // ====== ESTADO GLOBAL ======
 let manifiesto = [];
 let faltantesSet = new Set();
@@ -70,205 +13,6 @@ const guiaRegex = /^(CR\d{9,}$|(?:CR)?(BC|1W|2W|3W|4W)[A-Z0-9\-]+$|^\d{10}$)/i;
 const rxRuta = /ruta\s*[:\-]\s*(.+)$/i;
 const rxPiloto = /piloto\s*[:\-]\s*(.+)$/i;
 const rxBodeguero = /bodeguero\s*[:\-]\s*(.+)$/i;
-
-// ====== FUNCIONES PARA PDF CON OCR ======
-
-function cargarPDFJS() {
-  return new Promise((resolve, reject) => {
-    if (typeof pdfjsLib !== 'undefined') return resolve();
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
-    script.onload = () => {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-      resolve();
-    };
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
-// Convertir página PDF a imagen
-async function pageToImage(page, scale = 2) {
-  const viewport = page.getViewport({ scale: scale });
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  
-  await page.render({ canvasContext: context, viewport: viewport }).promise;
-  return canvas;
-}
-
-// Extraer texto de una imagen usando Tesseract
-async function extractTextFromImage(canvas) {
-  // Mostrar progreso
-  console.log("Procesando OCR en imagen...");
-  
-  return new Promise((resolve, reject) => {
-    Tesseract.recognize(
-      canvas,
-      'spa',  // Español (también reconoce números y letras)
-      {
-        logger: m => console.log(m),  // Para ver progreso
-      }
-    ).then(({ data: { text } }) => {
-      console.log("Texto reconocido:", text.substring(0, 200));
-      resolve(text);
-    }).catch(reject);
-  });
-}
-
-// Función específica para extraer guías del formato "Listado de Retorno"
-function extraerGuiasDelTextoOCR(texto) {
-  console.log("Buscando guías en texto OCR...");
-  
-  // Patrón para guías de 10 dígitos que empiezan con 1000 (formato de tu PDF)
-  const patronGuia1000 = /\b(1000\d{6})\b/g;
-  const guias1000 = texto.match(patronGuia1000) || [];
-  
-  // Patrón para guías con CR
-  const patronCR = /CR\d{7,}/gi;
-  const guiasCR = texto.match(patronCR) || [];
-  
-  // Patrón para códigos como 1W, 2W, BC
-  const patronPrefijo = /(?:BC|1W|2W|3W|4W)[A-Z0-9\-]+/gi;
-  const guiasPrefijo = texto.match(patronPrefijo) || [];
-  
-  let todasLasGuias = [...guias1000, ...guiasCR, ...guiasPrefijo];
-  todasLasGuias = [...new Set(todasLasGuias)];
-  
-  console.log("Guías encontradas por OCR:", todasLasGuias);
-  return todasLasGuias;
-}
-
-// Función principal para extraer guías desde PDF escaneado
-async function extraerGuiasDesdePDF(pdfData) {
-  await cargarPDFJS();
-  
-  try {
-    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-    console.log("PDF cargado, páginas:", pdf.numPages);
-    
-    let textoCompleto = '';
-    
-    // Solo procesar la primera página (donde están los datos)
-    for (let i = 1; i <= Math.min(pdf.numPages, 2); i++) {
-      const page = await pdf.getPage(i);
-      
-      // Intentar extraer texto normal primero
-      const textContent = await page.getTextContent();
-      let pageText = textContent.items.map(item => item.str).join(' ');
-      
-      // Si no hay texto, usar OCR
-      if (!pageText.trim() || pageText.length < 50) {
-        console.log(`Página ${i} sin texto detectable, usando OCR...`);
-        const canvas = await pageToImage(page);
-        pageText = await extractTextFromImage(canvas);
-      } else {
-        console.log(`Página ${i} tiene texto directo:`, pageText.substring(0, 100));
-      }
-      
-      textoCompleto += pageText + ' ';
-    }
-    
-    // Extraer guías del texto
-    const guias = extraerGuiasDelTextoOCR(textoCompleto);
-    
-    // También buscar patrones específicos en el texto crudo
-    console.log("Texto completo OCR:", textoCompleto.substring(0, 500));
-    
-    return guias;
-    
-  } catch (error) {
-    console.error('Error al leer PDF:', error);
-    throw new Error('No se pudo leer el PDF: ' + error.message);
-  }
-}
-
-function extraerGuiasDelTexto(texto) {
-  console.log("Texto extraído del PDF:", texto.substring(0, 500)); // Para depurar
-  
-  // Patrón específico para tu PDF (guías de 10 dígitos que empiezan con 1000)
-  const patronGuia = /\b(1000\d{6})\b/g;
-  const guiasEncontradas = texto.match(patronGuia) || [];
-  
-  // También buscar patrones CR
-  const patronCR = /CR\d{6,}/gi;
-  const guiasCR = texto.match(patronCR) || [];
-  
-  // Unir todas las guías
-  let todasLasGuias = [...guiasEncontradas, ...guiasCR];
-  
-  // Eliminar duplicados
-  todasLasGuias = [...new Set(todasLasGuias)];
-  
-  console.log("Guías encontradas:", todasLasGuias);
-  
-  return todasLasGuias.map(g => normalizarGuia(g));
-}
-
-function extractMetaFromText(texto) {
-  const rutaMatch = texto.match(/ruta\s*[:\-]\s*(.+?)(?:\n|$|\,)/i);
-  const pilotoMatch = texto.match(/piloto\s*[:\-]\s*(.+?)(?:\n|$|\,)/i);
-  const bodegueroMatch = texto.match(/bodeguero\s*[:\-]\s*(.+?)(?:\n|$|\,)/i);
-  if (rutaMatch && window.nombreRuta === "-") window.nombreRuta = rutaMatch[1].trim();
-  if (pilotoMatch && window.piloto === "-") window.piloto = pilotoMatch[1].trim();
-  if (bodegueroMatch && window.bodeguero === "-") window.bodeguero = bodegueroMatch[1].trim();
-  const infoRuta = document.getElementById("infoRuta");
-  const infoPiloto = document.getElementById("infoPiloto");
-  const infoBodeguero = document.getElementById("infoBodeguero");
-  if (infoRuta) infoRuta.textContent = window.nombreRuta;
-  if (infoPiloto) infoPiloto.textContent = window.piloto;
-  if (infoBodeguero) infoBodeguero.textContent = window.bodeguero;
-}
-
-async function extraerGuiasDesdePDF(pdfData) {
-  await cargarPDFJS();
-  
-  // Esperar un poco para asegurar que pdfjsLib está listo
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
-  try {
-    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-    console.log("PDF cargado, páginas:", pdf.numPages);
-    
-    let textoCompleto = '';
-    
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map(item => item.str).join(' ');
-      textoCompleto += pageText + ' ';
-      console.log(`Página ${i}:`, pageText.substring(0, 200));
-    }
-    
-    extractMetaFromText(textoCompleto);
-    const guias = extraerGuiasDelTexto(textoCompleto);
-    
-    console.log("Total guías extraídas:", guias.length);
-    return guias;
-    
-  } catch (error) {
-    console.error('Error detallado:', error);
-    throw error;
-  }
-}
-// script.js - PARTE 2/3
-// ====== MANEJO DE ARCHIVOS (EXCEL Y PDF) ======
-
-function extractMetaFromCells(cells) {
-  for (const c of cells) {
-    if (rxRuta.test(c) && window.nombreRuta === "-") window.nombreRuta = c.match(rxRuta)[1].trim();
-    if (rxPiloto.test(c) && window.piloto === "-") window.piloto = c.match(rxPiloto)[1].trim();
-    if (rxBodeguero.test(c) && window.bodeguero === "-") window.bodeguero = c.match(rxBodeguero)[1].trim();
-  }
-  const infoRuta = document.getElementById("infoRuta");
-  const infoPiloto = document.getElementById("infoPiloto");
-  const infoBodeguero = document.getElementById("infoBodeguero");
-  if (infoRuta) infoRuta.textContent = window.nombreRuta;
-  if (infoPiloto) infoPiloto.textContent = window.piloto;
-  if (infoBodeguero) infoBodeguero.textContent = window.bodeguero;
-}
 
 function updateStats() {
   const dashTotal = document.getElementById('dashTotal');
@@ -350,6 +94,169 @@ function onScanEnter(e) {
 }
 
 // ====== FUNCIÓN COMPLETA handleFile (reemplaza la que tienes) ======
+// Extrae guías, metadatos de ruta y verifica cruces desde un Excel de manifiesto ya parseado
+function processExcelManifest(rows) {
+  const infoRuta = document.getElementById("infoRuta");
+  const infoPiloto = document.getElementById("infoPiloto");
+  const infoBodeguero = document.getElementById("infoBodeguero");
+
+  const cells = rows.flat().map(x => (x ? String(x).trim() : "")).filter(Boolean);
+
+  // Extraer metadatos
+  for (const c of cells) {
+    if (rxRuta.test(c) && window.nombreRuta === "-") {
+      window.nombreRuta = c.match(rxRuta)[1].trim();
+    }
+    if (rxPiloto.test(c) && window.piloto === "-") {
+      window.piloto = c.match(rxPiloto)[1].trim();
+    }
+    if (rxBodeguero.test(c) && window.bodeguero === "-") {
+      window.bodeguero = c.match(rxBodeguero)[1].trim();
+    }
+  }
+
+  if (infoRuta) infoRuta.textContent = window.nombreRuta;
+  if (infoPiloto) infoPiloto.textContent = window.piloto;
+  if (infoBodeguero) infoBodeguero.textContent = window.bodeguero;
+
+  // Extraer guías
+  const guias = cells.filter(val => guiaRegex.test(val)).map(guia => normalizarGuia(guia));
+
+  // Verificar cruces de ruta (solo para Excel)
+  const lhCodesInManifesto = extraerLHCodes(rows);
+  const destinatarios = extraerDestinatarios(rows);
+
+  if (lhCodesInManifesto.length > 0) {
+    const posiblesCruces = verificarCrucesDeRuta(lhCodesInManifesto, destinatarios);
+    const crucesImportantes = posiblesCruces.filter(cruce =>
+      cruce.tipo === "DESTINATARIO_INCORRECTO"
+    );
+    if (crucesImportantes.length > 0) {
+      showToast(`⚠️ ${crucesImportantes.length} destinatario(s) en ruta incorrecta`, 'warning');
+      mostrarModalCruces(crucesImportantes);
+      mostrarIconoNotificacion(crucesImportantes);
+    }
+  }
+
+  showToast(`✅ Excel: ${guias.length} guías encontradas`, 'success');
+
+  return guias;
+}
+
+// Renderiza una página de PDF a canvas, con rotación opcional (usado por el OCR)
+async function renderPdfPageToCanvas(page, rotation = 0) {
+  const viewport = page.getViewport({ scale: 2.0, rotation });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  return canvas;
+}
+
+// Extrae el texto de una página de PDF: primero texto nativo, si no alcanza usa OCR (con reintento rotado 180°)
+async function extractPdfPageText(page, pageIndex) {
+  const textContent = await page.getTextContent();
+  let pageText = textContent.items.map(item => item.str).join(' ').trim();
+
+  if (pageText.length >= 30) return { pageText, usedOCR: false };
+
+  showToast(`🔍 Página ${pageIndex}: usando OCR...`, 'info');
+
+  if (typeof Tesseract === 'undefined') {
+    console.warn("Tesseract no disponible");
+    return { pageText, usedOCR: true };
+  }
+
+  try {
+    let canvas = await renderPdfPageToCanvas(page, 0);
+    let result = await Tesseract.recognize(canvas, 'spa');
+    pageText = result.data.text;
+
+    // Si no encontró guías (1000XXXXXX), intentar rotado 180°
+    const guiasEnPagina = pageText.match(/\b1000\d{6}\b/g) || [];
+    if (guiasEnPagina.length === 0) {
+      showToast(`🔄 Página ${pageIndex}: reintentando rotada 180°...`, 'info');
+      canvas = await renderPdfPageToCanvas(page, 180);
+      result = await Tesseract.recognize(canvas, 'spa');
+      const pageText180 = result.data.text;
+      const guias180 = pageText180.match(/\b1000\d{6}\b/g) || [];
+      if (guias180.length > guiasEnPagina.length) {
+        pageText = pageText180;
+      }
+    }
+  } catch (ocrErr) {
+    console.warn(`OCR falló en página ${pageIndex}:`, ocrErr);
+    pageText = '';
+  }
+
+  return { pageText, usedOCR: true };
+}
+
+// Procesa un PDF de manifiesto: extrae texto (nativo u OCR) de cada página y busca guías por patrones
+async function processPdfManifest(pdfData) {
+  showToast('📄 Cargando PDF...', 'info');
+
+  // Asegurar PDF.js cargado con worker correcto
+  if (typeof pdfjsLib === 'undefined') {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('No se pudo cargar PDF.js'));
+      document.head.appendChild(script);
+    });
+  }
+  // Siempre asignar el worker (puede no estar seteado)
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+  let guias = [];
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+    const totalPaginas = pdf.numPages;
+
+    let textoCompleto = '';
+    let usandoOCR = false;
+
+    for (let i = 1; i <= totalPaginas; i++) {
+      showToast(`📄 Procesando página ${i} de ${totalPaginas}...`, 'info');
+      const page = await pdf.getPage(i);
+      const { pageText, usedOCR } = await extractPdfPageText(page, i);
+      if (usedOCR) usandoOCR = true;
+      textoCompleto += pageText + '\n';
+    }
+
+    // Extraer guías con múltiples patrones
+    const pat1000  = /\b(1000\d{6})\b/g;           // guías tipo 1000XXXXXX
+    const patCR    = /\bCR\d{7,}\b/gi;              // guías CR
+    const patPrefijo = /\b(?:BC|1W|2W|3W|4W)[A-Z0-9\-]{4,}\b/gi; // BC, 1W, etc.
+
+    let guiasEncontradas = [
+      ...(textoCompleto.match(pat1000)    || []),
+      ...(textoCompleto.match(patCR)      || []),
+      ...(textoCompleto.match(patPrefijo) || []),
+    ];
+
+    guias = [...new Set(guiasEncontradas)];
+
+    if (guias.length === 0) {
+      const detalle = usandoOCR
+        ? 'El OCR no reconoció guías. El PDF puede estar muy borroso o inclinado.'
+        : 'No se encontraron guías con los patrones conocidos (1000XXXXXX, CR..., etc).';
+      showToast(`⚠️ ${detalle}`, 'warning', 8000);
+    } else {
+      showToast(`✅ PDF: ${guias.length} guías encontradas${usandoOCR ? ' (vía OCR)' : ''}`, 'success');
+    }
+
+  } catch (pdfError) {
+    console.error("Error al procesar PDF:", pdfError);
+    showToast(`❌ Error al leer el PDF: ${pdfError.message}`, 'error', 8000);
+    guias = [];
+  }
+
+  return guias;
+}
+
 async function handleFile(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -367,7 +274,7 @@ async function handleFile(event) {
   window.nombreRuta = "-";
   window.piloto = "-";
   window.bodeguero = "-";
-  
+
   const infoRuta = document.getElementById("infoRuta");
   const infoPiloto = document.getElementById("infoPiloto");
   const infoBodeguero = document.getElementById("infoBodeguero");
@@ -389,167 +296,11 @@ async function handleFile(event) {
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-        const cells = rows.flat().map(x => (x ? String(x).trim() : "")).filter(Boolean);
-        
-        // Extraer metadatos
-        for (const c of cells) {
-          if (rxRuta.test(c) && window.nombreRuta === "-") {
-            window.nombreRuta = c.match(rxRuta)[1].trim();
-          }
-          if (rxPiloto.test(c) && window.piloto === "-") {
-            window.piloto = c.match(rxPiloto)[1].trim();
-          }
-          if (rxBodeguero.test(c) && window.bodeguero === "-") {
-            window.bodeguero = c.match(rxBodeguero)[1].trim();
-          }
-        }
-        
-        if (infoRuta) infoRuta.textContent = window.nombreRuta;
-        if (infoPiloto) infoPiloto.textContent = window.piloto;
-        if (infoBodeguero) infoBodeguero.textContent = window.bodeguero;
-
-        // Extraer guías
-        guias = cells.filter(val => guiaRegex.test(val)).map(guia => normalizarGuia(guia));
-        
-        // Verificar cruces de ruta (solo para Excel)
-        const lhCodesInManifesto = extraerLHCodes(rows);
-        const destinatarios = extraerDestinatarios(rows);
-        
-        if (lhCodesInManifesto.length > 0) {
-          const posiblesCruces = verificarCrucesDeRuta(lhCodesInManifesto, destinatarios);
-          const crucesImportantes = posiblesCruces.filter(cruce =>
-            cruce.tipo === "DESTINATARIO_INCORRECTO"
-          );
-          if (crucesImportantes.length > 0) {
-            showToast(`⚠️ ${crucesImportantes.length} destinatario(s) en ruta incorrecta`, 'warning');
-            mostrarModalCruces(crucesImportantes);
-            mostrarIconoNotificacion(crucesImportantes);
-          }
-        }
-        
-        showToast(`✅ Excel: ${guias.length} guías encontradas`, 'success');
-        
+        guias = processExcelManifest(rows);
       } else if (isPDF) {
         // ====== PROCESAR PDF CON OCR (VERSIÓN ROBUSTA) ======
-        showToast('📄 Cargando PDF...', 'info');
-
         const pdfData = new Uint8Array(e.target.result);
-
-        // Asegurar PDF.js cargado con worker correcto
-        if (typeof pdfjsLib === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
-            script.onload = resolve;
-            script.onerror = () => reject(new Error('No se pudo cargar PDF.js'));
-            document.head.appendChild(script);
-          });
-        }
-        // Siempre asignar el worker (puede no estar seteado)
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-        try {
-          const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-          const totalPaginas = pdf.numPages;
-          console.log("PDF cargado, páginas:", totalPaginas);
-
-          let textoCompleto = '';
-          let usandoOCR = false;
-
-          for (let i = 1; i <= totalPaginas; i++) {
-            showToast(`📄 Procesando página ${i} de ${totalPaginas}...`, 'info');
-            const page = await pdf.getPage(i);
-
-            // 1. Intentar texto nativo primero
-            const textContent = await page.getTextContent();
-            let pageText = textContent.items.map(item => item.str).join(' ').trim();
-
-            // 2. Si no hay texto suficiente, usar OCR
-            if (pageText.length < 30) {
-              usandoOCR = true;
-              showToast(`🔍 Página ${i}: usando OCR...`, 'info');
-
-              // Función auxiliar para renderizar página con rotación opcional
-              const renderCanvas = async (rotation = 0) => {
-                const viewport = page.getViewport({ scale: 2.0, rotation });
-                const canvas = document.createElement('canvas');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-                return canvas;
-              };
-
-              if (typeof Tesseract !== 'undefined') {
-                try {
-                  // Primer intento: rotación normal
-                  let canvas = await renderCanvas(0);
-                  let result = await Tesseract.recognize(canvas, 'spa', {
-                    logger: m => { if (m.status === 'recognizing text') console.log(`OCR p${i}: ${Math.round(m.progress * 100)}%`); }
-                  });
-                  pageText = result.data.text;
-
-                  // Si no encontró guías (1000XXXXXX), intentar rotado 180°
-                  const guiasEnPagina = pageText.match(/\b1000\d{6}\b/g) || [];
-                  if (guiasEnPagina.length === 0) {
-                    console.log(`Página ${i}: sin guías en orientación normal, intentando 180°...`);
-                    showToast(`🔄 Página ${i}: reintentando rotada 180°...`, 'info');
-                    canvas = await renderCanvas(180);
-                    result = await Tesseract.recognize(canvas, 'spa', {
-                      logger: m => { if (m.status === 'recognizing text') console.log(`OCR p${i} rot180: ${Math.round(m.progress * 100)}%`); }
-                    });
-                    const pageText180 = result.data.text;
-                    const guias180 = pageText180.match(/\b1000\d{6}\b/g) || [];
-                    if (guias180.length > guiasEnPagina.length) {
-                      console.log(`Página ${i}: rotación 180° encontró ${guias180.length} guías`);
-                      pageText = pageText180;
-                    }
-                  }
-                } catch (ocrErr) {
-                  console.warn(`OCR falló en página ${i}:`, ocrErr);
-                  pageText = '';
-                }
-              } else {
-                console.warn("Tesseract no disponible");
-              }
-            }
-
-            console.log(`Página ${i} texto (${pageText.length} chars):`, pageText.substring(0, 200));
-            textoCompleto += pageText + '\n';
-          }
-
-          console.log("--- TEXTO COMPLETO EXTRAÍDO ---");
-          console.log(textoCompleto);
-
-          // Extraer guías con múltiples patrones
-          const pat1000  = /\b(1000\d{6})\b/g;           // guías tipo 1000XXXXXX
-          const patCR    = /\bCR\d{7,}\b/gi;              // guías CR
-          const patPrefijo = /\b(?:BC|1W|2W|3W|4W)[A-Z0-9\-]{4,}\b/gi; // BC, 1W, etc.
-
-          let guiasEncontradas = [
-            ...(textoCompleto.match(pat1000)    || []),
-            ...(textoCompleto.match(patCR)      || []),
-            ...(textoCompleto.match(patPrefijo) || []),
-          ];
-
-          guias = [...new Set(guiasEncontradas)];
-          console.log("Guías encontradas:", guias);
-
-          if (guias.length === 0) {
-            const detalle = usandoOCR
-              ? 'El OCR no reconoció guías. El PDF puede estar muy borroso o inclinado.'
-              : 'No se encontraron guías con los patrones conocidos (1000XXXXXX, CR..., etc).';
-            showToast(`⚠️ ${detalle}`, 'warning', 8000);
-          } else {
-            showToast(`✅ PDF: ${guias.length} guías encontradas${usandoOCR ? ' (vía OCR)' : ''}`, 'success');
-          }
-
-        } catch (pdfError) {
-          console.error("Error al procesar PDF:", pdfError);
-          showToast(`❌ Error al leer el PDF: ${pdfError.message}`, 'error', 8000);
-          guias = [];
-        }
+        guias = await processPdfManifest(pdfData);
       }
 
       // Actualizar estado global
@@ -559,11 +310,11 @@ async function handleFile(event) {
       noManifestadasSet.clear();
 
       updateStats();
-      
+
       if (manifiesto.length > 0) {
         showToast(`✅ Manifiesto cargado con ${manifiesto.length} guías.`, 'success');
       }
-      
+
       const scanInputField = document.getElementById("scanInput");
       if (scanInputField) scanInputField.focus();
 
@@ -587,9 +338,20 @@ function showToast(message, type = 'info', duration = 5000) {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   const icon = type === 'success' ? '✅' : (type === 'warning' ? '⚠️' : (type === 'error' ? '❌' : 'ℹ️'));
-  toast.innerHTML = `${icon} ${message}`;
+  toast.innerHTML = `${icon} ${esc(message)}`;
   const container = document.getElementById('toastContainer');
   if (container) { container.appendChild(toast); setTimeout(() => toast.remove(), duration); }
+}
+
+// Escapa caracteres HTML para prevenir XSS en innerHTML
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function abrirModalFaltantes() {
@@ -600,7 +362,7 @@ function abrirModalFaltantes() {
   if (total) total.textContent = faltantesSet.size;
   if (lista) {
     lista.innerHTML = faltantesSet.size === 0 ? '<div><p>No hay guías faltantes</p></div>' : 
-      Array.from(faltantesSet).map(g => `<div class="faltante-item"><span class="faltante-number">${g}</span><button class="btn-action btn-marcar" onclick="marcarComoEscaneada('${g}')"><i class="fas fa-check"></i> Marcar</button></div>`).join('');
+      Array.from(faltantesSet).map(g => `<div class="faltante-item"><span class="faltante-number">${esc(g)}</span><button class="btn-action btn-marcar" onclick="marcarComoEscaneada('${esc(g.replace(/'/g,"\\'"))}')"><i class="fas fa-check"></i> Marcar</button></div>`).join('');
   }
   modal.style.display = 'block';
 }
@@ -615,7 +377,7 @@ function abrirModalNoManifestadas() {
   const total = document.getElementById('modalTotalNoManif');
   if (!modal) return;
   if (total) total.textContent = noManifestadasSet.size;
-  if (lista) lista.innerHTML = noManifestadasSet.size === 0 ? '<div><p>No hay guías no manifestadas</p></div>' : Array.from(noManifestadasSet).map(g => `<div>${g}</div>`).join('');
+  if (lista) lista.innerHTML = noManifestadasSet.size === 0 ? '<div><p>No hay guías no manifestadas</p></div>' : Array.from(noManifestadasSet).map(g => `<div>${esc(g)}</div>`).join('');
   modal.style.display = 'block';
 }
 function cerrarModalNoManifestadas() { document.getElementById('noManifestadasModal') && (document.getElementById('noManifestadasModal').style.display = 'none'); }
@@ -626,7 +388,7 @@ function abrirModalRepetidas() {
   if (!modal) return;
   const repetidas = Array.from(guiasEscaneadas.entries()).filter(([_, d]) => d.veces > 1);
   if (total) total.textContent = repetidas.length;
-  if (lista) lista.innerHTML = repetidas.length === 0 ? '<div><p>No hay guías repetidas</p></div>' : repetidas.map(([g, d]) => `<div><strong>${g}</strong> - ${d.veces} veces</div>`).join('');
+  if (lista) lista.innerHTML = repetidas.length === 0 ? '<div><p>No hay guías repetidas</p></div>' : repetidas.map(([g, d]) => `<div><strong>${esc(g)}</strong> - ${d.veces} veces</div>`).join('');
   modal.style.display = 'block';
 }
 function cerrarModalRepetidas() { document.getElementById('repetidasModal') && (document.getElementById('repetidasModal').style.display = 'none'); }
@@ -657,43 +419,9 @@ function limpiarHistorial() { localStorage.removeItem(HISTORIAL_KEY); showToast(
 function cerrarConfirmModal() { const m = document.getElementById('confirmModal'); if (m) m.style.display = 'none'; }
 
 // ====== COMPARATIVO ======
-function openComparativoWindow() {
-  const ahora = new Date();
-  const fecha = ahora.toLocaleDateString('es-CR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  const hora = ahora.toLocaleTimeString();
-  const manifestadas = manifiesto.slice();
-  const pistoleadas = Array.from(correctasSet);
-  const noManif = Array.from(noManifestadasSet);
-  const faltantes = Array.from(faltantesSet);
-  const maxLen = Math.max(manifestadas.length, pistoleadas.length);
-
-  guardarEnHistorial('comparativo', { total: manifiesto.length, correctas: correctasSet.size, faltantes: faltantesSet.size, noManifestadas: noManifestadasSet.size, ruta: window.nombreRuta });
-
-  let filasComparativo = '';
-  for (let i = 0; i < maxLen; i++) {
-    const esCorrecta = pistoleadas[i] && correctasSet.has(pistoleadas[i]);
-    filasComparativo += `<tr>
-      <td>${manifestadas[i] || '<span style="color:#aaa">—</span>'}</td>
-      <td style="color:${esCorrecta ? '#198754' : '#dc3545'}; font-weight:600">${pistoleadas[i] || '<span style="color:#aaa">—</span>'}</td>
-    </tr>`;
-  }
-
-  let filasNoManif = noManif.length === 0
-    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Ninguna guía fuera de manifiesto ✅</td></tr>'
-    : noManif.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#dc3545;font-weight:600">${g}</td></tr>`).join('');
-
-  let filаsFaltantes = faltantes.length === 0
-    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Todas las guías fueron escaneadas ✅</td></tr>'
-    : faltantes.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#e67e00;font-weight:600">${g}</td></tr>`).join('');
-
-  const porcentaje = manifiesto.length > 0 ? Math.round((correctasSet.size / manifiesto.length) * 100) : 0;
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <title>Reporte Comparativo — ${window.nombreRuta}</title>
-  <style>
+// CSS estático del reporte comparativo impreso (sin interpolación de variables)
+function buildComparativoCss() {
+  return `
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Segoe UI', sans-serif; background:#f0f2f5; color:#333; }
 
@@ -797,7 +525,54 @@ function openComparativoWindow() {
       body { background:white; }
       .page { max-width:100%; }
     }
-  </style>
+  `;
+}
+
+// Arma las filas de las 3 tablas del reporte comparativo (manifestadas vs escaneadas, no manifestadas, faltantes)
+function buildComparativoRows(manifestadas, pistoleadas, noManif, faltantes) {
+  const maxLen = Math.max(manifestadas.length, pistoleadas.length);
+
+  let filasComparativo = '';
+  for (let i = 0; i < maxLen; i++) {
+    const esCorrecta = pistoleadas[i] && correctasSet.has(pistoleadas[i]);
+    filasComparativo += `<tr>
+      <td>${manifestadas[i] ? esc(manifestadas[i]) : '<span style="color:#aaa">—</span>'}</td>
+      <td style="color:${esCorrecta ? '#198754' : '#dc3545'}; font-weight:600">${pistoleadas[i] ? esc(pistoleadas[i]) : '<span style="color:#aaa">—</span>'}</td>
+    </tr>`;
+  }
+
+  const filasNoManif = noManif.length === 0
+    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Ninguna guía fuera de manifiesto ✅</td></tr>'
+    : noManif.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#dc3545;font-weight:600">${esc(g)}</td></tr>`).join('');
+
+  const filasFaltantes = faltantes.length === 0
+    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Todas las guías fueron escaneadas ✅</td></tr>'
+    : faltantes.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#e67e00;font-weight:600">${esc(g)}</td></tr>`).join('');
+
+  return { filasComparativo, filasNoManif, filasFaltantes };
+}
+
+function openComparativoWindow() {
+  const ahora = new Date();
+  const fecha = ahora.toLocaleDateString('es-CR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const hora = ahora.toLocaleTimeString();
+  const manifestadas = manifiesto.slice();
+  const pistoleadas = Array.from(correctasSet);
+  const noManif = Array.from(noManifestadasSet);
+  const faltantes = Array.from(faltantesSet);
+
+  guardarEnHistorial('comparativo', { total: manifiesto.length, correctas: correctasSet.size, faltantes: faltantesSet.size, noManifestadas: noManifestadasSet.size, ruta: window.nombreRuta });
+
+  const { filasComparativo, filasNoManif, filasFaltantes } = buildComparativoRows(manifestadas, pistoleadas, noManif, faltantes);
+
+  const porcentaje = manifiesto.length > 0 ? Math.round((correctasSet.size / manifiesto.length) * 100) : 0;
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Reporte Comparativo — ${esc(window.nombreRuta)}</title>
+  <style>${buildComparativoCss()}</style>
 </head>
 <body>
 <div class="page">
@@ -815,18 +590,18 @@ function openComparativoWindow() {
       <div class="sub">Efficommerce — Transportadora</div>
       <div class="fecha">📅 ${fecha} &nbsp;|&nbsp; 🕐 ${hora}</div>
     </div>
-    <div class="badge-ruta">🚚 Ruta: ${window.nombreRuta}</div>
+    <div class="badge-ruta">🚚 Ruta: ${esc(window.nombreRuta)}</div>
   </div>
 
   <!-- Info ruta -->
   <div class="info-bar">
     <div class="info-bar-item">
       <span class="label">Piloto</span>
-      <span class="value">${window.piloto}</span>
+      <span class="value">${esc(window.piloto)}</span>
     </div>
     <div class="info-bar-item">
       <span class="label">Bodeguero</span>
-      <span class="value">${window.bodeguero}</span>
+      <span class="value">${esc(window.bodeguero)}</span>
     </div>
     <div class="info-bar-item">
       <span class="label">Fecha generación</span>
@@ -903,7 +678,7 @@ function openComparativoWindow() {
     </div>
     <table>
       <thead><tr><th>#</th><th>Número de Guía</th></tr></thead>
-      <tbody>${filаsFaltantes}</tbody>
+      <tbody>${filasFaltantes}</tbody>
     </table>
   </div>
 
@@ -926,7 +701,7 @@ const lhDestinatarios = {
 function extraerLHCodes(rows) { const codes = new Set(); rows.forEach(row => { if(Array.isArray(row)) row.forEach(cell => { const v = String(cell).trim(); if(/^LH\d{2,3}$/i.test(v)) codes.add(v.toUpperCase()); const m = v.match(/ruta\s*[:\-]\s*(LH\d{2,3})/i); if(m) codes.add(m[1].toUpperCase()); }); }); return Array.from(codes); }
 function extraerDestinatarios(rows) { const dest = new Set(); for(let i=2; i<rows.length; i++) { const row = rows[i]; if(Array.isArray(row) && row[3]) { const d = String(row[3]).trim().toUpperCase(); if(d && d !== "DESTINATARIO" && d.length > 2) dest.add(d); } } return Array.from(dest); }
 function verificarCrucesDeRuta(lhCodes, destinatarios) { const cruces = []; lhCodes.forEach(code => { if(!lhDestinatarios[code]) cruces.push({ tipo: "LH_INEXISTENTE", motivo: `${code} no existe` }); }); return cruces; }
-function mostrarModalCruces(cruces) { let modal = document.getElementById('crucesModal'); if(!modal){ modal=document.createElement('div'); modal.id='crucesModal'; modal.className='modal'; document.body.appendChild(modal); } modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>⚠️ Cruces</h3><span onclick="cerrarModalCruces()">&times;</span></div><div class="modal-body">${cruces.map(c=>`<div>${c.motivo}</div>`).join('')}</div></div>`; modal.style.display='block'; }
+function mostrarModalCruces(cruces) { let modal = document.getElementById('crucesModal'); if(!modal){ modal=document.createElement('div'); modal.id='crucesModal'; modal.className='modal'; document.body.appendChild(modal); } modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>⚠️ Cruces</h3><span onclick="cerrarModalCruces()">&times;</span></div><div class="modal-body">${cruces.map(c=>`<div>${esc(c.motivo)}</div>`).join('')}</div></div>`; modal.style.display='block'; }
 function cerrarModalCruces() { const m = document.getElementById('crucesModal'); if(m) m.style.display='none'; }
 let crucesActivos = [];
 function mostrarIconoNotificacion(cruces) { crucesActivos=cruces; const icono=document.getElementById('notificationIcon'); if(icono && cruces.length) icono.style.display='flex'; }
@@ -1047,13 +822,13 @@ function renderTablaGuias() {
     const abierto = paquetesAbiertos[f.guia] || false;
     return `<tr class="${abierto ? 'paquete-abierto' : ''}">
       <td style="color:#999;font-size:12px;">${i + 1}</td>
-      <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${f.guia}</td>
+      <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${esc(f.guia)}</td>
       <td><span class="badge-estado ${badgeClass}">${badgeText}</span></td>
-      <td style="color:#888;font-size:12px;">${f.hora}</td>
+      <td style="color:#888;font-size:12px;">${esc(f.hora)}</td>
       <td style="text-align:center;">
         <label class="check-abierto">
           <input type="checkbox" ${abierto ? 'checked' : ''}
-            onchange="togglePaqueteAbierto('${f.guia}', this.checked)" />
+            onchange="togglePaqueteAbierto('${esc(f.guia.replace(/'/g,"\\'"))}', this.checked)" />
         </label>
       </td>
     </tr>`;

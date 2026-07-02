@@ -20,7 +20,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 - Rótulo A4 horizontal para identificación de estanterías
 - Logo personalizable por tienda (guardado en Supabase)
 
-### 2. STOCKFORGE (`/almacen4.html`)
+### 2. STOCKFORGE (`/stockforge/almacen4.html`)
 - Mapa visual del almacén con racks, zonas y celdas
 - Asignación de SKUs desde el catálogo real de productos por tienda
 - Al escribir el código del producto, autocompleta el nombre desde la BD
@@ -33,11 +33,14 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 - Soporte bilingüe (ES / EN) y tres temas visuales (Oscuro, Claro, Daltónico)
 - Importación masiva desde Excel/CSV
 
-### 3. Manifiestos (`/manifiesto.html`)
+### 3. Manifiestos (`/manifiesto/manifiesto.html`)
 - Comparativo de manifiestos de envío
 
-### 4. Devoluciones (`/devoluciones.html`)
+### 4. Devoluciones (`/devoluciones/devoluciones.html`)
 - Gestión de devoluciones y generación de guías de courier
+
+### 5. Reporte Distribuidor / Proveedor (`/reporte/reporte_distribuidor_proveedor.html`)
+- Reporte de salidas por tienda/distribuidor, cruzado contra el catálogo de productos
 
 ---
 
@@ -79,20 +82,24 @@ effi-etiquetas/
 │   ├── stockforge.js         # estado completo del almacén (auth en POST)
 │   └── reporte-tiendas.js    # reporte de movimientos por tienda
 ├── public/
-│   ├── index.html            # generador de etiquetas
+│   ├── index.html            # generador de etiquetas (home, "/")
 │   ├── index.js              # lógica principal + QR embebido offline
 │   ├── index.css             # estilos generador
-│   ├── almacen4.html         # STOCKFORGE UI
-│   ├── almacen4.js           # lógica STOCKFORGE (~5600 líneas)
-│   ├── almacen4.css          # estilos STOCKFORGE (tema oscuro)
-│   ├── manifiesto.html/js/css
-│   ├── devoluciones.html
-│   ├── script.js / styles.css
-│   └── reporte_distribuidor_proveedor.html
+│   ├── shared/
+│   │   └── api.js            # capa de servicio HTTP compartida (fetch + JSON + errores)
+│   ├── stockforge/
+│   │   └── almacen4.html/js/css   # STOCKFORGE (mapa de almacén, ~5700 líneas)
+│   ├── manifiesto/
+│   │   └── manifiesto.html/js/css # comparativo de manifiestos
+│   ├── devoluciones/
+│   │   └── devoluciones.html/css/js
+│   └── reporte/
+│       ├── reporte_distribuidor_proveedor.html
+│       └── reporte.css/js
 ├── .env.example              # variables requeridas documentadas
 ├── package.json
 ├── supabase-schema.sql       # schema completo (16 tablas + RLS + función upsert_config)
-└── vercel.json               # rewrites para servir /public como raíz
+└── vercel.json               # rewrites para servir /public como raíz (soportan subcarpetas)
 ```
 
 ---
@@ -165,3 +172,5 @@ Abre `http://localhost:3000`
 - STOCKFORGE guarda el estado completo en Supabase y en `localStorage` como caché. Carga desde caché primero y luego sincroniza con el servidor en segundo plano.
 - El POST de STOCKFORGE requiere token de coordinador. Valida el body antes de borrar tablas.
 - `reporte-tiendas.js` está pendiente de conectar a una tabla de historial real (actualmente devuelve conteo 0 sin errores).
+- `public/shared/api.js` centraliza el fetch + parseo JSON + manejo de errores usado por el generador de etiquetas y STOCKFORGE. Cada módulo conserva su propia lógica de autenticación/renovación de token.
+- Todo el contenido insertado dinámicamente en el DOM (nombres de producto, rack, tienda, responsable, notas, etc.) pasa por una función `esc()` antes de ir a `innerHTML` para prevenir XSS almacenado.
