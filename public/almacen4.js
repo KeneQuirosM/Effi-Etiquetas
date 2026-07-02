@@ -751,6 +751,21 @@ function esc(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Nombre de marca guardado por el coordinador (usado en etiquetas/reportes impresos)
+function getBrandName(defaultPrefix, defaultAccent) {
+  try {
+    const n = JSON.parse(localStorage.getItem('sf_bname'));
+    return ((n?.prefix || defaultPrefix) + ' ' + (n?.accent || defaultAccent)).trim();
+  } catch {
+    return (defaultPrefix + ' ' + defaultAccent).trim();
+  }
+}
+
+// Logo guardado por el coordinador (usado en etiquetas/reportes impresos)
+function getBrandLogo() {
+  return localStorage.getItem('sf_logo') || '';
+}
+
 let state = {
   zones: [],       // cada zona ahora tendrá: area_m2, tipo (operativa/excluida)
   racks: [],       // cada rack ahora tendrá: largo_m, ancho_m
@@ -2068,8 +2083,8 @@ function printLabel(fmt){
   const stateNames={empty:'VACÍO',full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO'};
   const stateColors={empty:'#ddd',full:'#00cc66',partial:'#ffcc00',reserved:'#00aaff',blocked:'#ff3344'};
   const stateTxt={empty:'#444',full:'#000',partial:'#000',reserved:'#000',blocked:'#fff'};
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const zoneColor=zone?(zone.color.startsWith('var(')?'#555':zone.color):'#aaa';
   const sc=stateColors[cell.state]||'#ddd';
   const st=stateTxt[cell.state]||'#000';
@@ -2178,8 +2193,8 @@ function printRackSign(rackId){
   const zoneColor=zone?(zone.color.startsWith('var(')?'#555':zone.color):'#aaa';
   const resps=resolvePeople(rack.responsables||[]);
   const shops=resolveTiendas(rack.tiendas||[]);
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="height:52px;width:52px;object-fit:contain;border-radius:6px;">'):'<div style="width:52px;height:52px;background:#f0a500;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#000;font-family:Arial">B</div>';
   const bayLabels=Array.from({length:rack.bays},(_,b)=>'<div style="flex:1;text-align:center;background:#1a1a1a;color:#f0a500;font-family:\'Courier New\',monospace;font-size:22px;font-weight:900;padding:8px 0;border-right:1px solid #333;letter-spacing:2px">B'+(b+1)+'</div>').join('');
   const respChips=resps.map(r=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:40px;font-size:16px;font-weight:700;background:#e6f0ff;border:2px solid #88bbff;color:#003388;margin:4px 6px 4px 0">'+esc(r)+'</span>').join('');
@@ -3529,8 +3544,8 @@ function printRackA4(){
   const pct=total?Math.round(occ/total*100):0;
   const resps=resolvePeople(rack.responsables||[]);
   const shops=resolveTiendas(rack.tiendas||[]);
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'')).trim();}catch{return'BODEGA';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','');
+  const logoSrc=getBrandLogo();
   const dateStr=new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'});
   const bcColor=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
   const stateColor={full:'#00c875',partial:'#f0c000',reserved:'#00aaff',blocked:'#ff3b5c',empty:'#cccccc'};
@@ -3681,8 +3696,8 @@ function printRackA4(){
 
 
 function printReportTab(tab){
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const dateStr=new Date().toLocaleDateString(currentLang==='en'?'en-US':'es-CR',{day:'2-digit',month:'long',year:'numeric'});
   const tabNames={skus:'Por SKU',cells:'Por Celda',zones:'Por Zona',resp:'Responsables',tiendas:'Por Tienda',expiry:'Vencimientos',movements:'Movimientos',valor:'Valor Inventario'};
   const title=tabNames[tab]||tab;
@@ -4034,8 +4049,8 @@ function printReportTab(tab){
 
 
 function exportReportAudit(){
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const now=new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR');
   const filterUnverif=document.getElementById('rep-audit-unverif')?.value||'';
   const filterRack=document.getElementById('rep-audit-rack')?.value||'';
@@ -4344,8 +4359,8 @@ function renderReportTiendas(filter){
 
 function exportReportCSV(){
   const map=buildSkuMap();
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const now=new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR');
   const stateColors={empty:'#e0e0e0',full:'#b3f0d4',partial:'#fff3b3',reserved:'#b3e8ff',blocked:'#ffb3be'};
   const stateNames={empty:'Vacío',full:'Ocupado',partial:'Parcial',reserved:'Reservado',blocked:'Bloqueado'};
@@ -4577,7 +4592,7 @@ function renderReportValor(filter){
 function exportValorExcel(){
   if(typeof XLSX==='undefined'){notif(currentLang==='en'?'Excel library not loaded':'Librería Excel no cargada','err');return;}
   const rows=buildValorData();
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'STOCKFORGE')+' '+(n?.accent||'')).trim();}catch{return'STOCKFORGE';}})();
+  const bname=getBrandName('STOCKFORGE','');
 
   const data=[[
     'SKU',t('csv_description'),t('csv_qty'),t('csv_unit')||'Unidad',
@@ -4614,7 +4629,7 @@ function exportValorExcel(){
 function exportSkusExcel(){
   if(typeof XLSX==='undefined'){notif(currentLang==='en'?'Excel library not loaded':'Librería Excel no cargada','err');return;}
   const map=buildSkuMap();
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'STOCKFORGE')+' '+(n?.accent||'')).trim();}catch{return'STOCKFORGE';}})();
+  const bname=getBrandName('STOCKFORGE','');
   const data=[[
     'SKU',t('csv_description'),t('csv_qty'),'Unidad',
     'Rack',t('csv_zone'),t('csv_bay'),t('csv_level'),t('csv_state'),
@@ -4645,8 +4660,8 @@ function exportSkusExcel(){
 
 function printMovementsPDF(){
   const rows=getFilteredMovements();
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'')).trim();}catch{return'BODEGA';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','');
+  const logoSrc=getBrandLogo();
   const dateStr=new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'});
   const typeIcon={entrada:'🟢',salida:'🔴',traslado:'🔵',ajuste:'🟡',conteo:'🟣'};
   const typeColor={entrada:'#00c875',salida:'#ff3b5c',traslado:'#00aaff',ajuste:'#f0c000',conteo:'#a855f7'};
@@ -4742,7 +4757,7 @@ function getFilteredMovements(){
 function exportReportExcel(){
   if(typeof XLSX==='undefined'){notif(currentLang==='en'?'Excel library not loaded':'Librería Excel no cargada','err');return;}
   // Full workbook with all tabs
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'STOCKFORGE')+' '+(n?.accent||'')).trim();}catch{return'STOCKFORGE';}})();
+  const bname=getBrandName('STOCKFORGE','');
   const wb=XLSX.utils.book_new();
 
   // Sheet 1: SKUs
@@ -4950,8 +4965,8 @@ function doBulkPrint(){
   if(!cells.length){notif(t('notif_select_label'),'warn');return;}
   const fmt=document.getElementById('bp-fmt').value;
   const is4x6=(fmt!=='a4');
-  const bname=(()=>{try{const n=JSON.parse(localStorage.getItem('sf_bname'));return((n?.prefix||'BODEGA')+' '+(n?.accent||'EFFICOMMERCE CR')).trim();}catch{return'BODEGA EFFICOMMERCE CR';}})();
-  const logoSrc=localStorage.getItem('sf_logo')||'';
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="width:44px;height:44px;object-fit:contain;border-radius:4px;">'):'<div style="width:44px;height:44px;background:#f0a500;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#000">B</div>';
   const stateNames={empty:'VACÍO',full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO'};
   const stateColors={empty:'#ddd',full:'#00cc66',partial:'#ffcc00',reserved:'#00aaff',blocked:'#ff3344'};
