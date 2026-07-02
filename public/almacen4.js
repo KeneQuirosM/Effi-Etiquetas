@@ -3652,15 +3652,9 @@ function printRackA4(){
 }
 
 
-function printReportTab(tab){
-  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
-  const logoSrc=getBrandLogo();
-  const dateStr=new Date().toLocaleDateString(currentLang==='en'?'en-US':'es-CR',{day:'2-digit',month:'long',year:'numeric'});
-  const tabNames={skus:'Por SKU',cells:'Por Celda',zones:'Por Zona',resp:'Responsables',tiendas:'Por Tienda',expiry:'Vencimientos',movements:'Movimientos',valor:'Valor Inventario'};
-  const title=tabNames[tab]||tab;
-
-  // ── shared print CSS ──
-  const baseCss=`
+// CSS compartido por las pestañas de reporte impreso (printReportTab). Texto estático, sin interpolación.
+function buildReportTabCss(){
+  return `
     @page{size:A4;margin:14mm 12mm;}
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -3709,6 +3703,17 @@ function printReportTab(tab){
     .cell-sku-qty{color:#888;float:right;}
     .left-strip{display:inline-block;width:3px;height:100%;vertical-align:top;border-radius:2px;margin-right:5px;}
   `;
+}
+
+function printReportTab(tab){
+  const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
+  const logoSrc=getBrandLogo();
+  const dateStr=new Date().toLocaleDateString(currentLang==='en'?'en-US':'es-CR',{day:'2-digit',month:'long',year:'numeric'});
+  const tabNames={skus:'Por SKU',cells:'Por Celda',zones:'Por Zona',resp:'Responsables',tiendas:'Por Tienda',expiry:'Vencimientos',movements:'Movimientos',valor:'Valor Inventario'};
+  const title=tabNames[tab]||tab;
+
+  // ── shared print CSS ──
+  const baseCss=buildReportTabCss();
 
   const logoEl=logoSrc?`<img src="${logoSrc}" class="page-logo">`:`<div class="page-logo-txt">SF</div>`;
   const pageHd=`<div class="page-hd">
