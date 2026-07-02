@@ -1044,7 +1044,7 @@ function importExcelStock(ev){
       </div>
       <select id="excel-tienda-sel" class="fi" style="font-size:1rem">
         <option value="">— Seleccioná una tienda —</option>
-        ${state.tiendas.map(t=>`<option value="${t.id}">${t.name}${t.code?' ('+t.code+')':''}</option>`).join('')}
+        ${state.tiendas.map(t=>`<option value="${t.id}">${esc(t.name)}${t.code?' ('+esc(t.code)+')':''}</option>`).join('')}
       </select>
       <button class="btn bp" id="excel-tienda-ok" style="width:100%;padding:11px;font-size:1rem;font-weight:700">Importar</button>
     </div>
@@ -1144,7 +1144,7 @@ function showExcelImportResultModal(tienda, updated, notFound, notFoundSkus){
         </div>
       </div>
       ${notFoundSkus.length?`<div>
-        <div style="font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">IDs sin celda asignada en ${tienda.name}</div>
+        <div style="font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">IDs sin celda asignada en ${esc(tienda.name)}</div>
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--dim);max-height:160px;overflow-y:auto;line-height:1.8">${notFoundSkus.map(esc).join('<br>')}</div>
       </div>`:''}
       <button class="btn bp" onclick="closeO('o-import-result')" style="width:100%">OK</button>
@@ -1426,7 +1426,7 @@ function buildRackChecks(checkedResps,checkedShops){
       el.className='rcheck'+(on?' on':'');
       el.dataset.id=p.id;
       el.innerHTML='<input type="checkbox"'+(on?' checked':'')+'>'
-        +p.name+(p.role?' <span style="font-size:.85rem;opacity:.55">'+p.role+'</span>':'');
+        +esc(p.name)+(p.role?' <span style="font-size:.85rem;opacity:.55">'+esc(p.role)+'</span>':'');
       el.querySelector('input').onchange=function(){el.classList.toggle('on',this.checked);};
       rc.appendChild(el);
     });
@@ -1440,7 +1440,7 @@ function buildRackChecks(checkedResps,checkedShops){
       el.className='rcheck shop'+(on?' on':'');
       el.dataset.id=t.id;
       el.innerHTML='<input type="checkbox"'+(on?' checked':'')+'>'
-        +t.name+(t.code?' <span style="font-size:.85rem;opacity:.55">'+t.code+'</span>':'');
+        +esc(t.name)+(t.code?' <span style="font-size:.85rem;opacity:.55">'+esc(t.code)+'</span>':'');
       el.querySelector('input').onchange=function(){el.classList.toggle('on',this.checked);};
       sc.appendChild(el);
     });
@@ -1940,8 +1940,8 @@ function openViewCell(rackId,bay,level){
   document.getElementById('view-body').innerHTML=`
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin-bottom:12px">
       <div class="drow"><span class="dk">${t('view_state')}</span><span class="dv" style="color:${sc}">${sl[cell.state]||t('state_empty')}</span></div>
-      <div class="drow"><span class="dk">${t('view_loc')}</span><span class="dv" style="font-family:'Share Tech Mono',monospace">${rack.name} · ${t('bay_short')}${bay+1} · ${t('level_short')}${level+1}</span></div>
-      ${zone?`<div class="drow"><span class="dk">${t('view_zone')}</span><span class="dv" style="color:${zone.color}">${zone.name}</span></div>`:''}
+      <div class="drow"><span class="dk">${t('view_loc')}</span><span class="dv" style="font-family:'Share Tech Mono',monospace">${esc(rack.name)} · ${t('bay_short')}${bay+1} · ${t('level_short')}${level+1}</span></div>
+      ${zone?`<div class="drow"><span class="dk">${t('view_zone')}</span><span class="dv" style="color:${zone.color}">${esc(zone.name)}</span></div>`:''}
       ${cell.notes?`<div class="drow"><span class="dk">${t('view_notes')}</span><span class="dv" style="font-size:1.02rem">${esc(cell.notes)}</span></div>`:''}
       ${(cell.audits&&cell.audits.length)?`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--green);font-size:.98rem">${esc(cell.audits[cell.audits.length-1].date)} — ${esc(cell.audits[cell.audits.length-1].who)}${cell.audits[cell.audits.length-1].notes?' · '+esc(cell.audits[cell.audits.length-1].notes):''} <span style="color:var(--dim)">(${cell.audits.length} ${t('view_count_total')})</span></span></div>`:`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--dim);font-size:.98rem">${t('view_no_count')}</span></div>`}
     </div>
@@ -2030,9 +2030,9 @@ function openSkuHistory(){
       <div style="font-size:.88rem;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px">${t('sku_hist_skus_lbl')}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${skus.map(s=>`<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:6px 12px">
-          <span style="font-family:'Share Tech Mono',monospace;color:var(--accent)">${s.sku||'—'}</span>
-          <span style="color:var(--dim);font-size:.95rem;margin-left:8px">${s.qty} ${s.unit||''}</span>
-          ${s.desc?`<div style="font-size:.9rem;color:var(--dim)">${s.desc}</div>`:''}
+          <span style="font-family:'Share Tech Mono',monospace;color:var(--accent)">${esc(s.sku||'—')}</span>
+          <span style="color:var(--dim);font-size:.95rem;margin-left:8px">${esc(s.qty)} ${esc(s.unit||'')}</span>
+          ${s.desc?`<div style="font-size:.9rem;color:var(--dim)">${esc(s.desc)}</div>`:''}
         </div>`).join('')}
       </div>
     </div>
@@ -2041,14 +2041,14 @@ function openSkuHistory(){
     </div>
     ${movs.length?`<div style="display:flex;flex-direction:column;gap:4px;max-height:340px;overflow-y:auto;padding-right:4px">
       ${movs.map(m=>`<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:7px 10px;display:flex;gap:10px;align-items:flex-start">
-        <div style="flex-shrink:0;min-width:80px;font-family:'Share Tech Mono',monospace;font-size:.85rem;color:var(--dim)">${m.date||''}</div>
-        <div style="flex-shrink:0;min-width:90px;font-size:.88rem;font-weight:700;color:${typeColor[m.type]||'var(--text)'}">${typeLabel[m.type]||m.type}</div>
+        <div style="flex-shrink:0;min-width:80px;font-family:'Share Tech Mono',monospace;font-size:.85rem;color:var(--dim)">${esc(m.date||'')}</div>
+        <div style="flex-shrink:0;min-width:90px;font-size:.88rem;font-weight:700;color:${typeColor[m.type]||'var(--text)'}">${esc(typeLabel[m.type]||m.type)}</div>
         <div style="flex:1">
-          <span style="font-family:'Share Tech Mono',monospace;color:var(--accent)">${m.sku}</span>
-          <span style="color:var(--dim);font-size:.9rem;margin-left:6px">${m.desc||''}</span>
+          <span style="font-family:'Share Tech Mono',monospace;color:var(--accent)">${esc(m.sku)}</span>
+          <span style="color:var(--dim);font-size:.9rem;margin-left:6px">${esc(m.desc||'')}</span>
         </div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--bright);flex-shrink:0">${m.qty>0?'+':''}${m.qty} ${m.unit||''}</div>
-        ${m.type==='traslado'?`<div style="font-size:.82rem;color:var(--dim);flex-shrink:0">→ ${m.destRack||''} ${t('bay_short')}${(m.destBay||0)+1}${t('level_short')}${(m.destLevel||0)+1}</div>`:''}
+        <div style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--bright);flex-shrink:0">${m.qty>0?'+':''}${esc(m.qty)} ${esc(m.unit||'')}</div>
+        ${m.type==='traslado'?`<div style="font-size:.82rem;color:var(--dim);flex-shrink:0">→ ${esc(m.destRack||'')} ${t('bay_short')}${(m.destBay||0)+1}${t('level_short')}${(m.destLevel||0)+1}</div>`:''}
       </div>`).join('')}
     </div>`:`<div style="color:var(--dim);text-align:center;padding:20px 0;font-size:1.05rem">${t('sku_hist_no_mov')}</div>`}
   </div>`;
@@ -2057,7 +2057,7 @@ function openSkuHistory(){
   const div=document.createElement('div');
   div.className='ov';div.id='o-sku-hist';
   div.innerHTML=`<div class="modal" style="width:min(700px,95vw)">
-    <div class="mhd"><div class="mttl">${t('sku_hist_title')} — ${rack.name} ${t('bay_short')}${viewCtx.bay+1}·${t('level_short')}${viewCtx.level+1}</div><button class="mcl" onclick="this.closest('.ov').remove()">✕</button></div>
+    <div class="mhd"><div class="mttl">${t('sku_hist_title')} — ${esc(rack.name)} ${t('bay_short')}${viewCtx.bay+1}·${t('level_short')}${viewCtx.level+1}</div><button class="mcl" onclick="this.closest('.ov').remove()">✕</button></div>
     <div class="mbdy" style="padding:0;overflow-y:auto;max-height:calc(85vh - 100px)">${html}</div>
     <div class="mft"><button class="btn bo" onclick="this.closest('.ov').remove()">${t('btn_close')}</button></div>
   </div>`;
@@ -2447,7 +2447,7 @@ function showDetail(id){
   const shops=resolveTiendas(rack.tiendas||[]);
   document.getElementById('det-name').textContent=rack.name;
   document.getElementById('det-body').innerHTML=`
-    <div class="drow"><span class="dk">${t('view_zone')}</span><span class="dv" style="color:${zone?zone.color:'var(--dim)'}">${zone?zone.name:t('no_zone')}</span></div>
+    <div class="drow"><span class="dk">${t('view_zone')}</span><span class="dv" style="color:${zone?zone.color:'var(--dim)'}">${zone?esc(zone.name):t('no_zone')}</span></div>
     <div class="drow"><span class="dk">${t('rack_bays_lbl')} × ${t('rack_levels_lbl')}</span><span class="dv">${rack.bays} × ${rack.levels}</span></div>
     <div class="drow"><span class="dk">${t('rep_cells_total')}</span><span class="dv">${total}</span></div>
     <div class="drow"><span class="dk">${t('rack_info_occupied')}</span><span class="dv g">${occ}</span></div>
@@ -2516,8 +2516,8 @@ function openAudit(){
       +[...audits].reverse().map((a,i)=>`
         <div style="padding:7px 12px;background:${i===0?'rgba(0,255,136,.06)':'var(--bg3)'};border:1px solid ${i===0?'rgba(0,255,136,.2)':'var(--border)'};border-radius:4px;display:flex;align-items:center;gap:10px">
           <div style="flex:1;min-width:0">
-            <span style="font-weight:700;color:${i===0?'var(--green)':'var(--bright)'}">${a.who}</span>
-            ${a.notes?`<span style="color:var(--dim);font-size:.97rem"> — ${a.notes}</span>`:''}
+            <span style="font-weight:700;color:${i===0?'var(--green)':'var(--bright)'}">${esc(a.who)}</span>
+            ${a.notes?`<span style="color:var(--dim);font-size:.97rem"> — ${esc(a.notes)}</span>`:''}
           </div>
           <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;color:var(--dim);white-space:nowrap">${a.date}</span>
           ${i===0?`<span style="font-size:.8rem;color:var(--green);font-weight:700">${currentLang==='en'?'LATEST':'ÚLTIMO'}</span>`:''}
@@ -2618,11 +2618,11 @@ function renderSearchResults(hits){
   r.innerHTML=navBar+hits.slice(0,30).map((h,i)=>`
     <div class="sres-item${i===spotIdx?' sres-active':''}" id="sres-${i}" onclick="spotJump(${i})" onmouseenter="spotIdx=${i};updateSpotActive()">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="sres-sku">${h.sku||'—'}</div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--accent)">${h.qty?h.qty+' '+(h.unit||''):'—'}</div>
+        <div class="sres-sku">${esc(h.sku||'—')}</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--accent)">${h.qty?esc(h.qty)+' '+esc(h.unit||''):'—'}</div>
       </div>
-      <div class="sres-desc">${h.desc||'Sin descripción'}</div>
-      <div class="sres-loc">📍 ${h.rack} · B${h.bay+1}·N${h.level+1}</div>
+      <div class="sres-desc">${esc(h.desc||'Sin descripción')}</div>
+      <div class="sres-loc">📍 ${esc(h.rack)} · B${h.bay+1}·N${h.level+1}</div>
     </div>`).join('')
     +(hits.length>30?`<div class="sres-nav">Mostrando 30 de ${hits.length} — afina la búsqueda</div>`:'');
   r.classList.add('open');
@@ -2805,8 +2805,8 @@ function buildSkuChecks(){
   (cell?.skus||[]).forEach(s=>{
     const row=document.createElement('div');row.className='sku-chk';
     row.innerHTML=`<input type="checkbox" data-sku="${esc(s.sku)}" checked>
-      <div class="sku-chk-info"><div class="sku-chk-code">${s.sku||'—'}</div><div class="sku-chk-desc">${s.desc||''}</div></div>
-      <div class="sku-chk-qty">${s.qty?s.qty+' '+s.unit:''}</div>`;
+      <div class="sku-chk-info"><div class="sku-chk-code">${esc(s.sku||'—')}</div><div class="sku-chk-desc">${esc(s.desc||'')}</div></div>
+      <div class="sku-chk-qty">${s.qty?esc(s.qty)+' '+esc(s.unit):''}</div>`;
     row.querySelector('input').addEventListener('change',()=>row.classList.toggle('on',row.querySelector('input').checked));
     row.classList.add('on');
     row.onclick=e=>{if(e.target.type!=='checkbox'){const cb=row.querySelector('input');cb.checked=!cb.checked;row.classList.toggle('on',cb.checked);}};
@@ -2850,18 +2850,18 @@ function buildTransferSummary(){
     <div style="display:flex;gap:16px;align-items:center">
       <div style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:3px;padding:9px">
         <div style="font-size:1.08rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Origen</div>
-        <div style="font-family:'Share Tech Mono',monospace;color:var(--accent);font-size:1.05rem">${oRack?.name}</div>
+        <div style="font-family:'Share Tech Mono',monospace;color:var(--accent);font-size:1.05rem">${esc(oRack?.name)}</div>
         <div style="font-size:.94rem;color:var(--dim)">Bahía ${tOrigin.bay+1} · Nivel ${tOrigin.level+1}</div>
       </div>
       <div style="font-size:1.4rem;color:var(--cyan)">→</div>
       <div style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:3px;padding:9px">
         <div style="font-size:1.08rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Destino</div>
-        <div style="font-family:'Share Tech Mono',monospace;color:var(--green);font-size:1.05rem">${dRack?.name}</div>
+        <div style="font-family:'Share Tech Mono',monospace;color:var(--green);font-size:1.05rem">${esc(dRack?.name)}</div>
         <div style="font-size:.94rem;color:var(--dim)">Bahía ${tDest.bay+1} · Nivel ${tDest.level+1}</div>
       </div>
     </div>
     <div style="margin-top:10px;font-size:1.08rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">Productos a mover</div>
-    ${movingSkus.map(s=>`<div style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--bright);margin-bottom:2px">· ${s.sku||'—'} ${s.desc?'— '+s.desc:''} ${partialQty?'('+partialQty+' '+s.unit+')':s.qty?'('+s.qty+' '+s.unit+')':''}</div>`).join('')}`;
+    ${movingSkus.map(s=>`<div style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--bright);margin-bottom:2px">· ${esc(s.sku||'—')} ${s.desc?'— '+esc(s.desc):''} ${partialQty?'('+esc(partialQty)+' '+esc(s.unit)+')':s.qty?'('+esc(s.qty)+' '+esc(s.unit)+')':''}</div>`).join('')}`;
 }
 
 function doTransfer(){
@@ -3117,9 +3117,9 @@ function buildRackCellsTable(rack, rCells){
       } else {
         skus.forEach(s=>{
           html+=`<div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;min-width:0">`;
-          if(s.sku) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--accent);font-weight:700;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.sku}</span>`;
-          if(s.desc) html+=`<span style="font-size:.7rem;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0" title="${s.desc}">${s.desc}</span>`;
-          if(s.qty) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--text);flex-shrink:0">${s.qty}</span>`;
+          if(s.sku) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--accent);font-weight:700;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.sku)}</span>`;
+          if(s.desc) html+=`<span style="font-size:.7rem;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0" title="${esc(s.desc)}">${esc(s.desc)}</span>`;
+          if(s.qty) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--text);flex-shrink:0">${esc(s.qty)}</span>`;
           html+=`</div>`;
         });
       }
@@ -3159,10 +3159,10 @@ function buildRackReportGroup(rack){
     <div style="width:4px;align-self:stretch;border-radius:4px;background:${zoneColor};flex-shrink:0;min-height:36px"></div>
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:1.18rem;color:var(--bright);font-weight:700;letter-spacing:1px">${rack.name}</span>
-        ${zone?`<span style="font-size:.82rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${zoneColor};background:${zoneColor}18;border:1px solid ${zoneColor}33;border-radius:20px;padding:1px 9px">${zone.name}</span>`:''}
-        ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;padding:1px 9px">👤 ${resps.slice(0,2).join(' · ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
-        ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">🏪 ${shops.slice(0,2).join(' · ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
+        <span style="font-family:'Share Tech Mono',monospace;font-size:1.18rem;color:var(--bright);font-weight:700;letter-spacing:1px">${esc(rack.name)}</span>
+        ${zone?`<span style="font-size:.82rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${zoneColor};background:${zoneColor}18;border:1px solid ${zoneColor}33;border-radius:20px;padding:1px 9px">${esc(zone.name)}</span>`:''}
+        ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;padding:1px 9px">👤 ${resps.slice(0,2).map(esc).join(' · ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
+        ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">🏪 ${shops.slice(0,2).map(esc).join(' · ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
         <div style="flex:1;max-width:160px;height:4px;background:var(--border);border-radius:4px;overflow:hidden">
@@ -3257,7 +3257,7 @@ function renderReportZones(filter){
         <div style="width:6px;background:${zone.color==='var(--dim)'?'#4a5a78':zone.color};flex-shrink:0;border-radius:6px 0 0 6px"></div>
         <div style="flex:1;padding:14px 16px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-            <span style="font-size:1.05rem;font-weight:700;color:${zone.color==='var(--dim)'?'var(--dim)':zone.color};letter-spacing:1px">${zone.name}</span>
+            <span style="font-size:1.05rem;font-weight:700;color:${zone.color==='var(--dim)'?'var(--dim)':zone.color};letter-spacing:1px">${esc(zone.name)}</span>
             <span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--dim)">${zRacks.length} rack${zRacks.length!==1?'s':''}</span>
             <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
               <div style="width:120px;height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .8s"></div></div>
@@ -3285,11 +3285,11 @@ function renderReportZones(filter){
           ${[...respSet].length||[...shopSet].length?`<div style="display:flex;gap:10px;flex-wrap:wrap">
             ${[...respSet].length?`<div style="flex:1;min-width:160px">
               <div style="font-size:1.16rem;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('rack_resp_lbl')}</div>
-              <div style="display:flex;flex-wrap:wrap;gap:4px">${resolvePeople([...respSet]).map(p=>`<span style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);border-radius:20px;padding:2px 10px;font-size:1rem;color:var(--cyan)">${p}</span>`).join('')}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">${resolvePeople([...respSet]).map(p=>`<span style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);border-radius:20px;padding:2px 10px;font-size:1rem;color:var(--cyan)">${esc(p)}</span>`).join('')}</div>
             </div>`:''}
             ${[...shopSet].length?`<div style="flex:1;min-width:160px">
               <div style="font-size:1.16rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('catalog_shops')}</div>
-              <div style="display:flex;flex-wrap:wrap;gap:4px">${resolveTiendas([...shopSet]).map(s=>`<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:2px 10px;font-size:1rem;color:var(--accent)">${s}</span>`).join('')}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">${resolveTiendas([...shopSet]).map(s=>`<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:2px 10px;font-size:1rem;color:var(--accent)">${esc(s)}</span>`).join('')}</div>
             </div>`:''}
           </div>`:''}
         </div>
@@ -3356,14 +3356,14 @@ function renderReportAudit(){
   const rackSel=document.getElementById('rep-audit-rack');
   const prevRack=rackSel.value;
   rackSel.innerHTML=`<option value="">${t('rep_audit_all')}</option>`
-    +state.racks.map(r=>`<option value="${r.id}"${r.id===prevRack?' selected':''}>${r.name}</option>`).join('');
+    +state.racks.map(r=>`<option value="${r.id}"${r.id===prevRack?' selected':''}>${esc(r.name)}</option>`).join('');
   const filterRack=rackSel.value;
 
   // Populate people dropdown
   const whoSel=document.getElementById('rep-audit-who');
   const prevWho=whoSel.value;
   whoSel.innerHTML=`<option value="">${currentLang==='en'?'All responsibles':'Todos los responsables'}</option>`
-    +state.people.map(p=>`<option value="${p.id}"${p.id===prevWho?' selected':''}>${p.name}${p.role?' — '+p.role:''}</option>`).join('');
+    +state.people.map(p=>`<option value="${p.id}"${p.id===prevWho?' selected':''}>${esc(p.name)}${p.role?' — '+esc(p.role):''}</option>`).join('');
   const filterPersonId=whoSel.value;
   const filterPerson=filterPersonId?state.people.find(p=>p.id===filterPersonId):null;
 
@@ -3409,11 +3409,11 @@ function renderReportAudit(){
       row.innerHTML=`
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            ${zone?`<span style="font-size:.93rem;color:${zone.color};font-weight:700">${zone.name}</span>`:''}
-            <span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--cyan)">${rack.name} B${cell.bay+1}·N${cell.level+1}</span>
+            ${zone?`<span style="font-size:.93rem;color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}
+            <span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--cyan)">${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}</span>
             <span style="font-size:.93rem;color:var(--dim)">${STATE_LABELS[cell.state]||cell.state}</span>
           </div>
-          ${lastAudit?`<div style="font-size:.92rem;color:var(--dim);margin-top:2px">Último: ${lastAudit.date} — ${lastAudit.who}</div>`:''}
+          ${lastAudit?`<div style="font-size:.92rem;color:var(--dim);margin-top:2px">Último: ${esc(lastAudit.date)} — ${esc(lastAudit.who)}</div>`:''}
         </div>
         <span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;font-weight:700;color:${color};white-space:nowrap">${label}</span>`;
       row.onclick=()=>{closeO('o-report');jumpToCell(rack.id,cell.bay,cell.level);};
@@ -3446,12 +3446,12 @@ function renderReportAudit(){
     row.innerHTML=`
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">
-          <span style="font-weight:700;color:var(--bright);font-size:1.08rem">👤 ${a.who}</span>
-          ${a.notes?`<span style="color:var(--dim);font-size:.97rem">— ${a.notes}</span>`:''}
+          <span style="font-weight:700;color:var(--bright);font-size:1.08rem">👤 ${esc(a.who)}</span>
+          ${a.notes?`<span style="color:var(--dim);font-size:.97rem">— ${esc(a.notes)}</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          ${zone?`<span style="font-size:.93rem;color:${zone.color};font-weight:700">${zone.name}</span>`:''}
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.93rem;color:var(--cyan)">${rack.name} B${cell.bay+1}·N${cell.level+1}</span>
+          ${zone?`<span style="font-size:.93rem;color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.93rem;color:var(--cyan)">${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}</span>
           ${daysSince!==null?`<span style="font-size:.9rem;color:var(--dim)">hace ${daysSince}d</span>`:''}
         </div>
       </div>
@@ -3485,20 +3485,20 @@ function renderReportMovements(){
     row.style.cssText='background:var(--bg3);border:1px solid var(--border2);border-left:3px solid '+color+';border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color .15s';
     row.onmouseover=()=>row.style.borderLeftColor='var(--bright)';
     row.onmouseleave=()=>row.style.borderLeftColor=color;
-    const destInfo=m.destRack?(' → '+m.destRack+' B'+(m.destBay+1)+'·N'+(m.destLevel+1)):'';
+    const destInfo=m.destRack?(' → '+esc(m.destRack)+' B'+(m.destBay+1)+'·N'+(m.destLevel+1)):'';
     row.innerHTML='<span style="font-size:1.3rem;flex-shrink:0">'+icon+'</span>'
       +'<div style="flex:1;min-width:0">'
         +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">'
-          +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:1.08rem;color:var(--accent);font-weight:700">'+(m.sku||m.desc||'—')+'</span>'
-          +(m.qty?'<span style="font-size:1rem;font-weight:700;color:'+color+'">'+m.qty+(m.unit?' '+m.unit:'')+'</span>':'')
-          +'<span style="font-size:.9rem;font-weight:700;color:'+color+';background:'+color+'22;border:1px solid '+color+'44;border-radius:10px;padding:1px 8px">'+m.type+'</span>'
+          +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:1.08rem;color:var(--accent);font-weight:700">'+esc(m.sku||m.desc||'—')+'</span>'
+          +(m.qty?'<span style="font-size:1rem;font-weight:700;color:'+color+'">'+esc(m.qty)+(m.unit?' '+esc(m.unit):'')+'</span>':'')
+          +'<span style="font-size:.9rem;font-weight:700;color:'+color+';background:'+color+'22;border:1px solid '+color+'44;border-radius:10px;padding:1px 8px">'+esc(m.type)+'</span>'
         +'</div>'
         +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-          +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.92rem;color:var(--cyan)">'+m.rack+(m.bay!=null?' B'+(m.bay+1)+'·N'+(m.level+1):'')+destInfo+'</span>'
-          +(m.note?'<span style="font-size:.9rem;color:var(--dim)">— '+m.note+'</span>':'')
+          +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.92rem;color:var(--cyan)">'+esc(m.rack)+(m.bay!=null?' B'+(m.bay+1)+'·N'+(m.level+1):'')+destInfo+'</span>'
+          +(m.note?'<span style="font-size:.9rem;color:var(--dim)">— '+esc(m.note)+'</span>':'')
         +'</div>'
       +'</div>'
-      +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.88rem;color:var(--dim);white-space:nowrap;text-align:right">'+m.date+'</span>';
+      +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.88rem;color:var(--dim);white-space:nowrap;text-align:right">'+esc(m.date)+'</span>';
     if(m.rackId)row.onclick=()=>{closeO('o-report');jumpToCell(m.rackId,m.bay,m.level);};
     c.appendChild(row);
   });
@@ -3517,7 +3517,7 @@ function openPrintByRack(){
       <div class="mbdy" style="padding:20px;display:flex;flex-direction:column;gap:14px">
         <div style="font-size:.94rem;color:var(--dim)">Seleccioná el rack para imprimir su grilla completa en A4 apaisado.</div>
         <select id="pbr-rack" class="fi" style="font-size:1rem">
-          ${state.racks.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return `<option value="${r.id}">${r.name}${z?' — '+z.name:''} (${r.bays}×${r.levels})</option>`;}).join('')}
+          ${state.racks.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return `<option value="${r.id}">${esc(r.name)}${z?' — '+esc(z.name):''} (${r.bays}×${r.levels})</option>`;}).join('')}
         </select>
         <div style="display:flex;gap:16px">
           <label style="display:flex;align-items:center;gap:7px;font-size:.93rem;cursor:pointer;color:var(--text)">
@@ -4176,14 +4176,14 @@ function renderReportResp(filter){
   const prevResp=respSel?respSel.value:'';
   if(respSel){
     respSel.innerHTML=`<option value="">${currentLang==='en'?'All responsibles':'Todos los responsables'}</option>`
-      +state.people.map(p=>`<option value="${p.id}"${p.id===prevResp?' selected':''}>${p.name}${p.role?' — '+p.role:''}</option>`).join('');
+      +state.people.map(p=>`<option value="${p.id}"${p.id===prevResp?' selected':''}>${esc(p.name)}${p.role?' — '+esc(p.role):''}</option>`).join('');
   }
   // Populate tiendas dropdown
   const tiendaSel=document.getElementById('rf-resp-tienda');
   const prevTienda=tiendaSel?tiendaSel.value:'';
   if(tiendaSel){
     tiendaSel.innerHTML=`<option value="">${currentLang==='en'?'All stores':'Todas las tiendas'}</option>`
-      +state.tiendas.map(t=>`<option value="${t.id}"${t.id===prevTienda?' selected':''}>${t.name}${t.code?' ('+t.code+')':''}</option>`).join('');
+      +state.tiendas.map(t=>`<option value="${t.id}"${t.id===prevTienda?' selected':''}>${esc(t.name)}${t.code?' ('+esc(t.code)+')':''}</option>`).join('');
   }
   const filterPersonId=respSel?respSel.value:'';
   const filterTiendaId=tiendaSel?tiendaSel.value:'';
@@ -4572,7 +4572,7 @@ function renderReportValor(filter){
     card.innerHTML=`
       <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
         ${group==='zone'?`<div style="width:8px;height:8px;border-radius:2px;background:${g.zoneColor};flex-shrink:0"></div>`:''}
-        <span style="font-family:'Share Tech Mono',monospace;font-size:1.08rem;color:var(--accent);font-weight:700;flex:1">${g.key||'—'}</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:1.08rem;color:var(--accent);font-weight:700;flex:1">${esc(g.key||'—')}</span>
         <span style="font-size:.9rem;color:var(--dim)">${g.rows.length} SKU${g.rows.length!==1?'s':''}</span>
         ${hasCost?`<span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--green);font-weight:700">$${fmtCurrency(g.total)}</span><span style="font-size:.8rem;color:var(--dim);margin-left:4px">${pct}%</span>`:`<span style="font-size:.85rem;color:var(--yellow)">${t('rep_valor_no_cost')}</span>`}
         <span style="color:var(--dim);font-size:.8rem;margin-left:6px">▼</span>
@@ -4590,16 +4590,16 @@ function renderReportValor(filter){
           </tr></thead>
           <tbody>
             ${g.rows.map(r=>`<tr style="border-top:1px solid var(--border)">
-              <td style="padding:5px 12px;font-family:'Share Tech Mono',monospace;color:var(--cyan)">${r.sku||'—'}</td>
-              <td style="padding:5px 12px;color:var(--bright)">${r.desc||'—'}</td>
-              <td style="padding:5px 8px;text-align:right;font-family:'Share Tech Mono',monospace">${r.qty} <span style="color:var(--dim);font-size:.85rem">${r.unit}</span></td>
+              <td style="padding:5px 12px;font-family:'Share Tech Mono',monospace;color:var(--cyan)">${esc(r.sku||'—')}</td>
+              <td style="padding:5px 12px;color:var(--bright)">${esc(r.desc||'—')}</td>
+              <td style="padding:5px 8px;text-align:right;font-family:'Share Tech Mono',monospace">${esc(r.qty)} <span style="color:var(--dim);font-size:.85rem">${esc(r.unit)}</span></td>
               <td style="padding:5px 8px;text-align:right;color:${r.hasCost?'var(--accent)':'var(--dim)'}">
                 ${r.hasCost?'$'+fmtCurrency(r.cost):t('rep_valor_no_cost')}
               </td>
               <td style="padding:5px 12px;text-align:right;font-family:'Share Tech Mono',monospace;font-weight:700;color:${r.hasCost?'var(--green)':'var(--dim)'}">
                 ${r.hasCost?'$'+fmtCurrency(r.subtotal):'—'}
               </td>
-              <td style="padding:5px 10px;font-size:.88rem;color:var(--dim)">${r.rack} ${t('bay_short')}${r.bay+1}${t('level_short')}${r.level+1}</td>
+              <td style="padding:5px 10px;font-size:.88rem;color:var(--dim)">${esc(r.rack)} ${t('bay_short')}${r.bay+1}${t('level_short')}${r.level+1}</td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -4843,8 +4843,8 @@ function updateExpiryPanel(){
     div.className='expiry-item';
     div.innerHTML=`<div class="ei-dot" style="background:${color};box-shadow:0 0 5px ${color}"></div>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;color:var(--bright);font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${rack.name} B${cell.bay+1}·N${cell.level+1}</div>
-        <div class="ei-loc">${label} — ${expiry}</div>
+        <div style="font-weight:700;color:var(--bright);font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}</div>
+        <div class="ei-loc">${esc(label)} — ${esc(expiry)}</div>
       </div>
       <div class="ei-days" style="color:${color}">${dl}</div>`;
     div.onclick=()=>openViewCell(rack.id,cell.bay,cell.level);
@@ -4877,8 +4877,8 @@ function updateLowStockPanel(){
     div.style.cursor='pointer';
     div.innerHTML='<div class="ei-dot" style="background:'+color+';box-shadow:0 0 5px '+color+'"></div>'
       +'<div style="flex:1;min-width:0">'
-        +'<div style="font-weight:700;color:var(--bright);font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+rack.name+' B'+(cell.bay+1)+'·N'+(cell.level+1)+'</div>'
-        +'<div class="ei-loc">'+sku+'</div>'
+        +'<div style="font-weight:700;color:var(--bright);font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(rack.name)+' B'+(cell.bay+1)+'·N'+(cell.level+1)+'</div>'
+        +'<div class="ei-loc">'+esc(sku)+'</div>'
       +'</div>'
       +'<div class="ei-days" style="color:'+color+'">'+qty+(unit?' '+unit:'')+'<span style="color:var(--dim);font-size:.85rem"> / '+min+'</span></div>';
     div.onclick=()=>openViewCell(rack.id,cell.bay,cell.level);
