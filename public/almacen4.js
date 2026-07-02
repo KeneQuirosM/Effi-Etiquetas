@@ -773,7 +773,7 @@ let catalogoProductos = {};
 
 async function cargarCatalogo() {
   try {
-    const data = await fetch('/api/tiendas').then(r => r.json());
+    const data = await apiRequestJSON('/api/tiendas');
     catalogoProductos = {};
     (data.tiendas || []).forEach(t => {
       catalogoProductos[String(t.id)] = (t.inventario || []).map(p => ({
@@ -894,11 +894,7 @@ async function load() {
 
   // 2. Luego, en segundo plano, obtener datos frescos del servidor
   try {
-    const response = await fetch(API_URL);
-    if (!response.ok) throw new Error('Error al cargar');
-    const data = await response.json();
-    
-    console.log('[StockForge] Respuesta del servidor:', data);
+    const data = await apiRequestJSON(API_URL);
     
     // Normalizar racks y zonas del servidor
     const racksNorm = (data.racks||[]).map(r=>({...r,zone:r.zone||r.zone_id||'',w:r.w||r.width||180,h:r.h||r.height||150}));
@@ -5401,15 +5397,12 @@ function finishEditName(){
 async function loadBrandFromStorage() {
   try {
     // Intentar obtener logo desde Supabase
-    const res = await fetch('/api/config');
-    if (res.ok) {
-      const config = await res.json();
-      if (config.sf_logo) {
-        localStorage.setItem('sf_logo', config.sf_logo);
-        document.getElementById('logo-img').src = config.sf_logo;
-        document.getElementById('logo-img').style.display = 'block';
-        document.getElementById('logo-placeholder').style.display = 'none';
-      }
+    const config = await apiRequestJSON('/api/config');
+    if (config.sf_logo) {
+      localStorage.setItem('sf_logo', config.sf_logo);
+      document.getElementById('logo-img').src = config.sf_logo;
+      document.getElementById('logo-img').style.display = 'block';
+      document.getElementById('logo-placeholder').style.display = 'none';
     }
   } catch (e) {
     console.warn('Usando logo local');

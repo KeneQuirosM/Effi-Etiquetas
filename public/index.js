@@ -77,13 +77,7 @@ async function apiGet(path) {
 
 // Función base que maneja el retry automático al expirar el token
 async function apiFetch(method, path, body) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (coordToken) headers['Authorization'] = 'Bearer ' + coordToken;
-
-  const opts = { method, headers };
-  if (body !== undefined) opts.body = JSON.stringify(body);
-
-  let r = await fetch(API + path, opts);
+  let r = await apiRequest(API + path, { method, token: coordToken, body });
 
   if (r.status === 401) {
     // Intentar renovar el token una sola vez antes de cerrar sesión
@@ -93,8 +87,7 @@ async function apiFetch(method, path, body) {
       throw new Error('Sesión expirada');
     }
     // Reintentar con el nuevo token
-    headers['Authorization'] = 'Bearer ' + coordToken;
-    r = await fetch(API + path, { ...opts, headers });
+    r = await apiRequest(API + path, { method, token: coordToken, body });
   }
 
   if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
