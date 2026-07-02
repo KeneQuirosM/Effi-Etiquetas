@@ -1063,6 +1063,98 @@ function importExcelStock(ev){
   });
 }
 
+// Detecta la fila de encabezado y las columnas de id/descripción/cantidad en un Excel/CSV de stock
+function detectExcelImportColumns(rows){
+  let headerIdx=0, colId=0, colDesc=1, colQty=2;
+  for(let i=0;i<Math.min(5,rows.length);i++){
+    const row=rows[i].map(v=>(v||'').toString().toLowerCase().trim());
+    const idC=row.findIndex(v=>v.includes('id')||v.includes('codigo')||v.includes('código')||v.includes('articulo')||v.includes('artículo'));
+    const qC=row.findIndex(v=>v.includes('costa rica')||v.includes('cr')||v.includes('cantidad')||v.includes('stock')||v.includes('existencia'));
+    const dC=row.findIndex(v=>v.includes('nombre')||v.includes('desc')||v.includes('product')||v.includes('detalle'));
+    if(idC>=0&&qC>=0){headerIdx=i;colId=idC;colQty=qC;colDesc=dC>=0?dC:-1;break;}
+  }
+  return {headerIdx, colId, colDesc, colQty};
+}
+
+// Mapa sku -> ubicaciones (rack/bay/level/índice) solo para las celdas asignadas a esa tienda
+function buildSkuLocationMap(tiendaId){
+  const skuLocMap=new Map();
+  state.racks.forEach(rack=>{
+    (state.cells[rack.id]||[]).forEach(cell=>{
+      // Only match cells that explicitly have this tienda assigned — no rack fallback
+      const cellTiendas=cell.tiendas||[];
+      if(!cellTiendas.includes(tiendaId))return;
+      (cell.skus||[]).forEach((s,si)=>{
+        if(!s.sku)return;
+        const key=s.sku.toString().trim().replace(/^0+(\d)/,'$1').toLowerCase();
+        if(!skuLocMap.has(key))skuLocMap.set(key,[]);
+        skuLocMap.get(key).push({rackId:rack.id,bay:cell.bay,level:cell.level,skuIdx:si});
+      });
+    });
+  });
+  return skuLocMap;
+}
+
+// Aplica las cantidades del Excel/CSV a las celdas encontradas, devuelve el resumen del import
+function applyExcelImportRows(dataRows, colId, colQty, skuLocMap){
+  let updated=0, notFound=0;
+  const notFoundSkus=[];
+
+  dataRows.forEach(row=>{
+    if(!row||!row.length)return;
+    const rawId=(row[colId]||'').toString().trim();
+    if(!rawId)return;
+    const rawQty=colQty>=0?(row[colQty]||'').toString().trim():'';
+    const qty=rawQty===''?0:parseFloat(rawQty.replace(',','.'));
+    if(isNaN(qty))return;
+
+    const key=rawId.replace(/^0+(\d)/,'$1').toLowerCase();
+    const locs=skuLocMap.get(key);
+    if(!locs||!locs.length){
+      notFound++;
+      notFoundSkus.push(rawId);
+      return;
+    }
+    locs.forEach(({rackId,bay,level,skuIdx})=>{
+      const cell=(state.cells[rackId]||[]).find(c=>c.bay===bay&&c.level===level);
+      if(!cell||!cell.skus[skuIdx])return;
+      cell.skus[skuIdx].qty=String(qty);
+      updated++;
+    });
+  });
+
+  return {updated, notFound, notFoundSkus};
+}
+
+// Muestra el modal con el resumen de resultados de una importación de Excel/CSV
+function showExcelImportResultModal(tienda, updated, notFound, notFoundSkus){
+  const ov2=document.createElement('div');
+  ov2.className='ov';ov2.id='o-import-result';
+  ov2.innerHTML=`<div class="modal" style="max-width:420px">
+    <div class="mhd"><span class="mttl">📊 Resultado — ${esc(tienda.name)}</span><button class="cls" onclick="closeO('o-import-result')">✕</button></div>
+    <div class="mbdy" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px">
+        <div style="flex:1;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:6px;padding:12px;text-align:center">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--green);font-weight:900">${updated}</div>
+          <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Actualizados</div>
+        </div>
+        <div style="flex:1;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:6px;padding:12px;text-align:center">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--accent);font-weight:900">${notFound}</div>
+          <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Sin ubicar</div>
+        </div>
+      </div>
+      ${notFoundSkus.length?`<div>
+        <div style="font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">IDs sin celda asignada en ${tienda.name}</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--dim);max-height:160px;overflow-y:auto;line-height:1.8">${notFoundSkus.map(esc).join('<br>')}</div>
+      </div>`:''}
+      <button class="btn bp" onclick="closeO('o-import-result')" style="width:100%">OK</button>
+    </div>
+  </div>`;
+  ov2.addEventListener('click',e=>{if(e.target===ov2)ov2.classList.remove('open');});
+  document.body.appendChild(ov2);
+  requestAnimationFrame(()=>ov2.classList.add('open'));
+}
+
 function _doExcelImport(tiendaId, ext, file){
   const tienda=state.tiendas.find(t=>t.id===tiendaId);
   if(!tienda){notif('Tienda no encontrada','err');return;}
@@ -1070,60 +1162,15 @@ function _doExcelImport(tiendaId, ext, file){
   const processRows=(rows)=>{
     if(!rows.length){notif('Archivo vacío','err');return;}
 
-    // Detect header row
-    let headerIdx=0, colId=0, colDesc=1, colQty=2;
-    for(let i=0;i<Math.min(5,rows.length);i++){
-      const row=rows[i].map(v=>(v||'').toString().toLowerCase().trim());
-      const idC=row.findIndex(v=>v.includes('id')||v.includes('codigo')||v.includes('código')||v.includes('articulo')||v.includes('artículo'));
-      const qC=row.findIndex(v=>v.includes('costa rica')||v.includes('cr')||v.includes('cantidad')||v.includes('stock')||v.includes('existencia'));
-      const dC=row.findIndex(v=>v.includes('nombre')||v.includes('desc')||v.includes('product')||v.includes('detalle'));
-      if(idC>=0&&qC>=0){headerIdx=i;colId=idC;colQty=qC;colDesc=dC>=0?dC:-1;break;}
-    }
+    const {headerIdx, colId, colQty}=detectExcelImportColumns(rows);
     // Skip header row if first value is non-numeric
     const startRow=headerIdx+( (!rows[headerIdx]||isNaN(parseFloat((rows[headerIdx][colId]||'').toString().trim())))?1:0 );
     const dataRows=rows.slice(startRow);
 
     // Build SKU lookup — ONLY cells assigned to selected tienda
-    const skuLocMap=new Map();
-    state.racks.forEach(rack=>{
-      (state.cells[rack.id]||[]).forEach(cell=>{
-        // Only match cells that explicitly have this tienda assigned — no rack fallback
-        const cellTiendas=cell.tiendas||[];
-        if(!cellTiendas.includes(tiendaId))return;
-        (cell.skus||[]).forEach((s,si)=>{
-          if(!s.sku)return;
-          const key=s.sku.toString().trim().replace(/^0+(\d)/,'$1').toLowerCase();
-          if(!skuLocMap.has(key))skuLocMap.set(key,[]);
-          skuLocMap.get(key).push({rackId:rack.id,bay:cell.bay,level:cell.level,skuIdx:si});
-        });
-      });
-    });
+    const skuLocMap=buildSkuLocationMap(tiendaId);
 
-    let updated=0, notFound=0;
-    const notFoundSkus=[];
-
-    dataRows.forEach(row=>{
-      if(!row||!row.length)return;
-      const rawId=(row[colId]||'').toString().trim();
-      if(!rawId)return;
-      const rawQty=colQty>=0?(row[colQty]||'').toString().trim():'';
-      const qty=rawQty===''?0:parseFloat(rawQty.replace(',','.'));
-      if(isNaN(qty))return;
-
-      const key=rawId.replace(/^0+(\d)/,'$1').toLowerCase();
-      const locs=skuLocMap.get(key);
-      if(!locs||!locs.length){
-        notFound++;
-        notFoundSkus.push(rawId);
-        return;
-      }
-      locs.forEach(({rackId,bay,level,skuIdx})=>{
-        const cell=(state.cells[rackId]||[]).find(c=>c.bay===bay&&c.level===level);
-        if(!cell||!cell.skus[skuIdx])return;
-        cell.skus[skuIdx].qty=String(qty);
-        updated++;
-      });
-    });
+    const {updated, notFound, notFoundSkus}=applyExcelImportRows(dataRows, colId, colQty, skuLocMap);
 
     if(!updated&&!notFound){notif('No se encontraron filas válidas','warn');return;}
 
@@ -1138,32 +1185,7 @@ function _doExcelImport(tiendaId, ext, file){
     save();
     addAct(`Stock <strong>${esc(tienda.name)}</strong> importado — ${updated} actualizado${updated!==1?'s':''}${notFound?' · '+notFound+' no encontrados':''}`, 'var(--green)');
 
-    // Result modal
-    const ov2=document.createElement('div');
-    ov2.className='ov';ov2.id='o-import-result';
-    ov2.innerHTML=`<div class="modal" style="max-width:420px">
-      <div class="mhd"><span class="mttl">📊 Resultado — ${esc(tienda.name)}</span><button class="cls" onclick="closeO('o-import-result')">✕</button></div>
-      <div class="mbdy" style="padding:16px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;gap:10px">
-          <div style="flex:1;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:6px;padding:12px;text-align:center">
-            <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--green);font-weight:900">${updated}</div>
-            <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Actualizados</div>
-          </div>
-          <div style="flex:1;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:6px;padding:12px;text-align:center">
-            <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--accent);font-weight:900">${notFound}</div>
-            <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Sin ubicar</div>
-          </div>
-        </div>
-        ${notFoundSkus.length?`<div>
-          <div style="font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">IDs sin celda asignada en ${tienda.name}</div>
-          <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--dim);max-height:160px;overflow-y:auto;line-height:1.8">${notFoundSkus.map(esc).join('<br>')}</div>
-        </div>`:''}
-        <button class="btn bp" onclick="closeO('o-import-result')" style="width:100%">OK</button>
-      </div>
-    </div>`;
-    ov2.addEventListener('click',e=>{if(e.target===ov2)ov2.classList.remove('open');});
-    document.body.appendChild(ov2);
-    requestAnimationFrame(()=>ov2.classList.add('open'));
+    showExcelImportResultModal(tienda, updated, notFound, notFoundSkus);
   };
 
   if(ext==='csv'){
@@ -2048,9 +2070,8 @@ function openTransferFromView(){
   closeO('o-view');openTransferWithOrigin(viewCtx);
 }
 
-// ═══════════════ PRINT LABEL 6×4" LANDSCAPE ═══════════════
-function printLabel(fmt){
-  if(!viewCtx)return;
+// Calcula todos los datos derivados (colores, tamaños, chips) para imprimir una etiqueta de celda
+function computePrintLabelData(fmt){
   const rack=state.racks.find(r=>r.id===viewCtx.rackId);
   const cell=(state.cells[viewCtx.rackId]||[]).find(c=>c.bay===viewCtx.bay&&c.level===viewCtx.level)||{state:'empty',skus:[],notes:'',tiendas:[],responsables:[]};
   const zone=state.zones.find(z=>z.id===rack.zone);
@@ -2081,11 +2102,19 @@ function printLabel(fmt){
   const headRackSize=is4x6?'30px':'44px';
   const headCoordSize=is4x6?'16px':'22px';
 
-  const win=window.open('','_blank',`width=${winW},height=${winH}`);
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Etiqueta ${fmt?.toUpperCase()||'4X6'} — ${esc(rack.name)} B${viewCtx.bay+1}N${viewCtx.level+1}</title>
+  return {
+    fmt, rack, cell, zone, resps, cellShops, bname, logoSrc, zoneColor, sc, st, sn, is4x6,
+    logoEl, chipResp, chipShop, pageSize, winW, winH, lblW, lblH, numSize, numSmSize,
+    colNumW, headRackSize, headCoordSize
+  };
+}
+
+// Construye el documento HTML completo de la etiqueta a partir de los datos calculados
+function buildPrintLabelHtml(d){
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Etiqueta ${d.fmt?.toUpperCase()||'4X6'} — ${esc(d.rack.name)} B${viewCtx.bay+1}N${viewCtx.level+1}</title>
 <style>
-  @page{size:${pageSize};margin:${is4x6?'0':'15mm'};}
+  @page{size:${d.pageSize};margin:${d.is4x6?'0':'15mm'};}
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{background:#e8e8e8;font-family:Arial,sans-serif;}
   body{display:flex;flex-direction:column;align-items:center;}
@@ -2095,43 +2124,43 @@ function printLabel(fmt){
   .fmt-badge{display:inline-block;background:#333;color:#f0a500;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:2px;vertical-align:middle;margin-left:10px;}
   @media print{.toolbar{display:none;}html,body{background:#fff;}}
   /* LABEL */
-  .lbl{width:${lblW};${is4x6?('height:'+lblH+';'):''}background:#fff;display:${is4x6?'grid':'flex'};${is4x6?'grid-template-rows:auto 1fr auto;':'flex-direction:column;'}border:${is4x6?'0':'2px solid #ddd'};overflow:hidden;margin:${is4x6?'0':'20px auto'};}
-  .hd{background:#111;color:#fff;padding:${is4x6?'12px 20px':'18px 24px'};display:flex;align-items:center;justify-content:space-between;}
-  .hd-brand{font-size:${is4x6?'13':'15'}px;letter-spacing:3px;text-transform:uppercase;opacity:.85;line-height:1.5;}
-  .hd-brand small{display:block;font-size:${is4x6?'9':'11'}px;opacity:.5;letter-spacing:2px;}
-  .hd-rack{font-size:${headRackSize};font-weight:900;letter-spacing:3px;color:#f0a500;line-height:1;}
-  .hd-coord{font-size:${headCoordSize};font-weight:700;color:#bbb;letter-spacing:3px;margin-top:4px;}
-  .body{display:flex;overflow:hidden;${is4x6?'':'min-height:160mm;'}}
-  .col-nums{width:${colNumW};flex-shrink:0;background:#f7f7f7;border-right:2px solid #ddd;display:flex;flex-direction:column;justify-content:center;gap:${is4x6?'10':'16'}px;padding:${is4x6?'14px 16px':'20px 18px'};}
-  .num-box{background:#fff;border:2.5px solid #333;border-radius:8px;text-align:center;padding:${is4x6?'10px 8px':'16px 10px'};}
-  .num-lbl{font-size:${is4x6?'11':'14'}px;text-transform:uppercase;letter-spacing:3px;color:#999;margin-bottom:${is4x6?'4':'6'}px;font-weight:700;}
-  .num-val{font-size:${numSize};font-weight:900;font-family:'Courier New',monospace;color:#111;line-height:1;}
-  .num-val-sm{font-size:${numSmSize};font-weight:900;font-family:'Courier New',monospace;color:#111;letter-spacing:2px;}
-  .num-val-rack{font-size:${numSmSize};font-weight:900;font-family:'Courier New',monospace;color:#111;letter-spacing:1px;word-break:break-word;overflow-wrap:break-word;line-height:1.15;hyphens:auto;}
+  .lbl{width:${d.lblW};${d.is4x6?('height:'+d.lblH+';'):''}background:#fff;display:${d.is4x6?'grid':'flex'};${d.is4x6?'grid-template-rows:auto 1fr auto;':'flex-direction:column;'}border:${d.is4x6?'0':'2px solid #ddd'};overflow:hidden;margin:${d.is4x6?'0':'20px auto'};}
+  .hd{background:#111;color:#fff;padding:${d.is4x6?'12px 20px':'18px 24px'};display:flex;align-items:center;justify-content:space-between;}
+  .hd-brand{font-size:${d.is4x6?'13':'15'}px;letter-spacing:3px;text-transform:uppercase;opacity:.85;line-height:1.5;}
+  .hd-brand small{display:block;font-size:${d.is4x6?'9':'11'}px;opacity:.5;letter-spacing:2px;}
+  .hd-rack{font-size:${d.headRackSize};font-weight:900;letter-spacing:3px;color:#f0a500;line-height:1;}
+  .hd-coord{font-size:${d.headCoordSize};font-weight:700;color:#bbb;letter-spacing:3px;margin-top:4px;}
+  .body{display:flex;overflow:hidden;${d.is4x6?'':'min-height:160mm;'}}
+  .col-nums{width:${d.colNumW};flex-shrink:0;background:#f7f7f7;border-right:2px solid #ddd;display:flex;flex-direction:column;justify-content:center;gap:${d.is4x6?'10':'16'}px;padding:${d.is4x6?'14px 16px':'20px 18px'};}
+  .num-box{background:#fff;border:2.5px solid #333;border-radius:8px;text-align:center;padding:${d.is4x6?'10px 8px':'16px 10px'};}
+  .num-lbl{font-size:${d.is4x6?'11':'14'}px;text-transform:uppercase;letter-spacing:3px;color:#999;margin-bottom:${d.is4x6?'4':'6'}px;font-weight:700;}
+  .num-val{font-size:${d.numSize};font-weight:900;font-family:'Courier New',monospace;color:#111;line-height:1;}
+  .num-val-sm{font-size:${d.numSmSize};font-weight:900;font-family:'Courier New',monospace;color:#111;letter-spacing:2px;}
+  .num-val-rack{font-size:${d.numSmSize};font-weight:900;font-family:'Courier New',monospace;color:#111;letter-spacing:1px;word-break:break-word;overflow-wrap:break-word;line-height:1.15;hyphens:auto;}
   .col-info{flex:1;display:flex;flex-direction:column;}
   .info-top{display:flex;border-bottom:1.5px solid #eee;}
-  .ibox{flex:1;padding:${is4x6?'13px 16px':'18px 20px'};border-right:1.5px solid #eee;}
+  .ibox{flex:1;padding:${d.is4x6?'13px 16px':'18px 20px'};border-right:1.5px solid #eee;}
   .ibox:last-child{border-right:none;}
-  .i-lbl{font-size:${is4x6?'11':'13'}px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:${is4x6?'6':'8'}px;font-weight:700;}
-  .i-val{font-size:${is4x6?'20':'26'}px;font-weight:800;color:#111;}
-  .state-pill{display:inline-block;padding:${is4x6?'6px 20px':'10px 28px'};border-radius:40px;font-size:${is4x6?'16':'20'}px;font-weight:900;letter-spacing:2px;text-transform:uppercase;background:${sc};color:${st};}
-  .people{flex:1;padding:${is4x6?'13px 16px':'18px 20px'};display:flex;gap:16px;flex-wrap:wrap;overflow:hidden;}
-  .pgroup{flex:1;min-width:${is4x6?'0':'120px'};}
-  .p-lbl{font-size:${is4x6?'11':'13'}px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:${is4x6?'8':'10'}px;font-weight:700;}
-  .notes{background:#fffbe6;border-top:1.5px solid #ffe066;padding:${is4x6?'8px 16px':'12px 20px'};font-size:${is4x6?'13':'16'}px;color:#664400;font-style:italic;flex-shrink:0;}
-  .ft{background:#f5f5f5;border-top:2px solid #ddd;padding:${is4x6?'7px 20px':'10px 24px'};display:flex;justify-content:space-between;align-items:center;}
-  .ft-date{font-size:${is4x6?'11':'13'}px;color:#aaa;}
-  .ft-code{font-family:'Courier New',monospace;font-size:${is4x6?'14':'16'}px;letter-spacing:5px;color:#555;font-weight:700;}
+  .i-lbl{font-size:${d.is4x6?'11':'13'}px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:${d.is4x6?'6':'8'}px;font-weight:700;}
+  .i-val{font-size:${d.is4x6?'20':'26'}px;font-weight:800;color:#111;}
+  .state-pill{display:inline-block;padding:${d.is4x6?'6px 20px':'10px 28px'};border-radius:40px;font-size:${d.is4x6?'16':'20'}px;font-weight:900;letter-spacing:2px;text-transform:uppercase;background:${d.sc};color:${d.st};}
+  .people{flex:1;padding:${d.is4x6?'13px 16px':'18px 20px'};display:flex;gap:16px;flex-wrap:wrap;overflow:hidden;}
+  .pgroup{flex:1;min-width:${d.is4x6?'0':'120px'};}
+  .p-lbl{font-size:${d.is4x6?'11':'13'}px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:${d.is4x6?'8':'10'}px;font-weight:700;}
+  .notes{background:#fffbe6;border-top:1.5px solid #ffe066;padding:${d.is4x6?'8px 16px':'12px 20px'};font-size:${d.is4x6?'13':'16'}px;color:#664400;font-style:italic;flex-shrink:0;}
+  .ft{background:#f5f5f5;border-top:2px solid #ddd;padding:${d.is4x6?'7px 20px':'10px 24px'};display:flex;justify-content:space-between;align-items:center;}
+  .ft-date{font-size:${d.is4x6?'11':'13'}px;color:#aaa;}
+  .ft-code{font-family:'Courier New',monospace;font-size:${d.is4x6?'14':'16'}px;letter-spacing:5px;color:#555;font-weight:700;}
 </style></head><body>
 <div class="toolbar">
-  <button onclick="window.print()">🖨&nbsp; IMPRIMIR ${is4x6?'6×4"':'A4'}</button>
+  <button onclick="window.print()">🖨&nbsp; IMPRIMIR ${d.is4x6?'6×4"':'A4'}</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
-  <span class="fmt-badge">${is4x6?'LANDSCAPE 6×4"':'A4 PORTRAIT'}</span>
+  <span class="fmt-badge">${d.is4x6?'LANDSCAPE 6×4"':'A4 PORTRAIT'}</span>
 </div>
 <div class="lbl">
   <div class="hd">
-    <div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${bname}<small>${t('lbl_location')}</small></div></div>
-    <div style="text-align:right"><div class="hd-rack">${esc(rack.name)}</div><div class="hd-coord">BAHÍA ${viewCtx.bay+1} &nbsp;·&nbsp; NIVEL ${viewCtx.level+1}</div></div>
+    <div style="display:flex;align-items:center;gap:12px">${d.logoEl}<div class="hd-brand">${d.bname}<small>${t('lbl_location')}</small></div></div>
+    <div style="text-align:right"><div class="hd-rack">${esc(d.rack.name)}</div><div class="hd-coord">BAHÍA ${viewCtx.bay+1} &nbsp;·&nbsp; NIVEL ${viewCtx.level+1}</div></div>
   </div>
   <div class="body">
     <div class="col-nums">
@@ -2140,25 +2169,33 @@ function printLabel(fmt){
     </div>
     <div class="col-info">
       <div class="info-top">
-        <div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?esc(zone.name):t('no_zone')}</div></div>
-        <div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${sn}</span></div>
+        <div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${d.zoneColor}">${d.zone?esc(d.zone.name):t('no_zone')}</div></div>
+        <div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${d.sn}</span></div>
       </div>
       <div class="people">
-        ${resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+chipResp+'</div></div>'):''}
-        ${cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+chipShop+'</div></div>'):(!resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${t('catalog_no_people').replace(' registrados','')+'/'+t('catalog_no_shops').replace(' registradas','')}</div>`:'')}
+        ${d.resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+d.chipResp+'</div></div>'):''}
+        ${d.cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+d.chipShop+'</div></div>'):(!d.resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${t('catalog_no_people').replace(' registrados','')+'/'+t('catalog_no_shops').replace(' registradas','')}</div>`:'')}
       </div>
-      ${cell.notes?('<div class="notes">📝 '+esc(cell.notes)+'</div>'):''}
+      ${d.cell.notes?('<div class="notes">📝 '+esc(d.cell.notes)+'</div>'):''}
     </div>
   </div>
   <div class="ft">
     <span class="ft-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>
     <div style="display:flex;align-items:center;gap:12px">
-      <span class="ft-code">${esc(rack.name)}-B${viewCtx.bay+1}N${viewCtx.level+1}</span>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=${is4x6?'72x72':'90x90'}&data=${encodeURIComponent(rack.name+'-B'+(viewCtx.bay+1)+'N'+(viewCtx.level+1)+(zone?' ('+zone.name+')':''))}" style="width:${is4x6?'52':'68'}px;height:${is4x6?'52':'68'}px;border-radius:3px;" alt="QR">
+      <span class="ft-code">${esc(d.rack.name)}-B${viewCtx.bay+1}N${viewCtx.level+1}</span>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=${d.is4x6?'72x72':'90x90'}&data=${encodeURIComponent(d.rack.name+'-B'+(viewCtx.bay+1)+'N'+(viewCtx.level+1)+(d.zone?' ('+d.zone.name+')':''))}" style="width:${d.is4x6?'52':'68'}px;height:${d.is4x6?'52':'68'}px;border-radius:3px;" alt="QR">
     </div>
   </div>
 </div>
-</body></html>`);
+</body></html>`;
+}
+
+// ═══════════════ PRINT LABEL 6×4" LANDSCAPE ═══════════════
+function printLabel(fmt){
+  if(!viewCtx)return;
+  const d=computePrintLabelData(fmt);
+  const win=window.open('','_blank',`width=${d.winW},height=${d.winH}`);
+  win.document.write(buildPrintLabelHtml(d));
   win.document.close();
 }
 // ═══════════════ RACK SIGN ═══════════════
@@ -3014,166 +3051,177 @@ function _appendSkuPage(c){
   }
 }
 
+// Determina si un rack debe mostrarse dado el texto de búsqueda (nombre, zona, SKU/desc, responsables)
+function rackMatchesFilter(rack, filter){
+  if(!filter) return true;
+  if(rack.name.toLowerCase().includes(filter)) return true;
+  const zone=state.zones.find(z=>z.id===rack.zone);
+  return (state.cells[rack.id]||[]).some(cl=>{
+    if((cl.skus||[]).some(s=>(s.sku||'').toLowerCase().includes(filter)||(s.desc||'').toLowerCase().includes(filter)))return true;
+    if(zone&&zone.name.toLowerCase().includes(filter))return true;
+    const names=resolvePeople(cl.responsables||[]).concat(resolvePeople(rack.responsables||[]));
+    return names.some(n=>n.toLowerCase().includes(filter));
+  });
+}
+
+// Construye la tabla de celdas (bahía × nivel) de un rack para el panel de reporte
+function buildRackCellsTable(rack, rCells){
+  const COL_W = Math.max(80, Math.min(160, Math.floor(460 / rack.bays)));
+  const tbl = document.createElement('table');
+  tbl.style.cssText = `width:100%;border-collapse:separate;border-spacing:4px;table-layout:fixed`;
+
+  // Bay header row
+  const thead = document.createElement('thead');
+  let thHtml = `<th style="width:36px;padding:0"></th>`;
+  for(let b=0;b<rack.bays;b++){
+    thHtml += `<th style="width:${COL_W}px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;padding:3px 0;border-bottom:2px solid var(--border);font-weight:700">B${b+1}</th>`;
+  }
+  thead.innerHTML = `<tr>${thHtml}</tr>`;
+  tbl.appendChild(thead);
+
+  // Rows: one per level
+  const tbody = document.createElement('tbody');
+  for(let l=0;l<rack.levels;l++){
+    const tr = document.createElement('tr');
+
+    // Level label cell
+    const tdLbl = document.createElement('td');
+    tdLbl.style.cssText = `text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;border-right:2px solid var(--border);padding-right:4px;vertical-align:middle;white-space:nowrap`;
+    tdLbl.textContent = `N${l+1}`;
+    tr.appendChild(tdLbl);
+
+    for(let b=0;b<rack.bays;b++){
+      const cell=rCells.find(cl=>cl.bay===b&&cl.level===l)||{bay:b,level:l,state:'empty',skus:[]};
+      const sc2=STATE_COLORS[cell.state]||'var(--dim)';
+      const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
+      const hasExpiry=(cell.skus||[]).some(s=>s.expiry);
+      const expiryDaysMin=hasExpiry?Math.min(...(cell.skus||[]).filter(s=>s.expiry).map(s=>expiryDays(s.expiry)).filter(d=>d!==null)):null;
+      const expiryAlert=expiryDaysMin!==null&&expiryDaysMin<=30;
+
+      const td = document.createElement('td');
+      td.style.cssText = `vertical-align:top;padding:0;width:${COL_W}px`;
+
+      const btn=document.createElement('div');
+      btn.style.cssText=`position:relative;background:${sc2}0d;border:1px solid ${sc2}44;border-radius:4px;padding:6px 7px 6px 10px;cursor:pointer;transition:all .15s;min-height:54px;overflow:hidden`;
+
+      // Left color strip
+      let html=`<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${sc2};border-radius:4px 0 0 4px"></div>`;
+      // Coord + expiry badge
+      html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);font-weight:700">B${b+1}·N${l+1}</span>
+        ${expiryAlert?`<span style="font-size:.65rem;color:${expiryDaysMin<0?'var(--red)':'var(--yellow)'}">📅</span>`:''}
+      </div>`;
+
+      if(skus.length===0){
+        html+=`<div style="font-size:.72rem;color:var(--border2);font-style:italic">${STATE_LABELS[cell.state]||'Vacío'}</div>`;
+      } else {
+        skus.forEach(s=>{
+          html+=`<div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;min-width:0">`;
+          if(s.sku) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--accent);font-weight:700;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.sku}</span>`;
+          if(s.desc) html+=`<span style="font-size:.7rem;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0" title="${s.desc}">${s.desc}</span>`;
+          if(s.qty) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--text);flex-shrink:0">${s.qty}</span>`;
+          html+=`</div>`;
+        });
+      }
+      btn.innerHTML=html;
+      btn.onclick=()=>{closeO('o-report');openViewCell(rack.id,b,l);};
+      btn.onmouseover=()=>{btn.style.background=`${sc2}1a`;btn.style.borderColor=sc2;btn.style.boxShadow=`0 3px 10px ${sc2}33`;};
+      btn.onmouseleave=()=>{btn.style.background=`${sc2}0d`;btn.style.borderColor=`${sc2}44`;btn.style.boxShadow='';};
+      td.appendChild(btn);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  tbl.appendChild(tbody);
+  return tbl;
+}
+
+// Construye la tarjeta (header + grilla plegable) de un rack completo para el panel de reporte por celda
+function buildRackReportGroup(rack){
+  const zone=state.zones.find(z=>z.id===rack.zone);
+  const rCells=state.cells[rack.id]||[];
+  const total=rack.bays*rack.levels;
+  const occ=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
+  const blocked=rCells.filter(c=>c.state==='blocked').length;
+  const pct=total?Math.round(occ/total*100):0;
+  const bc=pct>80?'var(--red)':pct>55?'var(--yellow)':'var(--green)';
+  const resps=resolvePeople(rack.responsables||[]);
+  const shops=resolveTiendas(rack.tiendas||[]);
+  const zoneColor=zone?zone.color:'var(--dim)';
+
+  const group=document.createElement('div');
+  group.style.cssText='border-radius:8px;overflow:hidden;margin-bottom:8px;box-shadow:0 2px 12px rgba(0,0,0,.25)';
+
+  // ── HEADER ──
+  const hd=document.createElement('div');
+  hd.style.cssText=`padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;transition:background .15s`;
+  hd.innerHTML=`
+    <div style="width:4px;align-self:stretch;border-radius:4px;background:${zoneColor};flex-shrink:0;min-height:36px"></div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:1.18rem;color:var(--bright);font-weight:700;letter-spacing:1px">${rack.name}</span>
+        ${zone?`<span style="font-size:.82rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${zoneColor};background:${zoneColor}18;border:1px solid ${zoneColor}33;border-radius:20px;padding:1px 9px">${zone.name}</span>`:''}
+        ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;padding:1px 9px">👤 ${resps.slice(0,2).join(' · ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
+        ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">🏪 ${shops.slice(0,2).join(' · ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
+        <div style="flex:1;max-width:160px;height:4px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .6s"></div>
+        </div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;color:${bc};font-weight:700">${pct}%</span>
+        <span style="font-size:.82rem;color:var(--dim)">${occ}/${total} celdas</span>
+        ${blocked?`<span style="font-size:.8rem;color:var(--red);background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.25);border-radius:20px;padding:1px 8px">⊘ ${blocked} bloq.</span>`:''}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:1.4rem;color:var(--bright);line-height:1">${rack.bays}×${rack.levels}</span>
+      <span style="font-size:.75rem;color:var(--dim);letter-spacing:1px">BAH×NIV</span>
+    </div>
+    <div id="caret-${rack.id}" style="color:var(--dim);font-size:1.1rem;flex-shrink:0;transition:transform .2s">▼</div>`;
+
+  // ── BODY ──
+  const body=document.createElement('div');
+  body.style.cssText='display:none;background:var(--bg);border:1px solid var(--border2);border-top:none;border-radius:0 0 8px 8px;max-height:480px;overflow-y:auto';
+
+  const wrapper=document.createElement('div');
+  wrapper.style.cssText='padding:14px 16px';
+  wrapper.appendChild(buildRackCellsTable(rack, rCells));
+  body.appendChild(wrapper);
+
+  // auto-open racks that have occupied cells
+  const hasContent = rCells.some(cl => cl.state !== 'empty' || (cl.skus||[]).length > 0);
+  let open = hasContent;
+  body.style.display = open ? 'block' : 'none';
+  if(open){
+    hd.style.borderRadius='8px 8px 0 0';
+    hd.style.borderBottom='1px solid var(--border)';
+  }
+
+  hd.onclick=()=>{
+    open=!open;
+    body.style.display=open?'block':'none';
+    hd.style.borderRadius=open?'8px 8px 0 0':'8px';
+    hd.style.borderBottom=open?'1px solid var(--border)':'1px solid var(--border2)';
+    const caret=hd.querySelector(`#caret-${rack.id}`);
+    caret.style.transform=open?'rotate(180deg)':'';
+  };
+  // init caret if open
+  if(open){ const caret=hd.querySelector(`#caret-${rack.id}`); if(caret) caret.style.transform='rotate(180deg)'; }
+  hd.onmouseover=()=>{if(!open)hd.style.background='var(--bg2,var(--bg3))';};
+  hd.onmouseleave=()=>{hd.style.background='var(--bg3)';};
+  group.appendChild(hd);group.appendChild(body);
+  return group;
+}
+
 function renderReportCells(filter){
   filter=(filter||'').toLowerCase();
   const c=document.getElementById('rep-cell-cards');c.innerHTML='';
   if(!state.racks.length){c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}</div>`;return;}
   let shown=0;
   state.racks.forEach(rack=>{
-    if(filter&&!rack.name.toLowerCase().includes(filter)){
-      const zone=state.zones.find(z=>z.id===rack.zone);
-      const hasMatch=(state.cells[rack.id]||[]).some(cl=>{
-        if((cl.skus||[]).some(s=>(s.sku||'').toLowerCase().includes(filter)||(s.desc||'').toLowerCase().includes(filter)))return true;
-        if(zone&&zone.name.toLowerCase().includes(filter))return true;
-        const names=resolvePeople(cl.responsables||[]).concat(resolvePeople(rack.responsables||[]));
-        return names.some(n=>n.toLowerCase().includes(filter));
-      });
-      if(!hasMatch)return;
-    }
-    const zone=state.zones.find(z=>z.id===rack.zone);
-    const rCells=state.cells[rack.id]||[];
-    const total=rack.bays*rack.levels;
-    const occ=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
-    const blocked=rCells.filter(c=>c.state==='blocked').length;
-    const pct=total?Math.round(occ/total*100):0;
-    const bc=pct>80?'var(--red)':pct>55?'var(--yellow)':'var(--green)';
-    const resps=resolvePeople(rack.responsables||[]);
-    const shops=resolveTiendas(rack.tiendas||[]);
-    const zoneColor=zone?zone.color:'var(--dim)';
-
-    const group=document.createElement('div');
-    group.style.cssText='border-radius:8px;overflow:hidden;margin-bottom:8px;box-shadow:0 2px 12px rgba(0,0,0,.25)';
-
-    // ── HEADER ──
-    const hd=document.createElement('div');
-    hd.style.cssText=`padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;transition:background .15s`;
-    hd.innerHTML=`
-      <div style="width:4px;align-self:stretch;border-radius:4px;background:${zoneColor};flex-shrink:0;min-height:36px"></div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:1.18rem;color:var(--bright);font-weight:700;letter-spacing:1px">${rack.name}</span>
-          ${zone?`<span style="font-size:.82rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${zoneColor};background:${zoneColor}18;border:1px solid ${zoneColor}33;border-radius:20px;padding:1px 9px">${zone.name}</span>`:''}
-          ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;padding:1px 9px">👤 ${resps.slice(0,2).join(' · ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
-          ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">🏪 ${shops.slice(0,2).join(' · ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
-          <div style="flex:1;max-width:160px;height:4px;background:var(--border);border-radius:4px;overflow:hidden">
-            <div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .6s"></div>
-          </div>
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;color:${bc};font-weight:700">${pct}%</span>
-          <span style="font-size:.82rem;color:var(--dim)">${occ}/${total} celdas</span>
-          ${blocked?`<span style="font-size:.8rem;color:var(--red);background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.25);border-radius:20px;padding:1px 8px">⊘ ${blocked} bloq.</span>`:''}
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:1.4rem;color:var(--bright);line-height:1">${rack.bays}×${rack.levels}</span>
-        <span style="font-size:.75rem;color:var(--dim);letter-spacing:1px">BAH×NIV</span>
-      </div>
-      <div id="caret-${rack.id}" style="color:var(--dim);font-size:1.1rem;flex-shrink:0;transition:transform .2s">▼</div>`;
-
-    // ── BODY ──
-    const body=document.createElement('div');
-    body.style.cssText='display:none;background:var(--bg);border:1px solid var(--border2);border-top:none;border-radius:0 0 8px 8px;max-height:480px;overflow-y:auto';
-
-    // level labels + grid
-    // Build column-per-bay, row-per-level layout (level 1 at top)
-    const wrapper=document.createElement('div');
-    wrapper.style.cssText='padding:14px 16px';
-
-    // Rack grid — use a real table so column widths stay fixed regardless of cell content
-    const COL_W = Math.max(80, Math.min(160, Math.floor(460 / rack.bays)));
-    const tbl = document.createElement('table');
-    tbl.style.cssText = `width:100%;border-collapse:separate;border-spacing:4px;table-layout:fixed`;
-
-    // Bay header row
-    const thead = document.createElement('thead');
-    let thHtml = `<th style="width:36px;padding:0"></th>`;
-    for(let b=0;b<rack.bays;b++){
-      thHtml += `<th style="width:${COL_W}px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;padding:3px 0;border-bottom:2px solid var(--border);font-weight:700">B${b+1}</th>`;
-    }
-    thead.innerHTML = `<tr>${thHtml}</tr>`;
-    tbl.appendChild(thead);
-
-    // Rows: one per level
-    const tbody = document.createElement('tbody');
-    for(let l=0;l<rack.levels;l++){
-      const tr = document.createElement('tr');
-
-      // Level label cell
-      const tdLbl = document.createElement('td');
-      tdLbl.style.cssText = `text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;border-right:2px solid var(--border);padding-right:4px;vertical-align:middle;white-space:nowrap`;
-      tdLbl.textContent = `N${l+1}`;
-      tr.appendChild(tdLbl);
-
-      for(let b=0;b<rack.bays;b++){
-        const cell=rCells.find(cl=>cl.bay===b&&cl.level===l)||{bay:b,level:l,state:'empty',skus:[]};
-        const sc2=STATE_COLORS[cell.state]||'var(--dim)';
-        const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
-        const hasExpiry=(cell.skus||[]).some(s=>s.expiry);
-        const expiryDaysMin=hasExpiry?Math.min(...(cell.skus||[]).filter(s=>s.expiry).map(s=>expiryDays(s.expiry)).filter(d=>d!==null)):null;
-        const expiryAlert=expiryDaysMin!==null&&expiryDaysMin<=30;
-
-        const td = document.createElement('td');
-        td.style.cssText = `vertical-align:top;padding:0;width:${COL_W}px`;
-
-        const btn=document.createElement('div');
-        btn.style.cssText=`position:relative;background:${sc2}0d;border:1px solid ${sc2}44;border-radius:4px;padding:6px 7px 6px 10px;cursor:pointer;transition:all .15s;min-height:54px;overflow:hidden`;
-
-        // Left color strip
-        let html=`<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${sc2};border-radius:4px 0 0 4px"></div>`;
-        // Coord + expiry badge
-        html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);font-weight:700">B${b+1}·N${l+1}</span>
-          ${expiryAlert?`<span style="font-size:.65rem;color:${expiryDaysMin<0?'var(--red)':'var(--yellow)'}">📅</span>`:''}
-        </div>`;
-
-        if(skus.length===0){
-          html+=`<div style="font-size:.72rem;color:var(--border2);font-style:italic">${STATE_LABELS[cell.state]||'Vacío'}</div>`;
-        } else {
-          skus.forEach(s=>{
-            html+=`<div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;min-width:0">`;
-            if(s.sku) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--accent);font-weight:700;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.sku}</span>`;
-            if(s.desc) html+=`<span style="font-size:.7rem;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0" title="${s.desc}">${s.desc}</span>`;
-            if(s.qty) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--text);flex-shrink:0">${s.qty}</span>`;
-            html+=`</div>`;
-          });
-        }
-        btn.innerHTML=html;
-        btn.onclick=()=>{closeO('o-report');openViewCell(rack.id,b,l);};
-        btn.onmouseover=()=>{btn.style.background=`${sc2}1a`;btn.style.borderColor=sc2;btn.style.boxShadow=`0 3px 10px ${sc2}33`;};
-        btn.onmouseleave=()=>{btn.style.background=`${sc2}0d`;btn.style.borderColor=`${sc2}44`;btn.style.boxShadow='';};
-        td.appendChild(btn);
-        tr.appendChild(td);
-      }
-      tbody.appendChild(tr);
-    }
-    tbl.appendChild(tbody);
-    wrapper.appendChild(tbl);
-    body.appendChild(wrapper);
-
-    // auto-open racks that have occupied cells
-    const hasContent = rCells.some(cl => cl.state !== 'empty' || (cl.skus||[]).length > 0);
-    let open = hasContent;
-    body.style.display = open ? 'block' : 'none';
-    if(open){
-      hd.style.borderRadius='8px 8px 0 0';
-      hd.style.borderBottom='1px solid var(--border)';
-    }
-
-    hd.onclick=()=>{
-      open=!open;
-      body.style.display=open?'block':'none';
-      hd.style.borderRadius=open?'8px 8px 0 0':'8px';
-      hd.style.borderBottom=open?'1px solid var(--border)':'1px solid var(--border2)';
-      const caret=hd.querySelector(`#caret-${rack.id}`);
-      caret.style.transform=open?'rotate(180deg)':'';
-    };
-    // init caret if open
-    if(open){ const caret=hd.querySelector(`#caret-${rack.id}`); if(caret) caret.style.transform='rotate(180deg)'; }
-    hd.onmouseover=()=>{if(!open)hd.style.background='var(--bg2,var(--bg3))';};
-    hd.onmouseleave=()=>{hd.style.background='var(--bg3)';};
-    group.appendChild(hd);group.appendChild(body);
-    c.appendChild(group);shown++;
+    if(!rackMatchesFilter(rack, filter)) return;
+    c.appendChild(buildRackReportGroup(rack));
+    shown++;
   });
   if(!shown)c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}: "${filter}"</div>`;
 }
@@ -3487,6 +3535,83 @@ function openPrintByRack(){
   requestAnimationFrame(()=>ov.classList.add('open'));
 }
 
+// Construye el <td> de una celda (bay,level) para la impresión A4 de un rack
+function buildRackA4CellHtml(b, l, rack, rCells, showEmpty, showNotes){
+  const stateColor={full:'#00c875',partial:'#f0c000',reserved:'#00aaff',blocked:'#ff3b5c',empty:'#cccccc'};
+  const stateName={full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO',empty:'VACÍO'};
+  const stateTextColor={full:'#003a1a',partial:'#4a3800',reserved:'#003060',blocked:'#fff',empty:'#888'};
+
+  const cell=rCells.find(c=>c.bay===b&&c.level===l)||{bay:b,level:l,state:'empty',skus:[],notes:''};
+  const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
+  const sc=stateColor[cell.state]||'#ccc';
+  const st=stateTextColor[cell.state]||'#333';
+  const sn=stateName[cell.state]||'VACÍO';
+  const expItems=(cell.skus||[]).filter(s=>s.expiry);
+  const minExp=expItems.length?Math.min(...expItems.map(s=>expiryDays(s.expiry)).filter(d=>d!==null)):null;
+  const expAlert=minExp!==null&&minExp<=30;
+  const expColor=minExp!==null&&minExp<0?'#cc0022':minExp<=7?'#d04000':'#a07000';
+
+  const effTiendas=(cell.tiendas&&cell.tiendas.length)?cell.tiendas:(rack.tiendas||[]);
+  const cellShopNames=resolveTiendas(effTiendas);
+  const effResps=(cell.responsables&&cell.responsables.length)?cell.responsables:(rack.responsables||[]);
+  const cellRespNames=resolvePeople(effResps);
+
+  if(skus.length===0&&!showEmpty){
+    return `<td style="padding:3px;vertical-align:top;overflow:hidden"><div style="min-height:46px;background:#f5f5f5;border:1px dashed #ddd;border-radius:3px"></div></td>`;
+  }
+
+  let inner=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+    <span style="display:inline-block;background:${sc};color:${st};font-size:7.5px;font-weight:800;letter-spacing:.6px;padding:1px 5px;border-radius:8px;text-transform:uppercase">${sn}</span>
+    ${expAlert?`<span style="font-size:7.5px;font-weight:800;color:${expColor}">📅${minExp<0?'VENC':minExp+'d'}</span>`:''}
+  </div>
+  ${(cellShopNames.length||cellRespNames.length)?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px">
+    ${cellShopNames.map(s=>`<span style="display:inline-block;background:#fff3e0;border:1px solid #f7c87a;color:#7a4500;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">🏪 ${esc(s)}</span>`).join('')}
+    ${cellRespNames.map(r=>`<span style="display:inline-block;background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">👤 ${esc(r)}</span>`).join('')}
+  </div>`:''}`;
+
+  if(skus.length===0){
+    inner+=`<div style="color:#bbb;font-size:8px;font-style:italic;text-align:center;padding:3px 0">—</div>`;
+  } else {
+    skus.forEach(s=>{
+      inner+=`<div style="display:flex;gap:3px;align-items:baseline;margin-bottom:2px">
+        ${s.sku?`<span style="font-family:'Courier New',monospace;font-weight:800;font-size:8.5px;color:#b06000;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52px">${esc(s.sku)}</span>`:''}
+        ${s.desc?`<span style="font-size:7.5px;color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.desc)}">${esc(s.desc)}</span>`:''}
+        ${s.qty?`<span style="font-family:'Courier New',monospace;font-size:7.5px;color:#555;flex-shrink:0;white-space:nowrap">${s.qty}${s.unit?' '+s.unit:''}</span>`:''}
+      </div>`;
+    });
+  }
+  if(showNotes&&cell.notes){
+    inner+=`<div style="margin-top:2px;font-size:7px;color:#888;font-style:italic;border-top:1px solid #eee;padding-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${esc(cell.notes)}</div>`;
+  }
+  return `<td style="padding:3px;vertical-align:top;overflow:hidden">
+    <div style="border:1px solid #dde;border-left:3px solid ${sc};border-radius:3px;padding:4px 5px;min-height:46px;background:#fff;overflow:hidden;word-break:break-word">
+      ${inner}
+    </div>
+  </td>`;
+}
+
+// Construye la tabla completa (bahías × niveles) de un rack para la impresión A4
+function buildRackA4TableHtml(rack, rCells, showEmpty, showNotes){
+  let tableHTML=`<table style="width:100%;max-width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed;overflow:hidden">
+    <colgroup>
+      <col style="width:28px">
+      ${Array.from({length:rack.bays},()=>`<col>`).join('')}
+    </colgroup>
+    <thead><tr>
+      <th style="padding:0 0 4px;border-bottom:2px solid #1a2030"></th>
+      ${Array.from({length:rack.bays},(_,b)=>`<th style="text-align:center;font-family:'Courier New',monospace;font-size:9.5px;font-weight:900;color:#1a2030;padding:2px 0 5px;border-bottom:2px solid #1a2030;letter-spacing:.5px">B${b+1}</th>`).join('')}
+    </tr></thead>
+    <tbody>`;
+  for(let l=rack.levels-1;l>=0;l--){
+    tableHTML+=`<tr>
+      <td style="text-align:center;font-family:'Courier New',monospace;font-size:8.5px;font-weight:800;color:#999;padding:0 5px 0 0;border-right:2px solid #1a2030;vertical-align:middle;white-space:nowrap">N${l+1}</td>
+      ${Array.from({length:rack.bays},(_,b)=>buildRackA4CellHtml(b,l,rack,rCells,showEmpty,showNotes)).join('')}
+    </tr>`;
+  }
+  tableHTML+=`</tbody></table>`;
+  return tableHTML;
+}
+
 function printRackA4(){
   const rackId=document.getElementById('pbr-rack').value;
   const showEmpty=document.getElementById('pbr-show-empty').checked;
@@ -3505,81 +3630,8 @@ function printRackA4(){
   const logoSrc=getBrandLogo();
   const dateStr=new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'});
   const bcColor=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
-  const stateColor={full:'#00c875',partial:'#f0c000',reserved:'#00aaff',blocked:'#ff3b5c',empty:'#cccccc'};
-  const stateName={full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO',empty:'VACÍO'};
-  const stateTextColor={full:'#003a1a',partial:'#4a3800',reserved:'#003060',blocked:'#fff',empty:'#888'};
 
-  function cellHTML(b,l){
-    const cell=rCells.find(c=>c.bay===b&&c.level===l)||{bay:b,level:l,state:'empty',skus:[],notes:''};
-    const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
-    const sc=stateColor[cell.state]||'#ccc';
-    const st=stateTextColor[cell.state]||'#333';
-    const sn=stateName[cell.state]||'VACÍO';
-    const expItems=(cell.skus||[]).filter(s=>s.expiry);
-    const minExp=expItems.length?Math.min(...expItems.map(s=>expiryDays(s.expiry)).filter(d=>d!==null)):null;
-    const expAlert=minExp!==null&&minExp<=30;
-    const expColor=minExp!==null&&minExp<0?'#cc0022':minExp<=7?'#d04000':'#a07000';
-
-    const effTiendas=(cell.tiendas&&cell.tiendas.length)?cell.tiendas:(rack.tiendas||[]);
-    const cellShopNames=resolveTiendas(effTiendas);
-    const effResps=(cell.responsables&&cell.responsables.length)?cell.responsables:(rack.responsables||[]);
-    const cellRespNames=resolvePeople(effResps);
-
-    if(skus.length===0&&!showEmpty){
-      return `<td style="padding:3px;vertical-align:top;overflow:hidden"><div style="min-height:46px;background:#f5f5f5;border:1px dashed #ddd;border-radius:3px"></div></td>`;
-    }
-
-    let inner=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-      <span style="display:inline-block;background:${sc};color:${st};font-size:7.5px;font-weight:800;letter-spacing:.6px;padding:1px 5px;border-radius:8px;text-transform:uppercase">${sn}</span>
-      ${expAlert?`<span style="font-size:7.5px;font-weight:800;color:${expColor}">📅${minExp<0?'VENC':minExp+'d'}</span>`:''}
-    </div>
-    ${(cellShopNames.length||cellRespNames.length)?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px">
-      ${cellShopNames.map(s=>`<span style="display:inline-block;background:#fff3e0;border:1px solid #f7c87a;color:#7a4500;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">🏪 ${esc(s)}</span>`).join('')}
-      ${cellRespNames.map(r=>`<span style="display:inline-block;background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">👤 ${esc(r)}</span>`).join('')}
-    </div>`:''}`;
-
-
-
-    if(skus.length===0){
-      inner+=`<div style="color:#bbb;font-size:8px;font-style:italic;text-align:center;padding:3px 0">—</div>`;
-    } else {
-      skus.forEach(s=>{
-        inner+=`<div style="display:flex;gap:3px;align-items:baseline;margin-bottom:2px">
-          ${s.sku?`<span style="font-family:'Courier New',monospace;font-weight:800;font-size:8.5px;color:#b06000;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52px">${esc(s.sku)}</span>`:''}
-          ${s.desc?`<span style="font-size:7.5px;color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.desc)}">${esc(s.desc)}</span>`:''}
-          ${s.qty?`<span style="font-family:'Courier New',monospace;font-size:7.5px;color:#555;flex-shrink:0;white-space:nowrap">${s.qty}${s.unit?' '+s.unit:''}</span>`:''}
-        </div>`;
-      });
-    }
-    if(showNotes&&cell.notes){
-      inner+=`<div style="margin-top:2px;font-size:7px;color:#888;font-style:italic;border-top:1px solid #eee;padding-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${esc(cell.notes)}</div>`;
-    }
-    return `<td style="padding:3px;vertical-align:top;overflow:hidden">
-      <div style="border:1px solid #dde;border-left:3px solid ${sc};border-radius:3px;padding:4px 5px;min-height:46px;background:#fff;overflow:hidden;word-break:break-word">
-        ${inner}
-      </div>
-    </td>`;
-  }
-
-  // Table: cols = bays, rows = levels
-  let tableHTML=`<table style="width:100%;max-width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed;overflow:hidden">
-    <colgroup>
-      <col style="width:28px">
-      ${Array.from({length:rack.bays},()=>`<col>`).join('')}
-    </colgroup>
-    <thead><tr>
-      <th style="padding:0 0 4px;border-bottom:2px solid #1a2030"></th>
-      ${Array.from({length:rack.bays},(_,b)=>`<th style="text-align:center;font-family:'Courier New',monospace;font-size:9.5px;font-weight:900;color:#1a2030;padding:2px 0 5px;border-bottom:2px solid #1a2030;letter-spacing:.5px">B${b+1}</th>`).join('')}
-    </tr></thead>
-    <tbody>`;
-  for(let l=rack.levels-1;l>=0;l--){
-    tableHTML+=`<tr>
-      <td style="text-align:center;font-family:'Courier New',monospace;font-size:8.5px;font-weight:800;color:#999;padding:0 5px 0 0;border-right:2px solid #1a2030;vertical-align:middle;white-space:nowrap">N${l+1}</td>
-      ${Array.from({length:rack.bays},(_,b)=>cellHTML(b,l)).join('')}
-    </tr>`;
-  }
-  tableHTML+=`</tbody></table>`;
-
+  const tableHTML=buildRackA4TableHtml(rack, rCells, showEmpty, showNotes);
   const logoEl=logoSrc?`<img src="${logoSrc}" style="height:34px;object-fit:contain">`:`<div style="font-size:16px;font-weight:900;letter-spacing:3px;color:#1a2030">SF</div>`;
 
   const html=`<!DOCTYPE html><html><head>
@@ -3705,6 +3757,289 @@ function buildReportTabCss(){
   `;
 }
 
+// ── Cada builder devuelve el HTML del cuerpo ("body") de una pestaña del reporte impreso ──
+
+function buildCellsReportBody(){
+  const stateClass={full:'badge-full',partial:'badge-partial',reserved:'badge-reserved',blocked:'badge-blocked',empty:'badge-empty'};
+  const stateColor={full:'#00c875',partial:'#f0c000',reserved:'#00aaff',blocked:'#ff3b5c',empty:'#aaa'};
+  let body='';
+  state.racks.forEach(rack=>{
+    const zone=state.zones.find(z=>z.id===rack.zone);
+    const rCells=state.cells[rack.id]||[];
+    const total=rack.bays*rack.levels;
+    const occ=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
+    const pct=total?Math.round(occ/total*100):0;
+    const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
+    const resps=resolvePeople(rack.responsables||[]);
+    const shops=resolveTiendas(rack.tiendas||[]);
+    let rows='';
+    for(let l=0;l<rack.levels;l++) for(let b=0;b<rack.bays;b++){
+      const cell=rCells.find(c=>c.bay===b&&c.level===l)||{bay:b,level:l,state:'empty',skus:[]};
+      const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
+      const sc=stateColor[cell.state]||'#aaa';
+      const skuHtml=skus.length
+        ? skus.map(s=>`<div class="cell-sku"><span class="cell-sku-id">${esc(s.sku||'')}</span>${s.sku&&s.desc?' ':''}<span class="cell-sku-desc">${esc(s.desc||'')}</span>${s.qty?`<span class="cell-sku-qty">${esc(s.qty)} ${esc(s.unit||'')}</span>`:''}</div>`).join('')
+        : `<span style="color:#bbb;font-size:9px;font-style:italic">${STATE_LABELS[cell.state]||'—'}</span>`;
+      rows+=`<tr>
+        <td class="mono" style="color:#1a4a8a;white-space:nowrap">B${b+1}·N${l+1}</td>
+        <td><span class="badge ${stateClass[cell.state]||'badge-empty'}">${STATE_LABELS[cell.state]||cell.state}</span></td>
+        <td>${skuHtml}</td>
+        <td style="font-size:10px;color:#888">${esc(cell.notes||'')}</td>
+      </tr>`;
+    }
+    body+=`<div class="section">
+      <div class="section-hd">
+        ${zone?`<div style="width:10px;height:10px;border-radius:2px;background:${zone.color};flex-shrink:0"></div>`:''}
+        <div class="section-name">${esc(rack.name)}</div>
+        ${zone?`<span class="chip tag-zone">${esc(zone.name)}</span>`:''}
+        ${resps.map(r=>`<span class="chip tag-resp">👤 ${esc(r)}</span>`).join('')}
+        ${shops.map(s=>`<span class="chip tag-shop">🏪 ${esc(s)}</span>`).join('')}
+        <span class="section-meta">${occ}/${total} celdas &nbsp;
+          <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span>
+          &nbsp;${pct}%
+        </span>
+      </div>
+      <div class="section-body">
+        <table>
+          <thead><tr><th>Celda</th><th>Estado</th><th>Productos</th><th>Notas</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  });
+  return body || `<div class="empty-msg">Sin datos</div>`;
+}
+
+function buildSkusReportBody(){
+  const map=buildSkuMap();
+  if(!map.size) return `<div class="empty-msg">Sin SKUs registrados</div>`;
+  let rows='';
+  map.forEach(({sku,desc,locs})=>{
+    const totalQty=locs.reduce((a,l)=>a+(parseFloat(l.qty)||0),0);
+    const locStr=locs.map(l=>`${l.rack} B${l.bay+1}·N${l.level+1}`).join(', ');
+    rows+=`<tr>
+      <td class="mono sku-id">${esc(sku)||'—'}</td>
+      <td>${esc(desc)||'—'}</td>
+      <td class="mono" style="text-align:center">${totalQty||'—'}</td>
+      <td style="font-size:10px;color:#666">${esc(locStr)}</td>
+      <td style="text-align:center">${locs.length}</td>
+    </tr>`;
+  });
+  return `<div class="section-body"><table>
+    <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th>Ubicaciones</th><th style="text-align:center">Celdas</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function buildExpiryReportBody(){
+  const items=[];
+  state.racks.forEach(rack=>{
+    (state.cells[rack.id]||[]).forEach(cell=>{
+      (cell.skus||[]).forEach(s=>{
+        if(!s.expiry)return;
+        const d=expiryDays(s.expiry);
+        if(d===null)return;
+        items.push({rack:rack.name,bay:cell.bay+1,level:cell.level+1,sku:s.sku||'',desc:s.desc||'',expiry:s.expiry,days:d,qty:s.qty||'',unit:s.unit||''});
+      });
+    });
+  });
+  items.sort((a,b)=>a.days-b.days);
+  if(!items.length) return `<div class="empty-msg">Sin vencimientos registrados</div>`;
+  const rows=items.map(r=>{
+    const dc=r.days<0?'#c00':r.days<=7?'#d04000':r.days<=30?'#a07000':'#226622';
+    const dl=r.days<0?`Vencido hace ${Math.abs(r.days)}d`:r.days===0?'HOY':`${r.days}d`;
+    return `<tr>
+      <td class="mono" style="color:#1a4a8a">${esc(r.rack)}</td>
+      <td class="mono" style="text-align:center">B${r.bay}·N${r.level}</td>
+      <td class="mono sku-id">${esc(r.sku)||'—'}</td>
+      <td>${esc(r.desc)||'—'}</td>
+      <td class="mono" style="text-align:center">${esc(r.expiry)}</td>
+      <td style="text-align:center;font-weight:700;color:${dc}">${dl}</td>
+      <td style="text-align:center">${r.qty} ${r.unit}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="section-body"><table>
+    <thead><tr><th>Rack</th><th style="text-align:center">Celda</th><th>SKU</th><th>Descripción</th><th style="text-align:center">Vence</th><th style="text-align:center">Estado</th><th style="text-align:center">Cant.</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function buildMovementsReportBody(){
+  const movs=(state.movements||[]).slice().reverse().slice(0,300);
+  if(!movs.length) return `<div class="empty-msg">Sin movimientos registrados</div>`;
+  const typeColor={entrada:'#00a860',salida:'#e03030',traslado:'#0088cc',ajuste:'#888'};
+  const rows=movs.map(m=>`<tr>
+    <td style="font-size:10px;color:#888;white-space:nowrap">${esc(m.date||'')}</td>
+    <td><span class="badge" style="background:${typeColor[m.type]||'#888'}22;color:${typeColor[m.type]||'#888'};border:1px solid ${typeColor[m.type]||'#888'}44">${esc(m.type||'')}</span></td>
+    <td class="mono sku-id">${esc(m.sku)||'—'}</td>
+    <td style="font-size:10px">${esc(m.desc)||'—'}</td>
+    <td class="mono" style="text-align:center;font-weight:700">${esc(m.qty||'')}</td>
+    <td style="font-size:10px;color:#555">${esc(m.rack||'')}</td>
+    <td class="mono" style="text-align:center;font-size:10px">B${(m.bay||0)+1}·N${(m.level||0)+1}</td>
+    <td style="font-size:10px;color:#888">${esc(m.note||'')}</td>
+  </tr>`).join('');
+  return `<div class="section-body"><table>
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th>Rack</th><th style="text-align:center">Celda</th><th>Nota</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function buildZonesReportBody(){
+  let body='';
+  const groups=[...state.zones,{id:'',name:'Sin zona',color:'#888'}];
+  groups.forEach(zone=>{
+    const zRacks=state.racks.filter(r=>r.zone===zone.id);
+    if(!zRacks.length)return;
+    let total=0,occ=0,skusSet=new Set();
+    zRacks.forEach(r=>{(state.cells[r.id]||[]).forEach(cl=>{total++;if(cl.state==='full'||cl.state==='partial')occ++;(cl.skus||[]).forEach(s=>{if(s.sku)skusSet.add(s.sku);});});});
+    const pct=total?Math.round(occ/total*100):0;
+    const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
+    const rows=zRacks.map(r=>{
+      const rCells=state.cells[r.id]||[];
+      const rOcc=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
+      const rTotal=r.bays*r.levels;
+      const rPct=rTotal?Math.round(rOcc/rTotal*100):0;
+      return `<tr><td class="mono" style="color:#1a4a8a">${esc(r.name)}</td><td style="text-align:center">${r.bays}×${r.levels}</td><td style="text-align:center">${rOcc}/${rTotal}</td><td style="text-align:center;font-weight:700;color:${rPct>80?'#e03030':rPct>55?'#e08000':'#00a860'}">${rPct}%</td></tr>`;
+    }).join('');
+    body+=`<div class="section">
+      <div class="section-hd" style="background:${zone.color||'#1a2030'}">
+        <div class="section-name">${esc(zone.name)}</div>
+        <span class="section-meta">${zRacks.length} racks · ${occ}/${total} celdas · ${skusSet.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
+      </div>
+      <div class="section-body"><table>
+        <thead><tr><th>Rack</th><th style="text-align:center">Bah×Niv</th><th style="text-align:center">Ocupadas</th><th style="text-align:center">%</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  });
+  return body || `<div class="empty-msg">Sin zonas definidas</div>`;
+}
+
+function buildRespReportBody(){
+  let body='';
+  state.people.forEach(person=>{
+    const rackIds=new Set();
+    const skuMap=new Map(); // sku -> {sku,desc,qty,unit,locs[]}
+    let total=0,occ=0;
+    state.racks.forEach(rack=>{
+      const rackResps=rack.responsables||[];
+      (state.cells[rack.id]||[]).forEach(cl=>{
+        const cellResps=(cl.responsables||[]).filter(id=>rackResps.includes(id));
+        const eff=cellResps.length?cellResps:rackResps;
+        if(!eff.includes(person.id))return;
+        rackIds.add(rack.id);total++;
+        if(cl.state==='full'||cl.state==='partial')occ++;
+        (cl.skus||[]).forEach(s=>{
+          if(!s.sku&&!s.desc)return;
+          const k=(s.sku||'')+'|||'+(s.desc||'');
+          if(!skuMap.has(k))skuMap.set(k,{sku:s.sku||'',desc:s.desc||'',qty:0,unit:s.unit||''});
+          skuMap.get(k).qty+=(parseFloat(s.qty)||0);
+        });
+      });
+    });
+    if(!rackIds.size)return;
+    const pct=total?Math.round(occ/total*100):0;
+    const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
+    const rackNames=esc([...rackIds].map(id=>state.racks.find(r=>r.id===id)?.name||id).join(', '));
+    const skuRows=[...skuMap.values()].map(s=>`<tr>
+      <td class="mono sku-id">${esc(s.sku)||'—'}</td>
+      <td>${esc(s.desc)||'—'}</td>
+      <td style="text-align:center">${esc(s.qty||'')} ${esc(s.unit)}</td>
+    </tr>`).join('');
+    body+=`<div class="section">
+      <div class="section-hd">
+        <div class="section-name">👤 ${esc(person.name)}${person.role?` — <span style="font-weight:400;font-size:11px">${esc(person.role)}</span>`:''}</div>
+        <span class="section-meta">${rackIds.size} racks · ${occ}/${total} celdas · ${skuMap.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
+      </div>
+      <div class="section-body">
+        <div style="padding:6px 12px;font-size:10px;color:#666;border-bottom:1px solid #eef;background:#fafbff"><b>Racks:</b> ${rackNames}</div>
+        ${skuRows?`<table><thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant. total</th></tr></thead><tbody>${skuRows}</tbody></table>`:'<div style="padding:10px 12px;color:#bbb;font-size:10px;font-style:italic">Sin productos asignados</div>'}
+      </div>
+    </div>`;
+  });
+  return body || `<div class="empty-msg">Sin responsables asignados</div>`;
+}
+
+function buildTiendasReportBody(){
+  let body='';
+  state.tiendas.forEach(tienda=>{
+    const racks=new Set(),skuMap=new Map();let total=0,occ=0;
+    state.racks.forEach(rack=>{
+      (state.cells[rack.id]||[]).forEach(cl=>{
+        const eff=(cl.tiendas||[]).length?(cl.tiendas||[]):(rack.tiendas||[]);
+        if(!eff.includes(tienda.id))return;
+        racks.add(rack.id);total++;
+        if(cl.state==='full'||cl.state==='partial')occ++;
+        (cl.skus||[]).forEach(s=>{
+          if(!s.sku&&!s.desc)return;
+          const k=(s.sku||'')+'|||'+(s.desc||'');
+          if(!skuMap.has(k))skuMap.set(k,{sku:s.sku||'',desc:s.desc||'',qty:0,unit:s.unit||''});
+          skuMap.get(k).qty+=(parseFloat(s.qty)||0);
+        });
+      });
+    });
+    if(!racks.size)return;
+    const pct=total?Math.round(occ/total*100):0;
+    const skuRows=[...skuMap.values()].map(s=>`<tr><td class="mono sku-id">${esc(s.sku)||'—'}</td><td>${esc(s.desc)||'—'}</td><td style="text-align:center">${esc(s.qty||'')} ${esc(s.unit)}</td></tr>`).join('');
+    body+=`<div class="section">
+      <div class="section-hd">
+        <div class="section-name">🏪 ${esc(tienda.name)}${tienda.code?` (${esc(tienda.code)})`:''}</div>
+        <span class="section-meta">${racks.size} racks · ${occ}/${total} · ${skuMap.size} SKUs · ${pct}%</span>
+      </div>
+      <div class="section-body"><table>
+        <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th></tr></thead>
+        <tbody>${skuRows||`<tr><td colspan="3" style="text-align:center;color:#aaa;padding:10px">Sin productos</td></tr>`}</tbody>
+      </table></div>
+    </div>`;
+  });
+  return body || `<div class="empty-msg">Sin tiendas asignadas</div>`;
+}
+
+function buildValorReportBody(){
+  const all=buildValorData();
+  if(!all.length) return `<div class="empty-msg">Sin datos de valor — asigná costos a los productos</div>`;
+  const total=all.reduce((a,r)=>a+r.subtotal,0);
+  const rows=all.map(r=>`<tr>
+    <td class="mono sku-id">${esc(r.sku)||'—'}</td>
+    <td>${esc(r.desc)||'—'}</td>
+    <td style="text-align:center">${esc(r.qty)}</td>
+    <td class="mono" style="text-align:right">$${r.cost?.toFixed(2)||'—'}</td>
+    <td class="mono" style="text-align:right;font-weight:700;color:${r.subtotal>0?'#1a6a3a':'#888'}">$${r.subtotal.toFixed(2)}</td>
+    <td style="font-size:10px;color:#666">${esc(r.rack||'')}</td>
+  </tr>`).join('');
+  return `<div style="display:flex;gap:12px;margin-bottom:14px">
+    <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Valor Total</div>
+      <div style="font-size:22px;font-weight:800;color:#1a6a3a;font-family:'Courier New',monospace">$${total.toFixed(2)}</div>
+    </div>
+    <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">SKUs con Costo</div>
+      <div style="font-size:22px;font-weight:800;color:#1a4a8a;font-family:'Courier New',monospace">${all.filter(r=>r.hasCost).length}</div>
+    </div>
+  </div>
+  <div class="section-body"><table>
+    <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th style="text-align:right">Costo Unit.</th><th style="text-align:right">Subtotal</th><th>Rack</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr style="background:#f0f4f8"><td colspan="4" style="padding:8px 10px;font-weight:700;text-align:right">TOTAL</td><td class="mono" style="padding:8px 10px;font-weight:800;font-size:13px;color:#1a6a3a;text-align:right">$${total.toFixed(2)}</td><td></td></tr></tfoot>
+  </table></div>`;
+}
+
+// Elige el builder de body correspondiente a la pestaña de reporte seleccionada
+function buildReportTabBody(tab){
+  const builders={
+    cells: buildCellsReportBody,
+    skus: buildSkusReportBody,
+    expiry: buildExpiryReportBody,
+    movements: buildMovementsReportBody,
+    zones: buildZonesReportBody,
+    resp: buildRespReportBody,
+    tiendas: buildTiendasReportBody,
+    valor: buildValorReportBody
+  };
+  const builder=builders[tab];
+  return builder ? builder() : '';
+}
+
 function printReportTab(tab){
   const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
   const logoSrc=getBrandLogo();
@@ -3722,285 +4057,7 @@ function printReportTab(tab){
   </div>`;
   const toolbar=`<div class="toolbar"><button onclick="window.print()">🖨 Imprimir / Guardar PDF</button><button class="cls" onclick="window.close()">✕ Cerrar</button></div>`;
 
-  const stateClass={full:'badge-full',partial:'badge-partial',reserved:'badge-reserved',blocked:'badge-blocked',empty:'badge-empty'};
-  const stateColor={full:'#00c875',partial:'#f0c000',reserved:'#00aaff',blocked:'#ff3b5c',empty:'#aaa'};
-
-  let body='';
-
-  // ── POR CELDA ──
-  if(tab==='cells'){
-    state.racks.forEach(rack=>{
-      const zone=state.zones.find(z=>z.id===rack.zone);
-      const rCells=state.cells[rack.id]||[];
-      const total=rack.bays*rack.levels;
-      const occ=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
-      const pct=total?Math.round(occ/total*100):0;
-      const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
-      const resps=resolvePeople(rack.responsables||[]);
-      const shops=resolveTiendas(rack.tiendas||[]);
-      let rows='';
-      for(let l=0;l<rack.levels;l++) for(let b=0;b<rack.bays;b++){
-        const cell=rCells.find(c=>c.bay===b&&c.level===l)||{bay:b,level:l,state:'empty',skus:[]};
-        const skus=(cell.skus||[]).filter(s=>s.sku||s.desc);
-        const sc=stateColor[cell.state]||'#aaa';
-        const skuHtml=skus.length
-          ? skus.map(s=>`<div class="cell-sku"><span class="cell-sku-id">${esc(s.sku||'')}</span>${s.sku&&s.desc?' ':''}<span class="cell-sku-desc">${esc(s.desc||'')}</span>${s.qty?`<span class="cell-sku-qty">${esc(s.qty)} ${esc(s.unit||'')}</span>`:''}</div>`).join('')
-          : `<span style="color:#bbb;font-size:9px;font-style:italic">${STATE_LABELS[cell.state]||'—'}</span>`;
-        rows+=`<tr>
-          <td class="mono" style="color:#1a4a8a;white-space:nowrap">B${b+1}·N${l+1}</td>
-          <td><span class="badge ${stateClass[cell.state]||'badge-empty'}">${STATE_LABELS[cell.state]||cell.state}</span></td>
-          <td>${skuHtml}</td>
-          <td style="font-size:10px;color:#888">${esc(cell.notes||'')}</td>
-        </tr>`;
-      }
-      body+=`<div class="section">
-        <div class="section-hd">
-          ${zone?`<div style="width:10px;height:10px;border-radius:2px;background:${zone.color};flex-shrink:0"></div>`:''}
-          <div class="section-name">${esc(rack.name)}</div>
-          ${zone?`<span class="chip tag-zone">${esc(zone.name)}</span>`:''}
-          ${resps.map(r=>`<span class="chip tag-resp">👤 ${esc(r)}</span>`).join('')}
-          ${shops.map(s=>`<span class="chip tag-shop">🏪 ${esc(s)}</span>`).join('')}
-          <span class="section-meta">${occ}/${total} celdas &nbsp;
-            <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span>
-            &nbsp;${pct}%
-          </span>
-        </div>
-        <div class="section-body">
-          <table>
-            <thead><tr><th>Celda</th><th>Estado</th><th>Productos</th><th>Notas</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-      </div>`;
-    });
-    if(!body) body=`<div class="empty-msg">Sin datos</div>`;
-  }
-
-  // ── POR SKU ──
-  else if(tab==='skus'){
-    const map=buildSkuMap();
-    if(!map.size){body=`<div class="empty-msg">Sin SKUs registrados</div>`;}
-    else{
-      let rows='';
-      map.forEach(({sku,desc,locs})=>{
-        const totalQty=locs.reduce((a,l)=>a+(parseFloat(l.qty)||0),0);
-        const locStr=locs.map(l=>`${l.rack} B${l.bay+1}·N${l.level+1}`).join(', ');
-        rows+=`<tr>
-          <td class="mono sku-id">${esc(sku)||'—'}</td>
-          <td>${esc(desc)||'—'}</td>
-          <td class="mono" style="text-align:center">${totalQty||'—'}</td>
-          <td style="font-size:10px;color:#666">${esc(locStr)}</td>
-          <td style="text-align:center">${locs.length}</td>
-        </tr>`;
-      });
-      body=`<div class="section-body"><table>
-        <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th>Ubicaciones</th><th style="text-align:center">Celdas</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`;
-    }
-  }
-
-  // ── VENCIMIENTOS ──
-  else if(tab==='expiry'){
-    const items=[];
-    state.racks.forEach(rack=>{
-      (state.cells[rack.id]||[]).forEach(cell=>{
-        (cell.skus||[]).forEach(s=>{
-          if(!s.expiry)return;
-          const d=expiryDays(s.expiry);
-          if(d===null)return;
-          items.push({rack:rack.name,bay:cell.bay+1,level:cell.level+1,sku:s.sku||'',desc:s.desc||'',expiry:s.expiry,days:d,qty:s.qty||'',unit:s.unit||''});
-        });
-      });
-    });
-    items.sort((a,b)=>a.days-b.days);
-    if(!items.length){body=`<div class="empty-msg">Sin vencimientos registrados</div>`;}
-    else{
-      const rows=items.map(r=>{
-        const dc=r.days<0?'#c00':r.days<=7?'#d04000':r.days<=30?'#a07000':'#226622';
-        const dl=r.days<0?`Vencido hace ${Math.abs(r.days)}d`:r.days===0?'HOY':`${r.days}d`;
-        return `<tr>
-          <td class="mono" style="color:#1a4a8a">${esc(r.rack)}</td>
-          <td class="mono" style="text-align:center">B${r.bay}·N${r.level}</td>
-          <td class="mono sku-id">${esc(r.sku)||'—'}</td>
-          <td>${esc(r.desc)||'—'}</td>
-          <td class="mono" style="text-align:center">${esc(r.expiry)}</td>
-          <td style="text-align:center;font-weight:700;color:${dc}">${dl}</td>
-          <td style="text-align:center">${r.qty} ${r.unit}</td>
-        </tr>`;
-      }).join('');
-      body=`<div class="section-body"><table>
-        <thead><tr><th>Rack</th><th style="text-align:center">Celda</th><th>SKU</th><th>Descripción</th><th style="text-align:center">Vence</th><th style="text-align:center">Estado</th><th style="text-align:center">Cant.</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`;
-    }
-  }
-
-  // ── MOVIMIENTOS ──
-  else if(tab==='movements'){
-    const movs=(state.movements||[]).slice().reverse().slice(0,300);
-    if(!movs.length){body=`<div class="empty-msg">Sin movimientos registrados</div>`;}
-    else{
-      const typeColor={entrada:'#00a860',salida:'#e03030',traslado:'#0088cc',ajuste:'#888'};
-      const rows=movs.map(m=>`<tr>
-        <td style="font-size:10px;color:#888;white-space:nowrap">${esc(m.date||'')}</td>
-        <td><span class="badge" style="background:${typeColor[m.type]||'#888'}22;color:${typeColor[m.type]||'#888'};border:1px solid ${typeColor[m.type]||'#888'}44">${esc(m.type||'')}</span></td>
-        <td class="mono sku-id">${esc(m.sku)||'—'}</td>
-        <td style="font-size:10px">${esc(m.desc)||'—'}</td>
-        <td class="mono" style="text-align:center;font-weight:700">${esc(m.qty||'')}</td>
-        <td style="font-size:10px;color:#555">${esc(m.rack||'')}</td>
-        <td class="mono" style="text-align:center;font-size:10px">B${(m.bay||0)+1}·N${(m.level||0)+1}</td>
-        <td style="font-size:10px;color:#888">${esc(m.note||'')}</td>
-      </tr>`).join('');
-      body=`<div class="section-body"><table>
-        <thead><tr><th>Fecha</th><th>Tipo</th><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th>Rack</th><th style="text-align:center">Celda</th><th>Nota</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>`;
-    }
-  }
-
-  // ── ZONAS ──
-  else if(tab==='zones'){
-    const groups=[...state.zones,{id:'',name:'Sin zona',color:'#888'}];
-    groups.forEach(zone=>{
-      const zRacks=state.racks.filter(r=>r.zone===zone.id);
-      if(!zRacks.length)return;
-      let total=0,occ=0,skusSet=new Set();
-      zRacks.forEach(r=>{(state.cells[r.id]||[]).forEach(cl=>{total++;if(cl.state==='full'||cl.state==='partial')occ++;(cl.skus||[]).forEach(s=>{if(s.sku)skusSet.add(s.sku);});});});
-      const pct=total?Math.round(occ/total*100):0;
-      const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
-      const rows=zRacks.map(r=>{
-        const rCells=state.cells[r.id]||[];
-        const rOcc=rCells.filter(c=>c.state==='full'||c.state==='partial').length;
-        const rTotal=r.bays*r.levels;
-        const rPct=rTotal?Math.round(rOcc/rTotal*100):0;
-        return `<tr><td class="mono" style="color:#1a4a8a">${esc(r.name)}</td><td style="text-align:center">${r.bays}×${r.levels}</td><td style="text-align:center">${rOcc}/${rTotal}</td><td style="text-align:center;font-weight:700;color:${rPct>80?'#e03030':rPct>55?'#e08000':'#00a860'}">${rPct}%</td></tr>`;
-      }).join('');
-      body+=`<div class="section">
-        <div class="section-hd" style="background:${zone.color||'#1a2030'}">
-          <div class="section-name">${esc(zone.name)}</div>
-          <span class="section-meta">${zRacks.length} racks · ${occ}/${total} celdas · ${skusSet.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
-        </div>
-        <div class="section-body"><table>
-          <thead><tr><th>Rack</th><th style="text-align:center">Bah×Niv</th><th style="text-align:center">Ocupadas</th><th style="text-align:center">%</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>
-      </div>`;
-    });
-    if(!body) body=`<div class="empty-msg">Sin zonas definidas</div>`;
-  }
-
-  // ── RESPONSABLES ──
-  else if(tab==='resp'){
-    state.people.forEach(person=>{
-      const rackIds=new Set();
-      const skuMap=new Map(); // sku -> {sku,desc,qty,unit,locs[]}
-      let total=0,occ=0;
-      state.racks.forEach(rack=>{
-        const rackResps=rack.responsables||[];
-        (state.cells[rack.id]||[]).forEach(cl=>{
-          const cellResps=(cl.responsables||[]).filter(id=>rackResps.includes(id));
-          const eff=cellResps.length?cellResps:rackResps;
-          if(!eff.includes(person.id))return;
-          rackIds.add(rack.id);total++;
-          if(cl.state==='full'||cl.state==='partial')occ++;
-          (cl.skus||[]).forEach(s=>{
-            if(!s.sku&&!s.desc)return;
-            const k=(s.sku||'')+'|||'+(s.desc||'');
-            if(!skuMap.has(k))skuMap.set(k,{sku:s.sku||'',desc:s.desc||'',qty:0,unit:s.unit||''});
-            skuMap.get(k).qty+=(parseFloat(s.qty)||0);
-          });
-        });
-      });
-      if(!rackIds.size)return;
-      const pct=total?Math.round(occ/total*100):0;
-      const bc=pct>80?'#e03030':pct>55?'#e08000':'#00a860';
-      const rackNames=esc([...rackIds].map(id=>state.racks.find(r=>r.id===id)?.name||id).join(', '));
-      const skuRows=[...skuMap.values()].map(s=>`<tr>
-        <td class="mono sku-id">${esc(s.sku)||'—'}</td>
-        <td>${esc(s.desc)||'—'}</td>
-        <td style="text-align:center">${esc(s.qty||'')} ${esc(s.unit)}</td>
-      </tr>`).join('');
-      body+=`<div class="section">
-        <div class="section-hd">
-          <div class="section-name">👤 ${esc(person.name)}${person.role?` — <span style="font-weight:400;font-size:11px">${esc(person.role)}</span>`:''}</div>
-          <span class="section-meta">${rackIds.size} racks · ${occ}/${total} celdas · ${skuMap.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
-        </div>
-        <div class="section-body">
-          <div style="padding:6px 12px;font-size:10px;color:#666;border-bottom:1px solid #eef;background:#fafbff"><b>Racks:</b> ${rackNames}</div>
-          ${skuRows?`<table><thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant. total</th></tr></thead><tbody>${skuRows}</tbody></table>`:'<div style="padding:10px 12px;color:#bbb;font-size:10px;font-style:italic">Sin productos asignados</div>'}
-        </div>
-      </div>`;
-    });
-    if(!body) body=`<div class="empty-msg">Sin responsables asignados</div>`;
-  }
-
-  // ── TIENDAS ──
-  else if(tab==='tiendas'){
-    state.tiendas.forEach(tienda=>{
-      const racks=new Set(),skuMap=new Map();let total=0,occ=0;
-      state.racks.forEach(rack=>{
-        (state.cells[rack.id]||[]).forEach(cl=>{
-          const eff=(cl.tiendas||[]).length?(cl.tiendas||[]):(rack.tiendas||[]);
-          if(!eff.includes(tienda.id))return;
-          racks.add(rack.id);total++;
-          if(cl.state==='full'||cl.state==='partial')occ++;
-          (cl.skus||[]).forEach(s=>{
-            if(!s.sku&&!s.desc)return;
-            const k=(s.sku||'')+'|||'+(s.desc||'');
-            if(!skuMap.has(k))skuMap.set(k,{sku:s.sku||'',desc:s.desc||'',qty:0,unit:s.unit||''});
-            skuMap.get(k).qty+=(parseFloat(s.qty)||0);
-          });
-        });
-      });
-      if(!racks.size)return;
-      const pct=total?Math.round(occ/total*100):0;
-      const skuRows=[...skuMap.values()].map(s=>`<tr><td class="mono sku-id">${esc(s.sku)||'—'}</td><td>${esc(s.desc)||'—'}</td><td style="text-align:center">${esc(s.qty||'')} ${esc(s.unit)}</td></tr>`).join('');
-      body+=`<div class="section">
-        <div class="section-hd">
-          <div class="section-name">🏪 ${esc(tienda.name)}${tienda.code?` (${esc(tienda.code)})`:''}</div>
-          <span class="section-meta">${racks.size} racks · ${occ}/${total} · ${skuMap.size} SKUs · ${pct}%</span>
-        </div>
-        <div class="section-body"><table>
-          <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th></tr></thead>
-          <tbody>${skuRows||`<tr><td colspan="3" style="text-align:center;color:#aaa;padding:10px">Sin productos</td></tr>`}</tbody>
-        </table></div>
-      </div>`;
-    });
-    if(!body) body=`<div class="empty-msg">Sin tiendas asignadas</div>`;
-  }
-
-  // ── VALOR ──
-  else if(tab==='valor'){
-    const all=buildValorData();
-    if(!all.length){body=`<div class="empty-msg">Sin datos de valor — asigná costos a los productos</div>`;}
-    else{
-      const total=all.reduce((a,r)=>a+r.subtotal,0);
-      const rows=all.map(r=>`<tr>
-        <td class="mono sku-id">${esc(r.sku)||'—'}</td>
-        <td>${esc(r.desc)||'—'}</td>
-        <td style="text-align:center">${esc(r.qty)}</td>
-        <td class="mono" style="text-align:right">$${r.cost?.toFixed(2)||'—'}</td>
-        <td class="mono" style="text-align:right;font-weight:700;color:${r.subtotal>0?'#1a6a3a':'#888'}">$${r.subtotal.toFixed(2)}</td>
-        <td style="font-size:10px;color:#666">${esc(r.rack||'')}</td>
-      </tr>`).join('');
-      body=`<div style="display:flex;gap:12px;margin-bottom:14px">
-        <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Valor Total</div>
-          <div style="font-size:22px;font-weight:800;color:#1a6a3a;font-family:'Courier New',monospace">$${total.toFixed(2)}</div>
-        </div>
-        <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">SKUs con Costo</div>
-          <div style="font-size:22px;font-weight:800;color:#1a4a8a;font-family:'Courier New',monospace">${all.filter(r=>r.hasCost).length}</div>
-        </div>
-      </div>
-      <div class="section-body"><table>
-        <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th><th style="text-align:right">Costo Unit.</th><th style="text-align:right">Subtotal</th><th>Rack</th></tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot><tr style="background:#f0f4f8"><td colspan="4" style="padding:8px 10px;font-weight:700;text-align:right">TOTAL</td><td class="mono" style="padding:8px 10px;font-weight:800;font-size:13px;color:#1a6a3a;text-align:right">$${total.toFixed(2)}</td><td></td></tr></tfoot>
-      </table></div>`;
-    }
-  }
+  const body=buildReportTabBody(tab);
 
   // ── OPEN WINDOW ──
   const win=window.open('','_blank','width=960,height=750');
@@ -4921,6 +4978,58 @@ function updateBPCount(){
   const n=bpSelection.size;
   document.getElementById('bp-count').textContent=n+' '+t('rep_labels_selected');
 }
+// Construye el HTML de una etiqueta individual dentro de la impresión masiva
+function buildBulkLabelHtml(rack, cell, is4x6, bname, logoEl){
+  const stateNames={empty:'VACÍO',full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO'};
+  const stateColors={empty:'#ddd',full:'#00cc66',partial:'#ffcc00',reserved:'#00aaff',blocked:'#ff3344'};
+  const stateTxt={empty:'#444',full:'#000',partial:'#000',reserved:'#000',blocked:'#fff'};
+
+  const zone=state.zones.find(z=>z.id===rack.zone);
+  const zoneColor=zone?(zone.color.startsWith('var(')?'#555':zone.color):'#aaa';
+  const sc=stateColors[cell.state]||'#ddd';
+  const st=stateTxt[cell.state]||'#000';
+  const sn=stateNames[cell.state]||'VACÍO';
+  const resps=resolvePeople((cell.responsables||[]).length?(cell.responsables||[]):(rack.responsables||[]));
+  const cellShops=resolveTiendas(cell.tiendas||[]);
+  const chipResp=resps.map(r=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">'+esc(r)+'</span>').join('');
+  const chipShop=cellShops.map(s=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">'+esc(s)+'</span>').join('');
+  const skuExpiryRows=(cell.skus||[]).filter(s=>s.expiry).map(s=>{
+    const d=expiryDays(s.expiry);const ec=d<0?'#ff3344':d<=30?'#ff9900':'#00aa44';
+    return '<div class="notes" style="display:flex;justify-content:space-between;align-items:center">📅 '+esc(s.sku||s.desc||'SKU')+': '+esc(s.expiry)+'<span style="font-weight:900;color:'+ec+'">'+(d<0?'VENCIDO':d===0?'HOY':d+'d')+'</span></div>';
+  }).join('');
+  const notesRow=cell.notes?('<div class="notes">📝 '+esc(cell.notes)+'</div>'):'';
+
+  return '<div class="lbl">'
+    +'<div class="hd">'
+      +`<div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${bname}<small>${t('lbl_location')}</small></div></div>`
+      +`<div style="text-align:right"><div class="hd-rack">${esc(rack.name)}</div><div class="hd-coord">${t('lbl_bay').toUpperCase()} ${cell.bay+1} &nbsp;·&nbsp; ${t('lbl_level').toUpperCase()} ${cell.level+1}</div></div>`
+    +'</div>'
+    +'<div class="body">'
+      +'<div class="col-nums">'
+        +`<div class="num-box"><div class="num-lbl">${t('lbl_bay')}</div><div class="num-val">${cell.bay+1}</div></div>`
+        +`<div class="num-box"><div class="num-lbl">${t('lbl_level')}</div><div class="num-val">${cell.level+1}</div></div>`
+      +'</div>'
+      +'<div class="col-info">'
+        +'<div class="info-top">'
+          +`<div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?esc(zone.name):t('no_zone')}</div></div>`
+          +`<div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${sn}</span></div>`
+        +'</div>'
+        +'<div class="people">'
+          +(resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+chipResp+'</div></div>'):'')
+          +(cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+chipShop+'</div></div>'):(!resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${currentLang==='en'?'No assignees':'Sin responsables ni tiendas'}</div>`:''))
+        +'</div>'
+        +notesRow
+        +skuExpiryRows
+      +'</div>'
+    +'</div>'
+    +'<div class="ft">'
+      +`<span class="ft-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>`
+      +'<div style="display:flex;align-items:center;gap:10px"><span class="ft-code">'+esc(rack.name)+'-B'+(cell.bay+1)+'N'+(cell.level+1)+'</span>'
+      +'<img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data='+encodeURIComponent(rack.name+'-B'+(cell.bay+1)+'N'+(cell.level+1))+'" style="width:44px;height:44px;border-radius:3px" alt="QR"></div>'
+    +'</div>'
+  +'</div>';
+}
+
 function doBulkPrint(){
   const allCells=getBPCells();
   const cells=allCells.filter(({rack,cell})=>bpSelection.has(bpKey(rack,cell)));
@@ -4930,9 +5039,7 @@ function doBulkPrint(){
   const bname=getBrandName('BODEGA','EFFICOMMERCE CR');
   const logoSrc=getBrandLogo();
   const logoEl=logoSrc?('<img src="'+logoSrc+'" style="width:44px;height:44px;object-fit:contain;border-radius:4px;">'):'<div style="width:44px;height:44px;background:#f0a500;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#000">B</div>';
-  const stateNames={empty:'VACÍO',full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO'};
   const stateColors={empty:'#ddd',full:'#00cc66',partial:'#ffcc00',reserved:'#00aaff',blocked:'#ff3344'};
-  const stateTxt={empty:'#444',full:'#000',partial:'#000',reserved:'#000',blocked:'#fff'};
 
   const pageSize=is4x6?'6in 4in':'210mm 297mm';
   const lblW=is4x6?'6in':'190mm'; const lblH=is4x6?'4in':'auto';
@@ -4942,52 +5049,7 @@ function doBulkPrint(){
   const headRackSize=is4x6?'30px':'44px';
   const headCoordSize=is4x6?'16px':'22px';
 
-  const labelsHtml=cells.map(({rack,cell})=>{
-    const zone=state.zones.find(z=>z.id===rack.zone);
-    const zoneColor=zone?(zone.color.startsWith('var(')?'#555':zone.color):'#aaa';
-    const sc=stateColors[cell.state]||'#ddd';
-    const st=stateTxt[cell.state]||'#000';
-    const sn=stateNames[cell.state]||'VACÍO';
-    const resps=resolvePeople((cell.responsables||[]).length?(cell.responsables||[]):(rack.responsables||[]));
-    const cellShops=resolveTiendas(cell.tiendas||[]);
-    const chipResp=resps.map(r=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">'+esc(r)+'</span>').join('');
-    const chipShop=cellShops.map(s=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">'+esc(s)+'</span>').join('');
-    const skuExpiryRows=(cell.skus||[]).filter(s=>s.expiry).map(s=>{
-      const d=expiryDays(s.expiry);const ec=d<0?'#ff3344':d<=30?'#ff9900':'#00aa44';
-      return '<div class="notes" style="display:flex;justify-content:space-between;align-items:center">📅 '+esc(s.sku||s.desc||'SKU')+': '+esc(s.expiry)+'<span style="font-weight:900;color:'+ec+'">'+(d<0?'VENCIDO':d===0?'HOY':d+'d')+'</span></div>';
-    }).join('');
-    const notesRow=cell.notes?('<div class="notes">📝 '+esc(cell.notes)+'</div>'):'';
-
-    return '<div class="lbl">'
-      +'<div class="hd">'
-        +`<div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${bname}<small>${t('lbl_location')}</small></div></div>`
-        +`<div style="text-align:right"><div class="hd-rack">${esc(rack.name)}</div><div class="hd-coord">${t('lbl_bay').toUpperCase()} ${cell.bay+1} &nbsp;·&nbsp; ${t('lbl_level').toUpperCase()} ${cell.level+1}</div></div>`
-      +'</div>'
-      +'<div class="body">'
-        +'<div class="col-nums">'
-          +`<div class="num-box"><div class="num-lbl">${t('lbl_bay')}</div><div class="num-val">${cell.bay+1}</div></div>`
-          +`<div class="num-box"><div class="num-lbl">${t('lbl_level')}</div><div class="num-val">${cell.level+1}</div></div>`
-        +'</div>'
-        +'<div class="col-info">'
-          +'<div class="info-top">'
-            +`<div class="ibox"><div class="i-lbl">${t('csv_zone')}</div><div class="i-val" style="color:${zoneColor}">${zone?esc(zone.name):t('no_zone')}</div></div>`
-            +`<div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${sn}</span></div>`
-          +'</div>'
-          +'<div class="people">'
-            +(resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+chipResp+'</div></div>'):'')
-            +(cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+chipShop+'</div></div>'):(!resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${currentLang==='en'?'No assignees':'Sin responsables ni tiendas'}</div>`:''))
-          +'</div>'
-          +notesRow
-          +skuExpiryRows
-        +'</div>'
-      +'</div>'
-      +'<div class="ft">'
-        +`<span class="ft-date">${t('rep_generated')} ${new Date().toLocaleString(currentLang==='en'?'en-US':'es-CR')}</span>`
-        +'<div style="display:flex;align-items:center;gap:10px"><span class="ft-code">'+esc(rack.name)+'-B'+(cell.bay+1)+'N'+(cell.level+1)+'</span>'
-        +'<img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data='+encodeURIComponent(rack.name+'-B'+(cell.bay+1)+'N'+(cell.level+1))+'" style="width:44px;height:44px;border-radius:3px" alt="QR"></div>'
-      +'</div>'
-    +'</div>';
-  }).join('');
+  const labelsHtml=cells.map(({rack,cell})=>buildBulkLabelHtml(rack, cell, is4x6, bname, logoEl)).join('');
 
   const win=window.open('','_blank','width=900,height=700');
   win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc('Etiquetas Masivas — '+bname)+'</title>'

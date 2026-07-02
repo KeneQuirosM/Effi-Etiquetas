@@ -94,6 +94,169 @@ function onScanEnter(e) {
 }
 
 // ====== FUNCIÓN COMPLETA handleFile (reemplaza la que tienes) ======
+// Extrae guías, metadatos de ruta y verifica cruces desde un Excel de manifiesto ya parseado
+function processExcelManifest(rows) {
+  const infoRuta = document.getElementById("infoRuta");
+  const infoPiloto = document.getElementById("infoPiloto");
+  const infoBodeguero = document.getElementById("infoBodeguero");
+
+  const cells = rows.flat().map(x => (x ? String(x).trim() : "")).filter(Boolean);
+
+  // Extraer metadatos
+  for (const c of cells) {
+    if (rxRuta.test(c) && window.nombreRuta === "-") {
+      window.nombreRuta = c.match(rxRuta)[1].trim();
+    }
+    if (rxPiloto.test(c) && window.piloto === "-") {
+      window.piloto = c.match(rxPiloto)[1].trim();
+    }
+    if (rxBodeguero.test(c) && window.bodeguero === "-") {
+      window.bodeguero = c.match(rxBodeguero)[1].trim();
+    }
+  }
+
+  if (infoRuta) infoRuta.textContent = window.nombreRuta;
+  if (infoPiloto) infoPiloto.textContent = window.piloto;
+  if (infoBodeguero) infoBodeguero.textContent = window.bodeguero;
+
+  // Extraer guías
+  const guias = cells.filter(val => guiaRegex.test(val)).map(guia => normalizarGuia(guia));
+
+  // Verificar cruces de ruta (solo para Excel)
+  const lhCodesInManifesto = extraerLHCodes(rows);
+  const destinatarios = extraerDestinatarios(rows);
+
+  if (lhCodesInManifesto.length > 0) {
+    const posiblesCruces = verificarCrucesDeRuta(lhCodesInManifesto, destinatarios);
+    const crucesImportantes = posiblesCruces.filter(cruce =>
+      cruce.tipo === "DESTINATARIO_INCORRECTO"
+    );
+    if (crucesImportantes.length > 0) {
+      showToast(`⚠️ ${crucesImportantes.length} destinatario(s) en ruta incorrecta`, 'warning');
+      mostrarModalCruces(crucesImportantes);
+      mostrarIconoNotificacion(crucesImportantes);
+    }
+  }
+
+  showToast(`✅ Excel: ${guias.length} guías encontradas`, 'success');
+
+  return guias;
+}
+
+// Renderiza una página de PDF a canvas, con rotación opcional (usado por el OCR)
+async function renderPdfPageToCanvas(page, rotation = 0) {
+  const viewport = page.getViewport({ scale: 2.0, rotation });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  return canvas;
+}
+
+// Extrae el texto de una página de PDF: primero texto nativo, si no alcanza usa OCR (con reintento rotado 180°)
+async function extractPdfPageText(page, pageIndex) {
+  const textContent = await page.getTextContent();
+  let pageText = textContent.items.map(item => item.str).join(' ').trim();
+
+  if (pageText.length >= 30) return { pageText, usedOCR: false };
+
+  showToast(`🔍 Página ${pageIndex}: usando OCR...`, 'info');
+
+  if (typeof Tesseract === 'undefined') {
+    console.warn("Tesseract no disponible");
+    return { pageText, usedOCR: true };
+  }
+
+  try {
+    let canvas = await renderPdfPageToCanvas(page, 0);
+    let result = await Tesseract.recognize(canvas, 'spa');
+    pageText = result.data.text;
+
+    // Si no encontró guías (1000XXXXXX), intentar rotado 180°
+    const guiasEnPagina = pageText.match(/\b1000\d{6}\b/g) || [];
+    if (guiasEnPagina.length === 0) {
+      showToast(`🔄 Página ${pageIndex}: reintentando rotada 180°...`, 'info');
+      canvas = await renderPdfPageToCanvas(page, 180);
+      result = await Tesseract.recognize(canvas, 'spa');
+      const pageText180 = result.data.text;
+      const guias180 = pageText180.match(/\b1000\d{6}\b/g) || [];
+      if (guias180.length > guiasEnPagina.length) {
+        pageText = pageText180;
+      }
+    }
+  } catch (ocrErr) {
+    console.warn(`OCR falló en página ${pageIndex}:`, ocrErr);
+    pageText = '';
+  }
+
+  return { pageText, usedOCR: true };
+}
+
+// Procesa un PDF de manifiesto: extrae texto (nativo u OCR) de cada página y busca guías por patrones
+async function processPdfManifest(pdfData) {
+  showToast('📄 Cargando PDF...', 'info');
+
+  // Asegurar PDF.js cargado con worker correcto
+  if (typeof pdfjsLib === 'undefined') {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('No se pudo cargar PDF.js'));
+      document.head.appendChild(script);
+    });
+  }
+  // Siempre asignar el worker (puede no estar seteado)
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+  let guias = [];
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+    const totalPaginas = pdf.numPages;
+
+    let textoCompleto = '';
+    let usandoOCR = false;
+
+    for (let i = 1; i <= totalPaginas; i++) {
+      showToast(`📄 Procesando página ${i} de ${totalPaginas}...`, 'info');
+      const page = await pdf.getPage(i);
+      const { pageText, usedOCR } = await extractPdfPageText(page, i);
+      if (usedOCR) usandoOCR = true;
+      textoCompleto += pageText + '\n';
+    }
+
+    // Extraer guías con múltiples patrones
+    const pat1000  = /\b(1000\d{6})\b/g;           // guías tipo 1000XXXXXX
+    const patCR    = /\bCR\d{7,}\b/gi;              // guías CR
+    const patPrefijo = /\b(?:BC|1W|2W|3W|4W)[A-Z0-9\-]{4,}\b/gi; // BC, 1W, etc.
+
+    let guiasEncontradas = [
+      ...(textoCompleto.match(pat1000)    || []),
+      ...(textoCompleto.match(patCR)      || []),
+      ...(textoCompleto.match(patPrefijo) || []),
+    ];
+
+    guias = [...new Set(guiasEncontradas)];
+
+    if (guias.length === 0) {
+      const detalle = usandoOCR
+        ? 'El OCR no reconoció guías. El PDF puede estar muy borroso o inclinado.'
+        : 'No se encontraron guías con los patrones conocidos (1000XXXXXX, CR..., etc).';
+      showToast(`⚠️ ${detalle}`, 'warning', 8000);
+    } else {
+      showToast(`✅ PDF: ${guias.length} guías encontradas${usandoOCR ? ' (vía OCR)' : ''}`, 'success');
+    }
+
+  } catch (pdfError) {
+    console.error("Error al procesar PDF:", pdfError);
+    showToast(`❌ Error al leer el PDF: ${pdfError.message}`, 'error', 8000);
+    guias = [];
+  }
+
+  return guias;
+}
+
 async function handleFile(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -111,7 +274,7 @@ async function handleFile(event) {
   window.nombreRuta = "-";
   window.piloto = "-";
   window.bodeguero = "-";
-  
+
   const infoRuta = document.getElementById("infoRuta");
   const infoPiloto = document.getElementById("infoPiloto");
   const infoBodeguero = document.getElementById("infoBodeguero");
@@ -133,155 +296,11 @@ async function handleFile(event) {
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-        const cells = rows.flat().map(x => (x ? String(x).trim() : "")).filter(Boolean);
-        
-        // Extraer metadatos
-        for (const c of cells) {
-          if (rxRuta.test(c) && window.nombreRuta === "-") {
-            window.nombreRuta = c.match(rxRuta)[1].trim();
-          }
-          if (rxPiloto.test(c) && window.piloto === "-") {
-            window.piloto = c.match(rxPiloto)[1].trim();
-          }
-          if (rxBodeguero.test(c) && window.bodeguero === "-") {
-            window.bodeguero = c.match(rxBodeguero)[1].trim();
-          }
-        }
-        
-        if (infoRuta) infoRuta.textContent = window.nombreRuta;
-        if (infoPiloto) infoPiloto.textContent = window.piloto;
-        if (infoBodeguero) infoBodeguero.textContent = window.bodeguero;
-
-        // Extraer guías
-        guias = cells.filter(val => guiaRegex.test(val)).map(guia => normalizarGuia(guia));
-        
-        // Verificar cruces de ruta (solo para Excel)
-        const lhCodesInManifesto = extraerLHCodes(rows);
-        const destinatarios = extraerDestinatarios(rows);
-        
-        if (lhCodesInManifesto.length > 0) {
-          const posiblesCruces = verificarCrucesDeRuta(lhCodesInManifesto, destinatarios);
-          const crucesImportantes = posiblesCruces.filter(cruce =>
-            cruce.tipo === "DESTINATARIO_INCORRECTO"
-          );
-          if (crucesImportantes.length > 0) {
-            showToast(`⚠️ ${crucesImportantes.length} destinatario(s) en ruta incorrecta`, 'warning');
-            mostrarModalCruces(crucesImportantes);
-            mostrarIconoNotificacion(crucesImportantes);
-          }
-        }
-        
-        showToast(`✅ Excel: ${guias.length} guías encontradas`, 'success');
-        
+        guias = processExcelManifest(rows);
       } else if (isPDF) {
         // ====== PROCESAR PDF CON OCR (VERSIÓN ROBUSTA) ======
-        showToast('📄 Cargando PDF...', 'info');
-
         const pdfData = new Uint8Array(e.target.result);
-
-        // Asegurar PDF.js cargado con worker correcto
-        if (typeof pdfjsLib === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
-            script.onload = resolve;
-            script.onerror = () => reject(new Error('No se pudo cargar PDF.js'));
-            document.head.appendChild(script);
-          });
-        }
-        // Siempre asignar el worker (puede no estar seteado)
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-        try {
-          const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-          const totalPaginas = pdf.numPages;
-
-          let textoCompleto = '';
-          let usandoOCR = false;
-
-          for (let i = 1; i <= totalPaginas; i++) {
-            showToast(`📄 Procesando página ${i} de ${totalPaginas}...`, 'info');
-            const page = await pdf.getPage(i);
-
-            // 1. Intentar texto nativo primero
-            const textContent = await page.getTextContent();
-            let pageText = textContent.items.map(item => item.str).join(' ').trim();
-
-            // 2. Si no hay texto suficiente, usar OCR
-            if (pageText.length < 30) {
-              usandoOCR = true;
-              showToast(`🔍 Página ${i}: usando OCR...`, 'info');
-
-              // Función auxiliar para renderizar página con rotación opcional
-              const renderCanvas = async (rotation = 0) => {
-                const viewport = page.getViewport({ scale: 2.0, rotation });
-                const canvas = document.createElement('canvas');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-                return canvas;
-              };
-
-              if (typeof Tesseract !== 'undefined') {
-                try {
-                  // Primer intento: rotación normal
-                  let canvas = await renderCanvas(0);
-                  let result = await Tesseract.recognize(canvas, 'spa');
-                  pageText = result.data.text;
-
-                  // Si no encontró guías (1000XXXXXX), intentar rotado 180°
-                  const guiasEnPagina = pageText.match(/\b1000\d{6}\b/g) || [];
-                  if (guiasEnPagina.length === 0) {
-                    showToast(`🔄 Página ${i}: reintentando rotada 180°...`, 'info');
-                    canvas = await renderCanvas(180);
-                    result = await Tesseract.recognize(canvas, 'spa');
-                    const pageText180 = result.data.text;
-                    const guias180 = pageText180.match(/\b1000\d{6}\b/g) || [];
-                    if (guias180.length > guiasEnPagina.length) {
-                      pageText = pageText180;
-                    }
-                  }
-                } catch (ocrErr) {
-                  console.warn(`OCR falló en página ${i}:`, ocrErr);
-                  pageText = '';
-                }
-              } else {
-                console.warn("Tesseract no disponible");
-              }
-            }
-
-            textoCompleto += pageText + '\n';
-          }
-
-          // Extraer guías con múltiples patrones
-          const pat1000  = /\b(1000\d{6})\b/g;           // guías tipo 1000XXXXXX
-          const patCR    = /\bCR\d{7,}\b/gi;              // guías CR
-          const patPrefijo = /\b(?:BC|1W|2W|3W|4W)[A-Z0-9\-]{4,}\b/gi; // BC, 1W, etc.
-
-          let guiasEncontradas = [
-            ...(textoCompleto.match(pat1000)    || []),
-            ...(textoCompleto.match(patCR)      || []),
-            ...(textoCompleto.match(patPrefijo) || []),
-          ];
-
-          guias = [...new Set(guiasEncontradas)];
-
-          if (guias.length === 0) {
-            const detalle = usandoOCR
-              ? 'El OCR no reconoció guías. El PDF puede estar muy borroso o inclinado.'
-              : 'No se encontraron guías con los patrones conocidos (1000XXXXXX, CR..., etc).';
-            showToast(`⚠️ ${detalle}`, 'warning', 8000);
-          } else {
-            showToast(`✅ PDF: ${guias.length} guías encontradas${usandoOCR ? ' (vía OCR)' : ''}`, 'success');
-          }
-
-        } catch (pdfError) {
-          console.error("Error al procesar PDF:", pdfError);
-          showToast(`❌ Error al leer el PDF: ${pdfError.message}`, 'error', 8000);
-          guias = [];
-        }
+        guias = await processPdfManifest(pdfData);
       }
 
       // Actualizar estado global
@@ -291,11 +310,11 @@ async function handleFile(event) {
       noManifestadasSet.clear();
 
       updateStats();
-      
+
       if (manifiesto.length > 0) {
         showToast(`✅ Manifiesto cargado con ${manifiesto.length} guías.`, 'success');
       }
-      
+
       const scanInputField = document.getElementById("scanInput");
       if (scanInputField) scanInputField.focus();
 
@@ -400,43 +419,9 @@ function limpiarHistorial() { localStorage.removeItem(HISTORIAL_KEY); showToast(
 function cerrarConfirmModal() { const m = document.getElementById('confirmModal'); if (m) m.style.display = 'none'; }
 
 // ====== COMPARATIVO ======
-function openComparativoWindow() {
-  const ahora = new Date();
-  const fecha = ahora.toLocaleDateString('es-CR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  const hora = ahora.toLocaleTimeString();
-  const manifestadas = manifiesto.slice();
-  const pistoleadas = Array.from(correctasSet);
-  const noManif = Array.from(noManifestadasSet);
-  const faltantes = Array.from(faltantesSet);
-  const maxLen = Math.max(manifestadas.length, pistoleadas.length);
-
-  guardarEnHistorial('comparativo', { total: manifiesto.length, correctas: correctasSet.size, faltantes: faltantesSet.size, noManifestadas: noManifestadasSet.size, ruta: window.nombreRuta });
-
-  let filasComparativo = '';
-  for (let i = 0; i < maxLen; i++) {
-    const esCorrecta = pistoleadas[i] && correctasSet.has(pistoleadas[i]);
-    filasComparativo += `<tr>
-      <td>${manifestadas[i] ? esc(manifestadas[i]) : '<span style="color:#aaa">—</span>'}</td>
-      <td style="color:${esCorrecta ? '#198754' : '#dc3545'}; font-weight:600">${pistoleadas[i] ? esc(pistoleadas[i]) : '<span style="color:#aaa">—</span>'}</td>
-    </tr>`;
-  }
-
-  let filasNoManif = noManif.length === 0
-    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Ninguna guía fuera de manifiesto ✅</td></tr>'
-    : noManif.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#dc3545;font-weight:600">${esc(g)}</td></tr>`).join('');
-
-  let filаsFaltantes = faltantes.length === 0
-    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Todas las guías fueron escaneadas ✅</td></tr>'
-    : faltantes.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#e67e00;font-weight:600">${esc(g)}</td></tr>`).join('');
-
-  const porcentaje = manifiesto.length > 0 ? Math.round((correctasSet.size / manifiesto.length) * 100) : 0;
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <title>Reporte Comparativo — ${esc(window.nombreRuta)}</title>
-  <style>
+// CSS estático del reporte comparativo impreso (sin interpolación de variables)
+function buildComparativoCss() {
+  return `
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Segoe UI', sans-serif; background:#f0f2f5; color:#333; }
 
@@ -540,7 +525,54 @@ function openComparativoWindow() {
       body { background:white; }
       .page { max-width:100%; }
     }
-  </style>
+  `;
+}
+
+// Arma las filas de las 3 tablas del reporte comparativo (manifestadas vs escaneadas, no manifestadas, faltantes)
+function buildComparativoRows(manifestadas, pistoleadas, noManif, faltantes) {
+  const maxLen = Math.max(manifestadas.length, pistoleadas.length);
+
+  let filasComparativo = '';
+  for (let i = 0; i < maxLen; i++) {
+    const esCorrecta = pistoleadas[i] && correctasSet.has(pistoleadas[i]);
+    filasComparativo += `<tr>
+      <td>${manifestadas[i] ? esc(manifestadas[i]) : '<span style="color:#aaa">—</span>'}</td>
+      <td style="color:${esCorrecta ? '#198754' : '#dc3545'}; font-weight:600">${pistoleadas[i] ? esc(pistoleadas[i]) : '<span style="color:#aaa">—</span>'}</td>
+    </tr>`;
+  }
+
+  const filasNoManif = noManif.length === 0
+    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Ninguna guía fuera de manifiesto ✅</td></tr>'
+    : noManif.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#dc3545;font-weight:600">${esc(g)}</td></tr>`).join('');
+
+  const filasFaltantes = faltantes.length === 0
+    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Todas las guías fueron escaneadas ✅</td></tr>'
+    : faltantes.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#e67e00;font-weight:600">${esc(g)}</td></tr>`).join('');
+
+  return { filasComparativo, filasNoManif, filasFaltantes };
+}
+
+function openComparativoWindow() {
+  const ahora = new Date();
+  const fecha = ahora.toLocaleDateString('es-CR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const hora = ahora.toLocaleTimeString();
+  const manifestadas = manifiesto.slice();
+  const pistoleadas = Array.from(correctasSet);
+  const noManif = Array.from(noManifestadasSet);
+  const faltantes = Array.from(faltantesSet);
+
+  guardarEnHistorial('comparativo', { total: manifiesto.length, correctas: correctasSet.size, faltantes: faltantesSet.size, noManifestadas: noManifestadasSet.size, ruta: window.nombreRuta });
+
+  const { filasComparativo, filasNoManif, filasFaltantes } = buildComparativoRows(manifestadas, pistoleadas, noManif, faltantes);
+
+  const porcentaje = manifiesto.length > 0 ? Math.round((correctasSet.size / manifiesto.length) * 100) : 0;
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Reporte Comparativo — ${esc(window.nombreRuta)}</title>
+  <style>${buildComparativoCss()}</style>
 </head>
 <body>
 <div class="page">
@@ -646,7 +678,7 @@ function openComparativoWindow() {
     </div>
     <table>
       <thead><tr><th>#</th><th>Número de Guía</th></tr></thead>
-      <tbody>${filаsFaltantes}</tbody>
+      <tbody>${filasFaltantes}</tbody>
     </table>
   </div>
 

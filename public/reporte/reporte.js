@@ -105,9 +105,13 @@ function procesarArchivo(file) {
   reader.readAsArrayBuffer(file);
 }
 
-function crossReferenceData(excelRows) {
-  const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+// Limpia texto para comparación tolerante a acentos/mayúsculas (usado en todo el cruce de datos)
+function cleanCompareText(t) {
+  return String(t || '').toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
 
+// Detecta qué columnas del Excel corresponden a tienda/id/descripción/cantidad según el nombre del header
+function detectExcelColumns(excelRows, cleanText) {
   let colTiendas = [];
   let colId = null;
   let colDesc = null;
@@ -129,81 +133,102 @@ function crossReferenceData(excelRows) {
     }
   });
 
-  const unmatchedStores = [];
+  return { colTiendas, colId, colDesc, colQty };
+}
 
-  DATA = dbData
-    .filter(tienda => !excludedStores.has(tienda.nombre))
-    .map(tienda => {
-    let tipo = "Distribuidor (Bodega Propia)";
-    const nameUpper = tienda.nombre.toUpperCase();
-    if (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO")) {
-      tipo = "Proveedor Dropshipping";
-    }
+// Suma las unidades del Excel que le corresponden a un producto de una tienda dada
+function matchProductQty(prod, tienda, excelRows, cleanText, cols) {
+  const { colTiendas, colId, colDesc, colQty } = cols;
+  const dbStoreNameClean = cleanText(tienda.nombre);
+  const dbProdCodeClean = cleanText(prod.codigo || prod.id);
+  const dbProdNameClean = cleanText(prod.nombre || prod.producto);
+  let totalQty = 0;
+  let storeFoundInExcel = false;
 
-    const dbStoreNameClean = cleanText(tienda.nombre);
-    const dbStoreIdClean = cleanText(tienda.id);
+  excelRows.forEach((row, idx) => {
+    if (idx === 0) return;
 
-    let storeFoundInExcel = false;
+    // Elimina el prefijo "ID - " que viene en el Excel (ej: "40881 - Grupo Hoshi" → "grupo hoshi")
+    const stripPrefix = (str) => String(str).replace(/^\d+\s*[-–]\s*/, '').trim();
 
-    const items = (tienda.inventario || []).map(prod => {
-      let totalQty = 0;
-      const dbProdCodeClean = cleanText(prod.codigo || prod.id);
-      const dbProdNameClean = cleanText(prod.nombre || prod.producto);
+    const rowTiendasText = colTiendas.map(col => cleanText(stripPrefix(row[excelRows[0].indexOf(col)]))).join(' | ');
+    const rowId = colId ? cleanText(row[excelRows[0].indexOf(colId)]) : '';
+    const rowDesc = colDesc ? cleanText(row[excelRows[0].indexOf(colDesc)]) : '';
 
-      excelRows.forEach((row, idx) => {
-        if (idx === 0) return;
+    const storeMatch = rowTiendasText === dbStoreNameClean ||
+                       rowTiendasText.includes(dbStoreNameClean) ||
+                       dbStoreNameClean.includes(rowTiendasText);
 
-        // Elimina el prefijo "ID - " que viene en el Excel (ej: "40881 - Grupo Hoshi" → "grupo hoshi")
-        const stripPrefix = (str) => String(str).replace(/^\d+\s*[-–]\s*/, '').trim();
+    if (!storeMatch) return;
 
-        const rowTiendasText = colTiendas.map(col => cleanText(stripPrefix(row[excelRows[0].indexOf(col)]))).join(' | ');
-        const rowId = colId ? cleanText(row[excelRows[0].indexOf(colId)]) : '';
-        const rowDesc = colDesc ? cleanText(row[excelRows[0].indexOf(colDesc)]) : '';
+    storeFoundInExcel = true;
 
-        const storeMatch = rowTiendasText === dbStoreNameClean ||
-                           rowTiendasText.includes(dbStoreNameClean) ||
-                           dbStoreNameClean.includes(rowTiendasText);
+    // Si hay SKU y coincide exacto dentro de la tienda -> match directo
+    // Solo si no hay SKU en la fila, fallback a nombre exacto
+    const productMatch = (rowId && rowId === dbProdCodeClean) ||
+                         (!rowId && rowDesc && rowDesc === dbProdNameClean);
 
-        if (!storeMatch) return;
-
-        storeFoundInExcel = true;
-
-        // 1️⃣ Si hay SKU y coincide exacto dentro de la tienda → match directo
-        // 2️⃣ Solo si no hay SKU en la fila, fallback a nombre exacto
-        const productMatch = (rowId && rowId === dbProdCodeClean) || 
-                             (!rowId && rowDesc && rowDesc === dbProdNameClean);
-
-        if (productMatch) {
-          let rowQty = 1; 
-          if (colQty) {
-            const val = row[excelRows[0].indexOf(colQty)];
-            if (val !== undefined && val !== null && val !== '') {
-              const parsed = parseFloat(String(val).replace(',', '.'));
-              if (!isNaN(parsed) && parsed > 0 && parsed < 1000) rowQty = parsed;
-            }
-          }
-          totalQty += rowQty;
+    if (productMatch) {
+      let rowQty = 1;
+      if (colQty) {
+        const val = row[excelRows[0].indexOf(colQty)];
+        if (val !== undefined && val !== null && val !== '') {
+          const parsed = parseFloat(String(val).replace(',', '.'));
+          if (!isNaN(parsed) && parsed > 0 && parsed < 1000) rowQty = parsed;
         }
-      });
+      }
+      totalQty += rowQty;
+    }
+  });
 
-      return {
-        id: prod.codigo || prod.id,
-        desc: prod.nombre || prod.producto,
-        qty: totalQty,
-        ubicacion: prod.ubicacion || ''
-      };
-    });
+  return { totalQty, storeFoundInExcel };
+}
 
-    if (!storeFoundInExcel) unmatchedStores.push(tienda.nombre);
+// Arma la entrada de reporte de una tienda (tipo, items con cantidades cruzadas contra el Excel, totales)
+function buildTiendaReportEntry(tienda, excelRows, cleanText, cols) {
+  let tipo = "Distribuidor (Bodega Propia)";
+  const nameUpper = tienda.nombre.toUpperCase();
+  if (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO")) {
+    tipo = "Proveedor Dropshipping";
+  }
 
+  let storeFoundInExcel = false;
+
+  const items = (tienda.inventario || []).map(prod => {
+    const matched = matchProductQty(prod, tienda, excelRows, cleanText, cols);
+    if (matched.storeFoundInExcel) storeFoundInExcel = true;
     return {
+      id: prod.codigo || prod.id,
+      desc: prod.nombre || prod.producto,
+      qty: matched.totalQty,
+      ubicacion: prod.ubicacion || ''
+    };
+  });
+
+  return {
+    entry: {
       source: tienda.nombre,
       tipo: tipo,
       total: items.reduce((sum, item) => sum + item.qty, 0),
       bajo30: items.filter(item => item.qty < 30).length,
       items: items
-    };
-  });
+    },
+    storeFoundInExcel
+  };
+}
+
+function crossReferenceData(excelRows) {
+  const cleanText = cleanCompareText;
+  const cols = detectExcelColumns(excelRows, cleanText);
+  const unmatchedStores = [];
+
+  DATA = dbData
+    .filter(tienda => !excludedStores.has(tienda.nombre))
+    .map(tienda => {
+      const result = buildTiendaReportEntry(tienda, excelRows, cleanText, cols);
+      if (!result.storeFoundInExcel) unmatchedStores.push(tienda.nombre);
+      return result.entry;
+    });
 
   calculateStats(unmatchedStores);
 }
@@ -328,15 +353,8 @@ function renderGroups(search = '', typeFilter = '') {
 }
 
 /* ── 🚀 GENERADOR DE EXCEL CON ESTILOS (ExcelJS) ── */
-async function exportarExcelBonito() {
-  if (DATA.length === 0) { alert("No hay datos cargados para exportar."); return; }
-
-  const btn = document.querySelector('.btn-download-xlsx');
-  const originalText = btn.innerHTML;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
-  btn.disabled = true;
-
-  // ── COLORES CORPORATIVOS ──
+// Paleta de colores y helpers de estilo compartidos por todas las hojas del Excel exportado
+function getExcelStyleHelpers() {
   const C = {
     brandDark:   '0D1B6E',  // azul corporativo oscuro
     brandMid:    '2A47D4',  // azul medio
@@ -367,13 +385,13 @@ async function exportarExcelBonito() {
   });
   const thick = (argb) => ({ style: 'medium', color: { argb } });
 
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'Efficommerce';
-  wb.created = new Date();
+  return { C, fill, font, border, thick };
+}
 
-  // ══════════════════════════════════════════════
-  //  HOJA 1 — RESUMEN GENERAL
-  // ══════════════════════════════════════════════
+// Construye la hoja "Resumen General" con una fila por tienda
+function buildExcelSummarySheet(wb, DATA, styles) {
+  const { C, fill, font, border, thick } = styles;
+
   const wsSummary = wb.addWorksheet('Resumen General', {
     views: [{ state: 'frozen', ySplit: 5 }],
     properties: { tabColor: { argb: C.brandMid } }
@@ -481,123 +499,141 @@ async function exportarExcelBonito() {
     cell.alignment = { vertical: 'middle', horizontal: col >= 3 ? 'center' : 'left' };
     if (col >= 3 && col <= 5) cell.numFmt = '#,##0';
   });
+}
 
-  // ══════════════════════════════════════════════
-  //  HOJAS POR TIENDA
-  // ══════════════════════════════════════════════
-  const usedNames = new Set(['Resumen General']);
+// Construye la hoja de detalle de una tienda (nombre único, columnas, filas de productos, total)
+function buildExcelTiendaSheet(wb, group, styles, usedNames) {
+  const { C, fill, font, border } = styles;
 
-  DATA.forEach((group, gi) => {
-    let sheetName = group.source.replace(/[\\*?:/\[\]]/g, '').substring(0, 29).trim() || 'Tienda';
-    let finalName = sheetName;
-    let counter = 1;
-    while (usedNames.has(finalName)) { finalName = `${sheetName.substring(0, 26)}_${counter++}`; }
-    usedNames.add(finalName);
+  let sheetName = group.source.replace(/[\\*?:/\[\]]/g, '').substring(0, 29).trim() || 'Tienda';
+  let finalName = sheetName;
+  let counter = 1;
+  while (usedNames.has(finalName)) { finalName = `${sheetName.substring(0, 26)}_${counter++}`; }
+  usedNames.add(finalName);
 
-    const hasUbic = group.items.some(i => i.ubicacion);
-    const ws = wb.addWorksheet(finalName, {
-      views: [{ state: 'frozen', ySplit: 4 }],
-      properties: { tabColor: { argb: group.bajo30 > 0 ? 'C62828' : '2E7D32' } }
-    });
+  const hasUbic = group.items.some(i => i.ubicacion);
+  const ws = wb.addWorksheet(finalName, {
+    views: [{ state: 'frozen', ySplit: 4 }],
+    properties: { tabColor: { argb: group.bajo30 > 0 ? 'C62828' : '2E7D32' } }
+  });
 
-    const cols = [
-      { key: 'sku',    width: 18 },
-      { key: 'desc',   width: 44 },
-      ...(hasUbic ? [{ key: 'ubic', width: 16 }] : []),
-      { key: 'qty',    width: 20 },
-      { key: 'estado', width: 18 },
-    ];
-    ws.columns = cols;
-    const totalCols = cols.length;
-    const lastCol = String.fromCharCode(64 + totalCols);
+  const cols = [
+    { key: 'sku',    width: 18 },
+    { key: 'desc',   width: 44 },
+    ...(hasUbic ? [{ key: 'ubic', width: 16 }] : []),
+    { key: 'qty',    width: 20 },
+    { key: 'estado', width: 18 },
+  ];
+  ws.columns = cols;
 
-    // Fila 1 — nombre tienda
-    ws.mergeCells(`A1:${lastCol}1`);
-    const t1 = ws.getCell('A1');
-    t1.value = group.source.toUpperCase();
-    t1.font = font({ size: 13, bold: true, color: { argb: C.titleFg } });
-    t1.fill = fill(C.brandDark);
-    t1.alignment = { vertical: 'middle', horizontal: 'center' };
-    ws.getRow(1).height = 30;
+  const totalCols = cols.length;
+  const lastCol = String.fromCharCode(64 + totalCols);
 
-    // Fila 2 — tipo + métricas
-    ws.mergeCells(`A2:${lastCol}2`);
-    const t2 = ws.getCell('A2');
-    const tipoBadge = group.tipo.includes('Bodega') ? 'BODEGA PROPIA' : 'DROPSHIPPING';
-    t2.value = `${tipoBadge}   ·   ${group.items.length} SKUs   ·   ${group.total.toLocaleString()} unidades salidas   ·   ${group.bajo30 > 0 ? group.bajo30 + ' SKUs críticos' : 'Sin alertas'}`;
-    t2.font = font({ size: 9, color: { argb: C.subtitleFg } });
-    t2.fill = fill(C.brandDark);
-    t2.alignment = { vertical: 'middle', horizontal: 'center' };
-    ws.getRow(2).height = 18;
+  // Fila 1 — nombre tienda
+  ws.mergeCells(`A1:${lastCol}1`);
+  const t1 = ws.getCell('A1');
+  t1.value = group.source.toUpperCase();
+  t1.font = font({ size: 13, bold: true, color: { argb: C.titleFg } });
+  t1.fill = fill(C.brandDark);
+  t1.alignment = { vertical: 'middle', horizontal: 'center' };
+  ws.getRow(1).height = 30;
 
-    // Fila 3 — vacía decorativa
-    ws.mergeCells(`A3:${lastCol}3`);
-    ws.getCell('A3').fill = fill(C.brandMid);
-    ws.getRow(3).height = 4;
+  // Fila 2 — tipo + métricas
+  ws.mergeCells(`A2:${lastCol}2`);
+  const t2 = ws.getCell('A2');
+  const tipoBadge = group.tipo.includes('Bodega') ? 'BODEGA PROPIA' : 'DROPSHIPPING';
+  t2.value = `${tipoBadge}   ·   ${group.items.length} SKUs   ·   ${group.total.toLocaleString()} unidades salidas   ·   ${group.bajo30 > 0 ? group.bajo30 + ' SKUs críticos' : 'Sin alertas'}`;
+  t2.font = font({ size: 9, color: { argb: C.subtitleFg } });
+  t2.fill = fill(C.brandDark);
+  t2.alignment = { vertical: 'middle', horizontal: 'center' };
+  ws.getRow(2).height = 18;
 
-    // Fila 4 — headers
-    const headers = ['Código SKU', 'Descripción del Artículo', ...(hasUbic ? ['Ubicación'] : []), 'Unidades Extraídas', 'Estado'];
-    const hR = ws.addRow(headers);
-    hR.height = 22;
-    hR.eachCell(cell => {
-      cell.font = font({ bold: true, color: { argb: C.headerFg } });
-      cell.fill = fill(C.headerBg);
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+  // Fila 3 — vacía decorativa
+  ws.mergeCells(`A3:${lastCol}3`);
+  ws.getCell('A3').fill = fill(C.brandMid);
+  ws.getRow(3).height = 4;
+
+  // Fila 4 — headers
+  const headers = ['Código SKU', 'Descripción del Artículo', ...(hasUbic ? ['Ubicación'] : []), 'Unidades Extraídas', 'Estado'];
+  const hR = ws.addRow(headers);
+  hR.height = 22;
+  hR.eachCell(cell => {
+    cell.font = font({ bold: true, color: { argb: C.headerFg } });
+    cell.fill = fill(C.headerBg);
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+    cell.border = border();
+  });
+
+  // Filas de productos
+  group.items.forEach((item, ii) => {
+    const isLow  = item.qty < 30;
+    const isAlt  = ii % 2 === 1;
+    const rowBg  = isAlt ? C.rowAlt : C.rowWhite;
+
+    const rowData = [item.id, item.desc, ...(hasUbic ? [item.ubicacion || '-'] : []), item.qty, isLow ? 'CRÍTICO (<30)' : 'OK'];
+    const r = ws.addRow(rowData);
+    r.height = 18;
+
+    r.eachCell((cell, col) => {
+      cell.fill = fill(rowBg);
       cell.border = border();
-    });
+      cell.alignment = { vertical: 'middle' };
+      cell.font = font();
 
-    // Filas de productos
-    group.items.forEach((item, ii) => {
-      const isLow  = item.qty < 30;
-      const isAlt  = ii % 2 === 1;
-      const rowBg  = isAlt ? C.rowAlt : C.rowWhite;
+      if (col === 1) {
+        cell.font = font({ bold: true, color: { argb: C.brandMid } });
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+      if (col === 2) { cell.font = font({ bold: true }); }
 
-      const rowData = [item.id, item.desc, ...(hasUbic ? [item.ubicacion || '-'] : []), item.qty, isLow ? 'CRÍTICO (<30)' : 'OK'];
-      const r = ws.addRow(rowData);
-      r.height = 18;
-
-      r.eachCell((cell, col) => {
-        cell.fill = fill(rowBg);
-        cell.border = border();
-        cell.alignment = { vertical: 'middle' };
-        cell.font = font();
-
-        if (col === 1) {
-          cell.font = font({ bold: true, color: { argb: C.brandMid } });
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        }
-        if (col === 2) { cell.font = font({ bold: true }); }
-
-        const qtyCol = hasUbic ? 4 : 3;
-        const estCol = hasUbic ? 5 : 4;
-
-        if (col === qtyCol) {
-          cell.numFmt = '#,##0';
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          cell.font = font({ bold: true, color: { argb: isLow ? C.criticalFg : C.brandDark } });
-          cell.fill = fill(isLow ? C.criticalBg : rowBg);
-        }
-        if (col === estCol) {
-          cell.fill = fill(isLow ? C.criticalBg : C.okBg);
-          cell.font = font({ bold: true, color: { argb: isLow ? C.criticalFg : C.okFg } });
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        }
-      });
-    });
-
-    // Fila total de la hoja
-    const totData = ['TOTAL', '', ...(hasUbic ? [''] : []), group.total, ''];
-    const totR = ws.addRow(totData);
-    totR.height = 20;
-    totR.eachCell((cell, col) => {
-      cell.font = font({ bold: true, color: { argb: C.titleFg } });
-      cell.fill = fill(C.brandMid);
-      cell.border = border();
-      cell.alignment = { vertical: 'middle', horizontal: col >= (hasUbic ? 4 : 3) ? 'center' : 'left' };
       const qtyCol = hasUbic ? 4 : 3;
-      if (col === qtyCol) cell.numFmt = '#,##0';
+      const estCol = hasUbic ? 5 : 4;
+
+      if (col === qtyCol) {
+        cell.numFmt = '#,##0';
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.font = font({ bold: true, color: { argb: isLow ? C.criticalFg : C.brandDark } });
+        cell.fill = fill(isLow ? C.criticalBg : rowBg);
+      }
+      if (col === estCol) {
+        cell.fill = fill(isLow ? C.criticalBg : C.okBg);
+        cell.font = font({ bold: true, color: { argb: isLow ? C.criticalFg : C.okFg } });
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
     });
   });
+
+  // Fila total de la hoja
+  const totData = ['TOTAL', '', ...(hasUbic ? [''] : []), group.total, ''];
+  const totR = ws.addRow(totData);
+  totR.height = 20;
+  totR.eachCell((cell, col) => {
+    cell.font = font({ bold: true, color: { argb: C.titleFg } });
+    cell.fill = fill(C.brandMid);
+    cell.border = border();
+    cell.alignment = { vertical: 'middle', horizontal: col >= (hasUbic ? 4 : 3) ? 'center' : 'left' };
+    const qtyCol = hasUbic ? 4 : 3;
+    if (col === qtyCol) cell.numFmt = '#,##0';
+  });
+}
+
+async function exportarExcelBonito() {
+  if (DATA.length === 0) { alert("No hay datos cargados para exportar."); return; }
+
+  const btn = document.querySelector('.btn-download-xlsx');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+  btn.disabled = true;
+
+  const styles = getExcelStyleHelpers();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Efficommerce';
+  wb.created = new Date();
+
+  buildExcelSummarySheet(wb, DATA, styles);
+
+  const usedNames = new Set(['Resumen General']);
+  DATA.forEach(group => buildExcelTiendaSheet(wb, group, styles, usedNames));
 
   // ── DESCARGAR ──
   const buffer = await wb.xlsx.writeBuffer();
