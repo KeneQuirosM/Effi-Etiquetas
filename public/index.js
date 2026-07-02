@@ -871,10 +871,10 @@ function bulkSelectNone() {
 }
 
 
-function openStockforge() { window.open('/almacen4.html', '_blank'); }
-function openDev()        { window.open('/devoluciones.html', '_blank'); }
-function openMan()        { window.open('/manifiesto.html', '_blank'); }
-function openReporte()    { window.open('/reporte_distribuidor_proveedor.html', '_blank'); }
+function openStockforge() { window.open('/stockforge/almacen4.html', '_blank'); }
+function openDev()        { window.open('/devoluciones/devoluciones.html', '_blank'); }
+function openMan()        { window.open('/manifiesto/manifiesto.html', '_blank'); }
+function openReporte()    { window.open('/reporte/reporte_distribuidor_proveedor.html', '_blank'); }
 
 /* ── GESTIÓN DE USUARIOS COORDINADORES ─────────────────── */
 async function loadUsers() {
