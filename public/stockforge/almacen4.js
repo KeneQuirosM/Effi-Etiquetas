@@ -2397,25 +2397,37 @@ function renderZoneBgs(){
 }
 
 // ═══════════════ DRAG ═══════════════
+// Un único listener delegado en document (registrado una sola vez, no por
+// rack) que lee el rack activo desde dragState — evita que cada renderFloor()
+// acumule un par nuevo de listeners document-level por rack sin remover los
+// anteriores (memory leak: los closures viejos retenían wraps ya desconectados
+// del DOM impidiendo su recolección, y seguían corriendo en cada mousemove).
+let dragState=null;
+
+document.addEventListener('mousemove',e=>{
+  if(!dragState)return;
+  const {wrap,rack}=dragState;
+  const nx=Math.max(0,Math.round((e.clientX-dragState.ox)/zoom/10)*10);
+  const ny=Math.max(0,Math.round((e.clientY-dragState.oy)/zoom/10)*10);
+  if(nx!==rack.x||ny!==rack.y){dragState.moved=true;rack.x=nx;rack.y=ny;}
+  wrap.style.left=rack.x+'px';wrap.style.top=rack.y+'px';
+});
+document.addEventListener('mouseup',()=>{
+  if(!dragState)return;
+  const {wrap,rack,moved}=dragState;
+  wrap.classList.remove('dragging');
+  dragState=null;
+  if(moved){save();renderZoneBgs();resizeFloor();addAct(`Rack <strong>${esc(rack.name)}</strong> reubicado`,'var(--dim)');}
+  else selectRack(rack.id);
+});
+
 function setupDrag(wrap,rack){
-  let drag=false,ox=0,oy=0,moved=false;
   wrap.addEventListener('mousedown',e=>{
     if(e.button!==0)return;
     if(e.target.classList.contains('shelf')||e.target.classList.contains('sku-dots')||e.target.classList.contains('skudot')||e.target.classList.contains('scode')||e.target.classList.contains('scnt')||e.target.classList.contains('sind'))return;
-    e.preventDefault();drag=true;moved=false;
-    ox=e.clientX-rack.x*zoom;oy=e.clientY-rack.y*zoom;wrap.classList.add('dragging');
-  });
-  document.addEventListener('mousemove',e=>{
-    if(!drag)return;
-    const nx=Math.max(0,Math.round((e.clientX-ox)/zoom/10)*10);
-    const ny=Math.max(0,Math.round((e.clientY-oy)/zoom/10)*10);
-    if(nx!==rack.x||ny!==rack.y){moved=true;rack.x=nx;rack.y=ny;}
-    wrap.style.left=rack.x+'px';wrap.style.top=rack.y+'px';
-  });
-  document.addEventListener('mouseup',()=>{
-    if(!drag)return;drag=false;wrap.classList.remove('dragging');
-    if(moved){save();renderZoneBgs();resizeFloor();addAct(`Rack <strong>${esc(rack.name)}</strong> reubicado`,'var(--dim)');}
-    else selectRack(rack.id);
+    e.preventDefault();
+    dragState={wrap,rack,ox:e.clientX-rack.x*zoom,oy:e.clientY-rack.y*zoom,moved:false};
+    wrap.classList.add('dragging');
   });
 }
 
