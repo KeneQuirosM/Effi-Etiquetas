@@ -2,7 +2,7 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 
 export default async function handler(req, res) {
-  setCors(res, 'GET, POST, PATCH, DELETE, OPTIONS');
+  setCors(req, res, 'GET, POST, PATCH, DELETE, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
       if (tErr) {
         console.error('Error tiendas:', tErr);
-        return res.status(500).json({ error: tErr.message });
+        return res.status(500).json({ error: 'No se pudieron cargar las tiendas' });
       }
 
       const { data: productos, error: pErr } = await supabaseAdmin
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
       if (pErr) {
         console.error('Error productos:', pErr);
-        return res.status(500).json({ error: pErr.message });
+        return res.status(500).json({ error: 'No se pudieron cargar los productos' });
       }
 
       const result = tiendas.map(t => ({
@@ -73,7 +73,10 @@ export default async function handler(req, res) {
         .select()
         .single();
 
-      if (error) return res.status(400).json({ error: error.message });
+      if (error) {
+        console.error('Error creando tienda:', error);
+        return res.status(400).json({ error: 'No se pudo crear la tienda' });
+      }
 
       return res.status(201).json(data);
     }
@@ -93,7 +96,10 @@ export default async function handler(req, res) {
         .select()
         .single();
 
-      if (error) return res.status(400).json({ error: error.message });
+      if (error) {
+        console.error('Error renombrando tienda:', error);
+        return res.status(400).json({ error: 'No se pudo renombrar la tienda' });
+      }
 
       return res.status(200).json(data);
     }
@@ -111,7 +117,10 @@ export default async function handler(req, res) {
         .delete()
         .eq('id', id);
 
-      if (error) return res.status(400).json({ error: error.message });
+      if (error) {
+        console.error('Error eliminando tienda:', error);
+        return res.status(400).json({ error: 'No se pudo eliminar la tienda' });
+      }
 
       return res.status(200).json({ ok: true });
     }

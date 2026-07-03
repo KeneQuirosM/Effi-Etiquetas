@@ -2,7 +2,7 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 
 export default async function handler(req, res) {
-  setCors(res, 'POST, OPTIONS');
+  setCors(req, res, 'POST, OPTIONS');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();

@@ -135,10 +135,10 @@ Copiar `.env.example` a `.env`:
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_ANON_KEY=eyJxxx...
 SUPABASE_SERVICE_ROLE_KEY=eyJxxx...
-ALLOWED_ORIGIN=https://tu-proyecto.vercel.app
+ALLOWED_ORIGIN=https://tu-proyecto.vercel.app,https://tu-dominio-custom.com
 ```
 
-> En desarrollo local dejar `ALLOWED_ORIGIN` vacío.
+> `ALLOWED_ORIGIN` acepta una lista separada por comas (útil para permitir a la vez el dominio de producción y los dominios de preview de Vercel). No hay wildcard: si el origen de la petición no está en la lista, el navegador bloquea la respuesta cross-origin. En desarrollo local (`vercel dev`, mismo origen para frontend y API) no hace falta configurarla.
 
 ### 3. Deploy en Vercel
 

@@ -2,7 +2,7 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 
 export default async function handler(req, res) {
-  setCors(res, 'GET, POST, OPTIONS');
+  setCors(req, res, 'GET, POST, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('GET config error:', error);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: 'No se pudo cargar la configuración' });
       }
 
       const config = {};
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('POST config error:', error);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: 'No se pudo guardar la configuración' });
       }
 
       return res.status(200).json({ ok: true });

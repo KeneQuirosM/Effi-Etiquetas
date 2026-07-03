@@ -2,7 +2,7 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 
 export default async function handler(req, res) {
-  setCors(res, 'GET, POST, DELETE, OPTIONS');
+  setCors(req, res, 'GET, POST, DELETE, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -18,7 +18,10 @@ export default async function handler(req, res) {
     // ── GET: listar coordinadores ──
     if (req.method === 'GET') {
       const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) {
+        console.error('GET users error:', error);
+        return res.status(500).json({ error: 'No se pudo cargar la lista de coordinadores' });
+      }
 
       return res.status(200).json({
         users: users.map(u => ({
@@ -44,7 +47,10 @@ export default async function handler(req, res) {
         email_confirm:  true   // sin necesidad de verificar email
       });
 
-      if (error) return res.status(400).json({ error: error.message });
+      if (error) {
+        console.error('POST users error:', error);
+        return res.status(400).json({ error: 'No se pudo crear el coordinador' });
+      }
 
       return res.status(201).json({
         user: { id: data.user.id, email: data.user.email }
@@ -62,7 +68,10 @@ export default async function handler(req, res) {
       }
 
       const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
-      if (error) return res.status(400).json({ error: error.message });
+      if (error) {
+        console.error('DELETE users error:', error);
+        return res.status(400).json({ error: 'No se pudo eliminar el coordinador' });
+      }
 
       return res.status(200).json({ ok: true });
     }

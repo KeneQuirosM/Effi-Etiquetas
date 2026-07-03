@@ -2,7 +2,7 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 
 export default async function handler(req, res) {
-  setCors(res, 'GET, OPTIONS');
+  setCors(req, res, 'GET, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Método no permitido' });
@@ -14,14 +14,20 @@ export default async function handler(req, res) {
       .select('id, nombre')
       .order('nombre');
 
-    if (tErr) return res.status(500).json({ error: tErr.message });
+    if (tErr) {
+      console.error('Error tiendas (reporte):', tErr);
+      return res.status(500).json({ error: 'No se pudieron cargar las tiendas' });
+    }
 
     // 2. Jalar todos los productos
     const { data: productos, error: pErr } = await supabaseAdmin
       .from('productos')
       .select('id, tienda_id, codigo, nombre');
 
-    if (pErr) return res.status(500).json({ error: pErr.message });
+    if (pErr) {
+      console.error('Error productos (reporte):', pErr);
+      return res.status(500).json({ error: 'No se pudieron cargar los productos' });
+    }
 
     // 3. Contar movimientos por producto
     // TODO: conectar a la tabla real de historial cuando esté disponible.

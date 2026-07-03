@@ -2,7 +2,7 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 
 export default async function handler(req, res) {
-  setCors(res, 'POST, PATCH, DELETE, OPTIONS');
+  setCors(req, res, 'POST, PATCH, DELETE, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('POST producto error:', error);
-        return res.status(400).json({ error: error.message });
+        return res.status(400).json({ error: 'No se pudo crear el producto' });
       }
 
       return res.status(201).json(data);
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('PATCH producto error:', error);
-        return res.status(400).json({ error: error.message });
+        return res.status(400).json({ error: 'No se pudo editar el producto' });
       }
 
       return res.status(200).json(data);
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('DELETE producto error:', error);
-        return res.status(400).json({ error: error.message });
+        return res.status(400).json({ error: 'No se pudo eliminar el producto' });
       }
 
       return res.status(200).json({ ok: true });
