@@ -2159,7 +2159,7 @@ function buildPrintLabelHtml(d){
 </div>
 <div class="lbl">
   <div class="hd">
-    <div style="display:flex;align-items:center;gap:12px">${d.logoEl}<div class="hd-brand">${d.bname}<small>${t('lbl_location')}</small></div></div>
+    <div style="display:flex;align-items:center;gap:12px">${d.logoEl}<div class="hd-brand">${esc(d.bname)}<small>${t('lbl_location')}</small></div></div>
     <div style="text-align:right"><div class="hd-rack">${esc(d.rack.name)}</div><div class="hd-coord">BAHÍA ${viewCtx.bay+1} &nbsp;·&nbsp; NIVEL ${viewCtx.level+1}</div></div>
   </div>
   <div class="body">
@@ -2259,7 +2259,7 @@ function printRackSign(rackId){
 </div>
 <div class="sign">
   <div class="s-top">
-    <div class="s-brand">${logoEl}<div class="s-brand-txt"><strong>${bname}</strong>${currentLang==='en'?'Rack Sign':'Letrero de Identificación'}</div></div>
+    <div class="s-brand">${logoEl}<div class="s-brand-txt"><strong>${esc(bname)}</strong>${currentLang==='en'?'Rack Sign':'Letrero de Identificación'}</div></div>
     ${zone?('<div class="s-zone"><div class="s-zone-dot" style="background:'+zoneColor+'"></div><div class="s-zone-name" style="color:'+zoneColor+'">'+esc(zone.name)+'</div></div>'):'<div></div>'}
   </div>
   <div class="s-hero">
@@ -3635,7 +3635,7 @@ function printRackA4(){
   const logoEl=logoSrc?`<img src="${logoSrc}" style="height:34px;object-fit:contain">`:`<div style="font-size:16px;font-weight:900;letter-spacing:3px;color:#1a2030">SF</div>`;
 
   const html=`<!DOCTYPE html><html><head>
-<meta charset="UTF-8"><title>${esc(rack.name)} — ${bname}</title>
+<meta charset="UTF-8"><title>${esc(rack.name)} — ${esc(bname)}</title>
 <style>
   @page{size:A4 landscape;margin:12mm 15mm;}
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -3668,7 +3668,7 @@ function printRackA4(){
     <div>
       <div class="rack-name">${esc(rack.name)}</div>
       <div class="rack-sub">
-        ${bname}${zone?` &nbsp;·&nbsp; <span style="color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}${resps.length?` &nbsp;·&nbsp; 👤 ${esc(resps.join(', '))}`:''}${shops.length?` &nbsp;·&nbsp; 🏪 ${esc(shops.join(', '))}`:''}
+        ${esc(bname)}${zone?` &nbsp;·&nbsp; <span style="color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}${resps.length?` &nbsp;·&nbsp; 👤 ${esc(resps.join(', '))}`:''}${shops.length?` &nbsp;·&nbsp; 🏪 ${esc(shops.join(', '))}`:''}
       </div>
     </div>
     <div class="stats">
@@ -3690,7 +3690,7 @@ function printRackA4(){
     <div class="leg-item"><div class="leg-dot" style="background:#00aaff"></div>Reservado</div>
     <div class="leg-item"><div class="leg-dot" style="background:#ff3b5c"></div>Bloqueado</div>
     <div class="leg-item"><div class="leg-dot" style="background:#ccc"></div>Vacío</div>
-    <div class="leg-item" style="margin-left:auto;color:#aaa;font-size:8px">Generado ${dateStr} &nbsp;·&nbsp; ${bname}</div>
+    <div class="leg-item" style="margin-left:auto;color:#aaa;font-size:8px">Generado ${dateStr} &nbsp;·&nbsp; ${esc(bname)}</div>
   </div>
   ${tableHTML}
 </div>
@@ -4052,7 +4052,7 @@ function printReportTab(tab){
 
   const logoEl=logoSrc?`<img src="${logoSrc}" class="page-logo">`:`<div class="page-logo-txt">SF</div>`;
   const pageHd=`<div class="page-hd">
-    <div class="page-hd-left">${logoEl}<div><div class="page-title">Reporte: ${title}</div><div class="page-sub">${bname}</div></div></div>
+    <div class="page-hd-left">${logoEl}<div><div class="page-title">Reporte: ${esc(title)}</div><div class="page-sub">${esc(bname)}</div></div></div>
     <div class="page-meta">${dateStr}<br>StockForge v5</div>
   </div>`;
   const toolbar=`<div class="toolbar"><button onclick="window.print()">🖨 Imprimir / Guardar PDF</button><button class="cls" onclick="window.close()">✕ Cerrar</button></div>`;
@@ -4062,7 +4062,7 @@ function printReportTab(tab){
   // ── OPEN WINDOW ──
   const win=window.open('','_blank','width=960,height=750');
   if(!win){alert('Bloqueado por el navegador — permitir popups para esta página');return;}
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)} — ${bname}</title><style>${baseCss}</style></head><body>${toolbar}<div style="padding:10px 20px 30px">${pageHd}${body}</div></body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)} — ${esc(bname)}</title><style>${baseCss}</style></head><body>${toolbar}<div style="padding:10px 20px 30px">${pageHd}${body}</div></body></html>`);
   win.document.close();
 }
 
@@ -4130,7 +4130,7 @@ function exportReportAudit(){
     </tr>`).join('');
 
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>${modeTitle} — ${bname}</title>
+  <title>${esc(modeTitle)} — ${esc(bname)}</title>
   <style>
     @page{size:A4 landscape;margin:15mm;}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;margin:0;padding:20px;}
@@ -4147,7 +4147,7 @@ function exportReportAudit(){
   </style></head><body>
   <div class="hd">
     ${logoEl}
-    <div><div class="hd-brand">${bname}</div><div class="hd-sub">${modeTitle} · ${t('rep_generated')} ${now}</div></div>
+    <div><div class="hd-brand">${esc(bname)}</div><div class="hd-sub">${esc(modeTitle)} · ${t('rep_generated')} ${now}</div></div>
     <button onclick="window.print()" style="margin-left:auto;background:#f0a500;border:none;color:#000;font-weight:700;font-size:13px;padding:8px 18px;border-radius:4px;cursor:pointer;letter-spacing:1px">🖨 IMPRIMIR</button>
   </div>
   <div class="stats">
@@ -4414,7 +4414,7 @@ function exportReportCSV(){
 
   const win=window.open('','_blank','width=1100,height=750');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Reporte SKUs — ${bname}</title>
+<title>Reporte SKUs — ${esc(bname)}</title>
 <style>
   @page{size:A4 landscape;margin:12mm;}
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -4450,7 +4450,7 @@ function exportReportCSV(){
 </div>
 <div class="wrap">
   <div class="rep-head">
-    <div class="rep-brand">${logoEl}<div class="rep-brand-txt">${bname}<small>Reporte de Inventario por SKU</small></div></div>
+    <div class="rep-brand">${logoEl}<div class="rep-brand-txt">${esc(bname)}<small>Reporte de Inventario por SKU</small></div></div>
     <div class="rep-title"><h1>📦 REPORTE SKUs</h1><p>${now}</p></div>
   </div>
   <div class="rep-stats">
@@ -4705,7 +4705,7 @@ function printMovementsPDF(){
   }).join('');
 
   const html=`<!DOCTYPE html><html><head>
-<meta charset="UTF-8"><title>Movimientos — ${bname}</title>
+<meta charset="UTF-8"><title>Movimientos — ${esc(bname)}</title>
 <style>
   @page{size:A4 landscape;margin:10mm 12mm;}
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -4723,14 +4723,14 @@ function printMovementsPDF(){
 <div class="toolbar">
   <button onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
-  <span style="color:#aaa;font-size:10px;margin-left:6px">${rows.length} movimientos · ${bname} · ${dateStr}</span>
+  <span style="color:#aaa;font-size:10px;margin-left:6px">${rows.length} movimientos · ${esc(bname)} · ${dateStr}</span>
 </div>
 <div style="padding:0 1mm">
   <div style="display:flex;align-items:center;gap:14px;padding:8px 0 7px;border-bottom:3px solid #1a2030;margin-bottom:8px">
     ${logoEl}
     <div>
       <div style="font-size:20px;font-weight:900;letter-spacing:2px;color:#1a2030;line-height:1">Movimientos de Inventario</div>
-      <div style="font-size:10px;color:#888;margin-top:2px">${bname} &nbsp;·&nbsp; ${dateStr}</div>
+      <div style="font-size:10px;color:#888;margin-top:2px">${esc(bname)} &nbsp;·&nbsp; ${dateStr}</div>
     </div>
     <div style="margin-left:auto;text-align:right;font-size:9px;color:#aaa;line-height:1.8">
       Total: <strong style="color:#1a2030;font-size:14px">${rows.length}</strong> registros<br>StockForge v5
@@ -5001,7 +5001,7 @@ function buildBulkLabelHtml(rack, cell, is4x6, bname, logoEl){
 
   return '<div class="lbl">'
     +'<div class="hd">'
-      +`<div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${bname}<small>${t('lbl_location')}</small></div></div>`
+      +`<div style="display:flex;align-items:center;gap:12px">${logoEl}<div class="hd-brand">${esc(bname)}<small>${t('lbl_location')}</small></div></div>`
       +`<div style="text-align:right"><div class="hd-rack">${esc(rack.name)}</div><div class="hd-coord">${t('lbl_bay').toUpperCase()} ${cell.bay+1} &nbsp;·&nbsp; ${t('lbl_level').toUpperCase()} ${cell.level+1}</div></div>`
     +'</div>'
     +'<div class="body">'
