@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { setCors } from './_cors.js';
+import { rateLimit } from './_rateLimit.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,6 +12,8 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+
+  if (!rateLimit(req, res, { max: 10, windowMs: 60000 })) return;
 
   const { refresh_token } = req.body;
   if (!refresh_token) return res.status(400).json({ error: 'refresh_token requerido' });

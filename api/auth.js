@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { setCors } from './_cors.js';
+import { rateLimit } from './_rateLimit.js';
 
 // 🔐 Cliente público para login
 const supabase = createClient(
@@ -15,6 +16,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
+
+  if (!rateLimit(req, res, { max: 10, windowMs: 60000 })) return;
 
   try {
     const { email, password } = req.body;
