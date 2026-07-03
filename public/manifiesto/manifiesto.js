@@ -343,17 +343,6 @@ function showToast(message, type = 'info', duration = 5000) {
   if (container) { container.appendChild(toast); setTimeout(() => toast.remove(), duration); }
 }
 
-// Escapa caracteres HTML para prevenir XSS en innerHTML
-function esc(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function abrirModalFaltantes() {
   const modal = document.getElementById('faltantesModal');
   const lista = document.getElementById('faltantesList');

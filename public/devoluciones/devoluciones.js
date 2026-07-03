@@ -262,8 +262,6 @@
         showToast('Marcas reiniciadas','inf');
     }
 
-    function esc(s){ if(s===null||s===undefined) return ''; return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
     marcarBtn.addEventListener('click',()=>marcarGuia(guiaInput.value));
     guiaInput.addEventListener('keypress',e=>{ if(e.key==='Enter'){ e.preventDefault(); marcarGuia(guiaInput.value); } });
     limpiarBtn.addEventListener('click',()=>{ guiaInput.value=''; guiaInput.focus(); });

@@ -4,17 +4,6 @@ let originalExcelRows = [];
 let showLowOnly = false;
 let excludedStores = new Set(); // IDs de tiendas excluidas (usando nombre como key único)
 
-// Escapa caracteres HTML para prevenir XSS en innerHTML
-function esc(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   loadDatabaseData();
 });

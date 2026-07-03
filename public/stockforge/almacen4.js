@@ -740,17 +740,6 @@ const STORE_KEY='stockforge_v4';
 const API_URL = '/api/stockforge';
 let isOffline = false;
 
-// Escapa caracteres HTML para prevenir XSS en innerHTML
-function esc(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 // Nombre de marca guardado por el coordinador (usado en etiquetas/reportes impresos)
 function getBrandName(defaultPrefix, defaultAccent) {
   try {

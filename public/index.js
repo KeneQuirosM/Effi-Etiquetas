@@ -20,17 +20,6 @@ function getTienda(id) {
   return appData.tiendas.find(t => String(t.id) === String(id));
 }
 
-// Escapa caracteres HTML para prevenir XSS en innerHTML
-function esc(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 /* ── TOKEN HELPERS ──────────────────────────────────── */
 
 // Decodifica el payload del JWT sin librería para leer la expiración
