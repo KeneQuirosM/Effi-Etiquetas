@@ -607,7 +607,7 @@ function buildExcelTiendaSheet(wb, group, styles, usedNames) {
 }
 
 async function exportarExcelBonito() {
-  if (DATA.length === 0) { alert("No hay datos cargados para exportar."); return; }
+  if (DATA.length === 0) { notify("No hay datos cargados para exportar.", 'err'); return; }
 
   const btn = document.querySelector('.btn-download-xlsx');
   const originalText = btn.innerHTML;
@@ -660,7 +660,7 @@ function applyFilters() {
   renderGroups(document.getElementById('searchInput').value, document.getElementById('filterType').value);
 }
 
-document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 200));
 document.getElementById('filterType').addEventListener('change', applyFilters);
 
 /* ── FUNCIONES PANEL DE EXCLUSIÓN ── */

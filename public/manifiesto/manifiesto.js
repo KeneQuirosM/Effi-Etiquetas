@@ -132,13 +132,13 @@ function processExcelManifest(rows) {
       cruce.tipo === "DESTINATARIO_INCORRECTO"
     );
     if (crucesImportantes.length > 0) {
-      showToast(`⚠️ ${crucesImportantes.length} destinatario(s) en ruta incorrecta`, 'warning');
+      notify(`⚠️ ${crucesImportantes.length} destinatario(s) en ruta incorrecta`, 'warning');
       mostrarModalCruces(crucesImportantes);
       mostrarIconoNotificacion(crucesImportantes);
     }
   }
 
-  showToast(`✅ Excel: ${guias.length} guías encontradas`, 'success');
+  notify(`✅ Excel: ${guias.length} guías encontradas`, 'success');
 
   return guias;
 }
@@ -160,7 +160,7 @@ async function extractPdfPageText(page, pageIndex) {
 
   if (pageText.length >= 30) return { pageText, usedOCR: false };
 
-  showToast(`🔍 Página ${pageIndex}: usando OCR...`, 'info');
+  notify(`🔍 Página ${pageIndex}: usando OCR...`, 'info');
 
   if (typeof Tesseract === 'undefined') {
     console.warn("Tesseract no disponible");
@@ -175,7 +175,7 @@ async function extractPdfPageText(page, pageIndex) {
     // Si no encontró guías (1000XXXXXX), intentar rotado 180°
     const guiasEnPagina = pageText.match(/\b1000\d{6}\b/g) || [];
     if (guiasEnPagina.length === 0) {
-      showToast(`🔄 Página ${pageIndex}: reintentando rotada 180°...`, 'info');
+      notify(`🔄 Página ${pageIndex}: reintentando rotada 180°...`, 'info');
       canvas = await renderPdfPageToCanvas(page, 180);
       result = await Tesseract.recognize(canvas, 'spa');
       const pageText180 = result.data.text;
@@ -194,7 +194,7 @@ async function extractPdfPageText(page, pageIndex) {
 
 // Procesa un PDF de manifiesto: extrae texto (nativo u OCR) de cada página y busca guías por patrones
 async function processPdfManifest(pdfData) {
-  showToast('📄 Cargando PDF...', 'info');
+  notify('📄 Cargando PDF...', 'info');
 
   // Asegurar PDF.js cargado con worker correcto
   if (typeof pdfjsLib === 'undefined') {
@@ -219,7 +219,7 @@ async function processPdfManifest(pdfData) {
     let usandoOCR = false;
 
     for (let i = 1; i <= totalPaginas; i++) {
-      showToast(`📄 Procesando página ${i} de ${totalPaginas}...`, 'info');
+      notify(`📄 Procesando página ${i} de ${totalPaginas}...`, 'info');
       const page = await pdf.getPage(i);
       const { pageText, usedOCR } = await extractPdfPageText(page, i);
       if (usedOCR) usandoOCR = true;
@@ -243,14 +243,14 @@ async function processPdfManifest(pdfData) {
       const detalle = usandoOCR
         ? 'El OCR no reconoció guías. El PDF puede estar muy borroso o inclinado.'
         : 'No se encontraron guías con los patrones conocidos (1000XXXXXX, CR..., etc).';
-      showToast(`⚠️ ${detalle}`, 'warning', 8000);
+      notify(`⚠️ ${detalle}`, 'warning', 8000);
     } else {
-      showToast(`✅ PDF: ${guias.length} guías encontradas${usandoOCR ? ' (vía OCR)' : ''}`, 'success');
+      notify(`✅ PDF: ${guias.length} guías encontradas${usandoOCR ? ' (vía OCR)' : ''}`, 'success');
     }
 
   } catch (pdfError) {
     console.error("Error al procesar PDF:", pdfError);
-    showToast(`❌ Error al leer el PDF: ${pdfError.message}`, 'error', 8000);
+    notify(`❌ Error al leer el PDF: ${pdfError.message}`, 'error', 8000);
     guias = [];
   }
 
@@ -266,7 +266,7 @@ async function handleFile(event) {
   const isExcel = ['xls', 'xlsx'].includes(fileExtension);
 
   if (!isPDF && !isExcel) {
-    showToast('❌ Formato no soportado. Use .xls, .xlsx o .pdf', 'error');
+    notify('❌ Formato no soportado. Use .xls, .xlsx o .pdf', 'error');
     return;
   }
 
@@ -312,7 +312,7 @@ async function handleFile(event) {
       updateStats();
 
       if (manifiesto.length > 0) {
-        showToast(`✅ Manifiesto cargado con ${manifiesto.length} guías.`, 'success');
+        notify(`✅ Manifiesto cargado con ${manifiesto.length} guías.`, 'success');
       }
 
       const scanInputField = document.getElementById("scanInput");
@@ -320,12 +320,12 @@ async function handleFile(event) {
 
     } catch (error) {
       console.error("Error general:", error);
-      showToast('❌ Error al procesar el archivo.', 'error');
+      notify('❌ Error al procesar el archivo.', 'error');
     }
   };
 
   reader.onerror = function() {
-    showToast("❌ Error al leer el archivo.");
+    notify("❌ Error al leer el archivo.");
   };
 
   reader.readAsArrayBuffer(file);
@@ -333,15 +333,6 @@ async function handleFile(event) {
 
 // script.js - PARTE 3/3
 // ====== MODALES Y TOAST ======
-
-function showToast(message, type = 'info', duration = 5000) {
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  const icon = type === 'success' ? '✅' : (type === 'warning' ? '⚠️' : (type === 'error' ? '❌' : 'ℹ️'));
-  toast.innerHTML = `${icon} ${esc(message)}`;
-  const container = document.getElementById('toastContainer');
-  if (container) { container.appendChild(toast); setTimeout(() => toast.remove(), duration); }
-}
 
 function abrirModalFaltantes() {
   const modal = document.getElementById('faltantesModal');
@@ -358,7 +349,7 @@ function abrirModalFaltantes() {
 
 function cerrarModalFaltantes() { document.getElementById('faltantesModal') && (document.getElementById('faltantesModal').style.display = 'none'); }
 function marcarComoEscaneada(guia) {
-  if (faltantesSet.has(guia)) { correctasSet.add(guia); faltantesSet.delete(guia); updateStats(); abrirModalFaltantes(); showToast(`✅ ${guia} marcada`, 'success'); }
+  if (faltantesSet.has(guia)) { correctasSet.add(guia); faltantesSet.delete(guia); updateStats(); abrirModalFaltantes(); notify(`✅ ${guia} marcada`, 'success'); }
 }
 function abrirModalNoManifestadas() {
   const modal = document.getElementById('noManifestadasModal');
@@ -381,9 +372,9 @@ function abrirModalRepetidas() {
   modal.style.display = 'block';
 }
 function cerrarModalRepetidas() { document.getElementById('repetidasModal') && (document.getElementById('repetidasModal').style.display = 'none'); }
-function copiarFaltantes() { navigator.clipboard.writeText(Array.from(faltantesSet).join('\n')); showToast('✅ Lista copiada', 'success'); }
-function copiarNoManifestadas() { navigator.clipboard.writeText(Array.from(noManifestadasSet).join('\n')); showToast('✅ Lista copiada', 'success'); }
-function copiarRepetidas() { navigator.clipboard.writeText(Array.from(guiasEscaneadas.entries()).filter(([_, d]) => d.veces > 1).map(([g, d]) => `${g} (${d.veces})`).join('\n')); showToast('✅ Lista copiada', 'success'); }
+function copiarFaltantes() { navigator.clipboard.writeText(Array.from(faltantesSet).join('\n')); notify('✅ Lista copiada', 'success'); }
+function copiarNoManifestadas() { navigator.clipboard.writeText(Array.from(noManifestadasSet).join('\n')); notify('✅ Lista copiada', 'success'); }
+function copiarRepetidas() { navigator.clipboard.writeText(Array.from(guiasEscaneadas.entries()).filter(([_, d]) => d.veces > 1).map(([g, d]) => `${g} (${d.veces})`).join('\n')); notify('✅ Lista copiada', 'success'); }
 
 // ====== HISTORIAL ======
 const HISTORIAL_KEY = 'cargoexpreso_historial';
@@ -403,8 +394,8 @@ function abrirModalHistorial() {
   if (modal) modal.style.display = 'block';
 }
 function cerrarModalHistorial() { const m = document.getElementById('historialModal'); if (m) m.style.display = 'none'; }
-function limpiarHistorialConfirm() { if (confirm('¿Eliminar todo el historial?')) { localStorage.removeItem(HISTORIAL_KEY); showToast('Historial eliminado', 'success'); cerrarModalHistorial(); } }
-function limpiarHistorial() { localStorage.removeItem(HISTORIAL_KEY); showToast('Historial eliminado', 'success'); cerrarModalHistorial(); }
+function limpiarHistorialConfirm() { if (confirm('¿Eliminar todo el historial?')) { localStorage.removeItem(HISTORIAL_KEY); notify('Historial eliminado', 'success'); cerrarModalHistorial(); } }
+function limpiarHistorial() { localStorage.removeItem(HISTORIAL_KEY); notify('Historial eliminado', 'success'); cerrarModalHistorial(); }
 function cerrarConfirmModal() { const m = document.getElementById('confirmModal'); if (m) m.style.display = 'none'; }
 
 // ====== COMPARATIVO ======
@@ -700,7 +691,7 @@ function limpiarNotificaciones() { ocultarIconoNotificacion(); cerrarModalCruces
 
 // ====== BUSCADOR DE TABLA ======
 
-function filtrarTabla(query) {
+const filtrarTablaDebounced = debounce(function(query) {
   const btnLimpiar = document.getElementById('btnLimpiarBusqueda');
   if (btnLimpiar) btnLimpiar.style.display = query ? 'block' : 'none';
 
@@ -735,7 +726,8 @@ function filtrarTabla(query) {
     const total = Array.from(filas).filter(tr => !tr.querySelector('.tabla-vacia')).length;
     contador.textContent = term ? `${visibles} de ${total}` : total;
   }
-}
+}, 200);
+function filtrarTabla(query) { filtrarTablaDebounced(query); }
 
 function limpiarBusqueda() {
   const input = document.getElementById('tablaBuscador');
@@ -858,7 +850,7 @@ function exportarExcelDevoluciones() {
   }
 
   if (filas.length === 0) {
-    showToast('⚠️ No hay guías para exportar.', 'warning');
+    notify('⚠️ No hay guías para exportar.', 'warning');
     return;
   }
 
@@ -890,7 +882,7 @@ function exportarExcelDevoluciones() {
 
   XLSX.utils.book_append_sheet(wb, ws, 'Devoluciones');
   XLSX.writeFile(wb, nombreArchivo);
-  showToast(`✅ Excel exportado: ${nombreArchivo}`, 'success');
+  notify(`✅ Excel exportado: ${nombreArchivo}`, 'success');
 }
 
 // Inicialización

@@ -23,14 +23,6 @@
     const progressPct     = document.getElementById('progressPct');
     const logEntriesDiv   = document.getElementById('logEntries');
 
-    function showToast(msg, type='ok'){
-        const t = document.createElement('div');
-        t.className = `toast toast-${type}`;
-        t.innerHTML = msg;
-        document.getElementById('toastContainer').appendChild(t);
-        setTimeout(()=>{ t.style.transition='opacity .25s'; t.style.opacity='0'; setTimeout(()=>t.remove(),270); }, 2700);
-    }
-
     function saveLogs(){ localStorage.setItem('effi_dev_log', JSON.stringify(auditLog.slice(-200))); }
     function loadLogs(){
         try{ const s=localStorage.getItem('effi_dev_log'); if(s){ auditLog=JSON.parse(s); renderLogs(); } }catch(e){}
@@ -120,11 +112,11 @@
                 if(cb.checked){
                     devolutionSet.add(g); addLog(g,dist,prov,cliente,prod,'✅ MARCADA');
                     showLastScan(g,dist,prov,cliente,true,articulos);
-                    showToast(`Guía <strong>${esc(g)}</strong> marcada`,'ok');
+                    notify(`Guía ${g} marcada`,'ok');
                 } else {
                     devolutionSet.delete(g); addLog(g,dist,prov,cliente,prod,'❌ DESMARCADA');
                     showLastScan(g,dist,prov,cliente,false,articulos);
-                    showToast(`Guía <strong>${esc(g)}</strong> desmarcada`,'inf');
+                    notify(`Guía ${g} desmarcada`,'inf');
                 }
                 saveMarks(); renderTable(); updateStats();
             });
@@ -138,7 +130,7 @@
         renderTable();
     }
 
-    function filtrarTabla(query){
+    const filtrarTablaDebounced = debounce(function(query){
         const term=query.trim().toLowerCase();
         // Calcular el índice real de la columna "Guía transportadora" en la tabla
         // columna 0 = checkbox, columna 1+ = headers
@@ -160,7 +152,8 @@
             const total=Array.from(filas).filter(tr=>!tr.querySelector('.empty')).length;
             cnt.textContent=term?`${visibles} de ${total}`:total;
         }
-    }
+    }, 200);
+    function filtrarTabla(query) { filtrarTablaDebounced(query); }
 
     function getIdColumnName(){
         // Detecta dinámicamente el nombre de la columna de ID artículo
@@ -187,9 +180,9 @@
 
     function marcarGuia(raw){
         const guia=String(raw).trim();
-        if(!guia){ showToast('Ingrese un número de guía','err'); guiaInput.focus(); return false; }
+        if(!guia){ notify('Ingrese un número de guía','err'); guiaInput.focus(); return false; }
         const r=originalRowsData.find(x=>String(x['Guía transportadora'])===guia);
-        if(!r){ showToast(`Guía <strong>${esc(guia)}</strong> no encontrada`,'err'); guiaInput.value=''; guiaInput.focus(); return false; }
+        if(!r){ notify(`Guía ${guia} no encontrada`,'err'); guiaInput.value=''; guiaInput.focus(); return false; }
         const dist=r['Distribuidor']||'', prov=r['Proveedor Dropshipping']||'';
         const cliente=r['Destinatario']||'Desconocido';
         const articulos=getProductArticulos(guia);
@@ -197,11 +190,11 @@
         if(!devolutionSet.has(guia)){
             devolutionSet.add(guia); addLog(guia,dist,prov,cliente,prod,'✅ MARCADA (escáner)');
             showLastScan(guia,dist,prov,cliente,true,articulos);
-            showToast(`Guía <strong>${esc(guia)}</strong> marcada`,'ok');
+            notify(`Guía ${guia} marcada`,'ok');
             renderTable(); saveMarks();
         } else {
             showLastScan(guia,dist,prov,cliente,true,articulos);
-            showToast(`Guía <strong>${esc(guia)}</strong> ya estaba marcada`,'inf');
+            notify(`Guía ${guia} ya estaba marcada`,'inf');
         }
         guiaInput.value=''; guiaInput.focus(); return true;
     }
@@ -218,26 +211,26 @@
                     const wb=XLSX.read(new Uint8Array(evt.target.result),{type:'array',cellStyles:true});
                     workbookOriginal=wb; sheetName=wb.SheetNames[0]; worksheetOriginal=wb.Sheets[sheetName];
                     const json=XLSX.utils.sheet_to_json(worksheetOriginal,{defval:""});
-                    if(!json.length){ showToast("Excel sin datos",'err'); return; }
+                    if(!json.length){ notify("Excel sin datos",'err'); return; }
                     const sh=XLSX.utils.sheet_to_json(worksheetOriginal,{header:1})[0];
                     headers=sh?[...sh]:Object.keys(json[0]);
                     originalRowsData=json.map(row=>{ const nr={}; headers.forEach(h=>nr[h]=row[h]??''); return nr; });
                     loadMarks(); initTable();
                     lastScanCard.style.display='none'; updateStats();
-                    showToast(`${originalRowsData.length} registros cargados`,'ok');
+                    notify(`${originalRowsData.length} registros cargados`,'ok');
                 }catch(err){
-                    showToast(`Archivo corrupto o formato inválido: ${err.message}`,'err');
+                    notify(`Archivo corrupto o formato inválido: ${err.message}`,'err');
                 }
             };
-            reader.onerror=()=>showToast('Error leyendo el archivo','err');
+            reader.onerror=()=>notify('Error leyendo el archivo','err');
             reader.readAsArrayBuffer(file);
         };
         inp.click();
     }
 
     function exportDevueltas(){
-        if(!workbookOriginal){ showToast('Primero cargue un archivo','err'); return; }
-        if(!devolutionSet.size){ showToast('No hay guías marcadas','err'); return; }
+        if(!workbookOriginal){ notify('Primero cargue un archivo','err'); return; }
+        if(!devolutionSet.size){ notify('No hay guías marcadas','err'); return; }
         if(!confirm(`¿Exportar ${devolutionSet.size} filas marcadas?`)) return;
         const rows=XLSX.utils.sheet_to_json(worksheetOriginal,{header:1,defval:""});
         if(!rows.length) return;
@@ -250,7 +243,7 @@
         if(worksheetOriginal['!merges']) ws['!merges']=[...worksheetOriginal['!merges']];
         const wb2=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb2,ws,sheetName);
         XLSX.writeFile(wb2,`devoluciones_${new Date().toISOString().slice(0,10)}.xlsx`);
-        showToast(`${devolutionSet.size} filas exportadas`,'ok');
+        notify(`${devolutionSet.size} filas exportadas`,'ok');
     }
 
     function resetAll(){
@@ -259,7 +252,7 @@
         devolutionSet.clear(); addLog('SISTEMA','','','Admin','Todas','🔄 REINICIO');
         renderTable(); lastScanCard.style.display='none';
         saveMarks(); guiaInput.focus();
-        showToast('Marcas reiniciadas','inf');
+        notify('Marcas reiniciadas','inf');
     }
 
     marcarBtn.addEventListener('click',()=>marcarGuia(guiaInput.value));

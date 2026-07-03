@@ -72,7 +72,7 @@ async function apiFetch(method, path, body) {
     // Intentar renovar el token una sola vez antes de cerrar sesión
     const renewed = await tryRefreshToken();
     if (!renewed) {
-      showToast('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
+      notify('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
       throw new Error('Sesión expirada');
     }
     // Reintentar con el nuevo token
@@ -110,7 +110,7 @@ function hideOfflineBanner() {
 /* ── LOAD DATA FROM API ─────────────────────────────── */
 async function loadData() {
   try {
-    showToast('Cargando inventario...', '');
+    notify('Cargando inventario...', '');
     const data = await apiGet('/api/tiendas');
     appData = data;
     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
@@ -132,9 +132,9 @@ async function loadData() {
       isOffline = true;
       showOfflineBanner();
       hideToast();
-      showToast('Usando inventario en caché', 'danger');
+      notify('Usando inventario en caché', 'danger');
     } else {
-      showToast('Sin conexión y sin caché. Verifica conexión.', 'danger');
+      notify('Sin conexión y sin caché. Verifica conexión.', 'danger');
       appData = { tiendas: [] };
       isOffline = true;
     }
@@ -176,7 +176,7 @@ async function checkPin() {
     activateCoord(data.token, data.refresh_token);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
-    showToast('✅ Sesión iniciada', 'success');
+    notify('✅ Sesión iniciada', 'success');
   } catch(e) {
     document.getElementById('pin-error').textContent = 'Credenciales incorrectas';
   }
@@ -187,15 +187,15 @@ async function changePin() {
     const confirmPin = document.getElementById('c-pin-confirm').value;
 
     if (!nuevoPin || nuevoPin.length < 6) {
-        showToast('La contraseña debe tener al menos 6 caracteres', 'danger');
+        notify('La contraseña debe tener al menos 6 caracteres', 'danger');
         return;
     }
     if (nuevoPin !== confirmPin) {
-        showToast('Las contraseñas no coinciden', 'danger');
+        notify('Las contraseñas no coinciden', 'danger');
         return;
     }
     if (!coordToken) {
-        showToast('Debes iniciar sesión primero', 'danger');
+        notify('Debes iniciar sesión primero', 'danger');
         return;
     }
 
@@ -211,31 +211,23 @@ async function changePin() {
 
         if (response.status === 401) {
             lockCoord();
-            showToast('Sesión expirada. Vuelve a iniciar sesión.', 'danger');
+            notify('Sesión expirada. Vuelve a iniciar sesión.', 'danger');
             return;
         }
 
         const result = await response.json();
 
         if (response.ok) {
-            showToast('✅ Contraseña actualizada correctamente', 'success');
+            notify('✅ Contraseña actualizada correctamente', 'success');
             document.getElementById('c-pin-nuevo').value = '';
             document.getElementById('c-pin-confirm').value = '';
         } else {
-            showToast(result.error || 'Error al cambiar la contraseña', 'danger');
+            notify(result.error || 'Error al cambiar la contraseña', 'danger');
         }
     } catch (error) {
         console.error('Error al cambiar PIN:', error);
-        showToast('Error de conexión', 'danger');
+        notify('Error de conexión', 'danger');
     }
-}
-
-/* ── TOAST ─────────────────────────────────────────── */
-function showToast(msg, type = '') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast ' + type + ' show';
-  setTimeout(() => t.className = 'toast ' + type, 2800);
 }
 
 /* ── POPULATE SELECTS ──────────────────────────────── */
@@ -256,7 +248,7 @@ function populateTiendas() {
 /* ── OFFLINE GUARD ──────────────────────────────────── */
 function guardOffline() {
   if (isOffline) {
-    showToast('Sin conexión — no se pueden guardar cambios', 'danger');
+    notify('Sin conexión — no se pueden guardar cambios', 'danger');
     return true;
   }
   return false;
@@ -266,8 +258,8 @@ async function renameTienda() {
   if (guardOffline()) return;
   const idx = document.getElementById('c-rename-tienda-select').value;
   const nuevoNombre = document.getElementById('c-rename-tienda-nombre').value.trim();
-  if (idx === '') return showToast('Selecciona una tienda', 'danger');
-  if (!nuevoNombre) return showToast('Escribe el nombre nuevo', 'danger');
+  if (idx === '') return notify('Selecciona una tienda', 'danger');
+  if (!nuevoNombre) return notify('Escribe el nombre nuevo', 'danger');
   const tienda = getTienda(idx);
   try {
     await apiPatch('/api/tiendas', { id: tienda.id, nombre: nuevoNombre });
@@ -275,8 +267,8 @@ async function renameTienda() {
     await loadData();
     populateTiendas();
     document.getElementById('c-rename-tienda-nombre').value = '';
-    showToast(`✅ "${nombreAnterior}" → "${nuevoNombre}"`, 'success');
-  } catch(e) { showToast(e.message, 'danger'); }
+    notify(`✅ "${nombreAnterior}" → "${nuevoNombre}"`, 'success');
+  } catch(e) { notify(e.message, 'danger'); }
 }
 
 let inventarioCompleto = []; // Variable global para guardar el inventario sin filtrar
@@ -356,9 +348,9 @@ async function addProducto() {
   const tiendaIdx = document.getElementById('c-select-tienda').value;
   const newId = document.getElementById('c-new-id').value.trim();
   const newNombre = document.getElementById('c-new-nombre').value.trim();
-  if (tiendaIdx === '') return showToast('Selecciona una tienda', 'danger');
-  if (!newId) return showToast('El ID es requerido', 'danger');
-  if (!newNombre) return showToast('El nombre es requerido', 'danger');
+  if (tiendaIdx === '') return notify('Selecciona una tienda', 'danger');
+  if (!newId) return notify('El ID es requerido', 'danger');
+  if (!newNombre) return notify('El nombre es requerido', 'danger');
   const tienda = getTienda(tiendaIdx);
   try {
     await apiPost('/api/productos', { tienda_id: tienda.id, codigo: newId, nombre: newNombre });
@@ -371,21 +363,21 @@ async function addProducto() {
     }
     document.getElementById('c-new-id').value = '';
     document.getElementById('c-new-nombre').value = '';
-    showToast(`✅ Producto "${newNombre}" agregado`, 'success');
-  } catch(e) { showToast(e.message, 'danger'); }
+    notify(`✅ Producto "${newNombre}" agregado`, 'success');
+  } catch(e) { notify(e.message, 'danger'); }
 }
 
 async function addTienda() {
   if (guardOffline()) return;
   const nombre = document.getElementById('c-tienda-nombre').value.trim();
-  if (!nombre) return showToast('Escribe un nombre', 'danger');
+  if (!nombre) return notify('Escribe un nombre', 'danger');
   try {
     await apiPost('/api/tiendas', { nombre });
     await loadData();
     populateTiendas();
     document.getElementById('c-tienda-nombre').value = '';
-    showToast(`✅ Tienda "${nombre}" creada`, 'success');
-  } catch(e) { showToast(e.message, 'danger'); }
+    notify(`✅ Tienda "${nombre}" creada`, 'success');
+  } catch(e) { notify(e.message, 'danger'); }
 }
 
 async function removeProducto(tiendaIdx, productId) {
@@ -404,16 +396,16 @@ async function removeProducto(tiendaIdx, productId) {
       populateInventario(tiendaIdx, document.getElementById('select-producto'), document.getElementById('select-id'));
       updatePreview();
     }
-    showToast('Producto eliminado');
-  } catch(e) { showToast(e.message, 'danger'); }
+    notify('Producto eliminado');
+  } catch(e) { notify(e.message, 'danger'); }
 }
 
 async function deleteTienda() {
   if (guardOffline()) return;
   const idx = document.getElementById('m-select-tienda').value;
-  if (idx === '') return showToast('Selecciona una tienda', 'danger');
+  if (idx === '') return notify('Selecciona una tienda', 'danger');
   const tienda = getTienda(idx);
-  if (!tienda) return showToast('Tienda no encontrada', 'danger');
+  if (!tienda) return notify('Tienda no encontrada', 'danger');
   if (!confirm(`¿Eliminar la tienda "${tienda.nombre}" y todo su inventario?`)) return;
   try {
     await apiDelete('/api/tiendas', { id: tienda.id });
@@ -421,8 +413,8 @@ async function deleteTienda() {
     populateTiendas();
     document.getElementById('manage-inv-list').innerHTML =
       '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona una tienda</span></div>';
-    showToast(`Tienda "${tienda.nombre}" eliminada`, 'danger');
-  } catch(e) { showToast(e.message, 'danger'); }
+    notify(`Tienda "${tienda.nombre}" eliminada`, 'danger');
+  } catch(e) { notify(e.message, 'danger'); }
 }
 
 function renderManageList() {
@@ -459,8 +451,8 @@ async function saveProductoEdit(tiendaIdx, originalId, row) {
   const newUbic   = row.querySelector('.input-ubic').value.trim().toUpperCase();
   const dbId      = row.dataset.dbId;
 
-  if (!newId) return showToast('El ID no puede estar vacío', 'danger');
-  if (!newNombre) return showToast('El nombre no puede estar vacío', 'danger');
+  if (!newId) return notify('El ID no puede estar vacío', 'danger');
+  if (!newNombre) return notify('El nombre no puede estar vacío', 'danger');
 
   try {
     await apiPatch('/api/productos', { id: dbId, codigo: newId, nombre: newNombre, ubicacion: newUbic || null });
@@ -471,8 +463,8 @@ async function saveProductoEdit(tiendaIdx, originalId, row) {
       populateInventario(tiendaIdx, document.getElementById('select-producto'), document.getElementById('select-id'));
       updatePreview();
     }
-    showToast('✅ Producto actualizado', 'success');
-  } catch(e) { showToast(e.message, 'danger'); }
+    notify('✅ Producto actualizado', 'success');
+  } catch(e) { notify(e.message, 'danger'); }
 }
 
 /* ── LOGIN MODAL ────────────────────────────────────── */
@@ -509,7 +501,7 @@ function lockCoord() {
   document.getElementById('coord-icon').textContent = '🔒';
   document.getElementById('coord-label').textContent = 'Modo Coordinador';
   document.getElementById('coord-panel').classList.remove('visible');
-  showToast('Sesión de coordinador cerrada');
+  notify('Sesión de coordinador cerrada');
 }
 
 /* ── LOGO ───────────────────────────────────────────── */
@@ -585,7 +577,7 @@ function handleLogoUpload(input) {
       try { await apiPost('/api/config', { clave: LOGO_KEY, valor: b64 }); } catch(e) {}
     }
     applyLogo(b64);
-    showToast('✅ Logo actualizado', 'success');
+    notify('✅ Logo actualizado', 'success');
   };
   reader.readAsDataURL(file);
   input.value = '';
@@ -597,7 +589,7 @@ async function removeLogo() {
     try { await apiPost('/api/config', { clave: LOGO_KEY, valor: '' }); } catch(e) {}
   }
   applyLogo(null);
-  showToast('Logo eliminado');
+  notify('Logo eliminado');
 }
 
 async function loadLogo() {
@@ -640,7 +632,7 @@ function handleRotuloLogoUpload(input) {
       try { await apiPost('/api/config', { clave: ROTULO_LOGO_KEY, valor: b64 }); } catch(e) {}
     }
     applyRotuloLogo(b64);
-    showToast('✅ Logo del rótulo actualizado', 'success');
+    notify('✅ Logo del rótulo actualizado', 'success');
   };
   reader.readAsDataURL(file);
   input.value = '';
@@ -652,7 +644,7 @@ async function removeRotuloLogo() {
     try { await apiPost('/api/config', { clave: ROTULO_LOGO_KEY, valor: '' }); } catch(e) {}
   }
   applyRotuloLogo(null);
-  showToast('Logo del rótulo eliminado');
+  notify('Logo del rótulo eliminado');
 }
 
 async function loadRotuloLogo() {
@@ -678,7 +670,7 @@ function exportJSON() {
   a.download = 'etiquetas_inventario.json';
   a.click();
   URL.revokeObjectURL(url);
-  showToast('✅ JSON exportado', 'success');
+  notify('✅ JSON exportado', 'success');
 }
 
 async function handleJSONImport(input) {
@@ -691,15 +683,15 @@ async function handleJSONImport(input) {
     try {
       const parsed = JSON.parse(e.target.result);
       if (!parsed.tiendas || !Array.isArray(parsed.tiendas))
-        return showToast('JSON inválido: falta "tiendas"', 'danger');
+        return notify('JSON inválido: falta "tiendas"', 'danger');
 
       if (!coordToken)
-        return showToast('Debés estar en modo Coordinador para importar', 'danger');
+        return notify('Debés estar en modo Coordinador para importar', 'danger');
 
       clearImportLog();
       logImport('🚀 Iniciando importación...', 'info');
       logImport(`📦 Total de tiendas en archivo: ${parsed.tiendas.length}`, 'info');
-      showToast('Importando... espere', '');
+      notify('Importando... espere', '');
 
       let tiendasCreadas = 0;
       let tiendasExistentes = 0;
@@ -782,11 +774,11 @@ async function handleJSONImport(input) {
 
       const mensaje = `✅ Tiendas nuevas: ${tiendasCreadas} | Tiendas actualizadas: ${tiendasExistentes} | Productos agregados: ${productosAgregados} | Omitidos: ${productosOmitidos}`;
       logImport(`🎉 IMPORTACIÓN FINALIZADA: ${mensaje}`, 'success');
-      showToast(mensaje, 'success');
+      notify(mensaje, 'success');
 
     } catch(err) {
       logImport(`💥 Error crítico: ${err.message}`, 'error');
-      showToast('Error al procesar el archivo JSON', 'danger');
+      notify('Error al procesar el archivo JSON', 'danger');
       console.error(err);
     }
   };
@@ -904,9 +896,9 @@ async function createUser() {
   const pass    = document.getElementById('u-password').value;
   const confirm = document.getElementById('u-password-confirm').value;
 
-  if (!email)              return showToast('Email requerido', 'danger');
-  if (!pass || pass.length < 6) return showToast('Contraseña mínimo 6 caracteres', 'danger');
-  if (pass !== confirm)    return showToast('Las contraseñas no coinciden', 'danger');
+  if (!email)              return notify('Email requerido', 'danger');
+  if (!pass || pass.length < 6) return notify('Contraseña mínimo 6 caracteres', 'danger');
+  if (pass !== confirm)    return notify('Las contraseñas no coinciden', 'danger');
 
   try {
     const r = await fetch('/api/users', {
@@ -915,15 +907,15 @@ async function createUser() {
       body: JSON.stringify({ email, password: pass })
     });
     const data = await r.json();
-    if (!r.ok) return showToast(data.error || 'Error al crear usuario', 'danger');
+    if (!r.ok) return notify(data.error || 'Error al crear usuario', 'danger');
 
     document.getElementById('u-email').value = '';
     document.getElementById('u-password').value = '';
     document.getElementById('u-password-confirm').value = '';
-    showToast(`✅ Coordinador "${email}" creado`, 'success');
+    notify(`✅ Coordinador "${email}" creado`, 'success');
     loadUsers();
   } catch {
-    showToast('Error de conexión', 'danger');
+    notify('Error de conexión', 'danger');
   }
 }
 
@@ -937,12 +929,12 @@ async function deleteUser(id, email) {
       body: JSON.stringify({ id })
     });
     const data = await r.json();
-    if (!r.ok) return showToast(data.error || 'Error al eliminar', 'danger');
+    if (!r.ok) return notify(data.error || 'Error al eliminar', 'danger');
 
-    showToast(`Coordinador "${email}" eliminado`, 'danger');
+    notify(`Coordinador "${email}" eliminado`, 'danger');
     loadUsers();
   } catch {
-    showToast('Error de conexión', 'danger');
+    notify('Error de conexión', 'danger');
   }
 }
 
@@ -956,7 +948,7 @@ function updateBulkCount() {
 function printBulk() {
   const tiendaIdx = document.getElementById('bulk-select-tienda').value;
   const selected = [...document.querySelectorAll('.bulk-item.selected')];
-  if (!selected.length) return showToast('Selecciona al menos un producto', 'danger');
+  if (!selected.length) return notify('Selecciona al menos un producto', 'danger');
 
   const tiendaNombre = (getTienda(tiendaIdx)?.nombre || '').toUpperCase();
   const logoSrc = localStorage.getItem(LOGO_KEY);
@@ -1036,7 +1028,7 @@ function updateRotuloPrevLogo() {
 function printRotulo() {
   const nombre = document.getElementById('rotulo-input-name').value.trim().toUpperCase();
   const id = document.getElementById('rotulo-input-id').value.trim();
-  if (!nombre) return showToast('Escribe el nombre del rótulo', 'danger');
+  if (!nombre) return notify('Escribe el nombre del rótulo', 'danger');
 
   const logo = localStorage.getItem(ROTULO_LOGO_KEY) || localStorage.getItem(LOGO_KEY);
   const logoHTML = logo
@@ -1230,9 +1222,9 @@ async function saveUbicacionToggle(value) {
   applyUbicacionToggle();
   try {
     await apiPost('/api/config', { clave: UBICACION_KEY, valor: String(value) });
-    showToast(value ? '✅ QR de ubicaciones activado' : 'QR de ubicaciones desactivado', value ? 'success' : '');
+    notify(value ? '✅ QR de ubicaciones activado' : 'QR de ubicaciones desactivado', value ? 'success' : '');
   } catch {
-    showToast('Error al guardar configuración', 'danger');
+    notify('Error al guardar configuración', 'danger');
   }
 }
 
@@ -1254,7 +1246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Event listener para búsqueda rápida
   if (searchInput) {
-    searchInput.addEventListener('input', filterProductos);
+    searchInput.addEventListener('input', debounce(filterProductos, 200));
   }
 
   // Restaurar sesión del coordinador si existe en sessionStorage
@@ -1263,13 +1255,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isTokenExpired(savedToken)) {
       // Token vigente — restaurar sin llamada al servidor
       activateCoord(savedToken, sessionStorage.getItem(REFRESH_KEY));
-      showToast('✅ Sesión restaurada', 'success');
+      notify('✅ Sesión restaurada', 'success');
     } else {
       // Token expirado — intentar renovar con el refresh_token
       const renewed = await tryRefreshToken();
       if (renewed) {
         activateCoord(coordToken, sessionStorage.getItem(REFRESH_KEY));
-        showToast('✅ Sesión renovada', 'success');
+        notify('✅ Sesión renovada', 'success');
       }
       // Si falla, lockCoord() ya limpió sessionStorage
     }
