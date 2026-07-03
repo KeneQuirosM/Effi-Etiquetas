@@ -11,17 +11,51 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       console.log('📥 GET /api/stockforge');
 
-      // Zonas
-      const { data: zonas, error: errZ } = await supabase.from('zonas').select('*');
+      // Las 9 lecturas son independientes entre sí — se piden en paralelo
+      // en vez de 9 round-trips secuenciales.
+      const [
+        { data: zonas, error: errZ },
+        { data: racks, error: errR },
+        { data: responsables, error: errP },
+        { data: tiendasRaw, error: errT },
+        { data: rackResp, error: errRR },
+        { data: rackTiendas, error: errRT },
+        { data: celdas, error: errC },
+        { data: movimientos, error: errM },
+        { data: bodegaCfg }
+      ] = await Promise.all([
+        supabase.from('zonas').select('*'),
+        supabase.from('racks').select('*'),
+        supabase.from('responsables').select('*'),
+        supabase.from('tiendas').select('id, nombre, creado_en'),
+        supabase.from('rack_responsables').select('*'),
+        supabase.from('rack_tiendas').select('*'),
+        supabase.from('celdas').select(`
+          *,
+          celda_responsables(responsable_id),
+          celda_tiendas(tienda_id),
+          skus(*),
+          audits(*),
+          changelog(*)
+        `),
+        supabase.from('movimientos').select('*').order('ts', { ascending: false }),
+        supabase.from('bodega_config').select('area_total_m2, area_pasillos_m2').eq('id', 1).maybeSingle()
+      ]);
+
       if (errZ) throw errZ;
+      if (errR) throw errR;
+      if (errP) throw errP;
+      if (errT) throw errT;
+      if (errRR) throw errRR;
+      if (errRT) throw errRT;
+      if (errC) throw errC;
+      if (errM) throw errM;
+
       const zonasMapped = (zonas || []).map(z => ({
         ...z,
         desc: z.descripcion || ''
       }));
 
-      // Racks
-      const { data: racks, error: errR } = await supabase.from('racks').select('*');
-      if (errR) throw errR;
       const racksMapped = (racks || []).map(r => ({
         ...r,
         w: r.width || 180,
@@ -31,13 +65,6 @@ export default async function handler(req, res) {
         zone: r.zone_id || ''
       }));
 
-      // Responsables
-      const { data: responsables, error: errP } = await supabase.from('responsables').select('*');
-      if (errP) throw errP;
-
-      // Tiendas
-      const { data: tiendasRaw, error: errT } = await supabase.from('tiendas').select('id, nombre, creado_en');
-      if (errT) throw errT;
       const tiendas = (tiendasRaw || []).map(t => ({
         id: String(t.id),
         name: t.nombre || '',
@@ -45,39 +72,6 @@ export default async function handler(req, res) {
         created_at: t.creado_en
       }));
 
-      // Rack-Responsables
-      const { data: rackResp, error: errRR } = await supabase.from('rack_responsables').select('*');
-      if (errRR) throw errRR;
-
-      // Rack-Tiendas
-      const { data: rackTiendas, error: errRT } = await supabase.from('rack_tiendas').select('*');
-      if (errRT) throw errRT;
-
-      // Celdas con relaciones
-      const { data: celdas, error: errC } = await supabase.from('celdas').select(`
-        *,
-        celda_responsables(responsable_id),
-        celda_tiendas(tienda_id),
-        skus(*),
-        audits(*),
-        changelog(*)
-      `);
-      if (errC) throw errC;
-
-      // Movimientos
-      const { data: movimientos, error: errM } = await supabase
-        .from('movimientos')
-        .select('*')
-        .order('ts', { ascending: false });
-      if (errM) throw errM;
-
-      // Configuración de bodega
-      const { data: bodegaCfg } = await supabase
-        .from('bodega_config')
-        .select('area_total_m2, area_pasillos_m2')
-        .eq('id', 1)
-        .maybeSingle();
-      
       const movementsMapped = (movimientos || []).map(m => ({
         id: m.id,
         ts: m.ts || Date.now(),
@@ -195,19 +189,67 @@ export default async function handler(req, res) {
 
       console.log(`📤 POST - zonas:${zones?.length}, racks:${racks?.length}, people:${people?.length}, tiendas:${tiendas?.length}`);
 
-      // 1. Limpiar tablas
-      await supabase.from('movimientos').delete().neq('id', '');
-      await supabase.from('changelog').delete().neq('id', 0);
-      await supabase.from('audits').delete().neq('id', 0);
-      await supabase.from('skus').delete().neq('id', 0);
-      await supabase.from('celda_tiendas').delete().neq('celda_id', 0);
-      await supabase.from('celda_responsables').delete().neq('celda_id', 0);
-      await supabase.from('celdas').delete().neq('id', 0);
-      await supabase.from('rack_tiendas').delete().neq('rack_id', '');
-      await supabase.from('rack_responsables').delete().neq('rack_id', '');
-      await supabase.from('racks').delete().neq('id', '');
-      await supabase.from('zonas').delete().neq('id', '');
-      await supabase.from('responsables').delete().neq('id', '');
+      // 1. Limpiar tablas — si alguna falla, abortar antes de tocar el resto
+      const { error: errDelMov } = await supabase.from('movimientos').delete().neq('id', '');
+      if (errDelMov) {
+        console.error('❌ Error limpiando movimientos:', errDelMov);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla movimientos antes de guardar' });
+      }
+      const { error: errDelChangelog } = await supabase.from('changelog').delete().neq('id', 0);
+      if (errDelChangelog) {
+        console.error('❌ Error limpiando changelog:', errDelChangelog);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla changelog antes de guardar' });
+      }
+      const { error: errDelAudits } = await supabase.from('audits').delete().neq('id', 0);
+      if (errDelAudits) {
+        console.error('❌ Error limpiando audits:', errDelAudits);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla audits antes de guardar' });
+      }
+      const { error: errDelSkus } = await supabase.from('skus').delete().neq('id', 0);
+      if (errDelSkus) {
+        console.error('❌ Error limpiando skus:', errDelSkus);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla skus antes de guardar' });
+      }
+      const { error: errDelCeldaTiendas } = await supabase.from('celda_tiendas').delete().neq('celda_id', 0);
+      if (errDelCeldaTiendas) {
+        console.error('❌ Error limpiando celda_tiendas:', errDelCeldaTiendas);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla celda_tiendas antes de guardar' });
+      }
+      const { error: errDelCeldaResp } = await supabase.from('celda_responsables').delete().neq('celda_id', 0);
+      if (errDelCeldaResp) {
+        console.error('❌ Error limpiando celda_responsables:', errDelCeldaResp);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla celda_responsables antes de guardar' });
+      }
+      const { error: errDelCeldas } = await supabase.from('celdas').delete().neq('id', 0);
+      if (errDelCeldas) {
+        console.error('❌ Error limpiando celdas:', errDelCeldas);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla celdas antes de guardar' });
+      }
+      const { error: errDelRackTiendas } = await supabase.from('rack_tiendas').delete().neq('rack_id', '');
+      if (errDelRackTiendas) {
+        console.error('❌ Error limpiando rack_tiendas:', errDelRackTiendas);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla rack_tiendas antes de guardar' });
+      }
+      const { error: errDelRackResp } = await supabase.from('rack_responsables').delete().neq('rack_id', '');
+      if (errDelRackResp) {
+        console.error('❌ Error limpiando rack_responsables:', errDelRackResp);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla rack_responsables antes de guardar' });
+      }
+      const { error: errDelRacks } = await supabase.from('racks').delete().neq('id', '');
+      if (errDelRacks) {
+        console.error('❌ Error limpiando racks:', errDelRacks);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla racks antes de guardar' });
+      }
+      const { error: errDelZonas } = await supabase.from('zonas').delete().neq('id', '');
+      if (errDelZonas) {
+        console.error('❌ Error limpiando zonas:', errDelZonas);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla zonas antes de guardar' });
+      }
+      const { error: errDelResp } = await supabase.from('responsables').delete().neq('id', '');
+      if (errDelResp) {
+        console.error('❌ Error limpiando responsables:', errDelResp);
+        return res.status(500).json({ error: 'No se pudo limpiar la tabla responsables antes de guardar' });
+      }
       console.log('🧹 Tablas limpiadas');
 
       // 2. Zonas
@@ -221,15 +263,21 @@ export default async function handler(req, res) {
           tipo: z.tipo || 'operativa'
         }));
         const { error: errZones } = await supabase.from('zonas').insert(zonasMapped);
-        if (errZones) console.error('❌ Error zonas:', errZones);
-        else console.log(`✅ ${zonasMapped.length} zonas insertadas`);
+        if (errZones) {
+          console.error('❌ Error zonas:', errZones);
+          return res.status(500).json({ error: 'No se pudieron guardar las zonas' });
+        }
+        console.log(`✅ ${zonasMapped.length} zonas insertadas`);
       }
 
       // 3. Responsables
       if (people?.length) {
         const { error: errPeople } = await supabase.from('responsables').insert(people);
-        if (errPeople) console.error('❌ Error responsables:', errPeople);
-        else console.log(`✅ ${people.length} responsables insertados`);
+        if (errPeople) {
+          console.error('❌ Error responsables:', errPeople);
+          return res.status(500).json({ error: 'No se pudieron guardar los responsables' });
+        }
+        console.log(`✅ ${people.length} responsables insertados`);
       }
 
       // 4. Tiendas
@@ -253,9 +301,13 @@ export default async function handler(req, res) {
 
       // 5. Racks
       let racksInsertados = 0;
+      const racksInsertadosIds = new Set();
       if (racks?.length) {
         const { data: zonasExistentes } = await supabase.from('zonas').select('id');
         const zonasIds = new Set((zonasExistentes || []).map(z => z.id));
+
+        const allRackResp = [];
+        const allRackTiendas = [];
 
         for (const r of racks) {
           const zoneId = r.zone;
@@ -281,108 +333,155 @@ export default async function handler(req, res) {
             continue;
           }
           racksInsertados++;
+          racksInsertadosIds.add(r.id);
 
           if (r.responsables?.length) {
-            await supabase.from('rack_responsables').insert(
-              r.responsables.map(rid => ({ rack_id: r.id, responsable_id: rid }))
-            );
+            r.responsables.forEach(rid => allRackResp.push({ rack_id: r.id, responsable_id: rid }));
           }
           if (r.tiendas?.length) {
-            await supabase.from('rack_tiendas').insert(
-              r.tiendas.map(tid => ({ rack_id: r.id, tienda_id: parseInt(tid) }))
-            );
+            r.tiendas.forEach(tid => allRackTiendas.push({ rack_id: r.id, tienda_id: parseInt(tid) }));
           }
         }
+
+        if (allRackResp.length) {
+          const { error: errRackResp } = await supabase.from('rack_responsables').insert(allRackResp);
+          if (errRackResp) {
+            console.error('❌ Error rack_responsables:', errRackResp);
+            return res.status(500).json({ error: 'No se pudieron guardar los responsables de rack' });
+          }
+        }
+        if (allRackTiendas.length) {
+          const { error: errRackTiendasIns } = await supabase.from('rack_tiendas').insert(allRackTiendas);
+          if (errRackTiendasIns) {
+            console.error('❌ Error rack_tiendas:', errRackTiendasIns);
+            return res.status(500).json({ error: 'No se pudieron guardar las tiendas de rack' });
+          }
+        }
+
         console.log(`✅ ${racksInsertados} racks insertados correctamente`);
       }
 
-      // 6. Celdas
+      // 6. Celdas — se insertan en un único batch para todos los racks,
+      // y sus tablas hijas (skus/audits/celda_responsables/celda_tiendas/changelog)
+      // se acumulan mientras se recorren las celdas insertadas y se insertan
+      // también en un único batch cada una, usando el id que Postgres devuelve
+      // en el mismo orden en que se insertaron las filas.
       let celdasOk = 0, celdasError = 0;
       if (cells) {
+        const celdaInsertList = [];
         for (const [rackId, cellsArr] of Object.entries(cells)) {
-          const { data: rackExiste } = await supabase
-            .from('racks')
-            .select('id')
-            .eq('id', rackId)
-            .maybeSingle();
-
-          if (!rackExiste) {
-            console.error(`❌ Rack ${rackId} no existe en BD, se omiten sus ${cellsArr.length} celdas`);
+          if (!racksInsertadosIds.has(rackId)) {
+            console.error(`❌ Rack ${rackId} no se insertó correctamente, se omiten sus ${cellsArr.length} celdas`);
             celdasError += cellsArr.length;
             continue;
           }
-
           for (const cell of cellsArr) {
-            const { skus, audits, changelog, responsables, tiendas: cellTiendas, ...cellData } = cell;
+            celdaInsertList.push({ rackId, cell });
+          }
+        }
 
-            const { data: inserted, error: errCell } = await supabase
-              .from('celdas')
-              .insert({
-                rack_id: rackId,
-                bay: cellData.bay,
-                level: cellData.level,
-                state: cellData.state || 'empty',
-                notes: cellData.notes || ''
-              })
-              .select('id')
-              .single();
+        if (celdaInsertList.length) {
+          const celdasMapped = celdaInsertList.map(({ rackId, cell }) => ({
+            rack_id: rackId,
+            bay: cell.bay,
+            level: cell.level,
+            state: cell.state || 'empty',
+            notes: cell.notes || ''
+          }));
 
-            if (errCell) {
-              console.error(`❌ Celda ${rackId} B${cellData.bay}N${cellData.level}:`, errCell);
-              celdasError++;
-              continue;
+          const { data: insertedCeldas, error: errCeldas } = await supabase
+            .from('celdas')
+            .insert(celdasMapped)
+            .select('id');
+
+          if (errCeldas) {
+            console.error('❌ Error insertando celdas:', errCeldas);
+            return res.status(500).json({ error: 'No se pudieron guardar las celdas del almacén' });
+          }
+
+          celdasOk = insertedCeldas.length;
+
+          const allSkus = [];
+          const allAudits = [];
+          const allCeldaResp = [];
+          const allCeldaTiendas = [];
+          const allChangelog = [];
+
+          insertedCeldas.forEach((row, i) => {
+            const celdaId = row.id;
+            const { cell } = celdaInsertList[i];
+            const { skus, audits, changelog, responsables, tiendas: cellTiendas } = cell;
+
+            if (responsables?.length) {
+              responsables.forEach(rid => allCeldaResp.push({ celda_id: celdaId, responsable_id: rid }));
             }
+            if (cellTiendas?.length) {
+              cellTiendas.forEach(tid => allCeldaTiendas.push({ celda_id: celdaId, tienda_id: parseInt(tid) }));
+            }
+            if (skus?.length) {
+              skus.forEach(s => allSkus.push({
+                celda_id: celdaId,
+                sku: s.sku || '',
+                descripcion: s.desc || '',
+                cantidad: s.qty || '',
+                unidad: s.unit || 'pcs',
+                expiry: s.expiry || null,
+                min_stock: s.minStock || '',
+                cost: parseFloat(s.cost) || 0
+              }));
+            }
+            if (audits?.length) {
+              audits.forEach(a => allAudits.push({
+                celda_id: celdaId,
+                fecha: a.date || '',
+                ts: a.ts || Date.now(),
+                quien: a.who || '',
+                notas: a.notes || ''
+              }));
+            }
+            if (changelog?.length) {
+              changelog.forEach(c => allChangelog.push({
+                celda_id: celdaId,
+                fecha: c.date || '',
+                ts: c.ts || Date.now(),
+                cambios: Array.isArray(c.changes) ? c.changes.join(' · ') : (c.changes || '')
+              }));
+            }
+          });
 
-            if (inserted) {
-              celdasOk++;
-              const celdaId = inserted.id;
-
-              if (responsables?.length) {
-                await supabase.from('celda_responsables').insert(
-                  responsables.map(rid => ({ celda_id: celdaId, responsable_id: rid }))
-                );
-              }
-              if (cellTiendas?.length) {
-                await supabase.from('celda_tiendas').insert(
-                  cellTiendas.map(tid => ({ celda_id: celdaId, tienda_id: parseInt(tid) }))
-                );
-              }
-
-              if (skus?.length) {
-                const skusMapped = skus.map(s => ({
-                  celda_id: celdaId,
-                  sku: s.sku || '',
-                  descripcion: s.desc || '',
-                  cantidad: s.qty || '',
-                  unidad: s.unit || 'pcs',
-                  expiry: s.expiry || null,
-                  min_stock: s.minStock || '',
-                  cost: parseFloat(s.cost) || 0
-                }));
-                const { error: errSku } = await supabase.from('skus').insert(skusMapped);
-                if (errSku) console.error(`❌ SKUs celda ${celdaId}:`, errSku);
-              }
-
-              if (audits?.length) {
-                const auditsMapped = audits.map(a => ({
-                  celda_id: celdaId,
-                  fecha: a.date || '',
-                  ts: a.ts || Date.now(),
-                  quien: a.who || '',
-                  notas: a.notes || ''
-                }));
-                await supabase.from('audits').insert(auditsMapped);
-              }
-
-              if (changelog?.length) {
-                const changelogMapped = changelog.map(c => ({
-                  celda_id: celdaId,
-                  fecha: c.date || '',
-                  ts: c.ts || Date.now(),
-                  cambios: Array.isArray(c.changes) ? c.changes.join(' · ') : (c.changes || '')
-                }));
-                await supabase.from('changelog').insert(changelogMapped);
-              }
+          if (allCeldaResp.length) {
+            const { error: errCR } = await supabase.from('celda_responsables').insert(allCeldaResp);
+            if (errCR) {
+              console.error('❌ Error celda_responsables:', errCR);
+              return res.status(500).json({ error: 'No se pudieron guardar los responsables de celda' });
+            }
+          }
+          if (allCeldaTiendas.length) {
+            const { error: errCT } = await supabase.from('celda_tiendas').insert(allCeldaTiendas);
+            if (errCT) {
+              console.error('❌ Error celda_tiendas:', errCT);
+              return res.status(500).json({ error: 'No se pudieron guardar las tiendas de celda' });
+            }
+          }
+          if (allSkus.length) {
+            const { error: errSku } = await supabase.from('skus').insert(allSkus);
+            if (errSku) {
+              console.error('❌ Error skus:', errSku);
+              return res.status(500).json({ error: 'No se pudieron guardar los SKUs' });
+            }
+          }
+          if (allAudits.length) {
+            const { error: errAud } = await supabase.from('audits').insert(allAudits);
+            if (errAud) {
+              console.error('❌ Error audits:', errAud);
+              return res.status(500).json({ error: 'No se pudieron guardar las auditorías' });
+            }
+          }
+          if (allChangelog.length) {
+            const { error: errChg } = await supabase.from('changelog').insert(allChangelog);
+            if (errChg) {
+              console.error('❌ Error changelog:', errChg);
+              return res.status(500).json({ error: 'No se pudo guardar el historial de cambios' });
             }
           }
         }
@@ -411,8 +510,11 @@ export default async function handler(req, res) {
           nota: m.note || ''
         }));
         const { error: errMov } = await supabase.from('movimientos').insert(movimientosMapped);
-        if (errMov) console.error('❌ Error movimientos:', errMov);
-        else console.log(`✅ ${movimientosMapped.length} movimientos insertados`);
+        if (errMov) {
+          console.error('❌ Error movimientos:', errMov);
+          return res.status(500).json({ error: 'No se pudieron guardar los movimientos' });
+        }
+        console.log(`✅ ${movimientosMapped.length} movimientos insertados`);
       }
 
       // 8. Actualizar productos.ubicacion para SKUs vinculados al catálogo
