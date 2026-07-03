@@ -1202,7 +1202,9 @@ function _doExcelImport(tiendaId, ext, file){
   if(typeof XLSX==='undefined'){
     notif('Cargando librería Excel...','ok');
     const script=document.createElement('script');
-    script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.src='https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
+    script.integrity='sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk';
+    script.crossOrigin='anonymous';
     script.onload=()=>readXlsx();
     script.onerror=()=>notif('Error cargando librería Excel','err');
     document.head.appendChild(script);
