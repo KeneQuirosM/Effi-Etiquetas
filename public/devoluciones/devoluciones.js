@@ -214,18 +214,22 @@
             document.getElementById('fileLabel').textContent=file.name;
             const reader=new FileReader();
             reader.onload=evt=>{
-                const wb=XLSX.read(new Uint8Array(evt.target.result),{type:'array',cellStyles:true});
-                workbookOriginal=wb; sheetName=wb.SheetNames[0]; worksheetOriginal=wb.Sheets[sheetName];
-                const json=XLSX.utils.sheet_to_json(worksheetOriginal,{defval:""});
-                if(!json.length){ alert("Excel sin datos"); return; }
-                const sh=XLSX.utils.sheet_to_json(worksheetOriginal,{header:1})[0];
-                headers=sh?[...sh]:Object.keys(json[0]);
-                originalRowsData=json.map(row=>{ const nr={}; headers.forEach(h=>nr[h]=row[h]??''); return nr; });
-                loadMarks(); initTable();
-                lastScanCard.style.display='none'; updateStats();
-                showToast(`${originalRowsData.length} registros cargados`,'ok');
+                try{
+                    const wb=XLSX.read(new Uint8Array(evt.target.result),{type:'array',cellStyles:true});
+                    workbookOriginal=wb; sheetName=wb.SheetNames[0]; worksheetOriginal=wb.Sheets[sheetName];
+                    const json=XLSX.utils.sheet_to_json(worksheetOriginal,{defval:""});
+                    if(!json.length){ showToast("Excel sin datos",'err'); return; }
+                    const sh=XLSX.utils.sheet_to_json(worksheetOriginal,{header:1})[0];
+                    headers=sh?[...sh]:Object.keys(json[0]);
+                    originalRowsData=json.map(row=>{ const nr={}; headers.forEach(h=>nr[h]=row[h]??''); return nr; });
+                    loadMarks(); initTable();
+                    lastScanCard.style.display='none'; updateStats();
+                    showToast(`${originalRowsData.length} registros cargados`,'ok');
+                }catch(err){
+                    showToast(`Archivo corrupto o formato inválido: ${err.message}`,'err');
+                }
             };
-            reader.onerror=()=>alert("Error leyendo archivo");
+            reader.onerror=()=>showToast('Error leyendo el archivo','err');
             reader.readAsArrayBuffer(file);
         };
         inp.click();
