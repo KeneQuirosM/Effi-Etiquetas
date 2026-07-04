@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
+import { requireUser } from './_auth.js';
 
 export default async function handler(req, res) {
   setCors(req, res, 'GET, POST, OPTIONS');
@@ -27,17 +28,8 @@ export default async function handler(req, res) {
 
     // ── POST: guardar configuración ──
     if (req.method === 'POST') {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-
-      if (!token) {
-        return res.status(401).json({ error: 'No autorizado' });
-      }
-
-      const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-
-      if (authErr || !user) {
-        return res.status(401).json({ error: 'Token inválido' });
-      }
+      const user = await requireUser(req, res);
+      if (!user) return;
 
       const { clave, valor } = req.body;
 

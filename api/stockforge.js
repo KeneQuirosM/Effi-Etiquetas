@@ -1,5 +1,6 @@
 import { supabase } from './_supabase.js';
 import { setCors } from './_cors.js';
+import { requireUser } from './_auth.js';
 
 export default async function handler(req, res) {
   setCors(req, res, 'GET, POST, OPTIONS');
@@ -169,14 +170,8 @@ export default async function handler(req, res) {
     // ── POST: Guardar todo el estado ─────────────────────────────
     if (req.method === 'POST') {
       // 🔐 Validar token antes de cualquier operación destructiva
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      if (!token) {
-        return res.status(401).json({ error: 'No autorizado' });
-      }
-      const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-      if (authErr || !user) {
-        return res.status(401).json({ error: 'Token inválido' });
-      }
+      const user = await requireUser(req, res);
+      if (!user) return;
 
       const { zones, racks, cells, people, tiendas, movements } = req.body;
 
