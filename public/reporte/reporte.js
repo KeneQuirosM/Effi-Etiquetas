@@ -99,6 +99,37 @@ function cleanCompareText(t) {
   return String(t || '').toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 }
 
+// Resuelve el índice de columna de cada campo relevante una sola vez,
+// en vez de recalcular excelRows[0].indexOf(col) en cada fila del cruce
+function resolveColumnIndices(excelRows, cols) {
+  const header = excelRows[0];
+  return {
+    tiendaIdxs: cols.colTiendas.map(col => header.indexOf(col)),
+    idIdx: cols.colId ? header.indexOf(cols.colId) : -1,
+    descIdx: cols.colDesc ? header.indexOf(cols.colDesc) : -1,
+    qtyIdx: cols.colQty ? header.indexOf(cols.colQty) : -1
+  };
+}
+
+// Elimina el prefijo "ID - " que viene en el Excel (ej: "40881 - Grupo Hoshi" → "grupo hoshi")
+function stripExcelIdPrefix(str) {
+  return String(str).replace(/^\d+\s*[-–]\s*/, '').trim();
+}
+
+// Agrupa las filas del Excel por su texto de tienda ya limpiado, para no
+// tener que recorrer todo el Excel por cada producto de cada tienda al
+// cruzar los datos (antes: O(tiendas × productos × filas_excel))
+function buildExcelTiendaIndex(excelRows, cleanText, idxs) {
+  const index = new Map();
+  for (let i = 1; i < excelRows.length; i++) {
+    const row = excelRows[i];
+    const rowTiendasText = idxs.tiendaIdxs.map(ix => cleanText(stripExcelIdPrefix(row[ix]))).join(' | ');
+    if (!index.has(rowTiendasText)) index.set(rowTiendasText, []);
+    index.get(rowTiendasText).push(row);
+  }
+  return index;
+}
+
 // Detecta qué columnas del Excel corresponden a tienda/id/descripción/cantidad según el nombre del header
 function detectExcelColumns(excelRows, cleanText) {
   let colTiendas = [];
@@ -125,56 +156,53 @@ function detectExcelColumns(excelRows, cleanText) {
   return { colTiendas, colId, colDesc, colQty };
 }
 
-// Suma las unidades del Excel que le corresponden a un producto de una tienda dada
-function matchProductQty(prod, tienda, excelRows, cleanText, cols) {
-  const { colTiendas, colId, colDesc, colQty } = cols;
+// Suma las unidades del Excel que le corresponden a un producto de una tienda dada.
+// Usa el índice excelByTienda en vez de recorrer todas las filas del Excel:
+// primero intenta la clave exacta (O(1)); si no hay, cae a comparar contra las
+// claves únicas de tienda del Excel (muchas menos que el total de filas) para
+// preservar el match parcial en ambas direcciones que ya existía.
+function matchProductQty(prod, tienda, excelByTienda, cleanText, idxs) {
   const dbStoreNameClean = cleanText(tienda.nombre);
   const dbProdCodeClean = cleanText(prod.codigo || prod.id);
   const dbProdNameClean = cleanText(prod.nombre || prod.producto);
   let totalQty = 0;
   let storeFoundInExcel = false;
 
-  excelRows.forEach((row, idx) => {
-    if (idx === 0) return;
+  const matchingKeys = excelByTienda.has(dbStoreNameClean)
+    ? [dbStoreNameClean]
+    : [...excelByTienda.keys()].filter(key => key.includes(dbStoreNameClean) || dbStoreNameClean.includes(key));
 
-    // Elimina el prefijo "ID - " que viene en el Excel (ej: "40881 - Grupo Hoshi" → "grupo hoshi")
-    const stripPrefix = (str) => String(str).replace(/^\d+\s*[-–]\s*/, '').trim();
-
-    const rowTiendasText = colTiendas.map(col => cleanText(stripPrefix(row[excelRows[0].indexOf(col)]))).join(' | ');
-    const rowId = colId ? cleanText(row[excelRows[0].indexOf(colId)]) : '';
-    const rowDesc = colDesc ? cleanText(row[excelRows[0].indexOf(colDesc)]) : '';
-
-    const storeMatch = rowTiendasText === dbStoreNameClean ||
-                       rowTiendasText.includes(dbStoreNameClean) ||
-                       dbStoreNameClean.includes(rowTiendasText);
-
-    if (!storeMatch) return;
-
+  matchingKeys.forEach(key => {
     storeFoundInExcel = true;
 
-    // Si hay SKU y coincide exacto dentro de la tienda -> match directo
-    // Solo si no hay SKU en la fila, fallback a nombre exacto
-    const productMatch = (rowId && rowId === dbProdCodeClean) ||
-                         (!rowId && rowDesc && rowDesc === dbProdNameClean);
+    excelByTienda.get(key).forEach(row => {
+      const rowId = idxs.idIdx >= 0 ? cleanText(row[idxs.idIdx]) : '';
+      const rowDesc = idxs.descIdx >= 0 ? cleanText(row[idxs.descIdx]) : '';
 
-    if (productMatch) {
-      let rowQty = 1;
-      if (colQty) {
-        const val = row[excelRows[0].indexOf(colQty)];
-        if (val !== undefined && val !== null && val !== '') {
-          const parsed = parseFloat(String(val).replace(',', '.'));
-          if (!isNaN(parsed) && parsed > 0 && parsed < 1000) rowQty = parsed;
+      // Si hay SKU y coincide exacto dentro de la tienda -> match directo
+      // Solo si no hay SKU en la fila, fallback a nombre exacto
+      const productMatch = (rowId && rowId === dbProdCodeClean) ||
+                           (!rowId && rowDesc && rowDesc === dbProdNameClean);
+
+      if (productMatch) {
+        let rowQty = 1;
+        if (idxs.qtyIdx >= 0) {
+          const val = row[idxs.qtyIdx];
+          if (val !== undefined && val !== null && val !== '') {
+            const parsed = parseFloat(String(val).replace(',', '.'));
+            if (!isNaN(parsed) && parsed > 0 && parsed < 1000) rowQty = parsed;
+          }
         }
+        totalQty += rowQty;
       }
-      totalQty += rowQty;
-    }
+    });
   });
 
   return { totalQty, storeFoundInExcel };
 }
 
 // Arma la entrada de reporte de una tienda (tipo, items con cantidades cruzadas contra el Excel, totales)
-function buildTiendaReportEntry(tienda, excelRows, cleanText, cols) {
+function buildTiendaReportEntry(tienda, excelByTienda, cleanText, idxs) {
   let tipo = "Distribuidor (Bodega Propia)";
   const nameUpper = tienda.nombre.toUpperCase();
   if (nameUpper.includes("PROV") || nameUpper.includes("DROPSHIPPING") || nameUpper.includes("SICOMMER") || nameUpper.includes("UNMERCO")) {
@@ -184,7 +212,7 @@ function buildTiendaReportEntry(tienda, excelRows, cleanText, cols) {
   let storeFoundInExcel = false;
 
   const items = (tienda.inventario || []).map(prod => {
-    const matched = matchProductQty(prod, tienda, excelRows, cleanText, cols);
+    const matched = matchProductQty(prod, tienda, excelByTienda, cleanText, idxs);
     if (matched.storeFoundInExcel) storeFoundInExcel = true;
     return {
       id: prod.codigo || prod.id,
@@ -209,12 +237,14 @@ function buildTiendaReportEntry(tienda, excelRows, cleanText, cols) {
 function crossReferenceData(excelRows) {
   const cleanText = cleanCompareText;
   const cols = detectExcelColumns(excelRows, cleanText);
+  const idxs = resolveColumnIndices(excelRows, cols);
+  const excelByTienda = buildExcelTiendaIndex(excelRows, cleanText, idxs);
   const unmatchedStores = [];
 
   DATA = dbData
     .filter(tienda => !excludedStores.has(tienda.nombre))
     .map(tienda => {
-      const result = buildTiendaReportEntry(tienda, excelRows, cleanText, cols);
+      const result = buildTiendaReportEntry(tienda, excelByTienda, cleanText, idxs);
       if (!result.storeFoundInExcel) unmatchedStores.push(tienda.nombre);
       return result.entry;
     });
@@ -277,12 +307,11 @@ function renderGroups(search = '', typeFilter = '') {
   const container = document.getElementById('mainContent');
   container.innerHTML = '';
 
-  const cleanText = (t) => String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  const searchLower = cleanText(search);
+  const searchLower = cleanCompareText(search);
 
   DATA.forEach((group, gi) => {
     const filteredItems = group.items.filter(item => {
-      return !searchLower || cleanText(item.id).includes(searchLower) || cleanText(item.desc).includes(searchLower);
+      return !searchLower || cleanCompareText(item.id).includes(searchLower) || cleanCompareText(item.desc).includes(searchLower);
     });
 
     if (filteredItems.length === 0 || (typeFilter && group.tipo !== typeFilter)) return;
