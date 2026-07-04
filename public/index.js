@@ -1,10 +1,10 @@
 
 /* ── CONFIG ──────────────────────────────────────── */
 const API = '';  // vacío = mismo dominio en Vercel
-const LOGO_KEY = 'sf_logo';
-const ROTULO_LOGO_KEY = 'effi_rotulo_logo_v1';
-const CACHE_KEY = 'effi_inventario_cache_v1';      // offline cache
-const SESSION_KEY = 'effi_coord_session_v1';        // sessionStorage access token
+const LOGO_KEY = STORAGE_KEYS.LOGO;
+const ROTULO_LOGO_KEY = STORAGE_KEYS.ROTULO_LOGO;
+const CACHE_KEY = STORAGE_KEYS.INVENTARIO_CACHE;      // offline cache
+const SESSION_KEY = STORAGE_KEYS.COORD_SESSION;        // sessionStorage access token
 const REFRESH_KEY = 'effi_coord_refresh_v1';        // sessionStorage refresh token
 
 /* ── STATE ─────────────────────────────────────────── */

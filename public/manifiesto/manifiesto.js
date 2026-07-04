@@ -93,7 +93,6 @@ function onScanEnter(e) {
   updateStats();
 }
 
-// ====== FUNCIÓN COMPLETA handleFile (reemplaza la que tienes) ======
 // Extrae guías, metadatos de ruta y verifica cruces desde un Excel de manifiesto ya parseado
 function processExcelManifest(rows) {
   const infoRuta = document.getElementById("infoRuta");
@@ -331,7 +330,6 @@ async function handleFile(event) {
   reader.readAsArrayBuffer(file);
 }
 
-// script.js - PARTE 3/3
 // ====== MODALES Y TOAST ======
 
 function abrirModalFaltantes() {
@@ -377,7 +375,7 @@ function copiarNoManifestadas() { navigator.clipboard.writeText(Array.from(noMan
 function copiarRepetidas() { navigator.clipboard.writeText(Array.from(guiasEscaneadas.entries()).filter(([_, d]) => d.veces > 1).map(([g, d]) => `${g} (${d.veces})`).join('\n')); notify('✅ Lista copiada', 'success'); }
 
 // ====== HISTORIAL ======
-const HISTORIAL_KEY = 'cargoexpreso_historial';
+const HISTORIAL_KEY = STORAGE_KEYS.MANIFIESTO_HISTORIAL;
 function guardarEnHistorial(tipo, datos) {
   if (!['comparativo', 'guia'].includes(tipo)) return;
   const historial = JSON.parse(localStorage.getItem(HISTORIAL_KEY) || '[]');

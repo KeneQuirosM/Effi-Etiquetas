@@ -714,18 +714,18 @@ function renderSettingsModal(){
     if(pf)pf.value=n.prefix||'';if(bn)bn.value=n.accent||'';}catch{}
   // Logo preview
   const prev=div.querySelector('#set-logo-preview');
-  if(prev){const ls=localStorage.getItem('sf_logo');
+  if(prev){const ls=localStorage.getItem(STORAGE_KEYS.LOGO);
     prev.innerHTML=ls?`<img src="${ls}" style="width:100%;height:100%;object-fit:contain">`:'<span style="color:var(--dim);font-size:1.4rem">🏷</span>';}
 }
 
 function loadSettingsLogo(ev){
   const f=ev.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=e=>{localStorage.setItem('sf_logo',e.target.result);loadBrandFromStorage();renderSettingsModal();};
+  r.onload=e=>{localStorage.setItem(STORAGE_KEYS.LOGO,e.target.result);loadBrandFromStorage();renderSettingsModal();};
   r.readAsDataURL(f);
 }
 function clearSettingsLogo(){
-  localStorage.removeItem('sf_logo');loadBrandFromStorage();renderSettingsModal();
+  localStorage.removeItem(STORAGE_KEYS.LOGO);loadBrandFromStorage();renderSettingsModal();
 }
 function saveSettings(){
   const pf=document.getElementById('set-prefix');
@@ -752,7 +752,7 @@ function getBrandName(defaultPrefix, defaultAccent) {
 
 // Logo guardado por el coordinador (usado en etiquetas/reportes impresos)
 function getBrandLogo() {
-  return localStorage.getItem('sf_logo') || '';
+  return localStorage.getItem(STORAGE_KEYS.LOGO) || '';
 }
 
 let state = {
@@ -816,7 +816,6 @@ function showToast(msg, type) {
   else notif(msg, 'ok');
 }
   
-function hideToast() {}
 async function save() {
   if (isOffline) {
     showToast('Sin conexión — no se pueden guardar cambios', 'danger');
@@ -933,8 +932,7 @@ async function load() {
     
     isOffline = false;
     hideOfflineBanner();
-    hideToast();
-    
+
   } catch (e) {
     console.error('Error actualizando desde servidor:', e);
     // Si no hay caché y falla el servidor, mostrar error
@@ -5388,7 +5386,7 @@ async function loadLogoImg(ev) {
     document.getElementById('logo-placeholder').style.display = 'none';
     
     // Guardar en localStorage (backup)
-    try { localStorage.setItem('sf_logo', src); } catch(e) {}
+    try { localStorage.setItem(STORAGE_KEYS.LOGO, src); } catch(e) {}
     
     // Subir a Supabase (usando el mismo endpoint que index.html)
     try {
@@ -5398,7 +5396,7 @@ async function loadLogoImg(ev) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${coordToken}`  // Requiere modo coordinador
         },
-        body: JSON.stringify({ clave: 'sf_logo', valor: src })
+        body: JSON.stringify({ clave: STORAGE_KEYS.LOGO, valor: src })
       });
       notif(t('notif_logo_updated'), 'ok');
     } catch (err) {
@@ -5440,9 +5438,9 @@ async function loadBrandFromStorage() {
   try {
     // Intentar obtener logo desde Supabase
     const config = await apiRequestJSON('/api/config');
-    if (config.sf_logo) {
-      localStorage.setItem('sf_logo', config.sf_logo);
-      document.getElementById('logo-img').src = config.sf_logo;
+    if (config[STORAGE_KEYS.LOGO]) {
+      localStorage.setItem(STORAGE_KEYS.LOGO, config[STORAGE_KEYS.LOGO]);
+      document.getElementById('logo-img').src = config[STORAGE_KEYS.LOGO];
       document.getElementById('logo-img').style.display = 'block';
       document.getElementById('logo-placeholder').style.display = 'none';
     }
@@ -5451,7 +5449,7 @@ async function loadBrandFromStorage() {
   }
   
   // Fallback a localStorage
-  const logo = localStorage.getItem('sf_logo');
+  const logo = localStorage.getItem(STORAGE_KEYS.LOGO);
   if (logo) {
     document.getElementById('logo-img').src = logo;
     document.getElementById('logo-img').style.display = 'block';

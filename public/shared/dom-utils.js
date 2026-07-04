@@ -1,3 +1,18 @@
+/* ── CLAVES DE localStorage ────────────────────────────
+ * Centraliza todas las claves de localStorage usadas en la suite,
+ * antes dispersas como strings literales repetidos en cada módulo,
+ * para evitar colisiones de nombres entre módulos a futuro.
+ */
+const STORAGE_KEYS = {
+  DEV_LOG: 'effi_dev_log',
+  DEV_MARKS: 'effi_dev_marks',
+  MANIFIESTO_HISTORIAL: 'cargoexpreso_historial',
+  LOGO: 'sf_logo',
+  ROTULO_LOGO: 'effi_rotulo_logo_v1',
+  INVENTARIO_CACHE: 'effi_inventario_cache_v1',
+  COORD_SESSION: 'effi_coord_session_v1'
+};
+
 // Escapa caracteres HTML para prevenir XSS en innerHTML
 function esc(str) {
   if (str === null || str === undefined) return '';

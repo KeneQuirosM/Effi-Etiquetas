@@ -38,13 +38,15 @@ export default async function handler(req, res) {
         .from('historial_movimientos')
         .select('producto_codigo');
 
-      if (!hErr && historial) {
+      if (hErr) {
+        console.warn('historial_movimientos no disponible:', hErr);
+      } else if (historial) {
         historial.forEach(mov => {
           conteoMap[mov.producto_codigo] = (conteoMap[mov.producto_codigo] || 0) + 1;
         });
       }
-    } catch (_) {
-      // tabla no disponible — se continúa con conteo vacío
+    } catch (err) {
+      console.warn('historial_movimientos no disponible:', err);
     }
 
     // 5. Formatear la data simulando la estructura original que tu HTML ya entiende

@@ -23,9 +23,9 @@
     const progressPct     = document.getElementById('progressPct');
     const logEntriesDiv   = document.getElementById('logEntries');
 
-    function saveLogs(){ localStorage.setItem('effi_dev_log', JSON.stringify(auditLog.slice(-200))); }
+    function saveLogs(){ localStorage.setItem(STORAGE_KEYS.DEV_LOG, JSON.stringify(auditLog.slice(-200))); }
     function loadLogs(){
-        try{ const s=localStorage.getItem('effi_dev_log'); if(s){ auditLog=JSON.parse(s); renderLogs(); } }catch(e){}
+        try{ const s=localStorage.getItem(STORAGE_KEYS.DEV_LOG); if(s){ auditLog=JSON.parse(s); renderLogs(); } }catch(e){}
     }
     function addLog(guia,dist,prov,cliente,prod,action){
         auditLog.unshift({ts:new Date().toLocaleString('es-CR'),guia,dist,prov,cliente,prod,action});
@@ -40,9 +40,9 @@
         }).join('');
     }
 
-    function saveMarks(){ localStorage.setItem('effi_dev_marks', JSON.stringify([...devolutionSet])); }
+    function saveMarks(){ localStorage.setItem(STORAGE_KEYS.DEV_MARKS, JSON.stringify([...devolutionSet])); }
     function loadMarks(){
-        try{ const s=localStorage.getItem('effi_dev_marks'); if(s){ devolutionSet.clear(); JSON.parse(s).forEach(m=>devolutionSet.add(m)); } }catch(e){}
+        try{ const s=localStorage.getItem(STORAGE_KEYS.DEV_MARKS); if(s){ devolutionSet.clear(); JSON.parse(s).forEach(m=>devolutionSet.add(m)); } }catch(e){}
     }
 
     function updateStats(){
