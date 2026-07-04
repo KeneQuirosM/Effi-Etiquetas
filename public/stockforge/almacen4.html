@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous">
 </script>
+<link rel="stylesheet" href="/shared/tokens.css">
 <link rel="stylesheet" href="/stockforge/almacen4.css">
 </head>
 <body>
@@ -53,7 +54,6 @@
     <div class="save-ind" id="save-ind"><div class="dot g"></div><span data-i18n="saved">GUARDADO</span></div>
     <button class="hbtn cyan guard-btn" onclick="guardEdit(()=>openO('o-transfer'))" data-i18n="btn_transfer">⇄ Trasladar</button>
     <button class="hbtn" onclick="openBulkPrint()" style="border-color:var(--yellow);color:var(--yellow)" data-i18n="btn_labels">🖨 Etiquetas</button>
-    <button class="hbtn cyan" onclick="openO('o-report')" data-i18n="btn_report">📋 Reporte</button>
     <button class="hbtn ac guard-btn" onclick="guardEdit(openAddRack)" data-i18n="btn_rack">＋ Rack</button>
     <!-- Overflow dropdown -->
     <div class="hoverflow" id="hoverflow">

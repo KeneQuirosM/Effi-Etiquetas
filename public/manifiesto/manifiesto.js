@@ -392,8 +392,16 @@ function abrirModalHistorial() {
   if (modal) modal.style.display = 'block';
 }
 function cerrarModalHistorial() { const m = document.getElementById('historialModal'); if (m) m.style.display = 'none'; }
-function limpiarHistorialConfirm() { if (confirm('¿Eliminar todo el historial?')) { localStorage.removeItem(HISTORIAL_KEY); notify('Historial eliminado', 'success'); cerrarModalHistorial(); } }
-function limpiarHistorial() { localStorage.removeItem(HISTORIAL_KEY); notify('Historial eliminado', 'success'); cerrarModalHistorial(); }
+/* Antes: usaba el confirm() nativo del navegador, ignorando el modal
+   custom #confirmModal que ya existía en el HTML pero nunca se abría.
+   Ahora: un solo mecanismo de confirmación, el modal custom. */
+function limpiarHistorialConfirm() {
+  const cnt = document.getElementById('confirmCount');
+  if (cnt) cnt.textContent = obtenerHistorial().length;
+  const m = document.getElementById('confirmModal');
+  if (m) m.style.display = 'block';
+}
+function limpiarHistorial() { localStorage.removeItem(HISTORIAL_KEY); notify('Historial eliminado', 'success'); cerrarConfirmModal(); cerrarModalHistorial(); }
 function cerrarConfirmModal() { const m = document.getElementById('confirmModal'); if (m) m.style.display = 'none'; }
 
 // ====== COMPARATIVO ======

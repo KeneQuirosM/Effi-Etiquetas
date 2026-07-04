@@ -1,27 +1,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
+/* Colores (marca/semánticos/neutros) movidos a /shared/tokens.css para no
+   duplicar la paleta en los 4 módulos. Este archivo usa nombres de
+   variable propios (--primary, --accent, --bg, etc.) usados en todo
+   index.css, así que en vez de renombrar cada uso se los alía acá a los
+   tokens compartidos equivalentes. */
+@import url('/shared/tokens.css');
 
 /* ══ TOKENS Efficommerce ══ */
 :root {
-  --primary:       #0d1b6e;
-  --primary-light: #1227a0;
-  --primary-dark:  #07104a;
-  --accent:        #2a47d4;
-  --accent-light:  #7a9df3;
-  --accent-50:     #f0f4fe;
-  --accent-100:    #dde6fd;
+  --primary:       var(--brand-800);
+  --primary-light: var(--brand-700);
+  --primary-dark:  var(--brand-900);
+  --accent:        var(--brand-500);
+  --accent-light:  var(--brand-300);
+  --accent-50:     var(--brand-50);
+  --accent-100:    var(--brand-100);
 
-  --bg:     #f1f3f7;
+  --bg:     var(--neutral-100);
   --panel:  #ffffff;
-  --border: #e2e6ef;
-  --text:   #1e2540;
-  --muted:  #9aa3b8;
+  --border: var(--neutral-200);
+  --text:   var(--neutral-800);
+  --muted:  var(--neutral-400); /* antes #9aa3b8 (contraste 2.53:1 sobre blanco) -> ahora 5.87:1, pasa AA */
 
-  --success:     #2e7d32;
-  --success-bg:  #e8f5e9;
-  --danger:      #c62828;
-  --danger-bg:   #fce4ec;
-  --warning:     #f57f17;
-  --warning-bg:  #fff8e1;
+  --success:     var(--success-mid);
+  --danger:      var(--danger-mid);
+  --warning:     var(--warning-mid);
+  /* --success-bg/--danger-bg/--warning-bg: mismo nombre y valor en
+     tokens.css, no se redeclaran acá (evita auto-referencia). */
 
   --shadow-xs: 0 1px 3px rgba(13,27,110,.06);
   --shadow-sm: 0 2px 8px rgba(13,27,110,.09);

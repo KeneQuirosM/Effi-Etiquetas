@@ -1,33 +1,13 @@
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  /* Colores (marca/semánticos/neutros) movidos a /shared/tokens.css para no
+     duplicar la paleta en los 4 módulos. Nota: los neutros 50/100/200 de
+     este archivo divergían levemente del resto (comentario "tonos
+     suavizados anti-fatiga ocular", #f5f7fa/#eef2f7/#d8dee9) — se
+     estandarizan acá al valor usado en los otros 3 módulos
+     (#f8f9fb/#f1f3f7/#e2e6ef) para eliminar el drift. */
+  @import url('/shared/tokens.css');
 
   :root {
-    --brand-900: #07104a;
-    --brand-800: #0d1b6e;
-    --brand-700: #1227a0;
-    --brand-500: #2a47d4;
-    --brand-300: #7a9df3;
-    --brand-100: #dde6fd;
-    --brand-50:  #f0f4fe;
-
-    --success-bg:   #e8f5e9;
-    --success-text: #1b5e20;
-    --success-mid:  #2e7d32;
-
-    --warning-bg:   #fff8e1;
-    --warning-text: #e65100;
-    --warning-mid:  #f57f17;
-
-    --danger-bg:    #fce4ec;
-    --danger-text:  #880e4f;
-    --danger-mid:   #c62828;
-
-    /* 👁️ Tonos suavizados anti-fatiga ocular */
-    --neutral-100: #eef2f7; 
-    --neutral-50:  #f5f7fa;
-    --neutral-200: #d8dee9;
-    --neutral-600: #5a6482;
-    --neutral-800: #1e2540;
-
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 14px;

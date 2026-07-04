@@ -1,0 +1,64 @@
+/* ── PALETA DE COLOR COMPARTIDA ─────────────────────────
+ * Unifica las variables de color que index.css, devoluciones.css,
+ * manifiesto.css y reporte.css redefinían cada uno por su cuenta
+ * (mismos valores en al menos 3 de los 4 archivos, con leves
+ * divergencias que se estandarizan acá). Fuentes, sombras, radios y
+ * transiciones quedan locales a cada módulo — esto es solo color.
+ */
+:root {
+  /* Marca */
+  --brand-900:  #07104a;
+  --brand-800:  #0d1b6e;
+  --brand-700:  #1227a0;
+  --brand-500:  #2a47d4;
+  --brand-300:  #7a9df3;
+  --brand-100:  #dde6fd;
+  --brand-50:   #f0f4fe;
+
+  /* Semánticos */
+  --success-bg:     #e8f5e9;
+  --success-text:   #1b5e20;
+  --success-mid:    #2e7d32;
+  --success-border: #a5d6a7;
+
+  --warning-bg:     #fff8e1;
+  --warning-text:   #e65100;
+  --warning-mid:    #f57f17;
+  --warning-border: #ffe082;
+
+  --danger-bg:      #fce4ec;
+  --danger-text:    #880e4f;
+  --danger-mid:     #c62828;
+  --danger-border:  #f48fb1;
+
+  /* Único de manifiesto.css, incluido acá para no duplicar paleta */
+  --purple-bg:   #f3e5f5;
+  --purple-text: #4a148c;
+  --purple-mid:  #7b1fa2;
+
+  /* Neutros — estandarizados al valor usado en 3 de los 4 módulos
+     (reporte.css divergía levemente en 50/100/200; ver commit) */
+  --neutral-50:  #f8f9fb;
+  --neutral-100: #f1f3f7;
+  --neutral-200: #e2e6ef;
+  --neutral-400: #5a6482; /* corregido por contraste AA, ver public/index.css etc. */
+  --neutral-600: #5a6482;
+  --neutral-800: #1e2540;
+}
+
+/* ── FOCO VISIBLE GLOBAL ────────────────────────────────
+ * Antes: ningún módulo definía :focus/:focus-visible para botones u
+ * otros elementos interactivos — navegar por teclado no mostraba
+ * ninguna indicación de foco en ninguna de las 5 pantallas.
+ * Se define una sola vez acá y se importa en los 5 HTML del proyecto.
+ */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #2a9fd6;
+  outline-offset: 2px;
+}

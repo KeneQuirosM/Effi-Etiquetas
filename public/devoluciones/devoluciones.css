@@ -1,35 +1,9 @@
         /* ══ TOKENS ══ */
+        /* Colores (marca/semánticos/neutros) movidos a /shared/tokens.css
+           para no duplicar la paleta en los 4 módulos. Ver ese archivo
+           para los valores exactos y el historial del fix de contraste. */
+        @import url('/shared/tokens.css');
         :root {
-            --brand-900:  #07104a;
-            --brand-800:  #0d1b6e;
-            --brand-700:  #1227a0;
-            --brand-500:  #2a47d4;
-            --brand-300:  #7a9df3;
-            --brand-100:  #dde6fd;
-            --brand-50:   #f0f4fe;
-
-            --success-bg:     #e8f5e9;
-            --success-text:   #1b5e20;
-            --success-mid:    #2e7d32;
-            --success-border: #a5d6a7;
-
-            --warning-bg:     #fff8e1;
-            --warning-text:   #e65100;
-            --warning-mid:    #f57f17;
-            --warning-border: #ffe082;
-
-            --danger-bg:      #fce4ec;
-            --danger-text:    #880e4f;
-            --danger-mid:     #c62828;
-            --danger-border:  #f48fb1;
-
-            --neutral-50:  #f8f9fb;
-            --neutral-100: #f1f3f7;
-            --neutral-200: #e2e6ef;
-            --neutral-400: #9aa3b8;
-            --neutral-600: #5a6482;
-            --neutral-800: #1e2540;
-
             --mono: 'IBM Plex Mono', monospace;
             --sans: 'Inter', system-ui, sans-serif;
 
@@ -446,18 +420,19 @@
         .log-head-lbl {
             font-family: var(--mono); font-size: .6rem; font-weight: 500;
             letter-spacing: .1em; text-transform: uppercase;
-            color: rgba(255,255,255,.25);
+            color: rgba(255,255,255,.5); /* antes .25 (contraste 2.25:1) -> ahora 5.17:1, pasa AA */
         }
         .log-body { padding: 10px 14px; max-height: 140px; overflow-y: auto; }
         .log-body::-webkit-scrollbar { width: 3px; }
         .log-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 99px; }
         .log-row {
             font-family: var(--mono); font-size: .64rem; line-height: 1.6;
-            color: rgba(255,255,255,.2); padding: 3px 0;
+            color: rgba(255,255,255,.55); /* antes .2 (contraste 1.88:1) -> ahora 5.98:1, pasa AA */
+            padding: 3px 0;
             border-bottom: 1px solid rgba(255,255,255,.03);
         }
         .log-row:last-child { border-bottom: none; }
-        .log-ts  { color: rgba(255,255,255,.15); }
+        .log-ts  { color: rgba(255,255,255,.48); } /* antes .15 (contraste 1.4:1 aprox.) -> ahora 4.86:1, pasa AA */
         .log-ok  { color: #4caf50; }
         .log-er  { color: #ef5350; }
         .log-gu  { color: var(--brand-300); }

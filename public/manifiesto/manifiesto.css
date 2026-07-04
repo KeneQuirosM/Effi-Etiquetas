@@ -4,6 +4,9 @@
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* Colores (marca/semánticos/púrpura/neutros) movidos a /shared/tokens.css
+   para no duplicar la paleta en los 4 módulos. */
+@import url('/shared/tokens.css');
 
 /* ── RESET & VARIABLES ── */
 *, *::before, *::after {
@@ -13,37 +16,6 @@
 }
 
 :root {
-  --brand-900: #07104a;
-  --brand-800: #0d1b6e;
-  --brand-700: #1227a0;
-  --brand-500: #2a47d4;
-  --brand-300: #7a9df3;
-  --brand-100: #dde6fd;
-  --brand-50:  #f0f4fe;
-
-  --success-bg:   #e8f5e9;
-  --success-text: #1b5e20;
-  --success-mid:  #2e7d32;
-
-  --warning-bg:   #fff8e1;
-  --warning-text: #e65100;
-  --warning-mid:  #f57f17;
-
-  --danger-bg:    #fce4ec;
-  --danger-text:  #880e4f;
-  --danger-mid:   #c62828;
-
-  --purple-bg:    #f3e5f5;
-  --purple-text:  #4a148c;
-  --purple-mid:   #7b1fa2;
-
-  --neutral-50:  #f8f9fb;
-  --neutral-100: #f1f3f7;
-  --neutral-200: #e2e6ef;
-  --neutral-400: #9aa3b8;
-  --neutral-600: #5a6482;
-  --neutral-800: #1e2540;
-
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
