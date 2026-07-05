@@ -792,6 +792,9 @@ async function cargarCatalogo() {
 }
 let pickedColor='#00ff88';
 const COLORS=['#00ff88','#f0a500','#00d4ff','#ff6b35','#ff3b5c','#ffd000','#a78bfa','#34d399','#f472b6','#60a5fa','#fb923c','#22d3ee'];
+// Definición canónica única — antes redefinida también en el preview del bulk-print (stateColors)
+// y en la función stateCol(); ambas eliminadas para usar esta.
+const STATE_COLORS={full:'var(--green)',partial:'var(--yellow)',reserved:'var(--cyan)',blocked:'var(--red)',empty:'var(--dim)'};
 
 // ═══════════════ PERSIST ═══════════════
 let lastAutoSnap=0;
@@ -2959,7 +2962,6 @@ function buildSkuMap(){
 
 function getStateLabels(){return{empty:t('state_empty'),full:t('state_full'),partial:t('state_partial'),reserved:t('state_reserved'),blocked:t('state_blocked')};}
 const STATE_LABELS={empty:'Vacío',full:'Ocupado',partial:'Parcial',reserved:'Reservado',blocked:'Bloqueado'};
-const STATE_COLORS={full:'var(--green)',partial:'var(--yellow)',reserved:'var(--cyan)',blocked:'var(--red)',empty:'var(--dim)'};
 
 // ── SKU report: paginated for large datasets ────────────────
 let _skuPage=0;
@@ -4925,14 +4927,13 @@ function updateBPPreview(){
     <span style="font-size:.9rem;color:var(--dim);align-self:center;margin-left:4px">Clic para seleccionar/quitar</span>`;
   preview.appendChild(ctrl);
 
-  const stateColors={empty:'var(--dim)',full:'var(--green)',partial:'var(--yellow)',reserved:'var(--cyan)',blocked:'var(--red)'};
   cells.forEach(({rack,cell})=>{
     const k=bpKey(rack,cell);
     const on=bpSelection.has(k);
     const chip=document.createElement('div');
     chip.className='bp-chip '+(on?'on':'off');
     chip.dataset.key=k;
-    const sc=stateColors[cell.state]||'var(--dim)';
+    const sc=STATE_COLORS[cell.state]||'var(--dim)';
     chip.innerHTML=`<span style="width:6px;height:6px;border-radius:50%;background:${sc};flex-shrink:0"></span>${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}`;
     chip.onclick=()=>{
       if(bpSelection.has(k)){bpSelection.delete(k);chip.className='bp-chip off';}
@@ -5353,7 +5354,7 @@ function notif(msg,type=''){
 }
 
 // ═══════════════ HELPERS ═══════════════
-function stateCol(s){return{full:'var(--green)',partial:'var(--yellow)',reserved:'var(--cyan)',blocked:'var(--red)'}[s]||'var(--dim)';}
+function stateCol(s){return STATE_COLORS[s]||'var(--dim)';}
 function skuColor(sku){
   if(!sku)return'var(--dim)';let h=0;for(let i=0;i<sku.length;i++)h=(h*31+sku.charCodeAt(i))&0xffffff;
   return['#00ff88','#f0a500','#00d4ff','#ff6b35','#ffd000','#a78bfa','#f472b6','#34d399'][Math.abs(h)%8];
