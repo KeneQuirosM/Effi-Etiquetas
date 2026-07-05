@@ -4485,6 +4485,7 @@ function exportReportCSV(){
 }
 
 
+let _lastStatsSig=null;
 function updateStats(){
   let total=0,occ=0,free=0,skuTotal=0;
   const skuQtyMap=new Map();
@@ -4492,12 +4493,17 @@ function updateStats(){
     (c.skus||[]).forEach(s=>{if(!s.sku&&!s.desc)return;skuTotal++;const key=s.sku||s.desc;const prev=skuQtyMap.get(key)||{qty:0,unit:s.unit||''};skuQtyMap.set(key,{qty:prev.qty+(parseFloat(s.qty)||0),unit:s.unit||prev.unit,desc:s.desc||''});});
   });});
   const pct=total?Math.round(occ/total*100):0;
+  const freePct=total?Math.round(free/total*100):0;
+  // Evita reescribir el DOM (con su reflow) si el resultado es idéntico al último cálculo
+  const sig=`${state.racks.length}|${skuQtyMap.size}|${pct}|${freePct}|${occ}|${total}`;
+  if(sig===_lastStatsSig){ actualizarMetricasEspacio(); return; }
+  _lastStatsSig=sig;
   document.getElementById('st-r').textContent=state.racks.length;
   document.getElementById('st-s').textContent=skuQtyMap.size;
   document.getElementById('st-o').innerHTML=pct+'<small>%</small>';
-  document.getElementById('st-f').innerHTML=(total?Math.round(free/total*100):0)+'<small>%</small>';
+  document.getElementById('st-f').innerHTML=freePct+'<small>%</small>';
   document.getElementById('mb-o').style.width=pct+'%';
-  document.getElementById('mb-f').style.width=(total?Math.round(free/total*100):0)+'%';
+  document.getElementById('mb-f').style.width=freePct+'%';
   const circ=2*Math.PI*24;const rc=document.getElementById('ringc');
   rc.style.strokeDashoffset=circ*(1-pct/100);rc.style.stroke=pct>80?'var(--red)':pct>55?'var(--yellow)':'var(--green)';
   document.getElementById('rpct').textContent=pct+'%';
