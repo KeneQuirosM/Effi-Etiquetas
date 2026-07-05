@@ -1448,6 +1448,14 @@ function resolvePeople(ids){
 function resolveTiendas(ids){
   return (ids||[]).map(id=>{const t=state.tiendas.find(x=>x.id===id);return t?t.name:null;}).filter(Boolean);
 }
+// Regla "responsable/tienda efectivo": si la celda tiene su propia lista, usa esa;
+// si no, hereda la del rack. Antes repetida inline en 9 lugares distintos.
+function effectiveResponsables(rack,cell){
+  return (cell.responsables||[]).length?cell.responsables:((rack&&rack.responsables)||[]);
+}
+function effectiveTiendas(rack,cell){
+  return (cell.tiendas||[]).length?cell.tiendas:((rack&&rack.tiendas)||[]);
+}
 
 // ═══════════════ ZONES ═══════════════
 function buildSwatches(id){
@@ -2067,7 +2075,7 @@ function computePrintLabelData(fmt){
   const rack=state.racks.find(r=>r.id===viewCtx.rackId);
   const cell=(state.cells[viewCtx.rackId]||[]).find(c=>c.bay===viewCtx.bay&&c.level===viewCtx.level)||{state:'empty',skus:[],notes:'',tiendas:[],responsables:[]};
   const zone=state.zones.find(z=>z.id===rack.zone);
-  const resps=resolvePeople((cell.responsables||[]).length?(cell.responsables||[]):(rack.responsables||[]));
+  const resps=resolvePeople(effectiveResponsables(rack,cell));
   const cellShops=resolveTiendas(cell.tiendas||[]);
   const stateNames={empty:'VACÍO',full:'OCUPADO',partial:'PARCIAL',reserved:'RESERVADO',blocked:'BLOQUEADO'};
   const stateColors={empty:'#ddd',full:'#00cc66',partial:'#ffcc00',reserved:'#00aaff',blocked:'#ff3344'};
@@ -3554,10 +3562,8 @@ function buildRackA4CellHtml(b, l, rack, rCells, showEmpty, showNotes){
   const expAlert=minExp!==null&&minExp<=30;
   const expColor=minExp!==null&&minExp<0?'#cc0022':minExp<=7?'#d04000':'#a07000';
 
-  const effTiendas=(cell.tiendas&&cell.tiendas.length)?cell.tiendas:(rack.tiendas||[]);
-  const cellShopNames=resolveTiendas(effTiendas);
-  const effResps=(cell.responsables&&cell.responsables.length)?cell.responsables:(rack.responsables||[]);
-  const cellRespNames=resolvePeople(effResps);
+  const cellShopNames=resolveTiendas(effectiveTiendas(rack,cell));
+  const cellRespNames=resolvePeople(effectiveResponsables(rack,cell));
 
   if(skus.length===0&&!showEmpty){
     return `<td style="padding:3px;vertical-align:top;overflow:hidden"><div style="min-height:46px;background:#f5f5f5;border:1px dashed #ddd;border-radius:3px"></div></td>`;
@@ -3969,7 +3975,7 @@ function buildTiendasReportBody(){
     const racks=new Set(),skuMap=new Map();let total=0,occ=0;
     state.racks.forEach(rack=>{
       (state.cells[rack.id]||[]).forEach(cl=>{
-        const eff=(cl.tiendas||[]).length?(cl.tiendas||[]):(rack.tiendas||[]);
+        const eff=effectiveTiendas(rack,cl);
         if(!eff.includes(tienda.id))return;
         racks.add(rack.id);total++;
         if(cl.state==='full'||cl.state==='partial')occ++;
@@ -4394,8 +4400,8 @@ function exportReportCSV(){
     locs.forEach(l=>{
       const rack=state.racks.find(r=>r.id===l.rackId);
       const cell=(state.cells[l.rackId]||[]).find(c=>c.bay===l.bay&&c.level===l.level)||{};
-      const cellResps=resolvePeople((cell.responsables||[]).length?(cell.responsables||[]):(rack?.responsables||[]));
-      const cellShops=resolveTiendas((cell.tiendas||[]).length?(cell.tiendas||[]):(rack?.tiendas||[]));
+      const cellResps=resolvePeople(effectiveResponsables(rack,cell));
+      const cellShops=resolveTiendas(effectiveTiendas(rack,cell));
       rows.push({sku,desc:desc||l.desc||'',qty:l.qty||'—',unit:l.unit||'',rack:l.rack,bay:l.bay+1,level:l.level+1,state:l.state,resps:cellResps.join(', ')||'—',shops:cellShops.join(', ')||'—'});
     });
   });
@@ -4666,8 +4672,8 @@ function exportSkusExcel(){
       data.push([
         sku,desc||l.desc||'',l.qty||'',l.unit||'',
         l.rack,zone?.name||t('no_zone'),l.bay+1,l.level+1,getStateLabels()[l.state]||l.state,
-        resolvePeople((cell.responsables||[]).length?(cell.responsables||[]):(rack?.responsables||[])).join(', '),
-        resolveTiendas((cell.tiendas||[]).length?(cell.tiendas||[]):(rack?.tiendas||[])).join(', '),
+        resolvePeople(effectiveResponsables(rack,cell)).join(', '),
+        resolveTiendas(effectiveTiendas(rack,cell)).join(', '),
         l.expiry||''
       ]);
     });
@@ -4991,7 +4997,7 @@ function buildBulkLabelHtml(rack, cell, is4x6, bname, logoEl){
   const sc=stateColors[cell.state]||'#ddd';
   const st=stateTxt[cell.state]||'#000';
   const sn=stateNames[cell.state]||'VACÍO';
-  const resps=resolvePeople((cell.responsables||[]).length?(cell.responsables||[]):(rack.responsables||[]));
+  const resps=resolvePeople(effectiveResponsables(rack,cell));
   const cellShops=resolveTiendas(cell.tiendas||[]);
   const chipResp=resps.map(r=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#e6f0ff;border:2px solid #88bbff;color:#003388;">'+esc(r)+'</span>').join('');
   const chipShop=cellShops.map(s=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">'+esc(s)+'</span>').join('');
