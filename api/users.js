@@ -17,7 +17,7 @@ export default async function handler(req, res) {
       // listUsers() de Supabase pagina internamente (50 por página por
       // defecto) — sin recorrer todas las páginas, coordinadores más allá
       // de la primera página quedaban truncados silenciosamente.
-      const perPage = 200;
+      const perPage = 50;
       let page = 1;
       let allUsers = [];
       while (true) {

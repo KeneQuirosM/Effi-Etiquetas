@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         { data: rackResp, error: errRR },
         { data: rackTiendas, error: errRT },
         { data: celdas, error: errC },
-        { data: movimientos, error: errM },
+        { data: movimientos, error: errM, count: movCount },
         { data: bodegaCfg }
       ] = await Promise.all([
         supabase.from('zonas').select('*'),
@@ -38,8 +38,8 @@ export default async function handler(req, res) {
           skus(*),
           audits(*),
           changelog(*)
-        `),
-        supabase.from('movimientos').select('*').order('ts', { ascending: false }),
+        `).range(0, 999),
+        supabase.from('movimientos').select('*', { count: 'exact' }).order('ts', { ascending: false }).range(0, 499),
         supabase.from('bodega_config').select('area_total_m2, area_pasillos_m2').eq('id', 1).maybeSingle()
       ]);
 
@@ -154,6 +154,12 @@ export default async function handler(req, res) {
           }
         }
       });
+
+      // movimientos se trae acotado a .range(0, 499) — si hay más filas
+      // de las devueltas, se avisa al cliente en vez de cortar en silencio.
+      if (movCount !== null && movCount > movementsMapped.length) {
+        res.setHeader('X-Has-More', 'true');
+      }
 
       return res.status(200).json({
         zonas: zonasMapped,
