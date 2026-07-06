@@ -14,14 +14,25 @@ export default async function handler(req, res) {
 
     // ── GET: listar coordinadores ──
     if (req.method === 'GET') {
-      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
-      if (error) {
-        console.error('GET users error:', error);
-        return res.status(500).json({ error: 'No se pudo cargar la lista de coordinadores' });
+      // listUsers() de Supabase pagina internamente (50 por página por
+      // defecto) — sin recorrer todas las páginas, coordinadores más allá
+      // de la primera página quedaban truncados silenciosamente.
+      const perPage = 200;
+      let page = 1;
+      let allUsers = [];
+      while (true) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+        if (error) {
+          console.error('GET users error:', error);
+          return res.status(500).json({ error: 'No se pudo cargar la lista de coordinadores' });
+        }
+        allUsers = allUsers.concat(data.users);
+        if (data.users.length < perPage) break;
+        page++;
       }
 
       return res.status(200).json({
-        users: users.map(u => ({
+        users: allUsers.map(u => ({
           id:         u.id,
           email:      u.email,
           created_at: u.created_at

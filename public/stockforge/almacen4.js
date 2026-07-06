@@ -3243,17 +3243,46 @@ function buildRackReportGroup(rack){
   return group;
 }
 
+// ── Cells report: paginado igual que el de SKU (ver _appendSkuPage) ──
+// Cada "página" es un rack completo (su tabla bay×level ya es una porción
+// de DOM considerable), por eso el tamaño de página es menor que el de SKU.
+let _cellsPage=0;
+const CELLS_PAGE_SIZE=20;
+let _cellsFiltered=[];
+
 function renderReportCells(filter){
   filter=(filter||'').toLowerCase();
   const c=document.getElementById('rep-cell-cards');c.innerHTML='';
   if(!state.racks.length){c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}</div>`;return;}
-  let shown=0;
-  state.racks.forEach(rack=>{
-    if(!rackMatchesFilter(rack, filter)) return;
-    c.appendChild(buildRackReportGroup(rack));
-    shown++;
-  });
-  if(!shown)c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}: "${filter}"</div>`;
+  _cellsPage=0;
+  _cellsFiltered=state.racks.filter(rack=>rackMatchesFilter(rack, filter));
+  if(!_cellsFiltered.length){c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}: "${filter}"</div>`;return;}
+  _appendCellsPage(c);
+}
+
+function _appendCellsPage(c){
+  if(!c) c=document.getElementById('rep-cell-cards');
+  const old=c.querySelector('.cells-load-more');
+  if(old) old.remove();
+
+  const start=_cellsPage*CELLS_PAGE_SIZE;
+  const slice=_cellsFiltered.slice(start, start+CELLS_PAGE_SIZE);
+  const frag=document.createDocumentFragment();
+  slice.forEach(rack=>frag.appendChild(buildRackReportGroup(rack)));
+  c.appendChild(frag);
+  _cellsPage++;
+
+  const remaining=_cellsFiltered.length - _cellsPage*CELLS_PAGE_SIZE;
+  if(remaining>0){
+    const btn=document.createElement('button');
+    btn.className='cells-load-more';
+    btn.style.cssText='width:100%;padding:12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:5px;color:var(--dim);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:1rem;letter-spacing:1.5px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:4px';
+    btn.textContent=`Cargar ${Math.min(remaining,CELLS_PAGE_SIZE)} más (${remaining} restantes)`;
+    btn.onmouseover=()=>{btn.style.borderColor='var(--cyan)';btn.style.color='var(--cyan)';};
+    btn.onmouseleave=()=>{btn.style.borderColor='var(--border2)';btn.style.color='var(--dim)';};
+    btn.onclick=()=>_appendCellsPage(c);
+    c.appendChild(btn);
+  }
 }
 
 function renderReportZones(filter){
@@ -3491,47 +3520,85 @@ function renderReportAudit(){
   });
 }
 
+// ── Movements report: paginado igual que el de SKU (ver _appendSkuPage) ──
+let _movPage=0;
+const MOV_PAGE_SIZE=50;
+let _movFiltered=[];
+
 function renderReportMovements(){
   const skuFilter=(document.getElementById('rf-mov-sku')?.value||'').toLowerCase();
   const typeFilter=document.getElementById('rf-mov-type')?.value||'';
   const period=document.getElementById('rf-mov-period')?.value||'30';
-  const c=document.getElementById('rep-mov-cards');c.innerHTML='';
   const now=Date.now();
   const cutoff=period==='all'?0:now-parseInt(period)*86400000;
-  const typeIcon={entrada:'📥',salida:'📤',traslado:'🔀',ajuste:'✏️'};
-  const typeColor={entrada:'var(--green)',salida:'var(--red)',traslado:'var(--cyan)',ajuste:'var(--yellow)'};
-  let items=(state.movements||[]).filter(m=>{
+  _movPage=0;
+  _movFiltered=(state.movements||[]).filter(m=>{
     if(m.ts<cutoff)return false;
     if(typeFilter&&m.type!==typeFilter)return false;
     if(skuFilter&&!(m.sku||'').toLowerCase().includes(skuFilter)&&!(m.desc||'').toLowerCase().includes(skuFilter))return false;
     return true;
   }).slice().reverse();
-  document.getElementById('rep-mov-count').textContent=items.length+' mov.';
-  if(!items.length){c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}</div>`;return;}
-  items.forEach(m=>{
-    const color=typeColor[m.type]||'var(--dim)';
-    const icon=typeIcon[m.type]||'•';
-    const row=document.createElement('div');
-    row.style.cssText='background:var(--bg3);border:1px solid var(--border2);border-left:3px solid '+color+';border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color .15s';
-    row.onmouseover=()=>row.style.borderLeftColor='var(--bright)';
-    row.onmouseleave=()=>row.style.borderLeftColor=color;
-    const destInfo=m.destRack?(' → '+esc(m.destRack)+' B'+(m.destBay+1)+'·N'+(m.destLevel+1)):'';
-    row.innerHTML='<span style="font-size:1.3rem;flex-shrink:0">'+icon+'</span>'
-      +'<div style="flex:1;min-width:0">'
-        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">'
-          +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:1.08rem;color:var(--accent);font-weight:700">'+esc(m.sku||m.desc||'—')+'</span>'
-          +(m.qty?'<span style="font-size:1rem;font-weight:700;color:'+color+'">'+esc(m.qty)+(m.unit?' '+esc(m.unit):'')+'</span>':'')
-          +'<span style="font-size:.9rem;font-weight:700;color:'+color+';background:'+color+'22;border:1px solid '+color+'44;border-radius:10px;padding:1px 8px">'+esc(m.type)+'</span>'
-        +'</div>'
-        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-          +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.92rem;color:var(--cyan)">'+esc(m.rack)+(m.bay!=null?' B'+(m.bay+1)+'·N'+(m.level+1):'')+destInfo+'</span>'
-          +(m.note?'<span style="font-size:.9rem;color:var(--dim)">— '+esc(m.note)+'</span>':'')
-        +'</div>'
+  document.getElementById('rep-mov-count').textContent=_movFiltered.length+' mov.';
+  const c=document.getElementById('rep-mov-cards');
+  c.innerHTML='';
+  _appendMovPage(c);
+}
+
+function _buildMovRow(m){
+  const typeIcon={entrada:'📥',salida:'📤',traslado:'🔀',ajuste:'✏️'};
+  const typeColor={entrada:'var(--green)',salida:'var(--red)',traslado:'var(--cyan)',ajuste:'var(--yellow)'};
+  const color=typeColor[m.type]||'var(--dim)';
+  const icon=typeIcon[m.type]||'•';
+  const row=document.createElement('div');
+  row.style.cssText='background:var(--bg3);border:1px solid var(--border2);border-left:3px solid '+color+';border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color .15s';
+  row.onmouseover=()=>row.style.borderLeftColor='var(--bright)';
+  row.onmouseleave=()=>row.style.borderLeftColor=color;
+  const destInfo=m.destRack?(' → '+esc(m.destRack)+' B'+(m.destBay+1)+'·N'+(m.destLevel+1)):'';
+  row.innerHTML='<span style="font-size:1.3rem;flex-shrink:0">'+icon+'</span>'
+    +'<div style="flex:1;min-width:0">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">'
+        +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:1.08rem;color:var(--accent);font-weight:700">'+esc(m.sku||m.desc||'—')+'</span>'
+        +(m.qty?'<span style="font-size:1rem;font-weight:700;color:'+color+'">'+esc(m.qty)+(m.unit?' '+esc(m.unit):'')+'</span>':'')
+        +'<span style="font-size:.9rem;font-weight:700;color:'+color+';background:'+color+'22;border:1px solid '+color+'44;border-radius:10px;padding:1px 8px">'+esc(m.type)+'</span>'
       +'</div>'
-      +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.88rem;color:var(--dim);white-space:nowrap;text-align:right">'+esc(m.date)+'</span>';
-    if(m.rackId)row.onclick=()=>{closeO('o-report');jumpToCell(m.rackId,m.bay,m.level);};
-    c.appendChild(row);
-  });
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+        +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.92rem;color:var(--cyan)">'+esc(m.rack)+(m.bay!=null?' B'+(m.bay+1)+'·N'+(m.level+1):'')+destInfo+'</span>'
+        +(m.note?'<span style="font-size:.9rem;color:var(--dim)">— '+esc(m.note)+'</span>':'')
+      +'</div>'
+    +'</div>'
+    +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.88rem;color:var(--dim);white-space:nowrap;text-align:right">'+esc(m.date)+'</span>';
+  if(m.rackId)row.onclick=()=>{closeO('o-report');jumpToCell(m.rackId,m.bay,m.level);};
+  return row;
+}
+
+function _appendMovPage(c){
+  if(!c) c=document.getElementById('rep-mov-cards');
+  const old=c.querySelector('.mov-load-more');
+  if(old) old.remove();
+
+  if(!_movFiltered.length){
+    c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--dim);font-size:1.15rem">${t('rep_no_results')}</div>`;
+    return;
+  }
+
+  const start=_movPage*MOV_PAGE_SIZE;
+  const slice=_movFiltered.slice(start, start+MOV_PAGE_SIZE);
+  const frag=document.createDocumentFragment();
+  slice.forEach(m=>frag.appendChild(_buildMovRow(m)));
+  c.appendChild(frag);
+  _movPage++;
+
+  const remaining=_movFiltered.length - _movPage*MOV_PAGE_SIZE;
+  if(remaining>0){
+    const btn=document.createElement('button');
+    btn.className='mov-load-more';
+    btn.style.cssText='width:100%;padding:12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:5px;color:var(--dim);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:1rem;letter-spacing:1.5px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:4px';
+    btn.textContent=`Cargar ${Math.min(remaining,MOV_PAGE_SIZE)} más (${remaining} restantes)`;
+    btn.onmouseover=()=>{btn.style.borderColor='var(--cyan)';btn.style.color='var(--cyan)';};
+    btn.onmouseleave=()=>{btn.style.borderColor='var(--border2)';btn.style.color='var(--dim)';};
+    btn.onclick=()=>_appendMovPage(c);
+    c.appendChild(btn);
+  }
 }
 
 // ═══════════════ PRINT RACK A4 LANDSCAPE ═══════════════
