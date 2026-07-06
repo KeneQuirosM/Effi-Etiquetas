@@ -1903,7 +1903,7 @@ function saveCell(){
       changelog:[...(prev?.changelog||[]),...(logEntry?[logEntry]:[])].slice(-50)
     };
     if(idx>=0)state.cells[cellCtx.rackId][idx]=data;else state.cells[cellCtx.rackId].push(data);
-    save();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();if(selRack===cellCtx.rackId)showDetail(cellCtx.rackId);
+    save();renderFloor(cellCtx.rackId);updateStats();updateExpiryPanel();updateLowStockPanel();if(selRack===cellCtx.rackId)showDetail(cellCtx.rackId);
     addAct(`B${cellCtx.bay+1}N${cellCtx.level+1} → <strong>${sv}</strong>`,stateCol(sv));
   }else{
     const data={bay:cellCtx.bay,level:cellCtx.level,state:sv,skus,notes,tiendas,responsables,audits:[],changelog:[]};
@@ -2333,62 +2333,81 @@ function resizeFloor(){
   floor.style.width=Math.max(maxX,1400)+'px';
   floor.style.height=Math.max(maxY,900)+'px';
 }
-function renderFloor(){
+// Construye el <div class="rackwrap"> completo de un rack — usado tanto
+// por el render completo como por el incremental de un solo rack.
+function buildRackWrap(rack,ri){
+  const zone=state.zones.find(z=>z.id===rack.zone);
+  const rCells=state.cells[rack.id]||[];
+  const wrap=document.createElement('div');
+  wrap.className='rackwrap';wrap.style.cssText=`left:${rack.x}px;top:${rack.y}px;animation-delay:${ri*.04}s`;wrap.dataset.id=rack.id;
+  const lbl=document.createElement('div');lbl.className='rlbl';lbl.textContent=rack.name;lbl.style.color=zone?zone.color:'var(--dim)';
+  lbl.title='Doble clic para editar';
+  lbl.addEventListener('dblclick',e=>{e.stopPropagation();openEditRack(rack.id);});
+  wrap.appendChild(lbl);
+  const rEl=document.createElement('div');rEl.className='rack'+(selRack===rack.id?' sel':'');rEl.id='rack-'+rack.id;rEl.dataset.id=rack.id;rEl.style.cssText=`width:${rack.w}px;height:${rack.h}px`;
+  ['l','r'].forEach(s=>{const u=document.createElement('div');u.className=`up ${s}`;rEl.appendChild(u);});
+  const baysEl=document.createElement('div');baysEl.className='bays';
+  for(let b=0;b<rack.bays;b++){
+    const bayEl=document.createElement('div');bayEl.className='bay';
+    for(let l=rack.levels-1;l>=0;l--){
+      const cell=rCells.find(c=>c.bay===b&&c.level===l)||{state:'empty',skus:[]};
+      const sh=document.createElement('div');sh.className=`shelf s-${cell.state}`;sh.dataset.bay=b;sh.dataset.level=l;sh.dataset.rack=rack.id;
+      const skus=cell.skus||[];
+      if(skus.length){
+        const dots=document.createElement('div');dots.className='sku-dots';
+        skus.slice(0,6).forEach(s=>{const d=document.createElement('div');d.className='skudot';d.style.background=skuColor(s.sku);dots.appendChild(d);});
+        sh.appendChild(dots);
+        if(skus.length>1){const cnt=document.createElement('div');cnt.className='scnt';cnt.textContent=skus.length+'p';sh.appendChild(cnt);}
+      }else if(cell.state!=='empty'){const ind=document.createElement('div');ind.className='sind';sh.appendChild(ind);}
+      if((cell.skus||[]).some(s=>s.expiry)){
+        const allExp=(cell.skus||[]).filter(s=>s.expiry).map(s=>expiryDays(s.expiry));
+        const days=Math.min(...allExp);
+        const badge=document.createElement('div');
+        badge.className='exp-badge '+(days<0?'exp-expired':days<=30?'exp-soon':'exp-ok');
+        badge.textContent=days<0?'EXP':(days<=30?days+'d':'✓');
+        sh.appendChild(badge);
+      }
+      if(cell.audits&&cell.audits.length){
+        const last=cell.audits[cell.audits.length-1];
+        const auditDot=document.createElement('div');
+        auditDot.style.cssText='position:absolute;bottom:2px;left:3px;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green)';
+        auditDot.title=(currentLang==='en'?'Verified: ':'Verificado: ')+last.date+' — '+last.who;
+        sh.appendChild(auditDot);
+      }
+      const code=document.createElement('div');code.className='scode';code.textContent=`B${b+1}L${l+1}`;sh.appendChild(code);
+      sh.title=`${rack.name} B${b+1}·N${l+1}${skus.length?' — '+skus.map(s=>s.sku).filter(Boolean).join(', '):''}${cell.expiry?' | Vence: '+cell.expiry:''}`;
+      sh.addEventListener('click',e=>{e.stopPropagation();openViewCell(rack.id,b,l);});
+      bayEl.appendChild(sh);
+    }
+    baysEl.appendChild(bayEl);
+  }
+  rEl.appendChild(baysEl);
+  rEl.addEventListener('click',e=>{if(e.target===rEl||e.target.classList.contains('up'))selectRack(rack.id);});
+  wrap.appendChild(rEl);
+  setupDrag(wrap,rack);
+  return wrap;
+}
+// changedRackId: si se pasa y el rack sigue existiendo, solo reconstruye
+// ese rack (reemplaza su .rackwrap sin tocar los demás). Sin argumento —
+// o si el rack ya no existe (alta/baja de racks, cambios de zona) — hace
+// el render completo como antes.
+function renderFloor(changedRackId){
   const floor=document.getElementById('floor');
+  if(changedRackId){
+    const rack=state.racks.find(r=>r.id===changedRackId);
+    if(rack){
+      const oldWrap=floor.querySelector(`.rackwrap[data-id="${changedRackId}"]`);
+      const newWrap=buildRackWrap(rack,state.racks.indexOf(rack));
+      if(oldWrap)oldWrap.replaceWith(newWrap);else floor.appendChild(newWrap);
+      resizeFloor();
+      return;
+    }
+  }
   floor.querySelectorAll('.rackwrap,.zone-area,.zone-lbl').forEach(e=>e.remove());
   document.getElementById('fempty').style.display=state.racks.length?'none':'flex';
   renderZoneBgs();
   state.racks.forEach((rack,ri)=>{
-    const zone=state.zones.find(z=>z.id===rack.zone);
-    const rCells=state.cells[rack.id]||[];
-    const wrap=document.createElement('div');
-    wrap.className='rackwrap';wrap.style.cssText=`left:${rack.x}px;top:${rack.y}px;animation-delay:${ri*.04}s`;wrap.dataset.id=rack.id;
-    const lbl=document.createElement('div');lbl.className='rlbl';lbl.textContent=rack.name;lbl.style.color=zone?zone.color:'var(--dim)';
-    lbl.title='Doble clic para editar';
-    lbl.addEventListener('dblclick',e=>{e.stopPropagation();openEditRack(rack.id);});
-    wrap.appendChild(lbl);
-    const rEl=document.createElement('div');rEl.className='rack'+(selRack===rack.id?' sel':'');rEl.id='rack-'+rack.id;rEl.dataset.id=rack.id;rEl.style.cssText=`width:${rack.w}px;height:${rack.h}px`;
-    ['l','r'].forEach(s=>{const u=document.createElement('div');u.className=`up ${s}`;rEl.appendChild(u);});
-    const baysEl=document.createElement('div');baysEl.className='bays';
-    for(let b=0;b<rack.bays;b++){
-      const bayEl=document.createElement('div');bayEl.className='bay';
-      for(let l=rack.levels-1;l>=0;l--){
-        const cell=rCells.find(c=>c.bay===b&&c.level===l)||{state:'empty',skus:[]};
-        const sh=document.createElement('div');sh.className=`shelf s-${cell.state}`;sh.dataset.bay=b;sh.dataset.level=l;sh.dataset.rack=rack.id;
-        const skus=cell.skus||[];
-        if(skus.length){
-          const dots=document.createElement('div');dots.className='sku-dots';
-          skus.slice(0,6).forEach(s=>{const d=document.createElement('div');d.className='skudot';d.style.background=skuColor(s.sku);dots.appendChild(d);});
-          sh.appendChild(dots);
-          if(skus.length>1){const cnt=document.createElement('div');cnt.className='scnt';cnt.textContent=skus.length+'p';sh.appendChild(cnt);}
-        }else if(cell.state!=='empty'){const ind=document.createElement('div');ind.className='sind';sh.appendChild(ind);}
-        if((cell.skus||[]).some(s=>s.expiry)){
-          const allExp=(cell.skus||[]).filter(s=>s.expiry).map(s=>expiryDays(s.expiry));
-          const days=Math.min(...allExp);
-          const badge=document.createElement('div');
-          badge.className='exp-badge '+(days<0?'exp-expired':days<=30?'exp-soon':'exp-ok');
-          badge.textContent=days<0?'EXP':(days<=30?days+'d':'✓');
-          sh.appendChild(badge);
-        }
-        if(cell.audits&&cell.audits.length){
-          const last=cell.audits[cell.audits.length-1];
-          const auditDot=document.createElement('div');
-          auditDot.style.cssText='position:absolute;bottom:2px;left:3px;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green)';
-          auditDot.title=(currentLang==='en'?'Verified: ':'Verificado: ')+last.date+' — '+last.who;
-          sh.appendChild(auditDot);
-        }
-        const code=document.createElement('div');code.className='scode';code.textContent=`B${b+1}L${l+1}`;sh.appendChild(code);
-        sh.title=`${rack.name} B${b+1}·N${l+1}${skus.length?' — '+skus.map(s=>s.sku).filter(Boolean).join(', '):''}${cell.expiry?' | Vence: '+cell.expiry:''}`;
-        sh.addEventListener('click',e=>{e.stopPropagation();openViewCell(rack.id,b,l);});
-        bayEl.appendChild(sh);
-      }
-      baysEl.appendChild(bayEl);
-    }
-    rEl.appendChild(baysEl);
-    rEl.addEventListener('click',e=>{if(e.target===rEl||e.target.classList.contains('up'))selectRack(rack.id);});
-    wrap.appendChild(rEl);
-    setupDrag(wrap,rack);
-    floor.appendChild(wrap);
+    floor.appendChild(buildRackWrap(rack,ri));
   });
   resizeFloor();
 }
@@ -2555,7 +2574,7 @@ function saveAudit(){
   } else {
     state.cells[viewCtx.rackId].push({bay:viewCtx.bay,level:viewCtx.level,state:'empty',skus:[],notes:'',tiendas:[],responsables:[],audits:[entry]});
   }
-  save();renderFloor();
+  save();renderFloor(viewCtx.rackId);
   closeO('o-audit');
   openViewCell(viewCtx.rackId,viewCtx.bay,viewCtx.level);
   notif(t('notif_audit_done'),'ok');
@@ -2928,7 +2947,7 @@ function doTransfer(){
       note:''});
   });
   if(state.movements.length>1000)state.movements=state.movements.slice(-1000);
-  save();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();
+  save();renderFloor(tOrigin.rackId);if(tDest.rackId!==tOrigin.rackId)renderFloor(tDest.rackId);updateStats();updateExpiryPanel();updateLowStockPanel();
   closeO('o-transfer');resetTransfer();
   notif(`${movedSkus.join(', ')} trasladado`,'ok');
   addAct(`Traslado: <strong>${esc(movedSkus.join(', '))}</strong> → ${esc(dRack?.name)} B${tDest.bay+1}N${tDest.level+1}`,'var(--accent)');
