@@ -1460,7 +1460,7 @@ function effectiveTiendas(rack,cell){
 // ═══════════════ ZONES ═══════════════
 function buildSwatches(id){
   const c=document.getElementById(id);c.innerHTML='';
-  COLORS.forEach(col=>{const s=document.createElement('div');s.className='sw'+(col===pickedColor?' on':'');s.style.background=col;s.onclick=()=>{pickedColor=col;buildSwatches(id);};c.appendChild(s);});
+  COLORS.forEach(col=>{const s=document.createElement('button');s.type='button';s.className='sw'+(col===pickedColor?' on':'');s.style.background=col;s.title=col;s.onclick=()=>{pickedColor=col;buildSwatches(id);};c.appendChild(s);});
 }
 let _editZoneId=null;
 
@@ -1644,8 +1644,9 @@ function openCellEdit(bay,level,rackId){
     container.innerHTML='';
     catalogItems.forEach(item=>{
       const on=(selectedIds||[]).includes(item.id);
-      const chip=document.createElement('div');
-      chip.style.cssText='display:flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;cursor:pointer;font-size:1rem;font-weight:700;border:1px solid;transition:all .18s;user-select:none;';
+      const chip=document.createElement('button');
+      chip.type='button';
+      chip.style.cssText='display:flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;cursor:pointer;font-size:1rem;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;border:1px solid;transition:all .18s;user-select:none;appearance:none;-webkit-appearance:none;';
       const applyStyle=isOn=>{
         if(isOn){chip.style.background=isCyan?'rgba(0,212,255,.1)':'rgba(240,165,0,.15)';chip.style.borderColor=isCyan?'var(--cyan)':'var(--accent)';chip.style.color=isCyan?'var(--cyan)':'var(--accent)';}
         else{chip.style.background='var(--bg3)';chip.style.borderColor='var(--border2)';chip.style.color='var(--dim)';}
@@ -2351,7 +2352,7 @@ function buildRackWrap(rack,ri){
     const bayEl=document.createElement('div');bayEl.className='bay';
     for(let l=rack.levels-1;l>=0;l--){
       const cell=rCells.find(c=>c.bay===b&&c.level===l)||{state:'empty',skus:[]};
-      const sh=document.createElement('div');sh.className=`shelf s-${cell.state}`;sh.dataset.bay=b;sh.dataset.level=l;sh.dataset.rack=rack.id;
+      const sh=document.createElement('button');sh.type='button';sh.className=`shelf s-${cell.state}`;sh.dataset.bay=b;sh.dataset.level=l;sh.dataset.rack=rack.id;
       const skus=cell.skus||[];
       if(skus.length){
         const dots=document.createElement('div');dots.className='sku-dots';
@@ -2647,14 +2648,14 @@ function renderSearchResults(hits){
     </div>
   </div>`;
   r.innerHTML=navBar+hits.slice(0,30).map((h,i)=>`
-    <div class="sres-item${i===spotIdx?' sres-active':''}" id="sres-${i}" onclick="spotJump(${i})" onmouseenter="spotIdx=${i};updateSpotActive()">
+    <button type="button" class="sres-item${i===spotIdx?' sres-active':''}" id="sres-${i}" onclick="spotJump(${i})" onmouseenter="spotIdx=${i};updateSpotActive()">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div class="sres-sku">${esc(h.sku||'—')}</div>
         <div style="font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--accent)">${h.qty?esc(h.qty)+' '+esc(h.unit||''):'—'}</div>
       </div>
       <div class="sres-desc">${esc(h.desc||'Sin descripción')}</div>
       <div class="sres-loc">📍 ${esc(h.rack)} · B${h.bay+1}·N${h.level+1}</div>
-    </div>`).join('')
+    </button>`).join('')
     +(hits.length>30?`<div class="sres-nav">Mostrando 30 de ${hits.length} — afina la búsqueda</div>`:'');
   r.classList.add('open');
 }
@@ -2810,13 +2811,13 @@ function buildTransferOriginPicker(filter){
     });
     if(!rCells.length) return;
     const rDiv=document.createElement('div');rDiv.className='cpick-rack';
-    const hd=document.createElement('div');hd.className='cpick-rack-hd';
+    const hd=document.createElement('button');hd.type='button';hd.className='cpick-rack-hd';
     const zone=state.zones.find(z=>z.id===rack.zone);
     hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?esc(zone.color):'var(--dim)'}"></div><span style="font-family:'Share Tech Mono',monospace;font-size:1.16rem">${esc(rack.name)}</span><span style="font-size:1.1rem;color:var(--dim);margin-left:auto">${rCells.length} ${t('transfer_cells_with')}</span>`;
     const cells=document.createElement('div');cells.className='cpick-cells open';cells.style.gridTemplateColumns='repeat(auto-fill,minmax(120px,1fr))';
     rCells.forEach(cell=>{
       const skus=cell.skus||[];
-      const btn=document.createElement('div');btn.className='cpick-cell'+(tOrigin&&tOrigin.rackId===rack.id&&tOrigin.bay===cell.bay&&tOrigin.level===cell.level?' chosen':'');
+      const btn=document.createElement('button');btn.type='button';btn.className='cpick-cell'+(tOrigin&&tOrigin.rackId===rack.id&&tOrigin.bay===cell.bay&&tOrigin.level===cell.level?' chosen':'');
       btn.innerHTML=`B${cell.bay+1}·N${cell.level+1} — ${skus.map(s=>esc(s.sku||'?')).join(', ')}`;
       btn.onclick=()=>{tOrigin={rackId:rack.id,bay:cell.bay,level:cell.level};document.querySelectorAll('.cpick-cell').forEach(b=>b.classList.remove('chosen'));btn.classList.add('chosen');};
       cells.appendChild(btn);
@@ -2849,7 +2850,7 @@ function buildTransferDestPicker(){
   const c=document.getElementById('t-dest-picker');c.innerHTML='';
   state.racks.forEach(rack=>{
     const rDiv=document.createElement('div');rDiv.className='cpick-rack';
-    const hd=document.createElement('div');hd.className='cpick-rack-hd';
+    const hd=document.createElement('button');hd.type='button';hd.className='cpick-rack-hd';
     const zone=state.zones.find(z=>z.id===rack.zone);
     hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?esc(zone.color):'var(--dim)'}"></div><span style="font-family:'Share Tech Mono',monospace;font-size:1.16rem">${esc(rack.name)}</span>`;
     const cells=document.createElement('div');cells.className='cpick-cells open';cells.style.gridTemplateColumns='repeat(auto-fill,minmax(120px,1fr))';
@@ -2858,7 +2859,8 @@ function buildTransferDestPicker(){
       const cell=rCells.find(c=>c.bay===b&&c.level===l)||{bay:b,level:l,state:'empty',skus:[]};
       if(tOrigin&&tOrigin.rackId===rack.id&&tOrigin.bay===b&&tOrigin.level===l) continue; // skip origin
       const skus=cell.skus||[];
-      const btn=document.createElement('div');
+      const btn=document.createElement('button');
+      btn.type='button';
       btn.className='cpick-cell'+(tDest&&tDest.rackId===rack.id&&tDest.bay===b&&tDest.level===l?' chosen':'');
       const stateTag={empty:'libre',full:'llena',partial:'parcial',reserved:'reservada',blocked:'bloqueada'}[cell.state]||'';
       btn.innerHTML=`B${b+1}·N${l+1} <span style="color:var(--dim)">${skus.length?'(+'+skus.length+' SKU)':stateTag}</span>`;
@@ -3036,13 +3038,13 @@ function _buildSkuCard(sku,desc,locs){
             const expD=l.expiry?expiryDays(l.expiry):null;
             const expColor=expD===null?'':expD<0?'#ff3344':expD<=30?'#ff9900':'#00aa44';
             const expLabel=expD===null?'':(expD<0?t('exp_expired'):expD===0?t('exp_today'):expD+t('exp_days_suffix'));
-            return `<div style="display:flex;align-items:center;gap:5px;background:var(--bg);border:1px solid ${expD!==null&&expD<=30?expColor:'var(--border)'};border-radius:3px;padding:3px 9px;cursor:pointer"
+            return `<button type="button" style="display:flex;align-items:center;gap:5px;background:var(--bg);border:1px solid ${expD!==null&&expD<=30?expColor:'var(--border)'};border-radius:3px;padding:3px 9px;font:inherit;cursor:pointer;appearance:none;-webkit-appearance:none"
               onclick="event.stopPropagation();closeO('o-report');jumpToCell('${l.rackId}',${l.bay},${l.level})">
               ${zn?`<span style="width:6px;height:6px;border-radius:1px;background:${zn.color};display:inline-block;flex-shrink:0"></span>`:''}
               <span style="font-family:'Share Tech Mono',monospace;font-size:1.02rem;color:var(--cyan)">${l.rack} ${t('bay_short')}${l.bay+1}${t('level_short')}${l.level+1}</span>
               <span style="font-size:.94rem;color:${STATE_COLORS[l.state]}">${getStateLabels()[l.state]||l.state}</span>
               ${expD!==null?`<span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;font-weight:700;color:${expColor};margin-left:2px">📅${expLabel}</span>`:''}
-            </div>`;
+            </button>`;
           }).join('')}
         </div>
       </div>
@@ -3131,8 +3133,9 @@ function buildRackCellsTable(rack, rCells){
       const td = document.createElement('td');
       td.style.cssText = `vertical-align:top;padding:0;width:${COL_W}px`;
 
-      const btn=document.createElement('div');
-      btn.style.cssText=`position:relative;background:${sc2}0d;border:1px solid ${sc2}44;border-radius:4px;padding:6px 7px 6px 10px;cursor:pointer;transition:all .15s;min-height:54px;overflow:hidden`;
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.style.cssText=`display:block;width:100%;text-align:left;font:inherit;position:relative;background:${sc2}0d;border:1px solid ${sc2}44;border-radius:4px;padding:6px 7px 6px 10px;cursor:pointer;transition:all .15s;min-height:54px;overflow:hidden;appearance:none;-webkit-appearance:none`;
 
       // Left color strip
       let html=`<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${sc2};border-radius:4px 0 0 4px"></div>`;
@@ -3183,8 +3186,9 @@ function buildRackReportGroup(rack){
   group.style.cssText='border-radius:8px;overflow:hidden;margin-bottom:8px;box-shadow:0 2px 12px rgba(0,0,0,.25)';
 
   // ── HEADER ──
-  const hd=document.createElement('div');
-  hd.style.cssText=`padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;transition:background .15s`;
+  const hd=document.createElement('button');
+  hd.type='button';
+  hd.style.cssText=`width:100%;text-align:left;font:inherit;padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;transition:background .15s;appearance:none;-webkit-appearance:none`;
   hd.innerHTML=`
     <div style="width:4px;align-self:stretch;border-radius:4px;background:${zoneColor};flex-shrink:0;min-height:36px"></div>
     <div style="flex:1;min-width:0">
@@ -3388,10 +3392,12 @@ function renderReportExpiry(){
     const bgColor=days<0?'rgba(255,59,92,.06)':days<=7?'rgba(255,59,92,.04)':days<=30?'rgba(255,208,0,.04)':'rgba(0,255,136,.03)';
     const label=days<0?'VENCIDO hace '+Math.abs(days)+'d':(days===0?'Vence HOY':'Vence en '+days+'d');
     const zone=state.zones.find(z=>z.id===rack.zone);
-    const row=document.createElement('div');
-    row.style.cssText=`background:${bgColor};border:1px solid var(--border2);border-left:3px solid ${color};border-radius:4px;padding:9px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s`;
+    const row=document.createElement('button');
+    row.type='button';
+    const rowBaseCss=`width:100%;text-align:left;font:inherit;background:${bgColor};border:1px solid var(--border2);border-left:3px solid ${color};border-radius:4px;padding:9px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s;appearance:none;-webkit-appearance:none`;
+    row.style.cssText=rowBaseCss;
     row.onmouseover=()=>row.style.borderColor=color;
-    row.onmouseleave=()=>row.style.cssText=`background:${bgColor};border:1px solid var(--border2);border-left:3px solid ${color};border-radius:4px;padding:9px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s`;
+    row.onmouseleave=()=>row.style.cssText=rowBaseCss;
     row.innerHTML=`
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
@@ -3463,8 +3469,9 @@ function renderReportAudit(){
       const zone=state.zones.find(z=>z.id===rack.zone);
       const color=daysSince===null?'var(--red)':daysSince>=30?'var(--red)':daysSince>=15?'var(--yellow)':'var(--dim)';
       const label=daysSince===null?'NUNCA VERIFICADA':'Hace '+daysSince+'d';
-      const row=document.createElement('div');
-      row.style.cssText=`background:var(--bg3);border:1px solid var(--border2);border-left:3px solid ${color};border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:12px;cursor:pointer`;
+      const row=document.createElement('button');
+      row.type='button';
+      row.style.cssText=`width:100%;text-align:left;font:inherit;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid ${color};border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;appearance:none;-webkit-appearance:none`;
       row.innerHTML=`
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -3498,10 +3505,12 @@ function renderReportAudit(){
   entries.forEach(({rack,cell,a})=>{
     const zone=state.zones.find(z=>z.id===rack.zone);
     const daysSince=a.ts?Math.floor((now-a.ts)/86400000):null;
-    const row=document.createElement('div');
-    row.style.cssText='background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--green);border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s';
+    const row=document.createElement('button');
+    row.type='button';
+    const rowBaseCss='width:100%;text-align:left;font:inherit;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--green);border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s;appearance:none;-webkit-appearance:none';
+    row.style.cssText=rowBaseCss;
     row.onmouseover=()=>row.style.borderColor='var(--cyan)';
-    row.onmouseleave=()=>row.style.cssText='background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--green);border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s';
+    row.onmouseleave=()=>row.style.cssText=rowBaseCss;
     row.innerHTML=`
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">
@@ -3549,8 +3558,11 @@ function _buildMovRow(m){
   const typeColor={entrada:'var(--green)',salida:'var(--red)',traslado:'var(--cyan)',ajuste:'var(--yellow)'};
   const color=typeColor[m.type]||'var(--dim)';
   const icon=typeIcon[m.type]||'•';
-  const row=document.createElement('div');
-  row.style.cssText='background:var(--bg3);border:1px solid var(--border2);border-left:3px solid '+color+';border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color .15s';
+  // Solo es interactivo si tiene rackId (ver más abajo) — por eso el tag
+  // depende de esa condición en vez de convertir siempre a <button>.
+  const row=document.createElement(m.rackId?'button':'div');
+  if(m.rackId)row.type='button';
+  row.style.cssText='width:100%;text-align:left;font:inherit;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid '+color+';border-radius:4px;padding:8px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color .15s;appearance:none;-webkit-appearance:none';
   row.onmouseover=()=>row.style.borderLeftColor='var(--bright)';
   row.onmouseleave=()=>row.style.borderLeftColor=color;
   const destInfo=m.destRack?(' → '+esc(m.destRack)+' B'+(m.destBay+1)+'·N'+(m.destLevel+1)):'';
@@ -4429,13 +4441,13 @@ function renderReportTiendas(filter){
     const totalQty=skus.reduce((a,s)=>a+s.qty,0);
 
     const skuList=skus.map(s=>`
-      <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:3px;cursor:pointer"
+      <button type="button" style="width:100%;text-align:left;font:inherit;display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:3px;cursor:pointer;appearance:none;-webkit-appearance:none"
       onclick="closeO('o-report');setTimeout(()=>openViewCell('${s.locs[0]?.rackId}',${s.locs[0]?.bay??0},${s.locs[0]?.level??0}),120)">
         ${s.sku?`<span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--accent);font-weight:700">${esc(s.sku)}</span>`:''}
         <span style="font-size:.95rem;color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.desc)||t('no_desc')}</span>
         ${s.qty?`<span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--bright);flex-shrink:0">${esc(s.qty)} ${esc(s.unit||'')}</span>`:''}
         <span style="font-size:.88rem;color:var(--dim);flex-shrink:0">${s.locs.length} celda${s.locs.length!==1?'s':''}</span>
-      </div>`).join('');
+      </button>`).join('');
     const moreSkus='';
 
     const card=document.createElement('div');
@@ -4671,13 +4683,13 @@ function renderReportValor(filter){
     card.style.cssText='background:var(--bg3);border:1px solid var(--border2);border-radius:5px;overflow:hidden;margin-bottom:2px';
     const pct=partialVal>0?((g.total/partialVal)*100).toFixed(1):0;
     card.innerHTML=`
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <button type="button" style="width:100%;text-align:left;font:inherit;display:flex;align-items:center;gap:12px;padding:10px 14px;background:none;border:none;cursor:pointer;appearance:none;-webkit-appearance:none" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
         ${group==='zone'?`<div style="width:8px;height:8px;border-radius:2px;background:${g.zoneColor};flex-shrink:0"></div>`:''}
         <span style="font-family:'Share Tech Mono',monospace;font-size:1.08rem;color:var(--accent);font-weight:700;flex:1">${esc(g.key||'—')}</span>
         <span style="font-size:.9rem;color:var(--dim)">${g.rows.length} SKU${g.rows.length!==1?'s':''}</span>
         ${hasCost?`<span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--green);font-weight:700">$${fmtCurrency(g.total)}</span><span style="font-size:.8rem;color:var(--dim);margin-left:4px">${pct}%</span>`:`<span style="font-size:.85rem;color:var(--yellow)">${t('rep_valor_no_cost')}</span>`}
         <span style="color:var(--dim);font-size:.8rem;margin-left:6px">▼</span>
-      </div>
+      </button>
       ${hasCost?`<div style="height:3px;background:linear-gradient(90deg,var(--green) ${pct}%,var(--bg) ${pct}%)"></div>`:''}
       <div style="display:none;border-top:1px solid var(--border)">
         <table style="width:100%;border-collapse:collapse;font-size:.92rem">
@@ -4940,7 +4952,8 @@ function updateExpiryPanel(){
   items.forEach(({rack,cell,days,expiry,label})=>{
     const color=days<0?'var(--red)':days<=7?'var(--red)':days<=30?'var(--yellow)':'var(--green)';
     const dl=days<0?t('exp_expired')+' '+Math.abs(days)+t('exp_ago_suffix'):(days===0?t('exp_today'):t('exp_days')+' '+days+t('exp_days_suffix'));
-    const div=document.createElement('div');
+    const div=document.createElement('button');
+    div.type='button';
     div.className='expiry-item';
     div.innerHTML=`<div class="ei-dot" style="background:${color};box-shadow:0 0 5px ${color}"></div>
       <div style="flex:1;min-width:0">
@@ -4973,7 +4986,8 @@ function updateLowStockPanel(){
   items.forEach(({rack,cell,sku,qty,min,unit})=>{
     const pct=min>0?Math.round(qty/min*100):0;
     const color=qty===0?'var(--red)':pct<=50?'var(--red)':'var(--yellow)';
-    const div=document.createElement('div');
+    const div=document.createElement('button');
+    div.type='button';
     div.className='expiry-item';
     div.style.cursor='pointer';
     div.innerHTML='<div class="ei-dot" style="background:'+color+';box-shadow:0 0 5px '+color+'"></div>'
@@ -5028,7 +5042,8 @@ function updateBPPreview(){
   cells.forEach(({rack,cell})=>{
     const k=bpKey(rack,cell);
     const on=bpSelection.has(k);
-    const chip=document.createElement('div');
+    const chip=document.createElement('button');
+    chip.type='button';
     chip.className='bp-chip '+(on?'on':'off');
     chip.dataset.key=k;
     const sc=STATE_COLORS[cell.state]||'var(--dim)';

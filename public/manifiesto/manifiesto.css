@@ -207,6 +207,8 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   align-items: center;
   gap: 14px;
   padding: 18px 20px;
+  border: none;        /* 3 de las 4 tarjetas son ahora <button> — sin esto mostrarían el borde nativo */
+  font-family: inherit; /* idem — evita que un <button> use la tipografía del navegador */
   border-radius: var(--radius-lg);
   color: white;
   transition: var(--transition);
@@ -657,6 +659,11 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 .toast.error   { border-left-color: var(--danger-mid); }
 .toast.info    { border-left-color: var(--brand-500); }
 
+/* a11y: estas clases pasaron de <div onclick> a <button> — se neutraliza el
+   "chrome" nativo del navegador (algunos motores, sobre todo Safari, pintan
+   una apariencia de botón nativo por encima del fondo/borde ya definidos). */
+.notification-icon, .metric-card { appearance: none; -webkit-appearance: none; }
+
 /* ── NOTIFICATION ICON (cruces) ── */
 .notification-icon {
   position: fixed;
@@ -665,6 +672,8 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   width: 46px;
   height: 46px;
   background: #e67e00;
+  border: none;     /* antes era <div>, sin esto un <button> mostraría el borde nativo */
+  padding: 0;        /* idem — el <button> nativo trae padding que rompía el centrado flex */
   border-radius: 50%;
   display: flex;
   align-items: center;

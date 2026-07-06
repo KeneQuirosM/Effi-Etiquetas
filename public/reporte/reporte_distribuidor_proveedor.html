@@ -29,9 +29,9 @@
 
 <div class="file-zone" id="fileZone">
   <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event)" />
-  <div class="file-label" onclick="document.getElementById('excelInput').click()">
+  <button type="button" class="file-label" onclick="document.getElementById('excelInput').click()">
     <i class="fas fa-cloud-upload-alt"></i> Cargar archivo de salidas
-  </div>
+  </button>
   <div class="file-info" id="fileInfo">Arrastra o selecciona el archivo .xlsx o .csv de movimientos</div>
 </div>
 
@@ -39,14 +39,14 @@
 
 <!-- ── PANEL DE EXCLUSIÓN DE TIENDAS ── -->
 <div class="exclusion-panel" id="exclusionPanel" style="display:none;">
-  <div class="exclusion-header" id="exclusionToggle" onclick="toggleExclusionPanel()">
+  <button type="button" class="exclusion-header" id="exclusionToggle" onclick="toggleExclusionPanel()">
     <div class="exclusion-header-left">
       <i class="fas fa-store-slash"></i>
       Excluir tiendas del reporte
       <span class="exclusion-badge" id="exclusionBadge"></span>
     </div>
     <i class="fas fa-chevron-down exclusion-chevron" id="exclusionChevron"></i>
-  </div>
+  </button>
   <div class="exclusion-body" id="exclusionBody">
     <div class="exclusion-info">
       <i class="fas fa-info-circle"></i>

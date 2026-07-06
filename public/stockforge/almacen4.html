@@ -19,20 +19,20 @@
       style="height:34px;width:auto;object-fit:contain;display:none;border-radius:3px;cursor:pointer;"
       title="Clic para cambiar logo" onclick="document.getElementById('logo-file').click()">
     <!-- Placeholder upload button (shown when no image) -->
-    <div id="logo-placeholder" onclick="document.getElementById('logo-file').click()"
+    <button type="button" id="logo-placeholder" onclick="document.getElementById('logo-file').click()"
       title="Subir logo"
-      style="width:34px;height:34px;border:1px dashed var(--border2);border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);font-size:1.02rem;transition:all .2s;flex-shrink:0;">
+      style="width:34px;height:34px;border:1px dashed var(--border2);border-radius:3px;background:none;font-family:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);font-size:1.02rem;transition:all .2s;flex-shrink:0;appearance:none;-webkit-appearance:none;">
       ＋
-    </div>
+    </button>
     <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="loadLogoImg(event)">
     <!-- Editable company name -->
     <div id="logo-name-wrap" style="display:flex;flex-direction:column;justify-content:center;gap:0;line-height:1;">
-      <div id="logo-name-display"
+      <button type="button" id="logo-name-display"
         onclick="startEditName()"
         title="Clic para editar nombre"
-        style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.35rem;letter-spacing:3px;color:var(--bright);cursor:pointer;white-space:nowrap;">
+        style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.35rem;letter-spacing:3px;color:var(--bright);background:none;border:none;padding:0;text-align:left;cursor:pointer;white-space:nowrap;appearance:none;-webkit-appearance:none;">
         BODEGA <em style="color:var(--accent);font-style:normal;" id="logo-name-em">EFFICOMMERCE CR</em>
-      </div>
+      </button>
       <input id="logo-name-input"
         style="display:none;background:none;border:none;border-bottom:1px solid var(--cyan);outline:none;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.1rem;letter-spacing:3px;color:var(--bright);width:220px;"
         onblur="finishEditName()" onkeydown="if(event.key==='Enter')finishEditName()">
@@ -40,7 +40,7 @@
     </div>
   </div>
   <div class="ntab on" data-i18n="nav_warehouse">Almacén</div>
-  <div class="ntab" onclick="openO('o-report')" data-i18n="nav_report">Reporte</div>
+  <button type="button" class="ntab" onclick="openO('o-report')" data-i18n="nav_report">Reporte</button>
   <!-- Search in header -->
   <div class="hdr-srch" id="hdr-srch-wrap">
     <span class="srch-icon">⌕</span>
@@ -79,7 +79,7 @@
 </header>
 
 <!-- ── Mobile drawer ─────────────────────────────────────── -->
-<div class="mob-backdrop" id="mob-backdrop" onclick="closeMobileMenu()"></div>
+<button type="button" class="mob-backdrop" id="mob-backdrop" onclick="closeMobileMenu()" aria-label="Cerrar menú"></button>
 <div class="mob-drawer" id="mob-drawer">
   <div class="mob-drawer-hd">
     <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.2rem;letter-spacing:3px;color:var(--bright)">MENÚ</span>
@@ -498,15 +498,15 @@
     </div>
     <div class="mbdy">
       <div class="report-tabs" style="padding:0 18px;flex-shrink:0;background:var(--panel);z-index:2;">
-        <div class="rtab on" onclick="switchRTab('rt-skus',this)" data-i18n="rep_skus">📦 Por SKU</div>
-        <div class="rtab" onclick="switchRTab('rt-cells',this)" data-i18n="rep_cells">📍 Por Celda</div>
-        <div class="rtab" onclick="switchRTab('rt-zones',this)" data-i18n="rep_zones">🗂 Por Zona</div>
-        <div class="rtab" onclick="switchRTab('rt-resp',this)" data-i18n="rep_resp">👤 Resp.</div>
-        <div class="rtab" onclick="switchRTab('rt-tiendas',this)" data-i18n="rep_tiendas">🏪 Tiendas</div>
-        <div class="rtab" onclick="switchRTab('rt-expiry',this)" data-i18n="rep_expiry">📅 Vencim.</div>
-        <div class="rtab" onclick="switchRTab('rt-audit',this)" data-i18n="rep_audit">📋 Conteos</div>
-        <div class="rtab" onclick="switchRTab('rt-movements',this)" data-i18n="rep_movements">📊 Movim.</div>
-        <div class="rtab" onclick="switchRTab('rt-valor',this)" data-i18n="rep_valor">💰 Valor</div>
+        <button type="button" class="rtab on" onclick="switchRTab('rt-skus',this)" data-i18n="rep_skus">📦 Por SKU</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-cells',this)" data-i18n="rep_cells">📍 Por Celda</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-zones',this)" data-i18n="rep_zones">🗂 Por Zona</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-resp',this)" data-i18n="rep_resp">👤 Resp.</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-tiendas',this)" data-i18n="rep_tiendas">🏪 Tiendas</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-expiry',this)" data-i18n="rep_expiry">📅 Vencim.</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-audit',this)" data-i18n="rep_audit">📋 Conteos</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-movements',this)" data-i18n="rep_movements">📊 Movim.</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-valor',this)" data-i18n="rep_valor">💰 Valor</button>
       </div>
       <div class="rep-inner">
 

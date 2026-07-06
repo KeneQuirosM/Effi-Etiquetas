@@ -323,7 +323,7 @@ function renderGroups(search = '', typeFilter = '') {
     div.id = 'group_' + gi;
 
     div.innerHTML = `
-      <div class="group-header" onclick="toggleGroup(${gi})">
+      <button type="button" class="group-header" onclick="toggleGroup(${gi})">
         <span class="badge ${badgeClass}">${group.tipo.includes('Bodega Propia') ? 'BODEGA' : 'DROPSHIP'}</span>
         <span class="group-name">${esc(group.source)}</span>
         <div class="group-meta">
@@ -332,7 +332,7 @@ function renderGroups(search = '', typeFilter = '') {
           ${group.bajo30 > 0 ? `<span class="bajo"><i class="fas fa-exclamation-triangle"></i> ${group.bajo30} bajo 30</span>` : ''}
         </div>
         <span class="chevron"><i class="fas fa-chevron-down"></i></span>
-      </div>
+      </button>
       <div class="group-body">
         <table>
           <thead>

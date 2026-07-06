@@ -146,10 +146,10 @@
           </div>
         </div>
         <!-- Notificación cruces -->
-        <div class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
+        <button type="button" class="notification-icon" id="notificationIcon" style="display: none;" onclick="abrirModalCrucesDesdeIcono()">
           <i class="fas fa-exclamation-triangle"></i>
           <span class="notification-badge" id="notificationBadge">0</span>
-        </div>
+        </button>
       </div>
       <!-- Barra de estado -->
       <div class="header-status-bar">
@@ -212,27 +212,27 @@
               <div class="metric-label">Correctas</div>
             </div>
           </div>
-          <div class="metric-card warning" onclick="abrirModalFaltantes()" style="cursor: pointer;">
+          <button type="button" class="metric-card warning" onclick="abrirModalFaltantes()" style="cursor: pointer;">
             <div class="metric-icon"><i class="fas fa-exclamation-triangle"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashFaltantes">0</div>
               <div class="metric-label">Faltantes</div>
             </div>
-          </div>
-          <div class="metric-card repeat" onclick="abrirModalRepetidas()" style="cursor: pointer;">
+          </button>
+          <button type="button" class="metric-card repeat" onclick="abrirModalRepetidas()" style="cursor: pointer;">
             <div class="metric-icon"><i class="fas fa-redo-alt"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashRepetidas">0</div>
               <div class="metric-label">Repetidas</div>
             </div>
-          </div>
-          <div class="metric-card danger" onclick="abrirModalNoManifestadas()" style="cursor: pointer;">
+          </button>
+          <button type="button" class="metric-card danger" onclick="abrirModalNoManifestadas()" style="cursor: pointer;">
             <div class="metric-icon"><i class="fas fa-times-circle"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashNoManif">0</div>
               <div class="metric-label">No Manifestadas</div>
             </div>
-          </div>
+          </button>
         </div>
 
         <!-- Barra de progreso -->
