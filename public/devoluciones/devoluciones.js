@@ -88,6 +88,11 @@
             tableBody.innerHTML=`<tr><td colspan="99" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">📂</span><div class="empty-t">Sin datos cargados</div><div class="empty-s">Cargue un archivo Excel para comenzar</div></div></td></tr>`;
             updateStats(); return;
         }
+        // Índice original (posición en el Excel, antes de agrupar devueltas
+        // arriba) — se guarda en data-original-index para poder devolver una
+        // fila a su lugar cuando se desmarca. Un Map evita una búsqueda O(n)
+        // por fila (indexOf) que con 9000 filas sería O(n²).
+        const origIndexMap=new Map(originalRowsData.map((row,idx)=>[row,idx]));
         const sorted=[...originalRowsData].sort((a,b)=>{
             const dA=devolutionSet.has(String(a['Guía transportadora']||''));
             const dB=devolutionSet.has(String(b['Guía transportadora']||''));
@@ -97,7 +102,7 @@
             const guia=row['Guía transportadora']!==undefined?String(row['Guía transportadora']):'';
             const isDev=devolutionSet.has(guia);
             const cells=headers.map(h=>`<td>${esc(String(row[h]??''))}</td>`).join('');
-            return `<tr class="${isDev?'row-dev':''}" data-guia="${esc(guia)}"><td style="text-align:center"><input type="checkbox" class="chk" data-guia="${esc(guia)}" ${isDev?'checked':''}></td>${cells}</tr>`;
+            return `<tr class="${isDev?'row-dev':''}" data-guia="${esc(guia)}" data-original-index="${origIndexMap.get(row)}"><td style="text-align:center"><input type="checkbox" class="chk" data-guia="${esc(guia)}" ${isDev?'checked':''}></td>${cells}</tr>`;
         }).join('');
 
         // Los listeners se atan una sola vez acá (renderTable completo solo
@@ -128,15 +133,45 @@
         updateStats();
     }
 
-    // Actualiza en el DOM ya existente la fila de una guía (clase CSS +
+    // Actualiza en el DOM ya existente la(s) fila(s) de una guía (clase CSS +
     // estado del checkbox) sin reconstruir la tabla — evita el freeze de
     // varios segundos que causaba renderTable() completo con 9000 filas.
+    // Una guía puede tener más de una fila (varios artículos por guía, ver
+    // getProductArticulos) — por eso se usa querySelectorAll, no querySelector.
+    // Al marcar: se mueven al inicio del <tbody> (mismo agrupamiento que hacía
+    // el sort de renderTable). Al desmarcar: cada fila vuelve a su posición
+    // original entre las demás filas pendientes, usando data-original-index.
     function updateRowStatus(guia,isDev){
-        const tr=tableBody.querySelector(`tr[data-guia="${CSS.escape(guia)}"]`);
-        if(!tr) return false;
-        tr.classList.toggle('row-dev',isDev);
-        const cb=tr.querySelector('.chk');
-        if(cb) cb.checked=isDev;
+        const trs=[...tableBody.querySelectorAll(`tr[data-guia="${CSS.escape(guia)}"]`)];
+        if(!trs.length) return false;
+        trs.forEach(tr=>{
+            tr.classList.toggle('row-dev',isDev);
+            const cb=tr.querySelector('.chk');
+            if(cb) cb.checked=isDev;
+        });
+        if(isDev){
+            // Fragment para mover el grupo de filas en un solo paso,
+            // preservando su orden relativo entre sí.
+            const frag=document.createDocumentFragment();
+            trs.forEach(tr=>frag.appendChild(tr));
+            tableBody.prepend(frag);
+        } else {
+            // Se procesa el grupo en orden ascendente de índice original y,
+            // al buscar dónde reinsertar cada fila, se ignoran las demás
+            // filas del mismo grupo que todavía no fueron reubicadas — si no,
+            // dos filas de una misma guía pueden terminar intercaladas mal
+            // porque ambas siguen "adelante" (recién desmarcadas) hasta que
+            // les toca su turno.
+            const sortedGroup=[...trs].sort((a,b)=>parseInt(a.dataset.originalIndex,10)-parseInt(b.dataset.originalIndex,10));
+            sortedGroup.forEach((tr,i)=>{
+                const pending=new Set(sortedGroup.slice(i+1));
+                const myIdx=parseInt(tr.dataset.originalIndex,10);
+                const siblings=[...tableBody.querySelectorAll('tr[data-original-index]:not(.row-dev)')].filter(el=>el!==tr&&!pending.has(el));
+                const next=siblings.find(el=>parseInt(el.dataset.originalIndex,10)>myIdx);
+                if(next) tableBody.insertBefore(tr,next);
+                else tableBody.appendChild(tr);
+            });
+        }
         return true;
     }
 
