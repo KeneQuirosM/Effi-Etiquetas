@@ -97,9 +97,12 @@
             const guia=row['Guía transportadora']!==undefined?String(row['Guía transportadora']):'';
             const isDev=devolutionSet.has(guia);
             const cells=headers.map(h=>`<td>${esc(String(row[h]??''))}</td>`).join('');
-            return `<tr class="${isDev?'row-dev':''}"><td style="text-align:center"><input type="checkbox" class="chk" data-guia="${esc(guia)}" ${isDev?'checked':''}></td>${cells}</tr>`;
+            return `<tr class="${isDev?'row-dev':''}" data-guia="${esc(guia)}"><td style="text-align:center"><input type="checkbox" class="chk" data-guia="${esc(guia)}" ${isDev?'checked':''}></td>${cells}</tr>`;
         }).join('');
 
+        // Los listeners se atan una sola vez acá (renderTable completo solo
+        // corre en la carga inicial y en initTable) — marcar/desmarcar una
+        // guía después ya no reconstruye la tabla, ver updateRowStatus().
         document.querySelectorAll('.chk').forEach(cb=>{
             cb.addEventListener('change',()=>{
                 const g=cb.getAttribute('data-guia'); if(!g) return;
@@ -118,10 +121,23 @@
                     showLastScan(g,dist,prov,cliente,false,articulos);
                     notify(`Guía ${g} desmarcada`,'inf');
                 }
-                saveMarks(); renderTable(); updateStats();
+                updateRowStatus(g,cb.checked);
+                saveMarks(); updateStats();
             });
         });
         updateStats();
+    }
+
+    // Actualiza en el DOM ya existente la fila de una guía (clase CSS +
+    // estado del checkbox) sin reconstruir la tabla — evita el freeze de
+    // varios segundos que causaba renderTable() completo con 9000 filas.
+    function updateRowStatus(guia,isDev){
+        const tr=tableBody.querySelector(`tr[data-guia="${CSS.escape(guia)}"]`);
+        if(!tr) return false;
+        tr.classList.toggle('row-dev',isDev);
+        const cb=tr.querySelector('.chk');
+        if(cb) cb.checked=isDev;
+        return true;
     }
 
     function initTable(){
@@ -191,7 +207,7 @@
             devolutionSet.add(guia); addLog(guia,dist,prov,cliente,prod,'✅ MARCADA (escáner)');
             showLastScan(guia,dist,prov,cliente,true,articulos);
             notify(`Guía ${guia} marcada`,'ok');
-            renderTable(); saveMarks();
+            updateRowStatus(guia,true); saveMarks(); updateStats();
         } else {
             showLastScan(guia,dist,prov,cliente,true,articulos);
             notify(`Guía ${guia} ya estaba marcada`,'inf');
@@ -249,9 +265,11 @@
     function resetAll(){
         if(!originalRowsData.length) return;
         if(!confirm('¿Reiniciar todas las marcas?')) return;
+        const previamenteMarcadas=[...devolutionSet];
         devolutionSet.clear(); addLog('SISTEMA','','','Admin','Todas','🔄 REINICIO');
-        renderTable(); lastScanCard.style.display='none';
-        saveMarks(); guiaInput.focus();
+        previamenteMarcadas.forEach(g=>updateRowStatus(g,false));
+        lastScanCard.style.display='none';
+        saveMarks(); updateStats(); guiaInput.focus();
         notify('Marcas reiniciadas','inf');
     }
 
