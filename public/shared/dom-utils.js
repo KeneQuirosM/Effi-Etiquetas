@@ -97,14 +97,30 @@ function hasActiveSession() {
   }
 }
 
+// Overlay a pantalla completa con el aviso de acceso restringido. Se cuelga
+// de <html> (no de <body>) para que se vea aunque el body esté display:none.
+function showRestrictedAccessMessage() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:999999;
+    display:flex;align-items:center;justify-content:center;
+    background:#0d1b6e;color:#fff;text-align:center;padding:24px;
+    font-family:'Inter',system-ui,sans-serif;font-size:1.15rem;font-weight:500;line-height:1.5;
+  `;
+  overlay.textContent = 'Acceso restringido — esta sección es solo para coordinadores. Redirigiendo al inicio...';
+  document.documentElement.appendChild(overlay);
+}
+
 // Llamar como primera línea del script de cada página protegida. Oculta el
-// body de inmediato y, si no hay sesión válida, redirige a "/" antes de que
-// se pinte contenido — lanza para frenar el resto del script del caller
-// (los <script> de estas páginas van al final de <body>, sin wrapper propio).
+// body de inmediato y, si no hay sesión válida, muestra el aviso de acceso
+// restringido 2s antes de redirigir a "/" — lanza para frenar el resto del
+// script del caller (los <script> de estas páginas van al final de <body>,
+// sin wrapper propio).
 function guardProtectedPage() {
   document.body.style.display = 'none';
   if (!hasActiveSession()) {
-    window.location.replace('/');
+    showRestrictedAccessMessage();
+    setTimeout(() => window.location.replace('/'), 2000);
     throw new Error('Sin sesión activa — redirigiendo a /');
   }
   document.body.style.display = '';
