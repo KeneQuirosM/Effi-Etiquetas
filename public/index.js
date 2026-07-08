@@ -4,7 +4,7 @@ const API = '';  // vacío = mismo dominio en Vercel
 const LOGO_KEY = STORAGE_KEYS.LOGO;
 const ROTULO_LOGO_KEY = STORAGE_KEYS.ROTULO_LOGO;
 const CACHE_KEY = STORAGE_KEYS.INVENTARIO_CACHE;      // offline cache
-const SESSION_KEY = STORAGE_KEYS.COORD_SESSION;        // sessionStorage access token
+const SESSION_KEY = STORAGE_KEYS.COORD_SESSION;        // localStorage access token — persiste entre pestañas
 const REFRESH_KEY = 'effi_coord_refresh_v1';        // sessionStorage refresh token
 
 /* ── STATE ─────────────────────────────────────────── */
@@ -48,7 +48,7 @@ async function tryRefreshToken() {
     if (!r.ok) { lockCoord(); return false; }
     const data = await r.json();
     coordToken = data.token;
-    sessionStorage.setItem(SESSION_KEY, data.token);
+    localStorage.setItem(SESSION_KEY, data.token);
     sessionStorage.setItem(REFRESH_KEY, data.refresh_token);
     return true;
   } catch {
@@ -157,7 +157,7 @@ function hideToast() {
 function activateCoord(token, refreshToken) {
   coordToken = token;
   coordUnlocked = true;
-  sessionStorage.setItem(SESSION_KEY, token);
+  localStorage.setItem(SESSION_KEY, token);
   if (refreshToken) sessionStorage.setItem(REFRESH_KEY, refreshToken);
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = '');
   const btn = document.getElementById('btn-coord-toggle');
@@ -493,7 +493,7 @@ function toggleCoordMode() {
 function lockCoord() {
   coordToken = null;
   coordUnlocked = false;
-  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(REFRESH_KEY);
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
   const btn = document.getElementById('btn-coord-toggle');
@@ -1249,8 +1249,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     searchInput.addEventListener('input', debounce(filterProductos, 200));
   }
 
-  // Restaurar sesión del coordinador si existe en sessionStorage
-  const savedToken = sessionStorage.getItem(SESSION_KEY);
+  // Restaurar sesión del coordinador si existe en localStorage
+  const savedToken = localStorage.getItem(SESSION_KEY);
   if (savedToken) {
     if (!isTokenExpired(savedToken)) {
       // Token vigente — restaurar sin llamada al servidor

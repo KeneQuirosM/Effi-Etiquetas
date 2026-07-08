@@ -83,12 +83,13 @@ function debounce(fn, ms = 200) {
  * Las páginas protegidas (todas menos index.html, que es el login)
  * no deben mostrar contenido a quien tenga el link directo sin haber
  * iniciado sesión. La sesión activa es el JWT que /api/auth entrega
- * al loguearse desde index.html, guardado en sessionStorage bajo
- * STORAGE_KEYS.COORD_SESSION (persiste entre páginas del mismo origen).
+ * al loguearse desde index.html, guardado en localStorage bajo
+ * STORAGE_KEYS.COORD_SESSION (persiste entre pestañas del mismo origen,
+ * a diferencia de sessionStorage que es por pestaña).
  */
 function hasActiveSession() {
   try {
-    const token = sessionStorage.getItem(STORAGE_KEYS.COORD_SESSION);
+    const token = localStorage.getItem(STORAGE_KEYS.COORD_SESSION);
     if (!token) return false;
     const { exp } = JSON.parse(atob(token.split('.')[1]));
     return Date.now() / 1000 < exp - 30; // 30s de margen, igual que index.js
