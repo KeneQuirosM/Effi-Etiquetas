@@ -1904,7 +1904,7 @@ function saveCell(){
       changelog:[...(prev?.changelog||[]),...(logEntry?[logEntry]:[])].slice(-50)
     };
     if(idx>=0)state.cells[cellCtx.rackId][idx]=data;else state.cells[cellCtx.rackId].push(data);
-    save();renderFloor(cellCtx.rackId);updateStats();updateExpiryPanel();updateLowStockPanel();if(selRack===cellCtx.rackId)showDetail(cellCtx.rackId);
+    save();updateSingleCell(cellCtx.rackId,cellCtx.bay,cellCtx.level);updateStats();updateExpiryPanel();updateLowStockPanel();if(selRack===cellCtx.rackId)showDetail(cellCtx.rackId);
     addAct(`B${cellCtx.bay+1}N${cellCtx.level+1} → <strong>${sv}</strong>`,stateCol(sv));
   }else{
     const data={bay:cellCtx.bay,level:cellCtx.level,state:sv,skus,notes,tiendas,responsables,audits:[],changelog:[]};
@@ -2334,6 +2334,38 @@ function resizeFloor(){
   floor.style.width=Math.max(maxX,1400)+'px';
   floor.style.height=Math.max(maxY,900)+'px';
 }
+// Construye el <button class="shelf"> de una celda individual — usado por
+// buildRackWrap() y por updateSingleCell() para el render a nivel de celda.
+function buildShelfNode(rack,rCells,b,l){
+  const cell=rCells.find(c=>c.bay===b&&c.level===l)||{state:'empty',skus:[]};
+  const sh=document.createElement('button');sh.type='button';sh.className=`shelf s-${cell.state}`;sh.dataset.bay=b;sh.dataset.level=l;sh.dataset.rack=rack.id;
+  const skus=cell.skus||[];
+  if(skus.length){
+    const dots=document.createElement('div');dots.className='sku-dots';
+    skus.slice(0,6).forEach(s=>{const d=document.createElement('div');d.className='skudot';d.style.background=skuColor(s.sku);dots.appendChild(d);});
+    sh.appendChild(dots);
+    if(skus.length>1){const cnt=document.createElement('div');cnt.className='scnt';cnt.textContent=skus.length+'p';sh.appendChild(cnt);}
+  }else if(cell.state!=='empty'){const ind=document.createElement('div');ind.className='sind';sh.appendChild(ind);}
+  if((cell.skus||[]).some(s=>s.expiry)){
+    const allExp=(cell.skus||[]).filter(s=>s.expiry).map(s=>expiryDays(s.expiry));
+    const days=Math.min(...allExp);
+    const badge=document.createElement('div');
+    badge.className='exp-badge '+(days<0?'exp-expired':days<=30?'exp-soon':'exp-ok');
+    badge.textContent=days<0?'EXP':(days<=30?days+'d':'✓');
+    sh.appendChild(badge);
+  }
+  if(cell.audits&&cell.audits.length){
+    const last=cell.audits[cell.audits.length-1];
+    const auditDot=document.createElement('div');
+    auditDot.style.cssText='position:absolute;bottom:2px;left:3px;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green)';
+    auditDot.title=(currentLang==='en'?'Verified: ':'Verificado: ')+last.date+' — '+last.who;
+    sh.appendChild(auditDot);
+  }
+  const code=document.createElement('div');code.className='scode';code.textContent=`B${b+1}L${l+1}`;sh.appendChild(code);
+  sh.title=`${rack.name} B${b+1}·N${l+1}${skus.length?' — '+skus.map(s=>s.sku).filter(Boolean).join(', '):''}${cell.expiry?' | Vence: '+cell.expiry:''}`;
+  sh.addEventListener('click',e=>{e.stopPropagation();openViewCell(rack.id,b,l);});
+  return sh;
+}
 // Construye el <div class="rackwrap"> completo de un rack — usado tanto
 // por el render completo como por el incremental de un solo rack.
 function buildRackWrap(rack,ri){
@@ -2351,34 +2383,7 @@ function buildRackWrap(rack,ri){
   for(let b=0;b<rack.bays;b++){
     const bayEl=document.createElement('div');bayEl.className='bay';
     for(let l=rack.levels-1;l>=0;l--){
-      const cell=rCells.find(c=>c.bay===b&&c.level===l)||{state:'empty',skus:[]};
-      const sh=document.createElement('button');sh.type='button';sh.className=`shelf s-${cell.state}`;sh.dataset.bay=b;sh.dataset.level=l;sh.dataset.rack=rack.id;
-      const skus=cell.skus||[];
-      if(skus.length){
-        const dots=document.createElement('div');dots.className='sku-dots';
-        skus.slice(0,6).forEach(s=>{const d=document.createElement('div');d.className='skudot';d.style.background=skuColor(s.sku);dots.appendChild(d);});
-        sh.appendChild(dots);
-        if(skus.length>1){const cnt=document.createElement('div');cnt.className='scnt';cnt.textContent=skus.length+'p';sh.appendChild(cnt);}
-      }else if(cell.state!=='empty'){const ind=document.createElement('div');ind.className='sind';sh.appendChild(ind);}
-      if((cell.skus||[]).some(s=>s.expiry)){
-        const allExp=(cell.skus||[]).filter(s=>s.expiry).map(s=>expiryDays(s.expiry));
-        const days=Math.min(...allExp);
-        const badge=document.createElement('div');
-        badge.className='exp-badge '+(days<0?'exp-expired':days<=30?'exp-soon':'exp-ok');
-        badge.textContent=days<0?'EXP':(days<=30?days+'d':'✓');
-        sh.appendChild(badge);
-      }
-      if(cell.audits&&cell.audits.length){
-        const last=cell.audits[cell.audits.length-1];
-        const auditDot=document.createElement('div');
-        auditDot.style.cssText='position:absolute;bottom:2px;left:3px;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green)';
-        auditDot.title=(currentLang==='en'?'Verified: ':'Verificado: ')+last.date+' — '+last.who;
-        sh.appendChild(auditDot);
-      }
-      const code=document.createElement('div');code.className='scode';code.textContent=`B${b+1}L${l+1}`;sh.appendChild(code);
-      sh.title=`${rack.name} B${b+1}·N${l+1}${skus.length?' — '+skus.map(s=>s.sku).filter(Boolean).join(', '):''}${cell.expiry?' | Vence: '+cell.expiry:''}`;
-      sh.addEventListener('click',e=>{e.stopPropagation();openViewCell(rack.id,b,l);});
-      bayEl.appendChild(sh);
+      bayEl.appendChild(buildShelfNode(rack,rCells,b,l));
     }
     baysEl.appendChild(bayEl);
   }
@@ -2411,6 +2416,20 @@ function renderFloor(changedRackId){
     floor.appendChild(buildRackWrap(rack,ri));
   });
   resizeFloor();
+}
+// Reconstruye únicamente el nodo DOM de la celda (bay,level) del rack dado,
+// sin tocar las demás celdas ni el resto del rackwrap. Si el rack aún no
+// tiene rackwrap en el DOM, cae a renderFloor(rackId) para construirlo.
+function updateSingleCell(rackId,bay,level){
+  const rack=state.racks.find(r=>r.id===rackId);
+  if(!rack)return;
+  const floor=document.getElementById('floor');
+  const rackWrap=floor.querySelector(`.rackwrap[data-id="${rackId}"]`);
+  if(!rackWrap){renderFloor(rackId);return;}
+  const rCells=state.cells[rackId]||[];
+  const newSh=buildShelfNode(rack,rCells,bay,level);
+  const oldSh=rackWrap.querySelector(`.shelf[data-bay="${bay}"][data-level="${level}"]`);
+  if(oldSh)oldSh.replaceWith(newSh);
 }
 function renderZoneBgs(){
   const floor=document.getElementById('floor');
@@ -2575,7 +2594,7 @@ function saveAudit(){
   } else {
     state.cells[viewCtx.rackId].push({bay:viewCtx.bay,level:viewCtx.level,state:'empty',skus:[],notes:'',tiendas:[],responsables:[],audits:[entry]});
   }
-  save();renderFloor(viewCtx.rackId);
+  save();updateSingleCell(viewCtx.rackId,viewCtx.bay,viewCtx.level);
   closeO('o-audit');
   openViewCell(viewCtx.rackId,viewCtx.bay,viewCtx.level);
   notif(t('notif_audit_done'),'ok');
