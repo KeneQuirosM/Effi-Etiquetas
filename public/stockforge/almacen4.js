@@ -2303,6 +2303,8 @@ function saveRack(){
   const tiendas=getRackCheckedIds('rack-shop-checks');
   const largoReal=parseFloat(document.getElementById('rlargo')?.value||0);
   const anchoReal=parseFloat(document.getElementById('ranchor')?.value||0);
+  const cellW=w/bays;
+  if(cellW<30)notif(`${currentLang==='en'?'Cells will render at':'Las celdas quedarán en'} ${cellW.toFixed(1)}px (< 30px)`,'warn');
   const buildCells=id=>{
     const arr=[];
     for(let b=0;b<bays;b++)for(let l=0;l<levels;l++){const key=`${b}-${l}`;arr.push(pendCells[key]||{bay:b,level:l,state:'empty',skus:[],notes:''});}
