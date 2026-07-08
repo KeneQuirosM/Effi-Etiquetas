@@ -5380,10 +5380,15 @@ document.addEventListener('keydown',e=>{
       if(e.key==='ArrowRight')rack.x+=1;
       const wrap=document.querySelector(`.rackwrap[data-id="${rack.id}"]`);
       if(wrap){wrap.style.left=rack.x+'px';wrap.style.top=rack.y+'px';}
-      save();renderZoneBgs();resizeFloor();
+      debouncedKeySave();renderZoneBgs();resizeFloor();
     }
   }
 });
+// Mantener flecha presionada dispara un keydown por repetición del SO — sin
+// debounce cada uno llamaría a save() (fetch al servidor), disparando toasts
+// repetidos de "sesión expirada" en cuanto el token vence. Solo persiste
+// 300ms después de que el usuario deja de presionar.
+const debouncedKeySave=debounce(save,300);
 
 // ── Panel collapse ──────────────────────────────────────────
 function togglePanel(id){
@@ -5497,7 +5502,9 @@ function addAct(txt,color='var(--cyan)'){
   document.getElementById('actlog').innerHTML=acts.map(a=>`<div class="aitem"><div class="adot" style="background:${a.color}"></div><div class="atime">${a.t}</div><div class="atxt">${a.txt}</div></div>`).join('');
 }
 function notif(msg,type=''){
-  const c=document.getElementById('notifs');const n=document.createElement('div');
+  const c=document.getElementById('notifs');
+  if(Array.from(c.children).some(n=>n.textContent===msg))return;
+  const n=document.createElement('div');
   n.className=`notif ${type}`;n.textContent=msg;c.appendChild(n);setTimeout(()=>n.remove(),3200);
 }
 
