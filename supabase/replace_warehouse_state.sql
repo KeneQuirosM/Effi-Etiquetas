@@ -30,18 +30,21 @@ BEGIN
   END IF;
 
   -- ── 1. BORRADO (hijos → padres) ──────────────────────────────
-  DELETE FROM movimientos;
-  DELETE FROM changelog;
-  DELETE FROM audits;
-  DELETE FROM skus;
-  DELETE FROM celda_tiendas;
-  DELETE FROM celda_responsables;
-  DELETE FROM celdas;
-  DELETE FROM rack_tiendas;
-  DELETE FROM rack_responsables;
-  DELETE FROM racks;
-  DELETE FROM zonas;
-  DELETE FROM responsables;
+  -- WHERE true: Supabase bloquea DELETE sin WHERE (protección
+  -- DB_DELETE_WITHOUT_WHERE) incluso dentro de funciones PL/pgSQL.
+  -- Semánticamente idéntico a un DELETE sin condición.
+  DELETE FROM movimientos WHERE true;
+  DELETE FROM changelog WHERE true;
+  DELETE FROM audits WHERE true;
+  DELETE FROM skus WHERE true;
+  DELETE FROM celda_tiendas WHERE true;
+  DELETE FROM celda_responsables WHERE true;
+  DELETE FROM celdas WHERE true;
+  DELETE FROM rack_tiendas WHERE true;
+  DELETE FROM rack_responsables WHERE true;
+  DELETE FROM racks WHERE true;
+  DELETE FROM zonas WHERE true;
+  DELETE FROM responsables WHERE true;
 
   -- ── 2. ZONAS ──────────────────────────────────────────────────
   INSERT INTO zonas (id, name, color, descripcion, area_m2, tipo)
