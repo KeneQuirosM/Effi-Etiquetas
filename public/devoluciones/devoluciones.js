@@ -1,3 +1,5 @@
+    guardProtectedPage(); // protección de ruta — redirige a / sin sesión activa
+
     let workbookOriginal=null, sheetName="", worksheetOriginal=null;
     let originalRowsData=[], headers=[], devolutionSet=new Set(), auditLog=[];
 

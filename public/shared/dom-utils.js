@@ -78,3 +78,34 @@ function debounce(fn, ms = 200) {
     t = setTimeout(() => fn(...args), ms);
   };
 }
+
+/* ── PROTECCIÓN DE RUTAS ────────────────────────────────
+ * Las páginas protegidas (todas menos index.html, que es el login)
+ * no deben mostrar contenido a quien tenga el link directo sin haber
+ * iniciado sesión. La sesión activa es el JWT que /api/auth entrega
+ * al loguearse desde index.html, guardado en sessionStorage bajo
+ * STORAGE_KEYS.COORD_SESSION (persiste entre páginas del mismo origen).
+ */
+function hasActiveSession() {
+  try {
+    const token = sessionStorage.getItem(STORAGE_KEYS.COORD_SESSION);
+    if (!token) return false;
+    const { exp } = JSON.parse(atob(token.split('.')[1]));
+    return Date.now() / 1000 < exp - 30; // 30s de margen, igual que index.js
+  } catch (e) {
+    return false;
+  }
+}
+
+// Llamar como primera línea del script de cada página protegida. Oculta el
+// body de inmediato y, si no hay sesión válida, redirige a "/" antes de que
+// se pinte contenido — lanza para frenar el resto del script del caller
+// (los <script> de estas páginas van al final de <body>, sin wrapper propio).
+function guardProtectedPage() {
+  document.body.style.display = 'none';
+  if (!hasActiveSession()) {
+    window.location.replace('/');
+    throw new Error('Sin sesión activa — redirigiendo a /');
+  }
+  document.body.style.display = '';
+}

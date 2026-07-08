@@ -1,3 +1,5 @@
+guardProtectedPage(); // protección de ruta — redirige a / sin sesión activa
+
 // ====== ESTADO GLOBAL ======
 let manifiesto = [];
 let faltantesSet = new Set();

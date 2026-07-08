@@ -1,3 +1,5 @@
+guardProtectedPage(); // protección de ruta — redirige a / sin sesión activa
+
 let DATA = [];
 let dbData = []; 
 let originalExcelRows = [];

@@ -1,3 +1,5 @@
+guardProtectedPage(); // protección de ruta — redirige a / sin sesión activa
+
 // ═══════════════ i18n ═══════════════
 const LANG_KEY='sf_lang';
 const THEME_KEY='sf_theme';
