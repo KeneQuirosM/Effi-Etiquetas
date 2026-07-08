@@ -5367,6 +5367,20 @@ document.addEventListener('keydown',e=>{
   if(e.key==='0')resetZoom();
   if(e.key==='[')togglePanel('lp');
   if(e.key===']')togglePanel('rp');
+  // Flechas → reposicionar el rack seleccionado 1px, alternativa de teclado al drag.
+  if(selRack&&!document.querySelector('.ov.open')&&(e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight')){
+    const rack=state.racks.find(r=>r.id===selRack);
+    if(rack){
+      e.preventDefault();
+      if(e.key==='ArrowUp')rack.y=Math.max(0,rack.y-1);
+      if(e.key==='ArrowDown')rack.y+=1;
+      if(e.key==='ArrowLeft')rack.x=Math.max(0,rack.x-1);
+      if(e.key==='ArrowRight')rack.x+=1;
+      const wrap=document.querySelector(`.rackwrap[data-id="${rack.id}"]`);
+      if(wrap){wrap.style.left=rack.x+'px';wrap.style.top=rack.y+'px';}
+      save();renderZoneBgs();resizeFloor();
+    }
+  }
 });
 
 // ── Panel collapse ──────────────────────────────────────────
