@@ -5,7 +5,7 @@ const LOGO_KEY = STORAGE_KEYS.LOGO;
 const ROTULO_LOGO_KEY = STORAGE_KEYS.ROTULO_LOGO;
 const CACHE_KEY = STORAGE_KEYS.INVENTARIO_CACHE;      // offline cache
 const SESSION_KEY = STORAGE_KEYS.COORD_SESSION;        // localStorage access token — persiste entre pestañas
-const REFRESH_KEY = 'effi_coord_refresh_v1';        // sessionStorage refresh token
+const REFRESH_KEY = 'effi_coord_refresh_v1';        // localStorage refresh token — persiste entre pestañas
 
 /* ── STATE ─────────────────────────────────────────── */
 let appData = { tiendas: [] };
@@ -37,7 +37,7 @@ function isTokenExpired(token) {
 // Intenta renovar el token con el refresh_token guardado.
 // Devuelve true si tuvo éxito, false si hubo que cerrar sesión.
 async function tryRefreshToken() {
-  const refreshToken = sessionStorage.getItem(REFRESH_KEY);
+  const refreshToken = localStorage.getItem(REFRESH_KEY);
   if (!refreshToken) { lockCoord(); return false; }
   try {
     const r = await fetch(API + '/api/refresh', {
@@ -49,7 +49,7 @@ async function tryRefreshToken() {
     const data = await r.json();
     coordToken = data.token;
     localStorage.setItem(SESSION_KEY, data.token);
-    sessionStorage.setItem(REFRESH_KEY, data.refresh_token);
+    localStorage.setItem(REFRESH_KEY, data.refresh_token);
     return true;
   } catch {
     lockCoord();
@@ -158,7 +158,7 @@ function activateCoord(token, refreshToken) {
   coordToken = token;
   coordUnlocked = true;
   localStorage.setItem(SESSION_KEY, token);
-  if (refreshToken) sessionStorage.setItem(REFRESH_KEY, refreshToken);
+  if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = '');
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.add('active');
@@ -494,7 +494,7 @@ function lockCoord() {
   coordToken = null;
   coordUnlocked = false;
   localStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(REFRESH_KEY);
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
@@ -1254,16 +1254,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (savedToken) {
     if (!isTokenExpired(savedToken)) {
       // Token vigente — restaurar sin llamada al servidor
-      activateCoord(savedToken, sessionStorage.getItem(REFRESH_KEY));
+      activateCoord(savedToken, localStorage.getItem(REFRESH_KEY));
       notify('✅ Sesión restaurada', 'success');
     } else {
       // Token expirado — intentar renovar con el refresh_token
       const renewed = await tryRefreshToken();
       if (renewed) {
-        activateCoord(coordToken, sessionStorage.getItem(REFRESH_KEY));
+        activateCoord(coordToken, localStorage.getItem(REFRESH_KEY));
         notify('✅ Sesión renovada', 'success');
       }
-      // Si falla, lockCoord() ya limpió sessionStorage
+      // Si falla, lockCoord() ya limpió localStorage
     }
   }
 
