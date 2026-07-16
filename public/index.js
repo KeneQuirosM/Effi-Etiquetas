@@ -1144,7 +1144,7 @@ const QRCode = (function(){
 })();
 
 /* ── FORMATO NUMERACIÓN (hoja de corte, ID repetido) ──── */
-const NUMERACION_COLS = 4;
+const NUMERACION_COLS = 6;
 const NUMERACION_ROWS = 6;
 
 function renderNumeracionGrid(idVal) {
@@ -1153,7 +1153,7 @@ function renderNumeracionGrid(idVal) {
   const raw = idVal || '0000';
   const val = esc(raw);
   const len = raw.length;
-  const size = len <= 3 ? '26pt' : len <= 5 ? '20pt' : len <= 8 ? '14pt' : '10pt';
+  const size = len <= 2 ? '20pt' : len <= 3 ? '17pt' : len <= 5 ? '13pt' : len <= 8 ? '10pt' : '8pt';
   const total = NUMERACION_COLS * NUMERACION_ROWS;
   let html = '';
   for (let i = 0; i < total; i++) {
