@@ -937,8 +937,8 @@ body {
 
 .numeracion-mode .label-numeracion {
   display: grid !important;
-  grid-template-columns: repeat(6, 1fr);
-  grid-template-rows: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(8, 1fr);
   width: 100%;
   height: 100%;
 }
@@ -948,7 +948,7 @@ body {
   align-items: center;
   justify-content: center;
   border: 1px solid #a9b2c6;
-  padding: 3px;
+  padding: 2px;
 }
 
 .num-box {
@@ -957,11 +957,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2.5px solid #000;
-  border-radius: 5px;
+  border: 2px solid #000;
+  border-radius: 4px;
   font-family: var(--sans);
   font-weight: 900;
-  font-size: 20pt;
+  font-size: 16pt;
   line-height: 1;
   color: #000;
 }
