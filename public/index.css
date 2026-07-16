@@ -927,6 +927,45 @@ body {
 .fragil-mode .label-fragil > div:first-child { position: absolute; top: .2in; left: 0; right: 0; z-index: 2; }
 .fragil-mode .label-fragil > div:last-child  { margin-top: 6px; margin-bottom: 0; position: relative; z-index: 2; }
 
+/* ══ MODO NUMERACIÓN ══ */
+.numeracion-mode .label-header,
+.numeracion-mode .label-body,
+.numeracion-mode .label-footer,
+.numeracion-mode .label-notes,
+.numeracion-mode .label-fragil,
+.numeracion-mode .label-qr { display: none !important; }
+
+.numeracion-mode .label-numeracion {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  width: 100%;
+  height: 100%;
+}
+
+.num-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #a9b2c6;
+  padding: 4px;
+}
+
+.num-box {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #000;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-weight: 900;
+  font-size: 22pt;
+  line-height: 1;
+  color: #000;
+}
+
 /* ══ PRINT ══ */
 @media print {
   body.print-single .sidebar,

@@ -1143,6 +1143,25 @@ const QRCode = (function(){
   };
 })();
 
+/* ── FORMATO NUMERACIÓN (hoja de corte, ID repetido) ──── */
+const NUMERACION_COLS = 4;
+const NUMERACION_ROWS = 6;
+
+function renderNumeracionGrid(idVal) {
+  const container = document.getElementById('label-numeracion');
+  if (!container) return;
+  const raw = idVal || '0000';
+  const val = esc(raw);
+  const len = raw.length;
+  const size = len <= 3 ? '26pt' : len <= 5 ? '20pt' : len <= 8 ? '14pt' : '10pt';
+  const total = NUMERACION_COLS * NUMERACION_ROWS;
+  let html = '';
+  for (let i = 0; i < total; i++) {
+    html += `<div class="num-cell"><div class="num-box" style="font-size:${size}">${val}</div></div>`;
+  }
+  container.innerHTML = html;
+}
+
 /* ── UPDATE PREVIEW WITH QR ─────────────────────────── */
 function updatePreview() {
   const selTienda = document.getElementById('select-tienda');
@@ -1157,6 +1176,12 @@ function updatePreview() {
   document.getElementById('view-name').textContent = prodName.toUpperCase();
   document.getElementById('view-id').textContent   = idVal;
   document.getElementById('view-tienda').textContent = tiendaName.toUpperCase();
+
+  // Formato NUMERACIÓN: hoja de corte con el ID repetido en cada celda
+  const formatoSel = document.getElementById('select-formato');
+  if (formatoSel && formatoSel.value === 'numeracion') {
+    renderNumeracionGrid(idVal);
+  }
 
   // Tamaño dinámico igual que el masivo
   const len = prodName.length;
@@ -1294,11 +1319,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   selFormato.addEventListener('change', () => {
     const formato = selFormato.value;
-    etiqueta.classList.remove('solo-notas', 'fragil-mode');
+    etiqueta.classList.remove('solo-notas', 'fragil-mode', 'numeracion-mode');
     if (formato === 'solo-notas') {
       etiqueta.classList.add('solo-notas');
     } else if (formato === 'fragil') {
       etiqueta.classList.add('fragil-mode');
+    } else if (formato === 'numeracion') {
+      etiqueta.classList.add('numeracion-mode');
     }
     updatePreview(); // Asegurar que se actualicen los textos
   });
