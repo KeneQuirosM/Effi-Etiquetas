@@ -952,6 +952,7 @@ body {
 }
 
 .num-box {
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -964,6 +965,23 @@ body {
   font-size: 16pt;
   line-height: 1;
   color: #000;
+}
+
+.num-tienda {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 5pt;
+  letter-spacing: .3px;
+  color: #555;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  max-width: calc(100% - 6px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ══ PRINT ══ */

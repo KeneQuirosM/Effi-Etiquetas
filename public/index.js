@@ -1147,17 +1147,19 @@ const QRCode = (function(){
 const NUMERACION_COLS = 7;
 const NUMERACION_ROWS = 8;
 
-function renderNumeracionGrid(idVal) {
+function renderNumeracionGrid(idVal, tiendaName) {
   const container = document.getElementById('label-numeracion');
   if (!container) return;
   const raw = idVal || '0000';
   const val = esc(raw);
   const len = raw.length;
   const size = len <= 2 ? '16pt' : len <= 3 ? '13pt' : len <= 5 ? '10pt' : len <= 8 ? '8pt' : '6pt';
+  const tienda = esc((tiendaName || '').toUpperCase());
+  const tiendaHTML = tienda ? `<span class="num-tienda">${tienda}</span>` : '';
   const total = NUMERACION_COLS * NUMERACION_ROWS;
   let html = '';
   for (let i = 0; i < total; i++) {
-    html += `<div class="num-cell"><div class="num-box" style="font-size:${size}">${val}</div></div>`;
+    html += `<div class="num-cell"><div class="num-box" style="font-size:${size}"><span class="num-val">${val}</span>${tiendaHTML}</div></div>`;
   }
   container.innerHTML = html;
 }
@@ -1180,7 +1182,7 @@ function updatePreview() {
   // Formato NUMERACIÓN: hoja de corte con el ID repetido en cada celda
   const formatoSel = document.getElementById('select-formato');
   if (formatoSel && formatoSel.value === 'numeracion') {
-    renderNumeracionGrid(idVal);
+    renderNumeracionGrid(idVal, tiendaName);
   }
 
   // Tamaño dinámico igual que el masivo
