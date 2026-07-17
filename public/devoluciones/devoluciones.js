@@ -72,6 +72,7 @@
                 `<div class="articulo-row">
                     ${a.id?`<span class="articulo-id">${esc(a.id)}</span>`:''}
                     <span class="articulo-nombre">${esc(a.nombre)||'<em style="color:var(--neutral-400)">Sin descripción</em>'}</span>
+                    <span class="articulo-cantidad">x${esc(String(a.cantidad))}</span>
                 </div>`
             ).join('');
         } else {
@@ -212,20 +213,30 @@
         return candidates.find(c=>headers.includes(c))||null;
     }
 
+    function getQtyColumnName(){
+        // Detecta dinámicamente el nombre de la columna de cantidad
+        const candidates=['Cantidad artículo','Cantidad articulo','Cantidad','cantidad','Cant','cant','Unidades','unidades','Qty','qty'];
+        return candidates.find(c=>headers.includes(c))||null;
+    }
+
     function getProductArticulos(guia){
-        // Devuelve array de {id, nombre} únicos para todas las filas de esa guía
+        // Devuelve array de {id, nombre, cantidad} únicos para todas las filas de esa guía
         const idCol=getIdColumnName();
         const nombreCandidates=['Descripción original artículo','Descripcion original articulo','Descripción artículo','Nombre artículo','Nombre','nombre'];
         const nombreCol=nombreCandidates.find(c=>headers.includes(c))||null;
+        const qtyCol=getQtyColumnName();
         const rows=originalRowsData.filter(x=>String(x['Guía transportadora'])===guia);
-        const seen=new Set();
-        const articulos=[];
+        const seen=new Map();
         rows.forEach(r=>{
             const id=idCol?String(r[idCol]||'').trim():'';
             const nombre=nombreCol?String(r[nombreCol]||'').trim():'';
+            if(!id&&!nombre) return;
             const key=id+'|'+nombre;
-            if(!seen.has(key)&&(id||nombre)){ seen.add(key); articulos.push({id,nombre}); }
+            const qty=qtyCol?(parseFloat(String(r[qtyCol]).replace(',','.'))||0):1;
+            if(seen.has(key)){ seen.get(key).cantidad+=qty; }
+            else{ seen.set(key,{id,nombre,cantidad:qty}); }
         });
+        const articulos=[...seen.values()];
         return articulos;
     }
 
