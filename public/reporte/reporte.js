@@ -16,14 +16,14 @@ async function loadDatabaseData() {
     const result = await response.json();
     dbData = result.tiendas || [];
     
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · Base de datos conectada ✅ · Alerta < 30 uds`;
+    document.getElementById('generation-p').innerHTML = `Picking & Packing · Base de datos conectada · Alerta < 30 uds`;
     document.getElementById('footerNote').innerText = `Base de datos cargada.`;
 
     renderExclusionPanel();
     document.getElementById('exclusionPanel').style.display = 'block';
   } catch (error) {
     console.error('Error base de datos:', error);
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color:var(--danger-mid); font-weight:600;">⚠️ Error de enlace BD</span>`;
+    document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color:var(--danger-mid); font-weight:600;">Error de enlace BD</span>`;
   }
 }
 
@@ -84,12 +84,12 @@ function procesarArchivo(file) {
       if (!rows || rows.length < 2) throw new Error("El reporte no contiene suficientes líneas de datos.");
       crossReferenceData(rows);
 
-      info.textContent = `✅ ${file.name} procesado e integrado correctamente`;
+      info.textContent = `${file.name} procesado e integrado correctamente`;
       info.className = 'file-info ok';
       document.getElementById('controlsSection').style.display = 'flex';
       document.getElementById('exclusionPanel').style.display = 'block';
     } catch (err) {
-      info.textContent = `❌ Error: ${err.message}`;
+      info.textContent = `Error: ${err.message}`;
       info.className = 'file-info err';
     }
   };
@@ -372,7 +372,7 @@ function renderGroups(search = '', typeFilter = '') {
   });
 }
 
-/* ── 🚀 GENERADOR DE EXCEL CON ESTILOS (ExcelJS) ── */
+/* ── GENERADOR DE EXCEL CON ESTILOS (ExcelJS) ── */
 // Paleta de colores y helpers de estilo compartidos por todas las hojas del Excel exportado
 function getExcelStyleHelpers() {
   const C = {
@@ -488,7 +488,7 @@ function buildExcelSummarySheet(wb, DATA, styles) {
       group.items.length,
       group.total,
       group.bajo30,
-      isCrit ? `⚠ ${group.bajo30} Crítico${group.bajo30 > 1 ? 's' : ''}` : '✓ Óptimo'
+      isCrit ? `${group.bajo30} Crítico${group.bajo30 > 1 ? 's' : ''}` : '✓ Óptimo'
     ]);
     row.height = 19;
 
@@ -717,7 +717,7 @@ function renderExclusionPanel() {
              onclick="event.stopPropagation()">
       <div class="exclusion-item-info">
         <div class="exclusion-item-name" title="${esc(tienda.nombre)}">${esc(tienda.nombre)}</div>
-        <div class="exclusion-item-type">${tipo === 'Bodega Propia' ? '🏪 Bodega Propia' : '📦 Dropshipping'}</div>
+        <div class="exclusion-item-type">${tipo === 'Bodega Propia' ? 'Bodega Propia' : 'Dropshipping'}</div>
       </div>
     `;
     item.addEventListener('click', () => {

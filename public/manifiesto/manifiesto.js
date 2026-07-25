@@ -131,13 +131,13 @@ function processExcelManifest(rows) {
       cruce.tipo === "DESTINATARIO_INCORRECTO"
     );
     if (crucesImportantes.length > 0) {
-      notify(`⚠️ ${crucesImportantes.length} destinatario(s) en ruta incorrecta`, 'warning');
+      notify(`${crucesImportantes.length} destinatario(s) en ruta incorrecta`, 'warning');
       mostrarModalCruces(crucesImportantes);
       mostrarIconoNotificacion(crucesImportantes);
     }
   }
 
-  notify(`✅ Excel: ${guias.length} guías encontradas`, 'success');
+  notify(`Excel: ${guias.length} guías encontradas`, 'success');
 
   return guias;
 }
@@ -159,7 +159,7 @@ async function extractPdfPageText(page, pageIndex) {
 
   if (pageText.length >= 30) return { pageText, usedOCR: false };
 
-  notify(`🔍 Página ${pageIndex}: usando OCR...`, 'info');
+  notify(`Página ${pageIndex}: usando OCR...`, 'info');
 
   if (typeof Tesseract === 'undefined') {
     console.warn("Tesseract no disponible");
@@ -174,7 +174,7 @@ async function extractPdfPageText(page, pageIndex) {
     // Si no encontró guías (1000XXXXXX), intentar rotado 180°
     const guiasEnPagina = pageText.match(/\b1000\d{6}\b/g) || [];
     if (guiasEnPagina.length === 0) {
-      notify(`🔄 Página ${pageIndex}: reintentando rotada 180°...`, 'info');
+      notify(`Página ${pageIndex}: reintentando rotada 180°...`, 'info');
       canvas = await renderPdfPageToCanvas(page, 180);
       result = await Tesseract.recognize(canvas, 'spa');
       const pageText180 = result.data.text;
@@ -193,7 +193,7 @@ async function extractPdfPageText(page, pageIndex) {
 
 // Procesa un PDF de manifiesto: extrae texto (nativo u OCR) de cada página y busca guías por patrones
 async function processPdfManifest(pdfData) {
-  notify('📄 Cargando PDF...', 'info');
+  notify('Cargando PDF...', 'info');
 
   // Asegurar PDF.js cargado con worker correcto
   if (typeof pdfjsLib === 'undefined') {
@@ -218,7 +218,7 @@ async function processPdfManifest(pdfData) {
     let usandoOCR = false;
 
     for (let i = 1; i <= totalPaginas; i++) {
-      notify(`📄 Procesando página ${i} de ${totalPaginas}...`, 'info');
+      notify(`Procesando página ${i} de ${totalPaginas}...`, 'info');
       const page = await pdf.getPage(i);
       const { pageText, usedOCR } = await extractPdfPageText(page, i);
       if (usedOCR) usandoOCR = true;
@@ -242,14 +242,14 @@ async function processPdfManifest(pdfData) {
       const detalle = usandoOCR
         ? 'El OCR no reconoció guías. El PDF puede estar muy borroso o inclinado.'
         : 'No se encontraron guías con los patrones conocidos (1000XXXXXX, CR..., etc).';
-      notify(`⚠️ ${detalle}`, 'warning', 8000);
+      notify(`${detalle}`, 'warning', 8000);
     } else {
-      notify(`✅ PDF: ${guias.length} guías encontradas${usandoOCR ? ' (vía OCR)' : ''}`, 'success');
+      notify(`PDF: ${guias.length} guías encontradas${usandoOCR ? ' (vía OCR)' : ''}`, 'success');
     }
 
   } catch (pdfError) {
     console.error("Error al procesar PDF:", pdfError);
-    notify(`❌ Error al leer el PDF: ${pdfError.message}`, 'error', 8000);
+    notify(`Error al leer el PDF: ${pdfError.message}`, 'error', 8000);
     guias = [];
   }
 
@@ -265,7 +265,7 @@ async function handleFile(event) {
   const isExcel = ['xls', 'xlsx'].includes(fileExtension);
 
   if (!isPDF && !isExcel) {
-    notify('❌ Formato no soportado. Use .xls, .xlsx o .pdf', 'error');
+    notify('Formato no soportado. Use .xls, .xlsx o .pdf', 'error');
     return;
   }
 
@@ -311,7 +311,7 @@ async function handleFile(event) {
       updateStats();
 
       if (manifiesto.length > 0) {
-        notify(`✅ Manifiesto cargado con ${manifiesto.length} guías.`, 'success');
+        notify(`Manifiesto cargado con ${manifiesto.length} guías.`, 'success');
       }
 
       const scanInputField = document.getElementById("scanInput");
@@ -319,12 +319,12 @@ async function handleFile(event) {
 
     } catch (error) {
       console.error("Error general:", error);
-      notify('❌ Error al procesar el archivo.', 'error');
+      notify('Error al procesar el archivo.', 'error');
     }
   };
 
   reader.onerror = function() {
-    notify("❌ Error al leer el archivo.");
+    notify("Error al leer el archivo.");
   };
 
   reader.readAsArrayBuffer(file);
@@ -347,7 +347,7 @@ function abrirModalFaltantes() {
 
 function cerrarModalFaltantes() { document.getElementById('faltantesModal') && (document.getElementById('faltantesModal').style.display = 'none'); }
 function marcarComoEscaneada(guia) {
-  if (faltantesSet.has(guia)) { correctasSet.add(guia); faltantesSet.delete(guia); updateStats(); abrirModalFaltantes(); notify(`✅ ${guia} marcada`, 'success'); }
+  if (faltantesSet.has(guia)) { correctasSet.add(guia); faltantesSet.delete(guia); updateStats(); abrirModalFaltantes(); notify(`${guia} marcada`, 'success'); }
 }
 function abrirModalNoManifestadas() {
   const modal = document.getElementById('noManifestadasModal');
@@ -370,9 +370,9 @@ function abrirModalRepetidas() {
   modal.style.display = 'block';
 }
 function cerrarModalRepetidas() { document.getElementById('repetidasModal') && (document.getElementById('repetidasModal').style.display = 'none'); }
-function copiarFaltantes() { navigator.clipboard.writeText(Array.from(faltantesSet).join('\n')); notify('✅ Lista copiada', 'success'); }
-function copiarNoManifestadas() { navigator.clipboard.writeText(Array.from(noManifestadasSet).join('\n')); notify('✅ Lista copiada', 'success'); }
-function copiarRepetidas() { navigator.clipboard.writeText(Array.from(guiasEscaneadas.entries()).filter(([_, d]) => d.veces > 1).map(([g, d]) => `${g} (${d.veces})`).join('\n')); notify('✅ Lista copiada', 'success'); }
+function copiarFaltantes() { navigator.clipboard.writeText(Array.from(faltantesSet).join('\n')); notify('Lista copiada', 'success'); }
+function copiarNoManifestadas() { navigator.clipboard.writeText(Array.from(noManifestadasSet).join('\n')); notify('Lista copiada', 'success'); }
+function copiarRepetidas() { navigator.clipboard.writeText(Array.from(guiasEscaneadas.entries()).filter(([_, d]) => d.veces > 1).map(([g, d]) => `${g} (${d.veces})`).join('\n')); notify('Lista copiada', 'success'); }
 
 // ====== HISTORIAL ======
 const HISTORIAL_KEY = STORAGE_KEYS.MANIFIESTO_HISTORIAL;
@@ -528,11 +528,11 @@ function buildComparativoRows(manifestadas, pistoleadas, noManif, faltantes) {
   }
 
   const filasNoManif = noManif.length === 0
-    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Ninguna guía fuera de manifiesto ✅</td></tr>'
+    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Ninguna guía fuera de manifiesto</td></tr>'
     : noManif.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#dc3545;font-weight:600">${esc(g)}</td></tr>`).join('');
 
   const filasFaltantes = faltantes.length === 0
-    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Todas las guías fueron escaneadas ✅</td></tr>'
+    ? '<tr><td colspan="2" style="text-align:center;color:#aaa;padding:20px">Todas las guías fueron escaneadas</td></tr>'
     : faltantes.map((g, i) => `<tr><td style="color:#666">${i+1}</td><td style="color:#e67e00;font-weight:600">${esc(g)}</td></tr>`).join('');
 
   return { filasComparativo, filasNoManif, filasFaltantes };
@@ -566,7 +566,7 @@ function openComparativoWindow() {
   <!-- Barra de imprimir -->
   <div class="print-bar">
     <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
-    <button class="btn-print" onclick="window.print()">🖨️ Imprimir Reporte</button>
+    <button class="btn-print" onclick="window.print()">Imprimir Reporte</button>
   </div>
 
   <!-- Encabezado -->
@@ -574,9 +574,9 @@ function openComparativoWindow() {
     <div>
       <h1>Reporte Comparativo de Manifiesto</h1>
       <div class="sub">Efficommerce — Transportadora</div>
-      <div class="fecha">📅 ${fecha} &nbsp;|&nbsp; 🕐 ${hora}</div>
+      <div class="fecha">${fecha} &nbsp;|&nbsp; ${hora}</div>
     </div>
-    <div class="badge-ruta">🚚 Ruta: ${esc(window.nombreRuta)}</div>
+    <div class="badge-ruta">Ruta: ${esc(window.nombreRuta)}</div>
   </div>
 
   <!-- Info ruta -->
@@ -687,7 +687,7 @@ const lhDestinatarios = {
 function extraerLHCodes(rows) { const codes = new Set(); rows.forEach(row => { if(Array.isArray(row)) row.forEach(cell => { const v = String(cell).trim(); if(/^LH\d{2,3}$/i.test(v)) codes.add(v.toUpperCase()); const m = v.match(/ruta\s*[:\-]\s*(LH\d{2,3})/i); if(m) codes.add(m[1].toUpperCase()); }); }); return Array.from(codes); }
 function extraerDestinatarios(rows) { const dest = new Set(); for(let i=2; i<rows.length; i++) { const row = rows[i]; if(Array.isArray(row) && row[3]) { const d = String(row[3]).trim().toUpperCase(); if(d && d !== "DESTINATARIO" && d.length > 2) dest.add(d); } } return Array.from(dest); }
 function verificarCrucesDeRuta(lhCodes, destinatarios) { const cruces = []; lhCodes.forEach(code => { if(!lhDestinatarios[code]) cruces.push({ tipo: "LH_INEXISTENTE", motivo: `${code} no existe` }); }); return cruces; }
-function mostrarModalCruces(cruces) { let modal = document.getElementById('crucesModal'); if(!modal){ modal=document.createElement('div'); modal.id='crucesModal'; modal.className='modal'; document.body.appendChild(modal); } modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>⚠️ Cruces</h3><span onclick="cerrarModalCruces()">&times;</span></div><div class="modal-body">${cruces.map(c=>`<div>${esc(c.motivo)}</div>`).join('')}</div></div>`; modal.style.display='block'; }
+function mostrarModalCruces(cruces) { let modal = document.getElementById('crucesModal'); if(!modal){ modal=document.createElement('div'); modal.id='crucesModal'; modal.className='modal'; document.body.appendChild(modal); } modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>Cruces</h3><span onclick="cerrarModalCruces()">&times;</span></div><div class="modal-body">${cruces.map(c=>`<div>${esc(c.motivo)}</div>`).join('')}</div></div>`; modal.style.display='block'; }
 function cerrarModalCruces() { const m = document.getElementById('crucesModal'); if(m) m.style.display='none'; }
 let crucesActivos = [];
 function mostrarIconoNotificacion(cruces) { crucesActivos=cruces; const icono=document.getElementById('notificationIcon'); if(icono && cruces.length) icono.style.display='flex'; }
@@ -856,7 +856,7 @@ function exportarExcelDevoluciones() {
   }
 
   if (filas.length === 0) {
-    notify('⚠️ No hay guías para exportar.', 'warning');
+    notify('No hay guías para exportar.', 'warning');
     return;
   }
 
@@ -888,7 +888,7 @@ function exportarExcelDevoluciones() {
 
   XLSX.utils.book_append_sheet(wb, ws, 'Devoluciones');
   XLSX.writeFile(wb, nombreArchivo);
-  notify(`✅ Excel exportado: ${nombreArchivo}`, 'success');
+  notify(`Excel exportado: ${nombreArchivo}`, 'success');
 }
 
 // Inicialización

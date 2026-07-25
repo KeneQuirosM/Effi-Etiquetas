@@ -92,7 +92,7 @@ function showOfflineBanner() {
   if (document.getElementById('offline-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'offline-banner';
-  banner.innerHTML = '⚠️ Sin conexión — usando inventario en caché. Los cambios no se guardarán.';
+  banner.innerHTML = 'Sin conexión — usando inventario en caché. Los cambios no se guardarán.';
   banner.style.cssText = `
     position:fixed;top:0;left:0;right:0;z-index:9000;
     background:#c98e00;color:#fff;text-align:center;
@@ -118,7 +118,7 @@ async function loadData() {
     hideOfflineBanner();
     hideToast();
     
-    // ✅ NUEVO: Resetear búsqueda
+    // NUEVO: Resetear búsqueda
     const searchInput = document.getElementById('search-producto');
     if (searchInput) {
       searchInput.value = '';
@@ -139,7 +139,7 @@ async function loadData() {
       isOffline = true;
     }
     
-    // ✅ NUEVO: También resetear búsqueda en caso de error
+    // NUEVO: También resetear búsqueda en caso de error
     const searchInput = document.getElementById('search-producto');
     if (searchInput) {
       searchInput.value = '';
@@ -162,7 +162,7 @@ function activateCoord(token, refreshToken) {
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = '');
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.add('active');
-  document.getElementById('coord-icon').textContent = '⚙️';
+  document.getElementById('coord-icon').textContent = '';
   document.getElementById('coord-label').textContent = 'Coordinador Activo';
 }
 
@@ -176,7 +176,7 @@ async function checkPin() {
     activateCoord(data.token, data.refresh_token);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
-    notify('✅ Sesión iniciada', 'success');
+    notify('Sesión iniciada', 'success');
   } catch(e) {
     document.getElementById('pin-error').textContent = 'Credenciales incorrectas';
   }
@@ -218,7 +218,7 @@ async function changePin() {
         const result = await response.json();
 
         if (response.ok) {
-            notify('✅ Contraseña actualizada correctamente', 'success');
+            notify('Contraseña actualizada correctamente', 'success');
             document.getElementById('c-pin-nuevo').value = '';
             document.getElementById('c-pin-confirm').value = '';
         } else {
@@ -267,7 +267,7 @@ async function renameTienda() {
     await loadData();
     populateTiendas();
     document.getElementById('c-rename-tienda-nombre').value = '';
-    notify(`✅ "${nombreAnterior}" → "${nuevoNombre}"`, 'success');
+    notify(`"${nombreAnterior}" → "${nuevoNombre}"`, 'success');
   } catch(e) { notify(e.message, 'danger'); }
 }
 
@@ -363,7 +363,7 @@ async function addProducto() {
     }
     document.getElementById('c-new-id').value = '';
     document.getElementById('c-new-nombre').value = '';
-    notify(`✅ Producto "${newNombre}" agregado`, 'success');
+    notify(`Producto "${newNombre}" agregado`, 'success');
   } catch(e) { notify(e.message, 'danger'); }
 }
 
@@ -376,7 +376,7 @@ async function addTienda() {
     await loadData();
     populateTiendas();
     document.getElementById('c-tienda-nombre').value = '';
-    notify(`✅ Tienda "${nombre}" creada`, 'success');
+    notify(`Tienda "${nombre}" creada`, 'success');
   } catch(e) { notify(e.message, 'danger'); }
 }
 
@@ -438,7 +438,7 @@ function renderManageList() {
         onkeydown="if(event.key==='Enter') this.nextElementSibling.focus()">
       <input class="input-ubic" value="${esc(item.ubicacion||'')}" title="Ubicación (ej: A-3-2)" placeholder="Ubic."
         onkeydown="if(event.key==='Enter') this.nextElementSibling.click()">
-      <button class="btn-save-item" onclick="saveProductoEdit(${idx}, '${esc(String(item.id).replace(/'/g,"\\'"))}', this.closest('.inv-item'))" title="Guardar">💾</button>
+      <button class="btn-save-item" onclick="saveProductoEdit(${idx}, '${esc(String(item.id).replace(/'/g,"\\'"))}', this.closest('.inv-item'))" title="Guardar">✓</button>
       <button onclick="removeProducto(${idx}, '${esc(String(item.id).replace(/'/g,"\\'"))}')" title="Eliminar">✕</button>
     </div>
   `).join('');
@@ -463,7 +463,7 @@ async function saveProductoEdit(tiendaIdx, originalId, row) {
       populateInventario(tiendaIdx, document.getElementById('select-producto'), document.getElementById('select-id'));
       updatePreview();
     }
-    notify('✅ Producto actualizado', 'success');
+    notify('Producto actualizado', 'success');
   } catch(e) { notify(e.message, 'danger'); }
 }
 
@@ -498,7 +498,7 @@ function lockCoord() {
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
-  document.getElementById('coord-icon').textContent = '🔒';
+  document.getElementById('coord-icon').textContent = '';
   document.getElementById('coord-label').textContent = 'Modo Coordinador';
   document.getElementById('coord-panel').classList.remove('visible');
   notify('Sesión de coordinador cerrada');
@@ -577,7 +577,7 @@ function handleLogoUpload(input) {
       try { await apiPost('/api/config', { clave: LOGO_KEY, valor: b64 }); } catch(e) {}
     }
     applyLogo(b64);
-    notify('✅ Logo actualizado', 'success');
+    notify('Logo actualizado', 'success');
   };
   reader.readAsDataURL(file);
   input.value = '';
@@ -632,7 +632,7 @@ function handleRotuloLogoUpload(input) {
       try { await apiPost('/api/config', { clave: ROTULO_LOGO_KEY, valor: b64 }); } catch(e) {}
     }
     applyRotuloLogo(b64);
-    notify('✅ Logo del rótulo actualizado', 'success');
+    notify('Logo del rótulo actualizado', 'success');
   };
   reader.readAsDataURL(file);
   input.value = '';
@@ -670,7 +670,7 @@ function exportJSON() {
   a.download = 'etiquetas_inventario.json';
   a.click();
   URL.revokeObjectURL(url);
-  notify('✅ JSON exportado', 'success');
+  notify('JSON exportado', 'success');
 }
 
 async function handleJSONImport(input) {
@@ -689,8 +689,8 @@ async function handleJSONImport(input) {
         return notify('Debés estar en modo Coordinador para importar', 'danger');
 
       clearImportLog();
-      logImport('🚀 Iniciando importación...', 'info');
-      logImport(`📦 Total de tiendas en archivo: ${parsed.tiendas.length}`, 'info');
+      logImport('Iniciando importación...', 'info');
+      logImport(`Total de tiendas en archivo: ${parsed.tiendas.length}`, 'info');
       notify('Importando... espere', '');
 
       let tiendasCreadas = 0;
@@ -710,7 +710,7 @@ async function handleJSONImport(input) {
         const nombreNormalizado = nombreTienda.toLowerCase();
         let tiendaId;
 
-        logImport(`🏪 Procesando tienda ${i+1}/${parsed.tiendas.length}: "${nombreTienda}"`, 'info');
+        logImport(`Procesando tienda ${i+1}/${parsed.tiendas.length}: "${nombreTienda}"`, 'info');
 
         // Verificar si la tienda ya existe
         if (tiendasExistentesMap.has(nombreNormalizado)) {
@@ -724,16 +724,16 @@ async function handleJSONImport(input) {
             tiendaId = nuevaTienda.id;
             tiendasCreadas++;
             tiendasExistentesMap.set(nombreNormalizado, tiendaId);
-            logImport(`   ✅ Tienda creada (ID: ${tiendaId})`, 'success');
+            logImport(`   Tienda creada (ID: ${tiendaId})`, 'success');
           } catch (err) {
-            logImport(`   ❌ Error al crear tienda: ${err.message}`, 'error');
+            logImport(`   Error al crear tienda: ${err.message}`, 'error');
             continue; // saltar productos de esta tienda
           }
         }
 
         // Procesar productos en batches de 10 para acelerar la importación
         const items = tienda.inventario || [];
-        logImport(`   📦 Procesando ${items.length} productos en lotes de 10...`, 'info');
+        logImport(`   Procesando ${items.length} productos en lotes de 10...`, 'info');
         const BATCH = 10;
         for (let b = 0; b < items.length; b += BATCH) {
           const lote = items.slice(b, b + BATCH);
@@ -749,35 +749,35 @@ async function handleJSONImport(input) {
             const item = lote[j];
             if (res.status === 'fulfilled') {
               productosAgregados++;
-              logImport(`      ➕ [${item.id}] ${item.producto}`, 'success');
+              logImport(`      [${item.id}] ${item.producto}`, 'success');
             } else {
               productosOmitidos++;
               const msg = res.reason?.message || '';
               if (msg.includes('duplicate') || msg.includes('ya existe')) {
-                logImport(`      ⚠️ Duplicado omitido: [${item.id}] ${item.producto}`, 'warn');
+                logImport(`      Duplicado omitido: [${item.id}] ${item.producto}`, 'warn');
               } else {
-                logImport(`      ❌ Error [${item.id}]: ${msg}`, 'error');
+                logImport(`      Error [${item.id}]: ${msg}`, 'error');
               }
             }
           });
         }
-        logImport(`   🏁 Tienda "${nombreTienda}" completada.`, 'info');
+        logImport(`   Tienda "${nombreTienda}" completada.`, 'info');
       }
 
       // Recargar datos
-      logImport('🔄 Recargando datos desde el servidor...', 'info');
+      logImport('Recargando datos desde el servidor...', 'info');
       await loadData();
       populateTiendas();
       renderManageList();
       document.getElementById('select-producto').innerHTML = '<option value="">-- Producto --</option>';
       document.getElementById('select-id').innerHTML = '<option value="">-- ID --</option>';
 
-      const mensaje = `✅ Tiendas nuevas: ${tiendasCreadas} | Tiendas actualizadas: ${tiendasExistentes} | Productos agregados: ${productosAgregados} | Omitidos: ${productosOmitidos}`;
-      logImport(`🎉 IMPORTACIÓN FINALIZADA: ${mensaje}`, 'success');
+      const mensaje = `Tiendas nuevas: ${tiendasCreadas} | Tiendas actualizadas: ${tiendasExistentes} | Productos agregados: ${productosAgregados} | Omitidos: ${productosOmitidos}`;
+      logImport(`IMPORTACIÓN FINALIZADA: ${mensaje}`, 'success');
       notify(mensaje, 'success');
 
     } catch(err) {
-      logImport(`💥 Error crítico: ${err.message}`, 'error');
+      logImport(`Error crítico: ${err.message}`, 'error');
       notify('Error al procesar el archivo JSON', 'danger');
       console.error(err);
     }
@@ -912,7 +912,7 @@ async function createUser() {
     document.getElementById('u-email').value = '';
     document.getElementById('u-password').value = '';
     document.getElementById('u-password-confirm').value = '';
-    notify(`✅ Coordinador "${email}" creado`, 'success');
+    notify(`Coordinador "${email}" creado`, 'success');
     loadUsers();
   } catch {
     notify('Error de conexión', 'danger');
@@ -1247,7 +1247,7 @@ async function saveUbicacionToggle(value) {
   applyUbicacionToggle();
   try {
     await apiPost('/api/config', { clave: UBICACION_KEY, valor: String(value) });
-    notify(value ? '✅ QR de ubicaciones activado' : 'QR de ubicaciones desactivado', value ? 'success' : '');
+    notify(value ? 'QR de ubicaciones activado' : 'QR de ubicaciones desactivado', value ? 'success' : '');
   } catch {
     notify('Error al guardar configuración', 'danger');
   }
@@ -1280,13 +1280,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isTokenExpired(savedToken)) {
       // Token vigente — restaurar sin llamada al servidor
       activateCoord(savedToken, localStorage.getItem(REFRESH_KEY));
-      notify('✅ Sesión restaurada', 'success');
+      notify('Sesión restaurada', 'success');
     } else {
       // Token expirado — intentar renovar con el refresh_token
       const renewed = await tryRefreshToken();
       if (renewed) {
         activateCoord(coordToken, localStorage.getItem(REFRESH_KEY));
-        notify('✅ Sesión renovada', 'success');
+        notify('Sesión renovada', 'success');
       }
       // Si falla, lockCoord() ya limpió localStorage
     }

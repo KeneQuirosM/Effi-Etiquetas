@@ -53,20 +53,20 @@
     <div class="hstat" id="hclock"><div class="dot y"></div>--:--:--</div>
     <div class="save-ind" id="save-ind"><div class="dot g"></div><span data-i18n="saved">GUARDADO</span></div>
     <button class="hbtn cyan guard-btn" onclick="guardEdit(()=>openO('o-transfer'))" data-i18n="btn_transfer">⇄ Trasladar</button>
-    <button class="hbtn" onclick="openBulkPrint()" style="border-color:var(--yellow);color:var(--yellow)" data-i18n="btn_labels">🖨 Etiquetas</button>
+    <button class="hbtn" onclick="openBulkPrint()" style="border-color:var(--yellow);color:var(--yellow)" data-i18n="btn_labels">Etiquetas</button>
     <button class="hbtn ac guard-btn" onclick="guardEdit(openAddRack)" data-i18n="btn_rack">＋ Rack</button>
     <!-- Overflow dropdown -->
     <div class="hoverflow" id="hoverflow">
       <button class="hoverflow-btn" onclick="toggleOverflow()" title="Más acciones">⋯</button>
       <div class="hoverflow-menu" id="hoverflow-menu">
         <button class="guard-btn" onclick="closeOverflow();guardEdit(exportJSON)" data-i18n="btn_json">⬇ JSON</button>
-        <button onclick="closeOverflow();openSnapModal()" style="color:var(--green)" data-i18n="btn_snapshots">💾 Snapshots</button>
+        <button onclick="closeOverflow();openSnapModal()" style="color:var(--green)" data-i18n="btn_snapshots">Snapshots</button>
         <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>document.getElementById('imp').click())" data-i18n="btn_import">⬆ Importar</button>
-        <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>document.getElementById('imp-xlsx').click())" style="color:var(--green)">📊 Stock Excel</button>
+        <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>document.getElementById('imp-xlsx').click())" style="color:var(--green)">Stock Excel</button>
         <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>addZone())" data-i18n="btn_zone">＋ Zona</button>
-        <button class="guard-btn" style="color:var(--cyan)" onclick="closeOverflow();guardEdit(()=>openO('o-catalog'))" data-i18n="btn_catalogs">👥 Catálogos</button>
-        <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>openO('o-bodega-config'))" data-i18n="btn_bodega_config">📐 Configurar Bodega</button>
-        <button class="guard-btn" style="color:var(--yellow)" onclick="closeOverflow();guardEdit(limpiarCantidades)" data-i18n="btn_reset_qty">🔢 Limpiar Cantidades</button>
+        <button class="guard-btn" style="color:var(--cyan)" onclick="closeOverflow();guardEdit(()=>openO('o-catalog'))" data-i18n="btn_catalogs">Catálogos</button>
+        <button class="guard-btn" onclick="closeOverflow();guardEdit(()=>openO('o-bodega-config'))" data-i18n="btn_bodega_config">Configurar Bodega</button>
+        <button class="guard-btn" style="color:var(--yellow)" onclick="closeOverflow();guardEdit(limpiarCantidades)" data-i18n="btn_reset_qty">Limpiar Cantidades</button>
       </div>
     </div>
     <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(event)">
@@ -87,21 +87,21 @@
   </div>
   <div class="mob-drawer-body">
     <button class="mob-action ac guard-btn" onclick="closeMobileMenu();guardEdit(openAddRack)">＋ <span data-i18n="btn_rack">Rack</span></button>
-    <button class="mob-action" onclick="closeMobileMenu();openO('o-report')">📋 <span data-i18n="btn_report">Reporte</span></button>
+    <button class="mob-action" onclick="closeMobileMenu();openO('o-report')"><span data-i18n="btn_report">Reporte</span></button>
     <button class="mob-action cyan guard-btn" onclick="closeMobileMenu();guardEdit(()=>openO('o-transfer'))">⇄ <span data-i18n="btn_transfer">Trasladar</span></button>
-    <button class="mob-action" onclick="closeMobileMenu();openBulkPrint()" style="color:var(--yellow)">🖨 <span data-i18n="btn_labels">Etiquetas</span></button>
+    <button class="mob-action" onclick="closeMobileMenu();openBulkPrint()" style="color:var(--yellow)"><span data-i18n="btn_labels">Etiquetas</span></button>
     <div class="mob-sep"></div>
     <button class="mob-action guard-btn" onclick="closeMobileMenu();guardEdit(()=>addZone())">＋ <span data-i18n="btn_zone">Zona</span></button>
-    <button class="mob-action guard-btn" onclick="closeMobileMenu();guardEdit(()=>openO('o-catalog'))" style="color:var(--cyan)">👥 <span data-i18n="btn_catalogs">Catálogos</span></button>
+    <button class="mob-action guard-btn" onclick="closeMobileMenu();guardEdit(()=>openO('o-catalog'))" style="color:var(--cyan)"><span data-i18n="btn_catalogs">Catálogos</span></button>
     <div class="mob-sep"></div>
     <button class="mob-action guard-btn" onclick="closeMobileMenu();guardEdit(exportJSON)">⬇ <span data-i18n="btn_json">JSON</span></button>
-    <button class="mob-action" onclick="closeMobileMenu();openSnapModal()" style="color:var(--green)">💾 <span data-i18n="btn_snapshots">Snapshots</span></button>
+    <button class="mob-action" onclick="closeMobileMenu();openSnapModal()" style="color:var(--green)"><span data-i18n="btn_snapshots">Snapshots</span></button>
     <button class="mob-action guard-btn" onclick="closeMobileMenu();guardEdit(()=>document.getElementById('imp2').click())">⬆ <span data-i18n="btn_import">Importar</span></button>
     <input type="file" id="imp2" accept=".json" style="display:none" onchange="importJSON(event)">
-    <button class="mob-action guard-btn" style="color:var(--yellow)" onclick="closeMobileMenu();guardEdit(limpiarCantidades)">🔢 <span data-i18n="btn_reset_qty">Limpiar Cantidades</span></button>
+    <button class="mob-action guard-btn" style="color:var(--yellow)" onclick="closeMobileMenu();guardEdit(limpiarCantidades)"><span data-i18n="btn_reset_qty">Limpiar Cantidades</span></button>
     <div class="mob-sep"></div>
     <button class="mob-action" onclick="closeMobileMenu();openSettings()">⚙ <span data-i18n="btn_settings">Configuración</span></button>
-    <button class="mob-action" onclick="closeMobileMenu();(function(){var m=document.getElementById('o-pin');if(!m)return;if(typeof toggleLock==='function'){toggleLock();}else{m.classList.add('open');}})()">🔒 <span data-i18n="lock_title">Bloquear</span></button>
+    <button class="mob-action" onclick="closeMobileMenu();(function(){var m=document.getElementById('o-pin');if(!m)return;if(typeof toggleLock==='function'){toggleLock();}else{m.classList.add('open');}})()"><span data-i18n="lock_title">Bloquear</span></button>
     <div class="mob-sep"></div>
     <button class="mob-action" onclick="closeMobileMenu();togglePanel('lp')">◧ Panel izquierdo &nbsp;<span style="color:var(--dim);font-size:.85rem">[</span></button>
     <button class="mob-action" onclick="closeMobileMenu();togglePanel('rp')">◨ Panel derecho &nbsp;<span style="color:var(--dim);font-size:.85rem">]</span></button>
@@ -125,11 +125,11 @@
     
   </div>
   <div class="lsec" id="expiry-panel" style="display:none">
-    <div class="shd" style="color:var(--red)"><span data-i18n="expiry_title">⚠ Vencimientos</span> <span id="expiry-count" style="font-family:'Share Tech Mono',monospace;font-size:1rem;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;margin-left:4px">0</span><button onclick="openReportExpiry()" style="margin-left:auto;background:none;border:none;color:var(--dim);font-size:.95rem;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px" data-i18n="expiry_see">Ver todos →</button></div>
+    <div class="shd" style="color:var(--red)"><span data-i18n="expiry_title">Vencimientos</span> <span id="expiry-count" style="font-family:'Share Tech Mono',monospace;font-size:1rem;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;margin-left:4px">0</span><button onclick="openReportExpiry()" style="margin-left:auto;background:none;border:none;color:var(--dim);font-size:.95rem;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px" data-i18n="expiry_see">Ver todos →</button></div>
     <div id="expiry-list" style="display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto"></div>
   </div>
   <div class="lsec" id="lowstock-panel" style="display:none">
-    <div class="shd" style="color:var(--yellow)"><span data-i18n="lowstock_title">📉 Stock bajo</span> <span id="lowstock-count" style="font-family:'Share Tech Mono',monospace;font-size:1rem;background:var(--yellow);color:#000;border-radius:10px;padding:1px 7px;margin-left:4px">0</span></div>
+    <div class="shd" style="color:var(--yellow)"><span data-i18n="lowstock_title">Stock bajo</span> <span id="lowstock-count" style="font-family:'Share Tech Mono',monospace;font-size:1rem;background:var(--yellow);color:#000;border-radius:10px;padding:1px 7px;margin-left:4px">0</span></div>
     <div id="lowstock-list" style="display:flex;flex-direction:column;gap:3px;max-height:150px;overflow-y:auto"></div>
   </div>
   <div class="lsec">
@@ -137,7 +137,7 @@
     <div id="zlist" style="display:flex;flex-direction:column;gap:3px"></div>
   </div>
   <div class="lsec">
-  <div class="shd">📐 Espacio (m²)</div>
+  <div class="shd">Espacio (m²)</div>
   <div class="sblk">
     <div class="sblk-lbl">Área útil total</div>
     <div class="sblk-val" id="st-util">0<small>m²</small></div>
@@ -260,7 +260,7 @@
     <span style="font-size:1.1rem">⊞</span><span>Fit</span>
   </button>
   <button class="mob-fab" id="fab-report" onclick="openO('o-report')" title="Reporte">
-    <span style="font-size:1.1rem">📋</span><span>Reporte</span>
+    <span style="font-size:1.1rem">▤</span><span>Reporte</span>
   </button>
   <button class="mob-fab" id="fab-rp" onclick="toggleMobPanel('rp')" title="Panel derecho">
     <span style="font-size:1.1rem">☰</span><span>Detalle</span>
@@ -268,11 +268,11 @@
 </div>
 <div class="ov" id="o-catalog">
   <div class="modal wide">
-    <div class="mhd"><div class="mttl" data-i18n="catalog_title">👥 Catálogos</div><button class="mcl" onclick="closeO('o-catalog')">✕</button></div>
+    <div class="mhd"><div class="mttl" data-i18n="catalog_title">Catálogos</div><button class="mcl" onclick="closeO('o-catalog')">✕</button></div>
     <div class="mbdy" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <!-- EMPLEADOS -->
       <div>
-        <div style="font-size:1.1rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:8px">👤 Empleados</div>
+        <div style="font-size:1.1rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:8px">Empleados</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <input class="fi" id="cat-person-name" placeholder="Nombre completo" data-i18n="catalog_name_ph" data-i18n-target="placeholder" style="flex:1" onkeydown="if(event.key==='Enter')addCatalogPerson()">
           <input class="fi" id="cat-person-role" placeholder="Cargo (opcional)" data-i18n="catalog_role_ph" data-i18n-target="placeholder" style="width:130px" onkeydown="if(event.key==='Enter')addCatalogPerson()">
@@ -282,7 +282,7 @@
       </div>
       <!-- TIENDAS -->
       <div>
-        <div style="font-size:1.1rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px" data-i18n="catalog_shops">🏪 Tiendas</div>
+        <div style="font-size:1.1rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px" data-i18n="catalog_shops">Tiendas</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <input class="fi" id="cat-shop-name" placeholder="Nombre de la tienda" data-i18n="catalog_shop_name_ph" data-i18n-target="placeholder" style="flex:1" onkeydown="if(event.key==='Enter')addCatalogShop()">
           <input class="fi" id="cat-shop-code" placeholder="Código (opcional)" data-i18n="catalog_shop_code_ph" data-i18n-target="placeholder" style="width:100px" onkeydown="if(event.key==='Enter')addCatalogShop()">
@@ -338,13 +338,13 @@
       </div>
       <div class="fr2">
         <div class="fg">
-          <label class="fl"><span data-i18n="rack_resp_lbl">👤 Responsables</span> <button onclick="openO('o-catalog')" style="background:none;border:none;color:var(--cyan);font-size:.9rem;cursor:pointer;letter-spacing:1px">＋ Gestionar</button></label>
+          <label class="fl"><span data-i18n="rack_resp_lbl">Responsables</span> <button onclick="openO('o-catalog')" style="background:none;border:none;color:var(--cyan);font-size:.9rem;cursor:pointer;letter-spacing:1px">＋ Gestionar</button></label>
           <div id="rack-resp-checks" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px 8px;background:var(--bg2);border:1px solid var(--border2);border-radius:3px">
             <span style="color:var(--dim);font-size:1rem" id="rack-resp-empty" data-i18n="catalog_no_people_short">Sin empleados en catálogo</span>
           </div>
         </div>
         <div class="fg">
-          <label class="fl"><span data-i18n="rack_shops_lbl">🏪 Tiendas</span> <button onclick="openO('o-catalog')" style="background:none;border:none;color:var(--accent);font-size:.9rem;cursor:pointer;letter-spacing:1px">＋ Gestionar</button></label>
+          <label class="fl"><span data-i18n="rack_shops_lbl">Tiendas</span> <button onclick="openO('o-catalog')" style="background:none;border:none;color:var(--accent);font-size:.9rem;cursor:pointer;letter-spacing:1px">＋ Gestionar</button></label>
           <div id="rack-shop-checks" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px 8px;background:var(--bg2);border:1px solid var(--border2);border-radius:3px">
             <span style="color:var(--dim);font-size:1rem" id="rack-shop-empty" data-i18n="catalog_no_shops">Sin tiendas en catálogo</span>
           </div>
@@ -402,11 +402,11 @@
         </div>
       </div>
       <div class="fg" id="cell-resp-wrap" style="display:none">
-        <label class="fl">👤 Responsable de esta celda</label>
+        <label class="fl">Responsable de esta celda</label>
         <div id="cell-resp-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px"></div>
       </div>
       <div class="fg" id="cell-shops-wrap" style="display:none">
-        <label class="fl" data-i18n="edit_shops_lbl">🏪 Tiendas asignadas a esta celda</label>
+        <label class="fl" data-i18n="edit_shops_lbl">Tiendas asignadas a esta celda</label>
         <div id="cell-shop-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px"></div>
       </div>
       <div class="fg">
@@ -434,10 +434,10 @@
     <div class="mft" style="flex-wrap:wrap;gap:6px;justify-content:space-between">
       <button class="btn bo" onclick="closeO('o-view')" data-i18n="btn_close">Cerrar</button>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn bo" onclick="openAudit()" style="border-color:var(--green);color:var(--green)" data-i18n="btn_count">📋 Conteo</button>
-        <button class="btn bo" onclick="openSkuHistory()" style="border-color:var(--cyan);color:var(--cyan)" data-i18n="btn_sku_history">📊 Historial SKU</button>
-        <button class="btn bo" onclick="printLabel('4x6')" style="border-color:var(--yellow);color:var(--yellow)" data-i18n="btn_print_4x6">🖨 4×6"</button>
-        <button class="btn bo" onclick="printLabel('a4')" style="border-color:var(--yellow);color:var(--yellow)" data-i18n="btn_print_a4">🖨 A4</button>
+        <button class="btn bo" onclick="openAudit()" style="border-color:var(--green);color:var(--green)" data-i18n="btn_count">Conteo</button>
+        <button class="btn bo" onclick="openSkuHistory()" style="border-color:var(--cyan);color:var(--cyan)" data-i18n="btn_sku_history">Historial SKU</button>
+        <button class="btn bo" onclick="printLabel('4x6')" style="border-color:var(--yellow);color:var(--yellow)" data-i18n="btn_print_4x6">4×6"</button>
+        <button class="btn bo" onclick="printLabel('a4')" style="border-color:var(--yellow);color:var(--yellow)" data-i18n="btn_print_a4">A4</button>
         <button class="btn bcyan" onclick="openTransferFromView()" data-i18n="btn_transfer_cell">⇄ Trasladar</button>
         <button class="btn bp" onclick="editFromView()" data-i18n="btn_edit">✎ Editar</button>
       </div>
@@ -493,32 +493,32 @@
 <div class="ov" id="o-report">
   <div class="modal xl">
     <div class="mhd">
-      <div class="mttl" data-i18n="report_title">📊 Reportes del Almacén</div>
+      <div class="mttl" data-i18n="report_title">Reportes del Almacén</div>
       <button class="mcl" onclick="closeO('o-report')">✕</button>
     </div>
     <div class="mbdy">
       <div class="report-tabs" style="padding:0 18px;flex-shrink:0;background:var(--panel);z-index:2;">
-        <button type="button" class="rtab on" onclick="switchRTab('rt-skus',this)" data-i18n="rep_skus">📦 Por SKU</button>
-        <button type="button" class="rtab" onclick="switchRTab('rt-cells',this)" data-i18n="rep_cells">📍 Por Celda</button>
-        <button type="button" class="rtab" onclick="switchRTab('rt-zones',this)" data-i18n="rep_zones">🗂 Por Zona</button>
-        <button type="button" class="rtab" onclick="switchRTab('rt-resp',this)" data-i18n="rep_resp">👤 Resp.</button>
-        <button type="button" class="rtab" onclick="switchRTab('rt-tiendas',this)" data-i18n="rep_tiendas">🏪 Tiendas</button>
-        <button type="button" class="rtab" onclick="switchRTab('rt-expiry',this)" data-i18n="rep_expiry">📅 Vencim.</button>
-        <button type="button" class="rtab" onclick="switchRTab('rt-audit',this)" data-i18n="rep_audit">📋 Conteos</button>
-        <button type="button" class="rtab" onclick="switchRTab('rt-movements',this)" data-i18n="rep_movements">📊 Movim.</button>
-        <button type="button" class="rtab" onclick="switchRTab('rt-valor',this)" data-i18n="rep_valor">💰 Valor</button>
+        <button type="button" class="rtab on" onclick="switchRTab('rt-skus',this)" data-i18n="rep_skus">Por SKU</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-cells',this)" data-i18n="rep_cells">Por Celda</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-zones',this)" data-i18n="rep_zones">Por Zona</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-resp',this)" data-i18n="rep_resp">Resp.</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-tiendas',this)" data-i18n="rep_tiendas">Tiendas</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-expiry',this)" data-i18n="rep_expiry">Vencim.</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-audit',this)" data-i18n="rep_audit">Conteos</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-movements',this)" data-i18n="rep_movements">Movim.</button>
+        <button type="button" class="rtab" onclick="switchRTab('rt-valor',this)" data-i18n="rep_valor">Valor</button>
       </div>
       <div class="rep-inner">
 
       <!-- SKU tab -->
       <div class="report-panel on" id="rt-skus">
         <div class="rep-filters">
-          <input class="fi" id="rf-sku" placeholder="🔍  Filtrar por SKU o descripción..." oninput="renderReportSKU(this.value)">
+          <input class="fi" id="rf-sku" placeholder="Filtrar por SKU o descripción..." oninput="renderReportSKU(this.value)">
           <span class="rep-count" id="rep-count"></span>
           <div class="rep-btns">
-            <button class="btn bo bsm" onclick="exportReportCSV()">📄 CSV</button>
-            <button class="btn bo bsm" onclick="exportSkusExcel()" style="border-color:var(--green);color:var(--green)">📊 Excel</button>
-            <button class="btn bo bsm" onclick="printReportTab('skus')">🖨</button>
+            <button class="btn bo bsm" onclick="exportReportCSV()">CSV</button>
+            <button class="btn bo bsm" onclick="exportSkusExcel()" style="border-color:var(--green);color:var(--green)">Excel</button>
+            <button class="btn bo bsm" onclick="printReportTab('skus')" title="Imprimir">Imprimir</button>
           </div>
         </div>
         <div class="rep-card-list" id="rep-sku-cards"></div>
@@ -527,10 +527,10 @@
       <!-- Cells tab -->
       <div class="report-panel" id="rt-cells">
         <div class="rep-filters">
-          <input class="fi" id="rf-cell" placeholder="🔍  Rack, SKU, zona, responsable..." oninput="renderReportCells(this.value)">
+          <input class="fi" id="rf-cell" placeholder="Rack, SKU, zona, responsable..." oninput="renderReportCells(this.value)">
           <div class="rep-btns">
-            <button class="btn bo bsm" onclick="printReportTab('cells')" title="Imprimir todos los racks">🖨 Todos</button>
-            <button class="btn bo bsm" onclick="openPrintByRack()" title="Imprimir un rack en A4 horizontal" style="color:var(--cyan);border-color:var(--cyan)">🖨 Por Rack</button>
+            <button class="btn bo bsm" onclick="printReportTab('cells')" title="Imprimir todos los racks">Todos</button>
+            <button class="btn bo bsm" onclick="openPrintByRack()" title="Imprimir un rack en A4 horizontal" style="color:var(--cyan);border-color:var(--cyan)">Por Rack</button>
           </div>
         </div>
         <div class="rep-card-list" id="rep-cell-cards"></div>
@@ -539,9 +539,9 @@
       <!-- Zones tab -->
       <div class="report-panel" id="rt-zones">
         <div class="rep-filters">
-          <input class="fi" id="rf-zone" placeholder="🔍  Nombre de zona..." oninput="renderReportZones(this.value)">
+          <input class="fi" id="rf-zone" placeholder="Nombre de zona..." oninput="renderReportZones(this.value)">
           <div class="rep-btns">
-            <button class="btn bo bsm" onclick="printReportTab('zones')">🖨</button>
+            <button class="btn bo bsm" onclick="printReportTab('zones')" title="Imprimir">Imprimir</button>
           </div>
         </div>
         <div id="rep-zone-cards" style="display:flex;flex-direction:column;gap:10px"></div>
@@ -557,7 +557,7 @@
             <option value="">Todas las tiendas</option>
           </select>
           <div class="rep-btns">
-            <button class="btn bo bsm" onclick="printReportTab('resp')">🖨</button>
+            <button class="btn bo bsm" onclick="printReportTab('resp')" title="Imprimir">Imprimir</button>
           </div>
         </div>
         <div id="rep-resp-cards" style="display:flex;flex-direction:column;gap:10px"></div>
@@ -567,9 +567,9 @@
       <!-- Tiendas tab -->
       <div class="report-panel" id="rt-tiendas">
         <div class="rep-filters">
-          <input class="fi" id="rf-tienda" placeholder="🔍  Nombre de tienda..." oninput="renderReportTiendas(this.value)">
+          <input class="fi" id="rf-tienda" placeholder="Nombre de tienda..." oninput="renderReportTiendas(this.value)">
           <div class="rep-btns">
-            <button class="btn bo bsm" onclick="printReportTab('tiendas')">🖨</button>
+            <button class="btn bo bsm" onclick="printReportTab('tiendas')" title="Imprimir">Imprimir</button>
           </div>
         </div>
         <div class="rep-card-list" id="rep-tienda-cards"></div>
@@ -587,7 +587,7 @@
           </select>
           <span class="rep-count" id="rep-exp-count"></span>
           <div class="rep-btns">
-            <button class="btn bo bsm" onclick="printReportTab('expiry')">🖨</button>
+            <button class="btn bo bsm" onclick="printReportTab('expiry')" title="Imprimir">Imprimir</button>
           </div>
         </div>
         <div class="rep-card-list" id="rep-expiry-cards"></div>
@@ -611,7 +611,7 @@
           </select>
           <span class="rep-count" id="rep-audit-count"></span>
           <div class="rep-btns">
-            <button class="btn bo bsm" onclick="exportReportAudit()">📄 Exportar</button>
+            <button class="btn bo bsm" onclick="exportReportAudit()">Exportar</button>
           </div>
         </div>
         <div class="rep-card-list" id="rep-audit-cards"></div>
@@ -620,7 +620,7 @@
       <!-- Movimientos tab -->
       <div class="report-panel" id="rt-movements">
         <div class="rep-filters">
-          <input class="fi" id="rf-mov-sku" placeholder="🔍  SKU o descripción..." oninput="renderReportMovements()">
+          <input class="fi" id="rf-mov-sku" placeholder="SKU o descripción..." oninput="renderReportMovements()">
           <select class="fi" id="rf-mov-type" onchange="renderReportMovements()">
             <option value="">Todos</option>
             <option value="entrada">Entradas</option>
@@ -636,8 +636,8 @@
           </select>
           <span class="rep-count" id="rep-mov-count"></span>
           <div class="rep-btns">
-            <button class="btn bo bsm" onclick="printMovementsPDF()" style="border-color:var(--cyan);color:var(--cyan)">🖨 PDF</button>
-            <button class="btn bo bsm" onclick="exportReportExcel()" style="border-color:var(--green);color:var(--green)">📊 Excel</button>
+            <button class="btn bo bsm" onclick="printMovementsPDF()" style="border-color:var(--cyan);color:var(--cyan)">PDF</button>
+            <button class="btn bo bsm" onclick="exportReportExcel()" style="border-color:var(--green);color:var(--green)">Excel</button>
           </div>
         </div>
         <div class="rep-card-list" id="rep-mov-cards"></div>
@@ -646,15 +646,15 @@
       <!-- Valor tab -->
       <div class="report-panel" id="rt-valor">
         <div class="rep-filters">
-          <input class="fi" id="rf-valor" placeholder="🔍  Filtrar SKU..." oninput="renderReportValor(this.value)">
+          <input class="fi" id="rf-valor" placeholder="Filtrar SKU..." oninput="renderReportValor(this.value)">
           <select class="fi" id="rf-valor-group" onchange="renderReportValor(document.getElementById('rf-valor').value)">
             <option value="sku" data-i18n="rep_valor_group_sku">Por SKU</option>
             <option value="rack" data-i18n="rep_valor_group_rack">Por Rack</option>
             <option value="zone" data-i18n="rep_valor_group_zone">Por Zona</option>
           </select>
           <div class="rep-btns">
-            <button class="btn bo bsm" onclick="exportValorExcel()" style="border-color:var(--green);color:var(--green)">📊 Excel</button>
-            <button class="btn bo bsm" onclick="printReportTab('valor')">🖨</button>
+            <button class="btn bo bsm" onclick="exportValorExcel()" style="border-color:var(--green);color:var(--green)">Excel</button>
+            <button class="btn bo bsm" onclick="printReportTab('valor')" title="Imprimir">Imprimir</button>
           </div>
         </div>
         <div id="rep-valor-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px"></div>
@@ -673,7 +673,7 @@
 <!-- ══ MODAL: IMPRESIÓN MASIVA ══ -->
 <div class="ov" id="o-bulk-print">
   <div class="modal wide">
-    <div class="mhd"><div class="mttl" data-i18n="bulk_title">🖨 Impresión Masiva de Etiquetas</div><button class="mcl" onclick="closeO('o-bulk-print')">✕</button></div>
+    <div class="mhd"><div class="mttl" data-i18n="bulk_title">Impresión Masiva de Etiquetas</div><button class="mcl" onclick="closeO('o-bulk-print')">✕</button></div>
     <div class="mbdy">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="fg">
@@ -717,7 +717,7 @@
     </div>
     <div class="mft">
       <button class="btn bo" onclick="closeO('o-bulk-print')" data-i18n="btn_close">Cancelar</button>
-      <button class="btn bp" onclick="doBulkPrint()" style="background:var(--yellow);border-color:var(--yellow);color:#000">🖨 Imprimir todas</button>
+      <button class="btn bp" onclick="doBulkPrint()" style="background:var(--yellow);border-color:var(--yellow);color:#000">Imprimir todas</button>
     </div>
   </div>
 </div>
@@ -725,7 +725,7 @@
 <!-- ══ MODAL: CONTEO FÍSICO ══ -->
 <div class="ov" id="o-audit">
   <div class="modal" style="width:500px">
-    <div class="mhd"><div class="mttl"><span data-i18n="audit_title">📋 Conteo Físico</span> — <span id="audit-mttl"></span></div><button class="mcl" onclick="closeO('o-audit')">✕</button></div>
+    <div class="mhd"><div class="mttl"><span data-i18n="audit_title">Conteo Físico</span> — <span id="audit-mttl"></span></div><button class="mcl" onclick="closeO('o-audit')">✕</button></div>
     <div class="mbdy">
       <div class="fg"><label class="fl" data-i18n="audit_who_lbl">Verificado por</label><input class="fi" id="audit-who" placeholder="Nombre del responsable" data-i18n="audit_who_ph" data-i18n-target="placeholder"></div>
       <div class="fg"><label class="fl" data-i18n="audit_notes_lbl">Notas del conteo</label><input class="fi" id="audit-notes" data-i18n="audit_notes_ph" data-i18n-target="placeholder" placeholder="Observaciones opcionales..."></div>
@@ -742,7 +742,7 @@
 <div class="ov" id="o-bodega-config">
   <div class="modal" style="width:440px">
     <div class="mhd">
-      <div class="mttl">🏭 Configuración de Bodega</div>
+      <div class="mttl">Configuración de Bodega</div>
       <button class="mcl" onclick="closeO('o-bodega-config')">✕</button>
     </div>
     <div class="mbdy">

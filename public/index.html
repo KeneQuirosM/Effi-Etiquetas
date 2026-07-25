@@ -15,7 +15,7 @@
 <!-- LOGIN OVERLAY -->
 <div id="pin-overlay">
   <div class="pin-modal">
-    <h3>🔒 Modo Coordinador</h3>
+    <h3>Modo Coordinador</h3>
     <p>Inicia sesión para acceder</p>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
       <div>
@@ -91,17 +91,17 @@
       </select>
     </div>
 
-    <button class="btn-print" id="btn-print">🖨 Imprimir Etiqueta</button>
-    <button class="btn-bulk" id="btn-bulk" onclick="openBulk()">📋 Impresión Masiva</button>
-    <button class="btn-bulk" onclick="openStockforge()">🏭 Gestión de Almacén</button>
-    <button class="btn-bulk" onclick="openDev()">🔄 Gestión de Devoluciones</button>
-    <button class="btn-bulk" onclick="openMan()">📘 Gestión de Manifiestos</button>
-    <button class="btn-bulk coord-only" onclick="openReporte()" style="display:none">📊 Reporte Distribuidor</button>
+    <button class="btn-print" id="btn-print">Imprimir Etiqueta</button>
+    <button class="btn-bulk" id="btn-bulk" onclick="openBulk()">Impresión Masiva</button>
+    <button class="btn-bulk" onclick="openStockforge()">Gestión de Almacén</button>
+    <button class="btn-bulk" onclick="openDev()">Gestión de Devoluciones</button>
+    <button class="btn-bulk" onclick="openMan()">Gestión de Manifiestos</button>
+    <button class="btn-bulk coord-only" onclick="openReporte()" style="display:none">Reporte Distribuidor</button>
   </div>
 
   <div class="sidebar-footer">
     <button class="btn-coord" id="btn-coord-toggle" onclick="toggleCoordMode()">
-      <span id="coord-icon">🔒</span>
+      <span id="coord-icon"></span>
       <span id="coord-label">Modo Coordinador</span>
     </button>
   </div>
@@ -113,8 +113,8 @@
   <!-- COORDINATOR PANEL -->
   <div id="coord-panel">
     <div class="coord-header">
-      <h2>⚙️ Panel de Coordinador <span class="coord-badge">ADMIN</span></h2>
-      <button class="btn-action btn-ghost" onclick="lockCoord()">🔒 Cerrar sesión</button>
+      <h2>Panel de Coordinador <span class="coord-badge">ADMIN</span></h2>
+      <button class="btn-action btn-ghost" onclick="lockCoord()">Cerrar sesión</button>
     </div>
 
     <div class="coord-tabs">
@@ -122,7 +122,7 @@
       <button class="tab-btn" onclick="switchTab('tab-add-tienda')">Nueva Tienda</button>
       <button class="tab-btn" onclick="switchTab('tab-manage')">Gestionar Inventario</button>
       <button class="tab-btn" onclick="switchTab('tab-config')">Configuración</button>
-      <button class="tab-btn" onclick="switchTab('tab-users')">👤 Usuarios</button>
+      <button class="tab-btn" onclick="switchTab('tab-users')">Usuarios</button>
     </div>
 
     <!-- TAB: Agregar Producto -->
@@ -167,7 +167,7 @@
           <input type="text" id="c-rename-tienda-nombre" placeholder="Ej: SICOMMER 2">
         </div>
       </div>
-      <button class="btn-action btn-primary" onclick="renameTienda()">✏️ Renombrar</button>
+      <button class="btn-action btn-primary" onclick="renameTienda()">Renombrar</button>
     </div>
 
     <!-- TAB: Gestionar Inventario -->
@@ -183,7 +183,7 @@
         <div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona una tienda</span></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-action btn-danger" onclick="deleteTienda()" style="margin-left:auto">🗑 Eliminar Tienda</button>
+        <button class="btn-action btn-danger" onclick="deleteTienda()" style="margin-left:auto">Eliminar Tienda</button>
       </div>
     </div>
 
@@ -199,7 +199,7 @@
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
-            📁 Subir imagen
+            Subir imagen
             <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
           </label>
           <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeLogo()">✕ Quitar logo</button>
@@ -217,7 +217,7 @@
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
-            📁 Subir imagen
+            Subir imagen
             <input type="file" id="rotulo-logo-file-input" accept="image/*" style="display:none" onchange="handleRotuloLogoUpload(this)">
           </label>
           <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeRotuloLogo()">✕ Quitar logo</button>
@@ -250,7 +250,7 @@
           <input type="password" id="c-pin-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
         </div>
       </div>
-      <button class="btn-action btn-primary" onclick="changePin()" style="margin-bottom:8px">🔑 Actualizar Contraseña</button>
+      <button class="btn-action btn-primary" onclick="changePin()" style="margin-bottom:8px">Actualizar Contraseña</button>
       <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">La contraseña debe tener al menos 6 caracteres.</p>
       <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
 
@@ -267,11 +267,11 @@
 
       <!-- Log de importación -->
       <div style="margin-top:20px">
-        <p class="section-label" style="margin-bottom:8px">📋 Registro de importación</p>
+        <p class="section-label" style="margin-bottom:8px">Registro de importación</p>
         <div id="import-log-container" style="background:#0d1b2e;border-radius:var(--radius-md);padding:12px;max-height:200px;overflow-y:auto;font-family:var(--mono);font-size:11px;line-height:1.5;border:1px solid var(--border);">
           <div id="import-log" style="color:#7a9df3;white-space:pre-wrap;word-break:break-all;">— Esperando archivo —</div>
         </div>
-        <button class="btn-action btn-ghost" onclick="clearImportLog()" style="margin-top:8px;font-size:11px;padding:4px 12px">🗑 Limpiar registro</button>
+        <button class="btn-action btn-ghost" onclick="clearImportLog()" style="margin-top:8px;font-size:11px;padding:4px 12px">Limpiar registro</button>
       </div>
     </div>
 
@@ -395,7 +395,7 @@
 <div id="rotulo-overlay">
   <div class="rotulo-modal">
     <div class="rotulo-modal-header">
-      <h3>🪧 Rótulo A4 Horizontal</h3>
+      <h3>Rótulo A4 Horizontal</h3>
       <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px;color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeRotulo()">✕</button>
     </div>
     <div class="rotulo-modal-body">
@@ -424,7 +424,7 @@
     </div>
     <div class="rotulo-modal-footer">
       <button class="btn-action btn-ghost" onclick="closeRotulo()">Cancelar</button>
-      <button class="btn-action btn-primary" onclick="printRotulo()">🖨 Imprimir A4</button>
+      <button class="btn-action btn-primary" onclick="printRotulo()">Imprimir A4</button>
     </div>
   </div>
 </div>
@@ -434,7 +434,7 @@
 <div id="bulk-overlay">
   <div class="bulk-modal">
     <div class="bulk-modal-header">
-      <h3>📋 Impresión Masiva</h3>
+      <h3>Impresión Masiva</h3>
       <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px;color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeBulk()">✕ Cerrar</button>
     </div>
     <div class="bulk-modal-body">
@@ -453,7 +453,7 @@
     <div class="bulk-modal-footer">
       <span class="bulk-count" id="bulk-footer-count">Selecciona productos para imprimir</span>
       <button class="btn-action btn-ghost" onclick="closeBulk()">Cancelar</button>
-      <button class="btn-action btn-primary" onclick="printBulk()">🖨 Imprimir</button>
+      <button class="btn-action btn-primary" onclick="printBulk()">Imprimir</button>
     </div>
   </div>
 </div>

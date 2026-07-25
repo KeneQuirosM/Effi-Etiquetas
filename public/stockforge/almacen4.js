@@ -9,17 +9,17 @@ const TRANSLATIONS={
     // Header
     nav_warehouse:'Almacén', nav_report:'Reporte',
     sys_ok:'SISTEMA OK', saved:'GUARDADO',
-    btn_transfer:'⇄ Trasladar SKU', btn_labels:'🖨 Etiquetas', btn_report:'📋 Reporte',
-    btn_json:'⬇ JSON', btn_snapshots:'💾 Snapshots', btn_import:'⬆ Importar',
-    btn_zone:'＋ Zona', btn_catalogs:'👥 Catálogos', btn_rack:'＋ Rack',
-    btn_bodega_config:'📐 Config. Bodega',
-    btn_reset_qty:'🔢 Limpiar Cantidades',
+    btn_transfer:'⇄ Trasladar SKU', btn_labels:'Etiquetas', btn_report:'Reporte',
+    btn_json:'⬇ JSON', btn_snapshots:'Snapshots', btn_import:'⬆ Importar',
+    btn_zone:'＋ Zona', btn_catalogs:'Catálogos', btn_rack:'＋ Rack',
+    btn_bodega_config:'Config. Bodega',
+    btn_reset_qty:'Limpiar Cantidades',
     btn_settings:'⚙', lock_title:'Modo coordinador', lock_active:'Coordinador activo — click para bloquear',
     // Sidebar
     stat_racks:'Racks', stat_skus:'SKUs únicos', stat_occupied:'Ocupado', stat_free:'Libre',
     top_skus:'Top SKUs por cantidad',
-    expiry_title:'⚠ Vencimientos', expiry_see:'Ver todos →',
-    lowstock_title:'📉 Stock bajo',
+    expiry_title:'Vencimientos', expiry_see:'Ver todos →',
+    lowstock_title:'Stock bajo',
     zones_title:'Zonas',
     legend_title:'Leyenda', leg_full:'Ocupado', leg_partial:'Parcial',
     leg_reserved:'Reservado', leg_blocked:'Bloqueado', leg_empty:'Vacío',
@@ -32,26 +32,26 @@ const TRANSLATIONS={
     state_reserved:'Reservado', state_blocked:'Bloqueado',
     // Cell view modal
     view_title:'Celda', view_state:'Estado', view_loc:'Ubicación', view_zone:'Zona',
-    view_notes:'Notas', view_last_count:'📋 Último conteo', view_no_count:'Sin verificar',
-    view_count_total:'total', view_resp_cell:'👤 Responsable celda', view_shops:'🏪 Tiendas',
-    view_products:'📦 Productos', view_no_products:'Sin productos',
-    view_history:'🕑 Historial de cambios',
-    btn_close:'Cerrar', btn_count:'📋 Conteo', btn_sku_history:'📊 Historial SKU',
-    btn_print_4x6:'🖨 4×6"', btn_print_a4:'🖨 A4', btn_transfer_cell:'⇄ Trasladar', btn_edit:'✎ Editar',
+    view_notes:'Notas', view_last_count:'Último conteo', view_no_count:'Sin verificar',
+    view_count_total:'total', view_resp_cell:'Responsable celda', view_shops:'Tiendas',
+    view_products:'Productos', view_no_products:'Sin productos',
+    view_history:'Historial de cambios',
+    btn_close:'Cerrar', btn_count:'Conteo', btn_sku_history:'Historial SKU',
+    btn_print_4x6:'4×6"', btn_print_a4:'A4', btn_transfer_cell:'⇄ Trasladar', btn_edit:'✎ Editar',
     // Cell edit modal
     edit_cell_title:'Editar Celda',
     edit_state_lbl:'Estado', edit_notes_lbl:'Notas', edit_notes_ph:'Observaciones sobre esta ubicación...',
-    edit_resp_lbl:'👤 Responsables', edit_shops_lbl:'🏪 Tiendas',
-    edit_skus_lbl:'📦 SKUs / Productos',
+    edit_resp_lbl:'Responsables', edit_shops_lbl:'Tiendas',
+    edit_skus_lbl:'SKUs / Productos',
     edit_sku_ph:'Código SKU', edit_desc_ph:'Descripción', edit_qty_ph:'Cant.', edit_unit_ph:'Unidad',
-    edit_min_lbl:'⚠ Mín:', edit_expiry_lbl:'📅 Venc:',
+    edit_min_lbl:'Mín:', edit_expiry_lbl:'Venc:',
     btn_add_sku:'＋ Agregar SKU', btn_save:'Guardar',
     // Rack modal
     rack_modal_title_new:'Nuevo Rack', rack_modal_title_edit:'Editar Rack',
     rack_name_lbl:'Nombre del rack', rack_name_ph:'Ej: RACK-01, ESTANTE-A',
     rack_bays_lbl:'Bahías (columnas)', rack_levels_lbl:'Niveles (filas)',
     rack_zone_lbl:'Zona', rack_zone_none:'Sin zona',
-    rack_resp_lbl:'👤 Responsables', rack_shops_lbl:'🏪 Tiendas',
+    rack_resp_lbl:'Responsables', rack_shops_lbl:'Tiendas',
     rack_level_order:'Orden de niveles', rack_bottom_up:'Abajo → Arriba', rack_top_down:'Arriba → Abajo',
     btn_save_rack:'Guardar Rack',
     // Zone modal
@@ -68,15 +68,15 @@ const TRANSLATIONS={
     transfer_next:'Siguiente →', transfer_confirm:'✓ Confirmar traslado',
     transfer_qty_lbl:'Cantidad a trasladar:',
     // Report modal
-    report_title:'📊 Reportes del Almacén',
-    rep_skus:'📦 Por SKU', rep_cells:'📍 Por Celda', rep_zones:'🗂 Por Zona',
-    rep_resp:'👤 Resp.', rep_tiendas:'🏪 Tiendas', rep_expiry:'📅 Vencim.', rep_audit:'📋 Conteos', rep_movements:'📊 Movim.',
-    rep_filter_sku:'🔍  Filtrar por SKU o descripción...',
-    rep_filter_cell:'🔍  Rack, SKU, zona, responsable...',
-    rep_filter_zone:'🔍  Nombre de zona...',
-    rep_filter_resp:'🔍  Nombre de responsable...',
-    rep_filter_sku_mov:'🔍  SKU o descripción...',
-    rep_export:'📄 Exportar', rep_print:'🖨 Imprimir',
+    report_title:'Reportes del Almacén',
+    rep_skus:'Por SKU', rep_cells:'Por Celda', rep_zones:'Por Zona',
+    rep_resp:'Resp.', rep_tiendas:'Tiendas', rep_expiry:'Vencim.', rep_audit:'Conteos', rep_movements:'Movim.',
+    rep_filter_sku:'Filtrar por SKU o descripción...',
+    rep_filter_cell:'Rack, SKU, zona, responsable...',
+    rep_filter_zone:'Nombre de zona...',
+    rep_filter_resp:'Nombre de responsable...',
+    rep_filter_sku_mov:'SKU o descripción...',
+    rep_export:'Exportar', rep_print:'Imprimir',
     rep_exp_all:'Todos', rep_exp_expired:'Vencidos',
     rep_exp_7:'Próximos 7 días', rep_exp_30:'Próximos 30 días', rep_exp_60:'Próximos 60 días',
     rep_audit_all:'Todos los racks', rep_audit_who_ph:'Buscar responsable...',
@@ -88,65 +88,65 @@ const TRANSLATIONS={
     audit_title:'Conteo Físico',
     audit_who_lbl:'Responsable del conteo', audit_who_ph:'Nombre de quien realizó el conteo',
     audit_notes_lbl:'Observaciones', audit_notes_ph:'Discrepancias, condiciones, notas...',
-    audit_current_lbl:'📦 Contenido actual de la celda',
+    audit_current_lbl:'Contenido actual de la celda',
     btn_save_audit:'✓ Registrar conteo',
     // Catalog modal
     catalog_title:'Catálogos',
-    catalog_people:'👤 Empleados', catalog_shops:'🏪 Tiendas',
+    catalog_people:'Empleados', catalog_shops:'Tiendas',
     catalog_name_ph:'Nombre del empleado', catalog_role_ph:'Cargo / Rol',
     catalog_shop_name_ph:'Nombre de la tienda', catalog_shop_code_ph:'Código',
     btn_add_person:'＋ Agregar', btn_add_shop:'＋ Agregar',
     catalog_no_people:'Sin empleados registrados', catalog_no_shops:'Sin tiendas registradas',
-    btn_change_pin:'🔑 Cambiar PIN',
+    btn_change_pin:'Cambiar PIN',
     // PIN modal
-    pin_title:'🔐 Acceso Coordinador', pin_setup:'🔐 Configurar PIN', pin_confirm:'🔐 Confirmar PIN',
-    pin_unlock:'🔐 Ingresar PIN', pin_change1:'🔐 Cambiar PIN', pin_change2:'🔐 Nuevo PIN', pin_change3:'🔐 Confirmar nuevo PIN',
+    pin_title:'Acceso Coordinador', pin_setup:'Configurar PIN', pin_confirm:'Confirmar PIN',
+    pin_unlock:'Ingresar PIN', pin_change1:'Cambiar PIN', pin_change2:'Nuevo PIN', pin_change3:'Confirmar nuevo PIN',
     pin_sub_setup:'Creá un PIN de 4 dígitos. Lo necesitarás para editar el inventario.',
     pin_sub_unlock:'Ingresá el PIN de coordinador para activar el modo edición.',
     pin_sub_change1:'Ingresá el PIN actual para continuar.',
     // Snapshots modal
-    snap_title:'💾 Snapshots del Inventario',
+    snap_title:'Snapshots del Inventario',
     snap_info:'Hasta 7 snapshots rotantes. El más antiguo se elimina automáticamente.',
-    snap_save_now:'💾 Guardar ahora',
+    snap_save_now:'Guardar ahora',
     snap_none:'Sin snapshots guardados aún.',
-    snap_none_sub:'Hacé click en "💾 Guardar ahora" para crear el primero.',
+    snap_none_sub:'Hacé click en "Guardar ahora" para crear el primero.',
     snap_latest:'● Más reciente', snap_restore:'Restaurar', snap_download:'⬇', snap_delete:'✕',
     snap_racks:'racks', snap_skus_label:'SKUs',
     btn_download_json:'⬇ Descargar JSON actual',
     // Bulk print modal
-    bulk_title:'🖨 Impresión Masiva de Etiquetas',
+    bulk_title:'Impresión Masiva de Etiquetas',
     bulk_filter_rack:'Todos los racks', bulk_filter_zone:'Todas las zonas',
     bulk_filter_state:'Todos los estados',
     bulk_sel_all:'✓ Todos', bulk_sel_none:'✗ Ninguno',
     bulk_format:'Formato:', bulk_4x6:'4×6"', bulk_a4:'A4',
-    btn_bulk_print:'🖨 Imprimir seleccionados',
+    btn_bulk_print:'Imprimir seleccionados',
     // Settings modal
     settings_title:'⚙ Configuración',
-    settings_lang:'🌐 Idioma / Language',
-    settings_theme:'🎨 Tema visual',
-    settings_brand:'🏷 Marca',
-    settings_theme_dark:'🌑 Oscuro', settings_theme_light:'☀ Claro', settings_theme_dalton:'👁 Daltónico',
-    settings_lang_es:'🇨🇷 Español', settings_lang_en:'🇺🇸 English',
+    settings_lang:'Idioma / Language',
+    settings_theme:'Tema visual',
+    settings_brand:'Marca',
+    settings_theme_dark:'Oscuro', settings_theme_light:'Claro', settings_theme_dalton:'Daltónico',
+    settings_lang_es:'Español', settings_lang_en:'English',
     settings_prefix_lbl:'Prefijo', settings_prefix_ph:'Ej: BODEGA',
     settings_name_lbl:'Nombre', settings_name_ph:'Ej: EFFICOMMERCE CR',
-    settings_logo_lbl:'Logotipo', settings_logo_btn:'📁 Cargar imagen',
+    settings_logo_lbl:'Logotipo', settings_logo_btn:'Cargar imagen',
     settings_logo_clear:'✕ Quitar logo',
-    settings_saved:'✅ Configuración guardada',
+    settings_saved:'Configuración guardada',
     // Notifications
     notif_saved:'Datos guardados', notif_json_exported:'JSON exportado',
     notif_pin_changed:'PIN cambiado correctamente',
     notif_person_deleted:'eliminado',
     notif_rack_deleted:'eliminado',
     notif_imported:'Importado', notif_invalid_file:'Archivo inválido',
-    notif_snap_saved:'💾 Snapshot guardado',
-    notif_snap_restored:'✅ Snapshot restaurado',
+    notif_snap_saved:'Snapshot guardado',
+    notif_snap_restored:'Snapshot restaurado',
     notif_snap_not_found:'Snapshot no encontrado',
     notif_snap_error:'Error al guardar snapshot',
     notif_snap_restore_error:'Error al restaurar snapshot',
     notif_save_error:'Error al guardar',
-    notif_pin_locked:'🔒 Ingresá el PIN de coordinador para editar',
-    notif_pin_locked_snap:'🔒 Se requiere PIN de coordinador para restaurar',
-    notif_pin_locked_del:'🔒 Se requiere PIN de coordinador para eliminar snapshots',
+    notif_pin_locked:'Ingresá el PIN de coordinador para editar',
+    notif_pin_locked_snap:'Se requiere PIN de coordinador para restaurar',
+    notif_pin_locked_del:'Se requiere PIN de coordinador para eliminar snapshots',
     notif_transfer_done:'Traslado registrado',
     notif_no_skus:'Sin SKUs en esta celda',
     // Expiry labels
@@ -160,13 +160,13 @@ const TRANSLATIONS={
     rep_showing:'Mostrando 30 de', rep_refine:'— afina la búsqueda',
     rep_cells_total:'celdas', rep_skus_of:'SKUs',
     // Rack context menu
-    rack_menu_edit:'✎ Editar rack', rack_menu_sign:'🖨 Letrero', rack_menu_report:'📋 Ver celdas',
-    rack_menu_dup:'⧉ Duplicar', rack_menu_del:'🗑 Eliminar rack',
+    rack_menu_edit:'✎ Editar rack', rack_menu_sign:'Letrero', rack_menu_report:'Ver celdas',
+    rack_menu_dup:'⧉ Duplicar', rack_menu_del:'Eliminar rack',
     // Confirm dialogs
     confirm_del_rack:'¿Eliminar rack y todo su inventario?',
     confirm_restore_snap:'¿Restaurar el snapshot del {date}? Esto reemplazará el estado actual.\n\nPrimero se guardará un snapshot del estado actual automáticamente.',
     // SKU history
-    sku_hist_title:'📊 Historial SKU',
+    sku_hist_title:'Historial SKU',
     sku_hist_skus_lbl:'SKUs en esta celda',
     sku_hist_mov_lbl:'Movimientos',
     sku_hist_no_mov:'Sin movimientos registrados para estos SKUs',
@@ -189,13 +189,13 @@ const TRANSLATIONS={
     notif_select_label:'Selecciona al menos una etiqueta',
     notif_incomplete:'Datos incompletos',
     notif_audit_who:'Indica quién realizó el conteo',
-    notif_audit_done:'✅ Conteo registrado',
+    notif_audit_done:'Conteo registrado',
     notif_report_done:'Reporte generado',
     notif_logo_updated:'Logo actualizado',
     notif_labels_done:'etiquetas generadas',
-    notif_session_closed:'Sesión cerrada 🔒',
-    notif_pin_set:'PIN configurado. Modo coordinador activo 🔓',
-    notif_coordinator_active:'Modo coordinador activo 🔓',
+    notif_session_closed:'Sesión cerrada',
+    notif_pin_set:'PIN configurado. Modo coordinador activo',
+    notif_coordinator_active:'Modo coordinador activo',
     notif_pin_error:'Error guardando PIN',
     // Rack modal dynamic
     rack_update_btn:'Actualizar',
@@ -240,7 +240,7 @@ const TRANSLATIONS={
     csv_verified_by:'Verificado por',
     csv_pending_cells:'Celdas pendientes', csv_total_counts:'Conteos totales',
     rep_assigned_racks:'Racks asignados',
-    rep_valor:'💰 Valor',
+    rep_valor:'Valor',
     rep_valor_group_sku:'Por SKU', rep_valor_group_rack:'Por Rack', rep_valor_group_zone:'Por Zona',
     rep_valor_total:'Valor Total Inventario', rep_valor_with_cost:'SKUs con costo',
     rep_valor_without_cost:'SKUs sin costo', rep_valor_partial:'Valor parcial',
@@ -256,17 +256,17 @@ const TRANSLATIONS={
     // Header
     nav_warehouse:'Warehouse', nav_report:'Report',
     sys_ok:'SYSTEM OK', saved:'SAVED',
-    btn_transfer:'⇄ Transfer SKU', btn_labels:'🖨 Labels', btn_report:'📋 Report',
-    btn_json:'⬇ JSON', btn_snapshots:'💾 Snapshots', btn_import:'⬆ Import',
-    btn_zone:'＋ Zone', btn_catalogs:'👥 Catalogs', btn_rack:'＋ Rack',
-    btn_bodega_config:'📐 Warehouse Setup',
-    btn_reset_qty:'🔢 Reset Quantities',
+    btn_transfer:'⇄ Transfer SKU', btn_labels:'Labels', btn_report:'Report',
+    btn_json:'⬇ JSON', btn_snapshots:'Snapshots', btn_import:'⬆ Import',
+    btn_zone:'＋ Zone', btn_catalogs:'Catalogs', btn_rack:'＋ Rack',
+    btn_bodega_config:'Warehouse Setup',
+    btn_reset_qty:'Reset Quantities',
     btn_settings:'⚙', lock_title:'Coordinator mode', lock_active:'Coordinator active — click to lock',
     // Sidebar
     stat_racks:'Racks', stat_skus:'Unique SKUs', stat_occupied:'Occupied', stat_free:'Free',
     top_skus:'Top SKUs by quantity',
-    expiry_title:'⚠ Expiring', expiry_see:'View all →',
-    lowstock_title:'📉 Low stock',
+    expiry_title:'Expiring', expiry_see:'View all →',
+    lowstock_title:'Low stock',
     zones_title:'Zones',
     legend_title:'Legend', leg_full:'Occupied', leg_partial:'Partial',
     leg_reserved:'Reserved', leg_blocked:'Blocked', leg_empty:'Empty',
@@ -279,26 +279,26 @@ const TRANSLATIONS={
     state_reserved:'Reserved', state_blocked:'Blocked',
     // Cell view modal
     view_title:'Cell', view_state:'State', view_loc:'Location', view_zone:'Zone',
-    view_notes:'Notes', view_last_count:'📋 Last count', view_no_count:'Not verified',
-    view_count_total:'total', view_resp_cell:'👤 Cell responsible', view_shops:'🏪 Stores',
-    view_products:'📦 Products', view_no_products:'No products',
-    view_history:'🕑 Change history',
-    btn_close:'Close', btn_count:'📋 Count', btn_sku_history:'📊 SKU History',
-    btn_print_4x6:'🖨 4×6"', btn_print_a4:'🖨 A4', btn_transfer_cell:'⇄ Transfer', btn_edit:'✎ Edit',
+    view_notes:'Notes', view_last_count:'Last count', view_no_count:'Not verified',
+    view_count_total:'total', view_resp_cell:'Cell responsible', view_shops:'Stores',
+    view_products:'Products', view_no_products:'No products',
+    view_history:'Change history',
+    btn_close:'Close', btn_count:'Count', btn_sku_history:'SKU History',
+    btn_print_4x6:'4×6"', btn_print_a4:'A4', btn_transfer_cell:'⇄ Transfer', btn_edit:'✎ Edit',
     // Cell edit modal
     edit_cell_title:'Edit Cell',
     edit_state_lbl:'State', edit_notes_lbl:'Notes', edit_notes_ph:'Observations about this location...',
-    edit_resp_lbl:'👤 Responsibles', edit_shops_lbl:'🏪 Stores',
-    edit_skus_lbl:'📦 SKUs / Products',
+    edit_resp_lbl:'Responsibles', edit_shops_lbl:'Stores',
+    edit_skus_lbl:'SKUs / Products',
     edit_sku_ph:'SKU Code', edit_desc_ph:'Description', edit_qty_ph:'Qty.', edit_unit_ph:'Unit',
-    edit_min_lbl:'⚠ Min:', edit_expiry_lbl:'📅 Exp:',
+    edit_min_lbl:'Min:', edit_expiry_lbl:'Exp:',
     btn_add_sku:'＋ Add SKU', btn_save:'Save',
     // Rack modal
     rack_modal_title_new:'New Rack', rack_modal_title_edit:'Edit Rack',
     rack_name_lbl:'Rack name', rack_name_ph:'E.g.: RACK-01, SHELF-A',
     rack_bays_lbl:'Bays (columns)', rack_levels_lbl:'Levels (rows)',
     rack_zone_lbl:'Zone', rack_zone_none:'No zone',
-    rack_resp_lbl:'👤 Responsibles', rack_shops_lbl:'🏪 Stores',
+    rack_resp_lbl:'Responsibles', rack_shops_lbl:'Stores',
     rack_level_order:'Level order', rack_bottom_up:'Bottom → Top', rack_top_down:'Top → Bottom',
     btn_save_rack:'Save Rack',
     // Zone modal
@@ -315,15 +315,15 @@ const TRANSLATIONS={
     transfer_next:'Next →', transfer_confirm:'✓ Confirm transfer',
     transfer_qty_lbl:'Quantity to transfer:',
     // Report modal
-    report_title:'📊 Warehouse Reports',
-    rep_skus:'📦 By SKU', rep_cells:'📍 By Cell', rep_zones:'🗂 By Zone',
-    rep_resp:'👤 Resp.', rep_tiendas:'🏪 Stores', rep_expiry:'📅 Expiry', rep_audit:'📋 Counts', rep_movements:'📊 Movem.',
-    rep_filter_sku:'🔍  Filter by SKU or description...',
-    rep_filter_cell:'🔍  Rack, SKU, zone, responsible...',
-    rep_filter_zone:'🔍  Zone name...',
-    rep_filter_resp:'🔍  Responsible name...',
-    rep_filter_sku_mov:'🔍  SKU or description...',
-    rep_export:'📄 Export', rep_print:'🖨 Print',
+    report_title:'Warehouse Reports',
+    rep_skus:'By SKU', rep_cells:'By Cell', rep_zones:'By Zone',
+    rep_resp:'Resp.', rep_tiendas:'Stores', rep_expiry:'Expiry', rep_audit:'Counts', rep_movements:'Movem.',
+    rep_filter_sku:'Filter by SKU or description...',
+    rep_filter_cell:'Rack, SKU, zone, responsible...',
+    rep_filter_zone:'Zone name...',
+    rep_filter_resp:'Responsible name...',
+    rep_filter_sku_mov:'SKU or description...',
+    rep_export:'Export', rep_print:'Print',
     rep_exp_all:'All', rep_exp_expired:'Expired',
     rep_exp_7:'Next 7 days', rep_exp_30:'Next 30 days', rep_exp_60:'Next 60 days',
     rep_audit_all:'All racks', rep_audit_who_ph:'Search responsible...',
@@ -335,65 +335,65 @@ const TRANSLATIONS={
     audit_title:'Physical Count',
     audit_who_lbl:'Count responsible', audit_who_ph:'Name of person who performed the count',
     audit_notes_lbl:'Observations', audit_notes_ph:'Discrepancies, conditions, notes...',
-    audit_current_lbl:'📦 Current cell contents',
+    audit_current_lbl:'Current cell contents',
     btn_save_audit:'✓ Register count',
     // Catalog modal
     catalog_title:'Catalogs',
-    catalog_people:'👤 Employees', catalog_shops:'🏪 Stores',
+    catalog_people:'Employees', catalog_shops:'Stores',
     catalog_name_ph:'Employee name', catalog_role_ph:'Position / Role',
     catalog_shop_name_ph:'Store name', catalog_shop_code_ph:'Code',
     btn_add_person:'＋ Add', btn_add_shop:'＋ Add',
     catalog_no_people:'No employees registered', catalog_no_shops:'No stores registered',
-    btn_change_pin:'🔑 Change PIN',
+    btn_change_pin:'Change PIN',
     // PIN modal
-    pin_title:'🔐 Coordinator Access', pin_setup:'🔐 Set up PIN', pin_confirm:'🔐 Confirm PIN',
-    pin_unlock:'🔐 Enter PIN', pin_change1:'🔐 Change PIN', pin_change2:'🔐 New PIN', pin_change3:'🔐 Confirm new PIN',
+    pin_title:'Coordinator Access', pin_setup:'Set up PIN', pin_confirm:'Confirm PIN',
+    pin_unlock:'Enter PIN', pin_change1:'Change PIN', pin_change2:'New PIN', pin_change3:'Confirm new PIN',
     pin_sub_setup:'Create a 4-digit PIN. You will need it to edit the inventory.',
     pin_sub_unlock:'Enter the coordinator PIN to activate edit mode.',
     pin_sub_change1:'Enter the current PIN to continue.',
     // Snapshots modal
-    snap_title:'💾 Inventory Snapshots',
+    snap_title:'Inventory Snapshots',
     snap_info:'Up to 7 rotating snapshots. The oldest is deleted automatically.',
-    snap_save_now:'💾 Save now',
+    snap_save_now:'Save now',
     snap_none:'No snapshots saved yet.',
-    snap_none_sub:'Click "💾 Save now" to create the first one.',
+    snap_none_sub:'Click "Save now" to create the first one.',
     snap_latest:'● Most recent', snap_restore:'Restore', snap_download:'⬇', snap_delete:'✕',
     snap_racks:'racks', snap_skus_label:'SKUs',
     btn_download_json:'⬇ Download current JSON',
     // Bulk print modal
-    bulk_title:'🖨 Bulk Label Printing',
+    bulk_title:'Bulk Label Printing',
     bulk_filter_rack:'All racks', bulk_filter_zone:'All zones',
     bulk_filter_state:'All states',
     bulk_sel_all:'✓ All', bulk_sel_none:'✗ None',
     bulk_format:'Format:', bulk_4x6:'4×6"', bulk_a4:'A4',
-    btn_bulk_print:'🖨 Print selected',
+    btn_bulk_print:'Print selected',
     // Settings modal
     settings_title:'⚙ Settings',
-    settings_lang:'🌐 Language / Idioma',
-    settings_theme:'🎨 Visual theme',
-    settings_brand:'🏷 Brand',
-    settings_theme_dark:'🌑 Dark', settings_theme_light:'☀ Light', settings_theme_dalton:'👁 Colorblind',
-    settings_lang_es:'🇨🇷 Español', settings_lang_en:'🇺🇸 English',
+    settings_lang:'Language / Idioma',
+    settings_theme:'Visual theme',
+    settings_brand:'Brand',
+    settings_theme_dark:'Dark', settings_theme_light:'Light', settings_theme_dalton:'Colorblind',
+    settings_lang_es:'Español', settings_lang_en:'English',
     settings_prefix_lbl:'Prefix', settings_prefix_ph:'E.g.: WAREHOUSE',
     settings_name_lbl:'Name', settings_name_ph:'E.g.: EFFICOMMERCE CR',
-    settings_logo_lbl:'Logo', settings_logo_btn:'📁 Upload image',
+    settings_logo_lbl:'Logo', settings_logo_btn:'Upload image',
     settings_logo_clear:'✕ Remove logo',
-    settings_saved:'✅ Settings saved',
+    settings_saved:'Settings saved',
     // Notifications
     notif_saved:'Data saved', notif_json_exported:'JSON exported',
     notif_pin_changed:'PIN changed successfully',
     notif_person_deleted:'deleted',
     notif_rack_deleted:'deleted',
     notif_imported:'Imported', notif_invalid_file:'Invalid file',
-    notif_snap_saved:'💾 Snapshot saved',
-    notif_snap_restored:'✅ Snapshot restored',
+    notif_snap_saved:'Snapshot saved',
+    notif_snap_restored:'Snapshot restored',
     notif_snap_not_found:'Snapshot not found',
     notif_snap_error:'Error saving snapshot',
     notif_snap_restore_error:'Error restoring snapshot',
     notif_save_error:'Error saving',
-    notif_pin_locked:'🔒 Enter coordinator PIN to edit',
-    notif_pin_locked_snap:'🔒 Coordinator PIN required to restore',
-    notif_pin_locked_del:'🔒 Coordinator PIN required to delete snapshots',
+    notif_pin_locked:'Enter coordinator PIN to edit',
+    notif_pin_locked_snap:'Coordinator PIN required to restore',
+    notif_pin_locked_del:'Coordinator PIN required to delete snapshots',
     notif_transfer_done:'Transfer registered',
     notif_no_skus:'No SKUs in this cell',
     // Expiry labels
@@ -407,13 +407,13 @@ const TRANSLATIONS={
     rep_showing:'Showing 30 of', rep_refine:'— refine your search',
     rep_cells_total:'cells', rep_skus_of:'SKUs',
     // Rack context menu
-    rack_menu_edit:'✎ Edit rack', rack_menu_sign:'🖨 Sign', rack_menu_report:'📋 View cells',
-    rack_menu_dup:'⧉ Duplicate', rack_menu_del:'🗑 Delete rack',
+    rack_menu_edit:'✎ Edit rack', rack_menu_sign:'Sign', rack_menu_report:'View cells',
+    rack_menu_dup:'⧉ Duplicate', rack_menu_del:'Delete rack',
     // Confirm dialogs
     confirm_del_rack:'Delete rack and all its inventory?',
     confirm_restore_snap:'Restore snapshot from {date}? This will replace the current state.\n\nThe current state will be automatically saved first.',
     // SKU history
-    sku_hist_title:'📊 SKU History',
+    sku_hist_title:'SKU History',
     sku_hist_skus_lbl:'SKUs in this cell',
     sku_hist_mov_lbl:'Movements',
     sku_hist_no_mov:'No movements recorded for these SKUs',
@@ -436,13 +436,13 @@ const TRANSLATIONS={
     notif_select_label:'Select at least one label',
     notif_incomplete:'Incomplete data',
     notif_audit_who:'Enter who performed the count',
-    notif_audit_done:'✅ Count registered',
+    notif_audit_done:'Count registered',
     notif_report_done:'Report generated',
     notif_logo_updated:'Logo updated',
     notif_labels_done:'labels generated',
-    notif_session_closed:'Session closed 🔒',
-    notif_pin_set:'PIN set. Coordinator mode active 🔓',
-    notif_coordinator_active:'Coordinator mode active 🔓',
+    notif_session_closed:'Session closed',
+    notif_pin_set:'PIN set. Coordinator mode active',
+    notif_coordinator_active:'Coordinator mode active',
     notif_pin_error:'Error saving PIN',
     // Rack modal dynamic
     rack_update_btn:'Update',
@@ -487,7 +487,7 @@ const TRANSLATIONS={
     csv_verified_by:'Verified By',
     csv_pending_cells:'Pending cells', csv_total_counts:'Total counts',
     rep_assigned_racks:'Assigned Racks',
-    rep_valor:'💰 Value',
+    rep_valor:'Value',
     rep_valor_group_sku:'By SKU', rep_valor_group_rack:'By Rack', rep_valor_group_zone:'By Zone',
     rep_valor_total:'Total Inventory Value', rep_valor_with_cost:'SKUs with cost',
     rep_valor_without_cost:'SKUs without cost', rep_valor_partial:'Partial value',
@@ -540,8 +540,8 @@ function applyI18n(){
   const ti=document.getElementById('tinfo');
   if(ti&&ti.textContent===TRANSLATIONS.es.sel_rack||ti?.textContent===TRANSLATIONS.en.sel_rack) ti.textContent=t('sel_rack');
   // rack sign inline spans
-  document.querySelectorAll('.i18n-resp-lbl').forEach(el=>el.textContent=t('rack_resp_lbl').replace('👤 ',''));
-  document.querySelectorAll('.i18n-shops-lbl').forEach(el=>el.textContent=t('catalog_shops').replace('🏪 ',''));
+  document.querySelectorAll('.i18n-resp-lbl').forEach(el=>el.textContent=t('rack_resp_lbl'));
+  document.querySelectorAll('.i18n-shops-lbl').forEach(el=>el.textContent=t('catalog_shops'));
   // bulk print counter
   const bpc=document.getElementById('bp-count');
   if(bpc&&/^\d+/.test(bpc.textContent)){const n=bpc.textContent.match(/^\d+/)[0];bpc.textContent=n+' '+t('rep_labels_selected');}
@@ -715,7 +715,7 @@ function renderSettingsModal(){
   // Logo preview
   const prev=div.querySelector('#set-logo-preview');
   if(prev){const ls=localStorage.getItem(STORAGE_KEYS.LOGO);
-    prev.innerHTML=ls?`<img src="${ls}" style="width:100%;height:100%;object-fit:contain">`:'<span style="color:var(--dim);font-size:1.4rem">🏷</span>';}
+    prev.innerHTML=ls?`<img src="${ls}" style="width:100%;height:100%;object-fit:contain">`:'<span style="color:var(--dim);font-size:1.4rem">—</span>';}
 }
 
 function loadSettingsLogo(ev){
@@ -802,7 +802,7 @@ let lastAutoSnap=0;
   if (document.getElementById('offline-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'offline-banner';
-  banner.innerHTML = '⚠️ Sin conexión — usando datos en caché';
+  banner.innerHTML = 'Sin conexión — usando datos en caché';
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c98e00;color:#fff;text-align:center;padding:4px;z-index:9999;';
   document.body.prepend(banner);
 }
@@ -987,8 +987,8 @@ async function limpiarCantidades() {
   updateStats();
 
   const ok = currentLang === 'en'
-    ? `✅ ${total} quantities cleared`
-    : `✅ ${total} cantidades limpiadas`;
+    ? `${total} quantities cleared`
+    : `${total} cantidades limpiadas`;
   notif(ok, 'ok');
 }
 
@@ -1026,7 +1026,7 @@ function importExcelStock(ev){
   const ov=document.createElement('div');
   ov.className='ov';ov.id='o-excel-tienda';
   ov.innerHTML=`<div class="modal" style="max-width:400px">
-    <div class="mhd"><span class="mttl">📊 Importar Stock Excel</span><button class="cls" id="excel-tienda-cls">✕</button></div>
+    <div class="mhd"><span class="mttl">Importar Stock Excel</span><button class="cls" id="excel-tienda-cls">✕</button></div>
     <div class="mbdy" style="padding:20px;display:flex;flex-direction:column;gap:14px">
       <div style="font-size:.94rem;color:var(--dim)">
         ¿De qué tienda es el archivo <strong style="color:var(--bright)">${esc(file.name)}</strong>?<br>
@@ -1121,7 +1121,7 @@ function showExcelImportResultModal(tienda, updated, notFound, notFoundSkus){
   const ov2=document.createElement('div');
   ov2.className='ov';ov2.id='o-import-result';
   ov2.innerHTML=`<div class="modal" style="max-width:420px">
-    <div class="mhd"><span class="mttl">📊 Resultado — ${esc(tienda.name)}</span><button class="cls" onclick="closeO('o-import-result')">✕</button></div>
+    <div class="mhd"><span class="mttl">Resultado — ${esc(tienda.name)}</span><button class="cls" onclick="closeO('o-import-result')">✕</button></div>
     <div class="mbdy" style="padding:16px;display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;gap:10px">
         <div style="flex:1;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:6px;padding:12px;text-align:center">
@@ -1494,7 +1494,7 @@ function guardarConfigBodega(){
   closeO('o-bodega-config');
   actualizarMetricasEspacio();
   save();
-  notif('✅ Configuración de bodega actualizada','ok');
+  notif('Configuración de bodega actualizada','ok');
 }
 
 function saveZone(){
@@ -1717,16 +1717,16 @@ function renderSkuList(skus){
         <button class="sku-del" onclick="removeSkuRow(${i})">✕</button>
       </div>
       <div class="sku-row-bot">
-        <span class="sku-exp-lbl">📅 Vence:</span>
+        <span class="sku-exp-lbl">Vence:</span>
         <input type="date" class="sku-exp-inp" data-f="expiry" data-i="${i}" value="${esc(s.expiry||'')}" style="color:${expColor}">
         ${days!==null?`<span style="font-size:.95rem;font-weight:700;color:${expColor};margin-left:4px">${days<0?'VENCIDO hace '+Math.abs(days)+'d':days===0?'HOY':days+'d'}</span>`:''}
         <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
           <span style="display:flex;align-items:center;gap:4px" title="${currentLang==='en'?'Unit cost (for inventory value report)':'Costo unitario (para reporte de valor de inventario)'}">
-            <span style="font-size:.9rem;color:var(--dim)">💲</span>
+            <span style="font-size:.9rem;color:var(--dim)">$</span>
             <input type="number" placeholder="0.00" value="${esc(s.cost||'')}" data-f="cost" data-i="${i}" min="0" step="0.01" style="width:64px;background:none;border:none;border-bottom:1px solid var(--border2);outline:none;color:var(--cyan);font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:right">
           </span>
           <span style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:.9rem;color:var(--dim)">⚠ Mín:</span>
+            <span style="font-size:.9rem;color:var(--dim)">Mín:</span>
             <input type="number" placeholder="0" value="${esc(s.minStock||'')}" data-f="minStock" data-i="${i}" min="0" style="width:48px;background:none;border:none;border-bottom:1px solid ${lowStock?'var(--red)':'var(--border2)'};outline:none;color:${lowStock?'var(--red)':'var(--dim)'};font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:center" title="Stock mínimo — alerta cuando la cantidad esté en o por debajo de este valor">
           </span>
         </span>
@@ -1935,7 +1935,7 @@ function openViewCell(rackId,bay,level){
           <span style="font-size:1.02rem;color:var(--dim)">${s.qty?esc(s.qty)+' '+esc(s.unit):''}</span>
         </div>
         ${s.desc?`<div style="font-size:1.05rem;color:var(--dim);margin-top:2px">${esc(s.desc)}</div>`:''}
-        ${s.expiry?`<div style="font-size:.98rem;color:${ec};font-weight:700;margin-top:4px">📅 ${esc(s.expiry)} — ${el}</div>`:''}
+        ${s.expiry?`<div style="font-size:.98rem;color:${ec};font-weight:700;margin-top:4px">${esc(s.expiry)} — ${el}</div>`:''}
       </div>`;}).join('')
     :`<div style="font-size:1.05rem;color:var(--dim);text-align:center;padding:10px 0">${t('view_no_products')}</div>`;
   document.getElementById('view-body').innerHTML=`
@@ -2010,7 +2010,7 @@ function sortViewSkus(mode){
         <span style="font-size:1.02rem;color:var(--dim)">${s.qty?esc(s.qty)+' '+esc(s.unit):''}</span>
       </div>
       ${s.desc?`<div style="font-size:1.05rem;color:var(--dim);margin-top:2px">${esc(s.desc)}</div>`:''}
-      ${s.expiry?`<div style="font-size:.98rem;color:${ec};font-weight:700;margin-top:4px">📅 ${esc(s.expiry)} — ${expiryLabel}</div>`:''}
+      ${s.expiry?`<div style="font-size:.98rem;color:${ec};font-weight:700;margin-top:4px">${esc(s.expiry)} — ${expiryLabel}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -2154,7 +2154,7 @@ function buildPrintLabelHtml(d){
   .ft-code{font-family:'Courier New',monospace;font-size:${d.is4x6?'14':'16'}px;letter-spacing:5px;color:#555;font-weight:700;}
 </style></head><body>
 <div class="toolbar">
-  <button onclick="window.print()">🖨&nbsp; IMPRIMIR ${d.is4x6?'6×4"':'A4'}</button>
+  <button onclick="window.print()">IMPRIMIR ${d.is4x6?'6×4"':'A4'}</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
   <span class="fmt-badge">${d.is4x6?'LANDSCAPE 6×4"':'A4 PORTRAIT'}</span>
 </div>
@@ -2174,10 +2174,10 @@ function buildPrintLabelHtml(d){
         <div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${d.sn}</span></div>
       </div>
       <div class="people">
-        ${d.resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+d.chipResp+'</div></div>'):''}
-        ${d.cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+d.chipShop+'</div></div>'):(!d.resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${t('catalog_no_people').replace(' registrados','')+'/'+t('catalog_no_shops').replace(' registradas','')}</div>`:'')}
+        ${d.resps.length?(`<div class="pgroup"><div class="p-lbl">${t('rack_resp_lbl')}</div><div>`+d.chipResp+'</div></div>'):''}
+        ${d.cellShops.length?(`<div class="pgroup"><div class="p-lbl">${t('catalog_shops')}</div><div>`+d.chipShop+'</div></div>'):(!d.resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${t('catalog_no_people').replace(' registrados','')+'/'+t('catalog_no_shops').replace(' registradas','')}</div>`:'')}
       </div>
-      ${d.cell.notes?('<div class="notes">📝 '+esc(d.cell.notes)+'</div>'):''}
+      ${d.cell.notes?('<div class="notes">'+esc(d.cell.notes)+'</div>'):''}
     </div>
   </div>
   <div class="ft">
@@ -2255,7 +2255,7 @@ function printRackSign(rackId){
   .s-footer-date{font-size:11px;color:#444;}
 </style></head><body>
 <div class="toolbar">
-  <button onclick="window.print()">🖨&nbsp; IMPRIMIR LETRERO A4</button>
+  <button onclick="window.print()">IMPRIMIR LETRERO A4</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
 </div>
 <div class="sign">
@@ -2272,11 +2272,11 @@ function printRackSign(rackId){
   <div class="s-footer">
     <div class="s-footer-grid">
       <div class="s-footer-col">
-        <div class="s-footer-lbl">👤 <span class="i18n-resp-lbl">Responsables</span></div>
+        <div class="s-footer-lbl"><span class="i18n-resp-lbl">Responsables</span></div>
         ${resps.length?('<div>'+respChips+'</div>'):`<div class="s-footer-empty">${t('catalog_no_people')}</div>`}
       </div>
       <div class="s-footer-col">
-        <div class="s-footer-lbl">🏪 <span class="i18n-shops-lbl">Tiendas</span></div>
+        <div class="s-footer-lbl"><span class="i18n-shops-lbl">Tiendas</span></div>
         ${shops.length?('<div>'+shopChips+'</div>'):`<div class="s-footer-empty">${t('catalog_no_shops')}</div>`}
       </div>
     </div>
@@ -2513,7 +2513,7 @@ function showDetail(id){
     <div style="display:flex;gap:4px;margin-top:8px">
       <button class="btn bo bsm" style="flex:1" onclick="openEditRack('${id}')">✎ ${t('btn_edit').replace('✎ ','')}</button>
       <button class="btn bo bsm" style="border-color:var(--green);color:var(--green)" onclick="duplicateRack('${id}')" title="${t('rack_menu_dup')}">⧉</button>
-      <button class="btn bo bsm" style="border-color:var(--yellow);color:var(--yellow)" onclick="printRackSign('${id}')" title="${t('rack_menu_sign')}">🪧</button>
+      <button class="btn bo bsm" style="border-color:var(--yellow);color:var(--yellow)" onclick="printRackSign('${id}')" title="${t('rack_menu_sign')}">${t('rack_menu_sign')}</button>
       <button class="btn bd bsm" onclick="deleteRack('${id}')">✕</button>
     </div>`;
 }
@@ -2675,7 +2675,7 @@ function renderSearchResults(hits){
         <div style="font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--accent)">${h.qty?esc(h.qty)+' '+esc(h.unit||''):'—'}</div>
       </div>
       <div class="sres-desc">${esc(h.desc||'Sin descripción')}</div>
-      <div class="sres-loc">📍 ${esc(h.rack)} · B${h.bay+1}·N${h.level+1}</div>
+      <div class="sres-loc">${esc(h.rack)} · B${h.bay+1}·N${h.level+1}</div>
     </button>`).join('')
     +(hits.length>30?`<div class="sres-nav">Mostrando 30 de ${hits.length} — afina la búsqueda</div>`:'');
   r.classList.add('open');
@@ -3064,7 +3064,7 @@ function _buildSkuCard(sku,desc,locs){
               ${zn?`<span style="width:6px;height:6px;border-radius:1px;background:${zn.color};display:inline-block;flex-shrink:0"></span>`:''}
               <span style="font-family:'Share Tech Mono',monospace;font-size:1.02rem;color:var(--cyan)">${l.rack} ${t('bay_short')}${l.bay+1}${t('level_short')}${l.level+1}</span>
               <span style="font-size:.94rem;color:${STATE_COLORS[l.state]}">${getStateLabels()[l.state]||l.state}</span>
-              ${expD!==null?`<span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;font-weight:700;color:${expColor};margin-left:2px">📅${expLabel}</span>`:''}
+              ${expD!==null?`<span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;font-weight:700;color:${expColor};margin-left:2px">${expLabel}</span>`:''}
             </button>`;
           }).join('')}
         </div>
@@ -3163,7 +3163,7 @@ function buildRackCellsTable(rack, rCells){
       // Coord + expiry badge
       html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
         <span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);font-weight:700">B${b+1}·N${l+1}</span>
-        ${expiryAlert?`<span style="font-size:.65rem;color:${expiryDaysMin<0?'var(--red)':'var(--yellow)'}">📅</span>`:''}
+        ${expiryAlert?`<span style="font-size:.65rem;color:${expiryDaysMin<0?'var(--red)':'var(--yellow)'}">!</span>`:''}
       </div>`;
 
       if(skus.length===0){
@@ -3216,8 +3216,8 @@ function buildRackReportGroup(rack){
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-family:'Share Tech Mono',monospace;font-size:1.18rem;color:var(--bright);font-weight:700;letter-spacing:1px">${esc(rack.name)}</span>
         ${zone?`<span style="font-size:.82rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${zoneColor};background:${zoneColor}18;border:1px solid ${zoneColor}33;border-radius:20px;padding:1px 9px">${esc(zone.name)}</span>`:''}
-        ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;padding:1px 9px">👤 ${resps.slice(0,2).map(esc).join(' · ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
-        ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">🏪 ${shops.slice(0,2).map(esc).join(' · ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
+        ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;padding:1px 9px">${resps.slice(0,2).map(esc).join(' · ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
+        ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">${shops.slice(0,2).map(esc).join(' · ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
         <div style="flex:1;max-width:160px;height:4px;background:var(--border);border-radius:4px;overflow:hidden">
@@ -3535,7 +3535,7 @@ function renderReportAudit(){
     row.innerHTML=`
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">
-          <span style="font-weight:700;color:var(--bright);font-size:1.08rem">👤 ${esc(a.who)}</span>
+          <span style="font-weight:700;color:var(--bright);font-size:1.08rem">${esc(a.who)}</span>
           ${a.notes?`<span style="color:var(--dim);font-size:.97rem">— ${esc(a.notes)}</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -3575,7 +3575,7 @@ function renderReportMovements(){
 }
 
 function _buildMovRow(m){
-  const typeIcon={entrada:'📥',salida:'📤',traslado:'🔀',ajuste:'✏️'};
+  const typeIcon={entrada:'',salida:'',traslado:'',ajuste:''};
   const typeColor={entrada:'var(--green)',salida:'var(--red)',traslado:'var(--cyan)',ajuste:'var(--yellow)'};
   const color=typeColor[m.type]||'var(--dim)';
   const icon=typeIcon[m.type]||'•';
@@ -3643,7 +3643,7 @@ function openPrintByRack(){
   ov.className='ov';ov.id='o-print-rack';
   ov.innerHTML=`
     <div class="modal" style="max-width:440px">
-      <div class="mhd"><span class="mttl">🖨 Imprimir Rack — A4 Horizontal</span><button class="cls" onclick="closeO('o-print-rack')">✕</button></div>
+      <div class="mhd"><span class="mttl">Imprimir Rack — A4 Horizontal</span><button class="cls" onclick="closeO('o-print-rack')">✕</button></div>
       <div class="mbdy" style="padding:20px;display:flex;flex-direction:column;gap:14px">
         <div style="font-size:.94rem;color:var(--dim)">Seleccioná el rack para imprimir su grilla completa en A4 apaisado.</div>
         <select id="pbr-rack" class="fi" style="font-size:1rem">
@@ -3657,7 +3657,7 @@ function openPrintByRack(){
             <input type="checkbox" id="pbr-show-notes" checked style="accent-color:var(--accent)"> Notas
           </label>
         </div>
-        <button class="btn bp" style="width:100%;padding:12px;font-size:1.05rem;font-weight:700;letter-spacing:1px" onclick="printRackA4()">🖨 Generar / Imprimir</button>
+        <button class="btn bp" style="width:100%;padding:12px;font-size:1.05rem;font-weight:700;letter-spacing:1px" onclick="printRackA4()">Generar / Imprimir</button>
       </div>
     </div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open');});
@@ -3690,11 +3690,11 @@ function buildRackA4CellHtml(b, l, rack, rCells, showEmpty, showNotes){
 
   let inner=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
     <span style="display:inline-block;background:${sc};color:${st};font-size:7.5px;font-weight:800;letter-spacing:.6px;padding:1px 5px;border-radius:8px;text-transform:uppercase">${sn}</span>
-    ${expAlert?`<span style="font-size:7.5px;font-weight:800;color:${expColor}">📅${minExp<0?'VENC':minExp+'d'}</span>`:''}
+    ${expAlert?`<span style="font-size:7.5px;font-weight:800;color:${expColor}">${minExp<0?'VENC':minExp+'d'}</span>`:''}
   </div>
   ${(cellShopNames.length||cellRespNames.length)?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px">
-    ${cellShopNames.map(s=>`<span style="display:inline-block;background:#fff3e0;border:1px solid #f7c87a;color:#7a4500;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">🏪 ${esc(s)}</span>`).join('')}
-    ${cellRespNames.map(r=>`<span style="display:inline-block;background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">👤 ${esc(r)}</span>`).join('')}
+    ${cellShopNames.map(s=>`<span style="display:inline-block;background:#fff3e0;border:1px solid #f7c87a;color:#7a4500;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">${esc(s)}</span>`).join('')}
+    ${cellRespNames.map(r=>`<span style="display:inline-block;background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;font-size:7px;font-weight:700;padding:1px 5px;border-radius:6px;white-space:nowrap">${esc(r)}</span>`).join('')}
   </div>`:''}`;
 
   if(skus.length===0){
@@ -3709,7 +3709,7 @@ function buildRackA4CellHtml(b, l, rack, rCells, showEmpty, showNotes){
     });
   }
   if(showNotes&&cell.notes){
-    inner+=`<div style="margin-top:2px;font-size:7px;color:#888;font-style:italic;border-top:1px solid #eee;padding-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 ${esc(cell.notes)}</div>`;
+    inner+=`<div style="margin-top:2px;font-size:7px;color:#888;font-style:italic;border-top:1px solid #eee;padding-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(cell.notes)}</div>`;
   }
   return `<td style="padding:3px;vertical-align:top;overflow:hidden">
     <div style="border:1px solid #dde;border-left:3px solid ${sc};border-radius:3px;padding:4px 5px;min-height:46px;background:#fff;overflow:hidden;word-break:break-word">
@@ -3786,7 +3786,7 @@ function printRackA4(){
 </style>
 </head><body>
 <div class="toolbar">
-  <button onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+  <button onclick="window.print()">Imprimir / Guardar PDF</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
   <span style="color:#aaa;font-size:10px;margin-left:6px">${esc(rack.name)} · ${rack.bays} bahías × ${rack.levels} niveles · A4 horizontal</span>
 </div>
@@ -3796,7 +3796,7 @@ function printRackA4(){
     <div>
       <div class="rack-name">${esc(rack.name)}</div>
       <div class="rack-sub">
-        ${esc(bname)}${zone?` &nbsp;·&nbsp; <span style="color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}${resps.length?` &nbsp;·&nbsp; 👤 ${esc(resps.join(', '))}`:''}${shops.length?` &nbsp;·&nbsp; 🏪 ${esc(shops.join(', '))}`:''}
+        ${esc(bname)}${zone?` &nbsp;·&nbsp; <span style="color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}${resps.length?` &nbsp;·&nbsp; ${esc(resps.join(', '))}`:''}${shops.length?` &nbsp;·&nbsp; ${esc(shops.join(', '))}`:''}
       </div>
     </div>
     <div class="stats">
@@ -3920,8 +3920,8 @@ function buildCellsReportBody(){
         ${zone?`<div style="width:10px;height:10px;border-radius:2px;background:${zone.color};flex-shrink:0"></div>`:''}
         <div class="section-name">${esc(rack.name)}</div>
         ${zone?`<span class="chip tag-zone">${esc(zone.name)}</span>`:''}
-        ${resps.map(r=>`<span class="chip tag-resp">👤 ${esc(r)}</span>`).join('')}
-        ${shops.map(s=>`<span class="chip tag-shop">🏪 ${esc(s)}</span>`).join('')}
+        ${resps.map(r=>`<span class="chip tag-resp">${esc(r)}</span>`).join('')}
+        ${shops.map(s=>`<span class="chip tag-shop">${esc(s)}</span>`).join('')}
         <span class="section-meta">${occ}/${total} celdas &nbsp;
           <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span>
           &nbsp;${pct}%
@@ -4076,7 +4076,7 @@ function buildRespReportBody(){
     </tr>`).join('');
     body+=`<div class="section">
       <div class="section-hd">
-        <div class="section-name">👤 ${esc(person.name)}${person.role?` — <span style="font-weight:400;font-size:11px">${esc(person.role)}</span>`:''}</div>
+        <div class="section-name">${esc(person.name)}${person.role?` — <span style="font-weight:400;font-size:11px">${esc(person.role)}</span>`:''}</div>
         <span class="section-meta">${rackIds.size} racks · ${occ}/${total} celdas · ${skuMap.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
       </div>
       <div class="section-body">
@@ -4111,7 +4111,7 @@ function buildTiendasReportBody(){
     const skuRows=[...skuMap.values()].map(s=>`<tr><td class="mono sku-id">${esc(s.sku)||'—'}</td><td>${esc(s.desc)||'—'}</td><td style="text-align:center">${esc(s.qty||'')} ${esc(s.unit)}</td></tr>`).join('');
     body+=`<div class="section">
       <div class="section-hd">
-        <div class="section-name">🏪 ${esc(tienda.name)}${tienda.code?` (${esc(tienda.code)})`:''}</div>
+        <div class="section-name">${esc(tienda.name)}${tienda.code?` (${esc(tienda.code)})`:''}</div>
         <span class="section-meta">${racks.size} racks · ${occ}/${total} · ${skuMap.size} SKUs · ${pct}%</span>
       </div>
       <div class="section-body"><table>
@@ -4183,7 +4183,7 @@ function printReportTab(tab){
     <div class="page-hd-left">${logoEl}<div><div class="page-title">Reporte: ${esc(title)}</div><div class="page-sub">${esc(bname)}</div></div></div>
     <div class="page-meta">${dateStr}<br>StockForge v5</div>
   </div>`;
-  const toolbar=`<div class="toolbar"><button onclick="window.print()">🖨 Imprimir / Guardar PDF</button><button class="cls" onclick="window.close()">✕ Cerrar</button></div>`;
+  const toolbar=`<div class="toolbar"><button onclick="window.print()">Imprimir / Guardar PDF</button><button class="cls" onclick="window.close()">✕ Cerrar</button></div>`;
 
   const body=buildReportTabBody(tab);
 
@@ -4276,12 +4276,12 @@ function exportReportAudit(){
   <div class="hd">
     ${logoEl}
     <div><div class="hd-brand">${esc(bname)}</div><div class="hd-sub">${esc(modeTitle)} · ${t('rep_generated')} ${now}</div></div>
-    <button onclick="window.print()" style="margin-left:auto;background:#f0a500;border:none;color:#000;font-weight:700;font-size:13px;padding:8px 18px;border-radius:4px;cursor:pointer;letter-spacing:1px">🖨 IMPRIMIR</button>
+    <button onclick="window.print()" style="margin-left:auto;background:#f0a500;border:none;color:#000;font-weight:700;font-size:13px;padding:8px 18px;border-radius:4px;cursor:pointer;letter-spacing:1px">IMPRIMIR</button>
   </div>
   <div class="stats">
     <div><div class="stat-val">${rows.length}</div><div class="stat-lbl">${isUnverif?t('csv_pending_cells'):t('csv_total_counts')}</div></div>
     <div><div class="stat-val">${new Set(rows.map(r=>r.rack)).size}</div><div class="stat-lbl">Racks</div></div>
-    ${!isUnverif?`<div><div class="stat-val">${new Set(rows.map(r=>r.lastWho)).size}</div><div class="stat-lbl">${t('rep_resp').replace('👤 ','')}</div></div>`:''}
+    ${!isUnverif?`<div><div class="stat-val">${new Set(rows.map(r=>r.lastWho)).size}</div><div class="stat-lbl">${t('rep_resp')}</div></div>`:''}
   </div>
   <table>
     <thead><tr>
@@ -4376,7 +4376,7 @@ function renderReportResp(filter){
       +'<div style="width:6px;background:'+(isNone?'#4a5a78':'var(--cyan)')+';flex-shrink:0;border-radius:6px 0 0 6px"></div>'
       +'<div style="flex:1;padding:14px 16px">'
         +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
-          +'<div><span style="font-size:1.05rem;font-weight:700;color:'+(isNone?'var(--dim)':'var(--bright)')+'">'+(isNone?esc(displayName):'👤 '+esc(displayName))+'</span>'
+          +'<div><span style="font-size:1.05rem;font-weight:700;color:'+(isNone?'var(--dim)':'var(--bright)')+'">'+esc(displayName)+'</span>'
           +(displayRole?'<span style="font-size:.9rem;color:var(--dim);margin-left:7px">'+esc(displayRole)+'</span>':'')+'</div>'
           +'<div style="margin-left:auto;display:flex;align-items:center;gap:8px">'
             +'<div style="width:100px;height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px"></div></div>'
@@ -4389,8 +4389,8 @@ function renderReportResp(filter){
           +'<div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--cyan);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">SKUs</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--cyan)">'+data.skus.size+'</div></div>'
           +'<div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">'+t('state_blocked')+'</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--red)">'+data.blocked+'</div></div>'
         +'</div>'
-        +(tiendaNames.length?`<div style="margin-bottom:10px"><div style="font-size:1.16rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`+tiendaNames.map(s=>'<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:3px 12px;font-size:1.02rem;color:var(--accent)">'+esc(s)+'</span>').join('')+'</div></div>':'')
-        +`<div><div style="font-size:1.16rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">📦 ${t('rep_assigned_racks')}</div>`
+        +(tiendaNames.length?`<div style="margin-bottom:10px"><div style="font-size:1.16rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('catalog_shops')}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`+tiendaNames.map(s=>'<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:3px 12px;font-size:1.02rem;color:var(--accent)">'+esc(s)+'</span>').join('')+'</div></div>':'')
+        +`<div><div style="font-size:1.16rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('rep_assigned_racks')}</div>`
           +'<div style="display:flex;flex-wrap:wrap;gap:5px">'+data.racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return '<span onclick="closeO(\'o-report\');selectRack(\''+r.id+'\')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:\'Share Tech Mono\',monospace;font-size:1.02rem;color:'+(z?z.color:'var(--dim)')+';cursor:pointer">'+esc(r.name)+'</span>';}).join('')+'</div>'
         +'</div>'
       +'</div>'
@@ -4479,7 +4479,7 @@ function renderReportTiendas(filter){
       +'<div style="flex:1;padding:14px 16px;min-width:0">'
         // Header
         +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
-          +`<span style="font-size:1.1rem;font-weight:700;color:${isNone?'var(--dim)':'var(--bright)'}">🏪 ${displayName}</span>`
+          +`<span style="font-size:1.1rem;font-weight:700;color:${isNone?'var(--dim)':'var(--bright)'}">${displayName}</span>`
           +'<div style="margin-left:auto;display:flex;align-items:center;gap:8px">'
             +`<div style="width:90px;height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${bc};border-radius:4px"></div></div>`
             +`<span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:${bc}">${pct}%</span>`
@@ -4493,9 +4493,9 @@ function renderReportTiendas(filter){
           +`<div style="background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Unidades</div><div style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${totalQty}</div></div>`
         +'</div>'
         // Racks chips
-        +(racksArr.length?'<div style="margin-bottom:10px"><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">📍 Racks</div><div style="display:flex;flex-wrap:wrap;gap:5px">'+racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return`<span onclick="closeO('o-report');selectRack('${r.id}')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:.95rem;color:${z?z.color:'var(--dim)'};cursor:pointer">${esc(r.name)}</span>`;}).join('')+'</div></div>':'')
+        +(racksArr.length?'<div style="margin-bottom:10px"><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">Racks</div><div style="display:flex;flex-wrap:wrap;gap:5px">'+racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return`<span onclick="closeO('o-report');selectRack('${r.id}')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:.95rem;color:${z?z.color:'var(--dim)'};cursor:pointer">${esc(r.name)}</span>`;}).join('')+'</div></div>':'')
         // SKU list
-        +(totalSkus?`<div><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">📦 Productos (${totalSkus})</div><div style="display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto">${skuList}</div></div>`:'')
+        +(totalSkus?`<div><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Productos (${totalSkus})</div><div style="display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto">${skuList}</div></div>`:'')
       +'</div>'
       +'</div>';
     c.appendChild(card);
@@ -4572,14 +4572,14 @@ function exportReportCSV(){
   tfoot td{padding:10px 12px;font-size:11px;color:#aaa;border-top:2px solid #e8ecf0;}
 </style></head><body>
 <div class="toolbar">
-  <button onclick="window.print()">🖨&nbsp; IMPRIMIR / GUARDAR PDF</button>
+  <button onclick="window.print()">IMPRIMIR / GUARDAR PDF</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
   <span class="info">${t('rep_generated')} ${now} &nbsp;·&nbsp; ${rows.length} ${t('rep_records')}</span>
 </div>
 <div class="wrap">
   <div class="rep-head">
     <div class="rep-brand">${logoEl}<div class="rep-brand-txt">${esc(bname)}<small>Reporte de Inventario por SKU</small></div></div>
-    <div class="rep-title"><h1>📦 REPORTE SKUs</h1><p>${now}</p></div>
+    <div class="rep-title"><h1>REPORTE SKUs</h1><p>${now}</p></div>
   </div>
   <div class="rep-stats">
     <div class="stat"><div class="stat-n">${rows.length}</div><div class="stat-l">${t('rep_records')}</div></div>
@@ -4786,7 +4786,7 @@ function exportSkusExcel(){
   const data=[[
     'SKU',t('csv_description'),t('csv_qty'),'Unidad',
     'Rack',t('csv_zone'),t('csv_bay'),t('csv_level'),t('csv_state'),
-    t('rack_resp_lbl'),t('catalog_shops'),'📅 Vence'
+    t('rack_resp_lbl'),t('catalog_shops'),'Vence'
   ]];
   map.forEach((entry)=>{
     const {sku,desc,locs}=entry;
@@ -4816,7 +4816,7 @@ function printMovementsPDF(){
   const bname=getBrandName('BODEGA','');
   const logoSrc=getBrandLogo();
   const dateStr=new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'});
-  const typeIcon={entrada:'🟢',salida:'🔴',traslado:'🔵',ajuste:'🟡',conteo:'🟣'};
+  const typeIcon={entrada:'',salida:'',traslado:'',ajuste:'',conteo:''};
   const typeColor={entrada:'#00c875',salida:'#ff3b5c',traslado:'#00aaff',ajuste:'#f0c000',conteo:'#a855f7'};
   const logoEl=logoSrc?`<img src="${logoSrc}" style="height:32px;object-fit:contain">`:`<div style="font-size:15px;font-weight:900;letter-spacing:3px;color:#1a2030">SF</div>`;
 
@@ -4855,7 +4855,7 @@ function printMovementsPDF(){
 </style>
 </head><body>
 <div class="toolbar">
-  <button onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+  <button onclick="window.print()">Imprimir / Guardar PDF</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
   <span style="color:#aaa;font-size:10px;margin-left:6px">${rows.length} movimientos · ${esc(bname)} · ${dateStr}</span>
 </div>
@@ -5131,9 +5131,9 @@ function buildBulkLabelHtml(rack, cell, is4x6, bname, logoEl){
   const chipShop=cellShops.map(s=>'<span style="display:inline-block;padding:5px 16px;border-radius:24px;font-size:'+(is4x6?'14':'16')+'px;font-weight:700;margin:3px 4px 0 0;background:#fff5e0;border:2px solid #ffc840;color:#885500;">'+esc(s)+'</span>').join('');
   const skuExpiryRows=(cell.skus||[]).filter(s=>s.expiry).map(s=>{
     const d=expiryDays(s.expiry);const ec=d<0?'#ff3344':d<=30?'#ff9900':'#00aa44';
-    return '<div class="notes" style="display:flex;justify-content:space-between;align-items:center">📅 '+esc(s.sku||s.desc||'SKU')+': '+esc(s.expiry)+'<span style="font-weight:900;color:'+ec+'">'+(d<0?'VENCIDO':d===0?'HOY':d+'d')+'</span></div>';
+    return '<div class="notes" style="display:flex;justify-content:space-between;align-items:center">'+esc(s.sku||s.desc||'SKU')+': '+esc(s.expiry)+'<span style="font-weight:900;color:'+ec+'">'+(d<0?'VENCIDO':d===0?'HOY':d+'d')+'</span></div>';
   }).join('');
-  const notesRow=cell.notes?('<div class="notes">📝 '+esc(cell.notes)+'</div>'):'';
+  const notesRow=cell.notes?('<div class="notes">'+esc(cell.notes)+'</div>'):'';
 
   return '<div class="lbl">'
     +'<div class="hd">'
@@ -5151,8 +5151,8 @@ function buildBulkLabelHtml(rack, cell, is4x6, bname, logoEl){
           +`<div class="ibox"><div class="i-lbl">${t('csv_state')}</div><span class="state-pill">${sn}</span></div>`
         +'</div>'
         +'<div class="people">'
-          +(resps.length?(`<div class="pgroup"><div class="p-lbl">👤 ${t('rack_resp_lbl').replace('👤 ','')}</div><div>`+chipResp+'</div></div>'):'')
-          +(cellShops.length?(`<div class="pgroup"><div class="p-lbl">🏪 ${t('catalog_shops').replace('🏪 ','')}</div><div>`+chipShop+'</div></div>'):(!resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${currentLang==='en'?'No assignees':'Sin responsables ni tiendas'}</div>`:''))
+          +(resps.length?(`<div class="pgroup"><div class="p-lbl">${t('rack_resp_lbl')}</div><div>`+chipResp+'</div></div>'):'')
+          +(cellShops.length?(`<div class="pgroup"><div class="p-lbl">${t('catalog_shops')}</div><div>`+chipShop+'</div></div>'):(!resps.length?`<div style="color:#ccc;font-size:14px;font-style:italic;padding-top:6px">${currentLang==='en'?'No assignees':'Sin responsables ni tiendas'}</div>`:''))
         +'</div>'
         +notesRow
         +skuExpiryRows
@@ -5229,7 +5229,7 @@ function doBulkPrint(){
   +'.ft-code{font-family:\'Courier New\',monospace;font-size:'+(is4x6?'14':'16')+'px;letter-spacing:5px;color:#555;font-weight:700;}'
   +'</style></head><body>'
   +'<div class="toolbar">'
-  +'<button onclick="window.print()">🖨 IMPRIMIR '+cells.length+' ETIQUETA'+(cells.length!==1?'S':'')+'</button>'
+  +'<button onclick="window.print()">IMPRIMIR '+cells.length+' ETIQUETA'+(cells.length!==1?'S':'')+'</button>'
   +'<button class="cls" onclick="window.close()">✕ Cerrar</button>'
   +'<span>'+cells.length+' etiqueta'+(cells.length!==1?'s':'')+' · formato '+(is4x6?'4×6"':'A4')+'</span>'
   +'</div>'
@@ -5698,7 +5698,7 @@ async function loginCoordinador(email, password) {
     }
     const data = await response.json();
     activarCoordinador(data.token, data.refresh_token);
-    notif('✅ Sesión iniciada como coordinador', 'ok');
+    notif('Sesión iniciada como coordinador', 'ok');
     return true;
   } catch(e) {
     notif(e.message || 'Error de conexión', 'err');
@@ -5730,7 +5730,7 @@ async function renovarTokenSiEsNecesario() {
 
 function guardEdit(fn) {
   if (!coordUnlocked) {
-    notif('🔒 Ingresá como coordinador para editar', 'warn');
+    notif('Ingresá como coordinador para editar', 'warn');
     openCoordinadorModal();
     return;
   }
@@ -5747,7 +5747,7 @@ function openCoordinadorModal() {
   modal.innerHTML = `
     <div class="modal" style="width:320px">
       <div class="mhd">
-        <div class="mttl">🔐 Acceso Coordinador</div>
+        <div class="mttl">Acceso Coordinador</div>
         <button class="mcl" onclick="cerrarModalCoordinador()">✕</button>
       </div>
       <div class="mbdy" style="padding:20px 24px">
@@ -5818,7 +5818,7 @@ function toggleLock() {
   if (coordUnlocked) {
     cerrarSesion();
     desactivarCoordinador();
-    notif('🔒 Sesión cerrada', 'warn');
+    notif('Sesión cerrada', 'warn');
   } else {
     openCoordinadorModal();
   }
@@ -5839,7 +5839,7 @@ document.addEventListener('keydown',function(e){
   const token = restaurarSesion();
   if (token && !tokenExpirado(token)) {
     activarCoordinador(token);
-    notif('✅ Sesión restaurada', 'ok');
+    notif('Sesión restaurada', 'ok');
   }
 } catch(e) {}
   try {

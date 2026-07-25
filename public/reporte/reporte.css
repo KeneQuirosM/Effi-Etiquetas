@@ -434,7 +434,7 @@
   .exclusion-grid::-webkit-scrollbar-track { background: transparent; }
   .exclusion-grid::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 2px; }
 
-  /* ── 🖨️ CORRECCIÓN DE PDF: Forzar renderizado de colores, barras y fondos en la impresión ── */
+  /* ── CORRECCIÓN DE PDF: Forzar renderizado de colores, barras y fondos en la impresión ── */
   @media print {
     * {
       -webkit-print-color-adjust: exact !important;

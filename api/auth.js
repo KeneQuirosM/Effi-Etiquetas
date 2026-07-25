@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { setCors } from './_cors.js';
 import { rateLimit } from './_rateLimit.js';
 
-// 🔐 Cliente público para login
+// Cliente público para login
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY

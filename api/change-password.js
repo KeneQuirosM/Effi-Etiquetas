@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
 
-    // 📥 Nueva contraseña
+    // Nueva contraseña
     const { password } = req.body;
 
     if (!password || password.length < 6) {
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🔄 Actualizar contraseña
+    // Actualizar contraseña
     const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
       password
     });

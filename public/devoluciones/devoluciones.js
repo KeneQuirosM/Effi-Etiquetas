@@ -86,7 +86,7 @@
 
     function renderTable(){
         if(!originalRowsData.length){
-            tableBody.innerHTML=`<tr><td colspan="99" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">📂</span><div class="empty-t">Sin datos cargados</div><div class="empty-s">Cargue un archivo Excel para comenzar</div></div></td></tr>`;
+            tableBody.innerHTML=`<tr><td colspan="99" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">∅</span><div class="empty-t">Sin datos cargados</div><div class="empty-s">Cargue un archivo Excel para comenzar</div></div></td></tr>`;
             updateStats(); return;
         }
         // Índice original (posición en el Excel, antes de agrupar devueltas
@@ -119,11 +119,11 @@
                 const articulos=getProductArticulos(g);
                 const prod=articulos.length?articulos.map(a=>a.nombre||a.id).join(', '):'Producto';
                 if(cb.checked){
-                    devolutionSet.add(g); addLog(g,dist,prov,cliente,prod,'✅ MARCADA');
+                    devolutionSet.add(g); addLog(g,dist,prov,cliente,prod,'MARCADA');
                     showLastScan(g,dist,prov,cliente,true,articulos);
                     notify(`Guía ${g} marcada`,'ok');
                 } else {
-                    devolutionSet.delete(g); addLog(g,dist,prov,cliente,prod,'❌ DESMARCADA');
+                    devolutionSet.delete(g); addLog(g,dist,prov,cliente,prod,'DESMARCADA');
                     showLastScan(g,dist,prov,cliente,false,articulos);
                     notify(`Guía ${g} desmarcada`,'inf');
                 }
@@ -178,7 +178,7 @@
 
     function initTable(){
         if(!originalRowsData.length) return;
-        tableHeader.innerHTML=`<tr><th style="width:46px;text-align:center;">✔</th>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;
+        tableHeader.innerHTML=`<tr><th style="width:46px;text-align:center;"></th>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;
         renderTable();
     }
 
@@ -250,7 +250,7 @@
         const articulos=getProductArticulos(guia);
         const prod=articulos.length?articulos.map(a=>a.nombre||a.id).join(', '):'Producto';
         if(!devolutionSet.has(guia)){
-            devolutionSet.add(guia); addLog(guia,dist,prov,cliente,prod,'✅ MARCADA (escáner)');
+            devolutionSet.add(guia); addLog(guia,dist,prov,cliente,prod,'MARCADA (escáner)');
             showLastScan(guia,dist,prov,cliente,true,articulos);
             notify(`Guía ${guia} marcada`,'ok');
             updateRowStatus(guia,true); saveMarks(); updateStats();
@@ -312,7 +312,7 @@
         if(!originalRowsData.length) return;
         if(!confirm('¿Reiniciar todas las marcas?')) return;
         const previamenteMarcadas=[...devolutionSet];
-        devolutionSet.clear(); addLog('SISTEMA','','','Admin','Todas','🔄 REINICIO');
+        devolutionSet.clear(); addLog('SISTEMA','','','Admin','Todas','REINICIO');
         previamenteMarcadas.forEach(g=>updateRowStatus(g,false));
         lastScanCard.style.display='none';
         saveMarks(); updateStats(); guiaInput.focus();

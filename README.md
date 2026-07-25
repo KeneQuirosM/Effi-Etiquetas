@@ -9,7 +9,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 
 ---
 
-## 🧩 Módulos
+## Módulos
 
 ### 1. Generador de Etiquetas (`/`)
 - Selección de tienda y producto con búsqueda en tiempo real
@@ -44,7 +44,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 
 ---
 
-## 🗄️ Base de datos
+## Base de datos
 
 La BD tiene 16 tablas en Supabase PostgreSQL divididas en dos grupos:
 
@@ -66,7 +66,7 @@ El campo `skus.producto_id` vincula STOCKFORGE con el catálogo de etiquetas. Cu
 
 ---
 
-## 📁 Estructura
+## Estructura
 
 ```
 effi-etiquetas/
@@ -104,7 +104,7 @@ effi-etiquetas/
 
 ---
 
-## 🔐 Roles de acceso
+## Roles de acceso
 
 | Rol | Acceso | Puede |
 |-----|--------|-------|
@@ -115,7 +115,7 @@ El coordinador usa el mismo usuario en el generador de etiquetas y en STOCKFORGE
 
 ---
 
-## 🚀 Setup desde cero
+## Setup desde cero
 
 ### 1. Supabase
 
@@ -154,7 +154,7 @@ Coordinador → Configuración → **Importar JSON** (procesa en lotes de 10, mu
 
 ---
 
-## 📦 Desarrollo local
+## Desarrollo local
 
 ```bash
 npm install -g vercel
@@ -165,7 +165,7 @@ Abre `http://localhost:3000`
 
 ---
 
-## 📌 Notas técnicas
+## Notas técnicas
 
 - El generador de etiquetas tiene caché offline en `localStorage`. Si no hay conexión, muestra el último inventario conocido.
 - El QR de ubicación en etiquetas es generado offline (librería embebida en `index.js`, sin CDN).

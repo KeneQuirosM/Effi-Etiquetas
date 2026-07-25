@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   try {
     // ── GET: Obtener todo el estado ────────────────────────────────
     if (req.method === 'GET') {
-      console.log('📥 GET /api/stockforge');
+      console.log('GET /api/stockforge');
 
       // Las 9 lecturas son independientes entre sí — se piden en paralelo
       // en vez de 9 round-trips secuenciales.
@@ -176,7 +176,7 @@ export default async function handler(req, res) {
 
     // ── POST: Guardar todo el estado ─────────────────────────────
     if (req.method === 'POST') {
-      // 🔐 Validar token antes de cualquier operación destructiva
+      // Validar token antes de cualquier operación destructiva
       const user = await requireUser(req, res);
       if (!user) return;
 
@@ -189,7 +189,7 @@ export default async function handler(req, res) {
         });
       }
 
-      console.log(`📤 POST - zonas:${zones.length}, racks:${racks.length}, people:${people?.length || 0}, tiendas:${tiendas?.length || 0}`);
+      console.log(`POST - zonas:${zones.length}, racks:${racks.length}, people:${people?.length || 0}, tiendas:${tiendas?.length || 0}`);
 
       // Todo el borrado + reinserción de las 12 tablas corre en una sola
       // transacción atómica dentro de Postgres (ver supabase/replace_warehouse_state.sql).
@@ -198,18 +198,18 @@ export default async function handler(req, res) {
       });
 
       if (error) {
-        console.error('❌ Error en replace_warehouse_state:', error);
+        console.error('Error en replace_warehouse_state:', error);
         return res.status(500).json({ error: 'No se pudo guardar el estado del almacén' });
       }
 
-      console.log(`✅ Estado guardado — celdas:${data.celdas}, ubicaciones:${data.ubicaciones}`);
+      console.log(`Estado guardado — celdas:${data.celdas}, ubicaciones:${data.ubicaciones}`);
       return res.status(200).json(data);
     }
 
     return res.status(405).json({ error: 'Método no permitido' });
 
   } catch (error) {
-    console.error('💥 Error general:', error);
+    console.error('Error general:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 }

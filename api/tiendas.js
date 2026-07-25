@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ tiendas: result });
     }
 
-    // 🔐 Validar token para rutas protegidas
+    // Validar token para rutas protegidas
     const user = await requireUser(req, res);
     if (!user) return;
 
