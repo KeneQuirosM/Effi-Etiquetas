@@ -77,3 +77,9 @@ Unlike `tiendas.js`/`productos.js` (normal per-row CRUD), `api/stockforge.js` re
 ### Known stub / inconsistency
 
 `api/reporte-tiendas.js` reads from a `historial_movimientos` table that doesn't exist yet (wrapped in try/catch so it silently returns 0 counts instead of erroring) — and it's currently **not called from any frontend file** (`public/reporte/reporte.js` only fetches `/api/tiendas` directly). Treat it as unfinished/orphaned rather than a maintained endpoint unless you're specifically wiring it up.
+
+## Visual conventions
+
+- No decorative emojis in UI strings, code comments, or markdown. Text labels carry meaning on their own; don't decorate headings, buttons, log messages, or docs with pictographic emoji.
+- Functional monochrome glyphs are allowed where they act as plain UI symbols rather than decoration: `✕` (close), `✓` (check/confirm), `☰` (menu), `⚙` (settings). These render as flat, colorless symbols and are treated as icons, not emoji.
+- The deliberate exception is the `ICONS` map in `public/shared/dom-utils.js` (`✅` `❌` `⚠️` `ℹ️`) — it powers the shared `notify()` toast system and is the app's actual status-indicator mechanism. Don't strip it, and don't re-embed the same icons inside a `notify()` call's message text (the toast already prepends the right one for `success`/`error`/`warn`/`info`).
