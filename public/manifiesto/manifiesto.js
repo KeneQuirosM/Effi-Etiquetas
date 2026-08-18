@@ -290,11 +290,12 @@ async function handleFile(event) {
       let guias = [];
 
       if (isExcel) {
-        // ====== PROCESAR EXCEL ======
+        // ====== PROCESAR EXCEL (todas las hojas del libro) ======
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        const rows = workbook.SheetNames.flatMap(nombreHoja =>
+          XLSX.utils.sheet_to_json(workbook.Sheets[nombreHoja], { header: 1 })
+        );
         guias = processExcelManifest(rows);
       } else if (isPDF) {
         // ====== PROCESAR PDF CON OCR (VERSIÓN ROBUSTA) ======
