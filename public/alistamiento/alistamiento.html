@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Efficommerce | Alistamiento</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <link rel="stylesheet" href="/shared/tokens.css">
+    <link rel="stylesheet" href="alistamiento.css">
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- HEADER — idéntico a devoluciones/manifiesto -->
+    <header class="app-header">
+        <div class="header-main-row">
+            <div class="header-left">
+                <div class="header-logo-pill">
+                    <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png"
+                         alt="Efficommerce" class="header-logo-img"
+                         onerror="this.style.display='none'">
+                </div>
+                <div class="header-divider"></div>
+                <div class="header-titles">
+                    <h1>Gestión de Alistamiento</h1>
+                    <span class="header-sub">Fulfillment · Filtro de guías</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-status-bar">
+            <span class="header-status-dot"></span>
+            <span class="header-status-text">Sistema activo</span>
+        </div>
+    </header>
+
+    <!-- SECTION HEADER -->
+    <div class="section-header">
+        <i class="fas fa-clipboard-check"></i>
+        <h2>Panel de Control — Alistamiento</h2>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="section-content">
+
+        <!-- ZONA DE CARGA -->
+        <div class="upload-grid">
+
+            <!-- EXCEL -->
+            <div class="dropzone-card">
+                <div class="dropzone-card-label">
+                    <i class="fas fa-file-excel"></i>
+                    Reporte de Alistamiento (.xlsx)
+                </div>
+                <div class="dropzone" id="excelDropzone">
+                    <input type="file" id="excelInput" accept=".xlsx">
+                    <div id="excelDropzoneContent">
+                        <div class="dropzone-icon"><i class="fas fa-file-excel"></i></div>
+                        <div class="dropzone-title">Arrastra el Excel aquí</div>
+                        <div class="dropzone-hint">o haz clic para seleccionar un archivo .xlsx</div>
+                        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn">
+                            <i class="fas fa-upload"></i> Examinar archivo
+                        </button>
+                    </div>
+                </div>
+                <div class="column-select-row" id="columnSelectRow">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>No se detectó automáticamente la columna de guía. Selecciónala:</span>
+                    <select id="columnSelect"></select>
+                    <button type="button" class="btn btn-outline" id="columnConfirmBtn" style="padding:6px 14px;font-size:.72rem;">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+
+            <!-- PDF -->
+            <div class="dropzone-card">
+                <div class="dropzone-card-label">
+                    <i class="fas fa-file-pdf"></i>
+                    Etiquetas de Guías (.pdf)
+                </div>
+                <div class="dropzone" id="pdfDropzone">
+                    <input type="file" id="pdfInput" accept=".pdf">
+                    <div id="pdfDropzoneContent">
+                        <div class="dropzone-icon"><i class="fas fa-file-pdf"></i></div>
+                        <div class="dropzone-title">Arrastra el PDF aquí</div>
+                        <div class="dropzone-hint">o haz clic para seleccionar un archivo .pdf</div>
+                        <button type="button" class="dropzone-browse-btn" id="pdfBrowseBtn">
+                            <i class="fas fa-upload"></i> Examinar archivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ACCIÓN PRINCIPAL -->
+        <div class="compare-action">
+            <button class="btn btn-primary" id="compareBtn" disabled>
+                <i class="fas fa-code-compare"></i>
+                Comparar y Filtrar
+            </button>
+        </div>
+
+        <!-- PANEL DE RESULTADOS -->
+        <div class="results-panel" id="resultsPanel">
+
+            <div class="metrics-grid">
+                <div class="metric-card total">
+                    <div class="metric-icon"><i class="fas fa-file-excel"></i></div>
+                    <div>
+                        <div class="metric-value" id="totalExcelCount">0</div>
+                        <div class="metric-label">Guías en el Excel</div>
+                    </div>
+                </div>
+                <div class="metric-card correct">
+                    <div class="metric-icon"><i class="fas fa-check-circle"></i></div>
+                    <div>
+                        <div class="metric-value" id="foundCount">0</div>
+                        <div class="metric-label">Encontradas en el PDF</div>
+                    </div>
+                </div>
+                <div class="metric-card warning">
+                    <div class="metric-icon"><i class="fas fa-times-circle"></i></div>
+                    <div>
+                        <div class="metric-value" id="notFoundCount">0</div>
+                        <div class="metric-label">No encontradas en el PDF</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-block" id="notFoundBlock">
+                <div class="results-block-head">
+                    <div class="results-block-title"><i class="fas fa-triangle-exclamation"></i> Guías no encontradas en el PDF</div>
+                    <div class="results-block-count" id="notFoundBlockCount">0 guías</div>
+                </div>
+                <div class="guide-badges" id="notFoundBadges">
+                    <div class="empty-results">Ninguna</div>
+                </div>
+            </div>
+
+            <div class="results-block" id="foundBlock">
+                <div class="results-block-head">
+                    <div class="results-block-title"><i class="fas fa-check-double"></i> Guías encontradas en ambos archivos</div>
+                    <div class="results-block-count" id="foundBlockCount">0 guías</div>
+                </div>
+                <div class="guide-badges" id="foundBadges">
+                    <div class="empty-results">Ninguna</div>
+                </div>
+            </div>
+
+            <div class="print-action">
+                <button class="btn btn-green" id="printBtn" disabled>
+                    <i class="fas fa-print"></i>
+                    Imprimir guías filtradas
+                </button>
+            </div>
+
+        </div>
+
+        <!-- AUDITORÍA -->
+        <div class="log-wrap">
+            <div class="log-head">
+                <i class="fas fa-terminal" style="font-size:9px;color:rgba(255,255,255,.2);"></i>
+                <span class="log-head-lbl">Auditoría</span>
+            </div>
+            <div class="log-body">
+                <div id="logEntries" style="font-family:var(--mono);font-size:.65rem;color:rgba(255,255,255,.55);">
+                    Sin registros
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /section-content -->
+</div><!-- /app-container -->
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/shared/dom-utils.js"></script>
+<script src="alistamiento.js"></script>
+</body>
+</html>
