@@ -17,6 +17,7 @@ let pdfBytes = null;     // bytes originales del PDF (Uint8Array), intactos
 let pdfFileName = '';
 
 let filteredPdfUrl = null;
+let guiaPageMap = new Map(); // guiaId -> [páginas 1-based en el PDF original], del último comparar
 let auditLog = [];
 
 /* ── AUDITORÍA ──────────────────────────────────────── */
@@ -164,6 +165,7 @@ function resetResults() {
     document.getElementById('resultsPanel').style.display = 'none';
     document.getElementById('printBtn').disabled = true;
     if (filteredPdfUrl) { URL.revokeObjectURL(filteredPdfUrl); filteredPdfUrl = null; }
+    guiaPageMap = new Map();
 }
 function updateCompareState() {
     document.getElementById('compareBtn').disabled = !(excelIds.length && pdfBytes);
@@ -313,9 +315,18 @@ async function compareAndFilter() {
         }
 
         const notFoundIds = excelIds.filter(id => !foundIds.has(id));
-        const pagesToKeep = [];
-        groups.forEach(g => { if (g.matchedId) pagesToKeep.push(...g.pages); });
-        pagesToKeep.sort((a, b) => a - b);
+
+        // Mapa guiaId -> páginas, reutilizado tal cual por el botón de
+        // impresión individual (no vuelve a recalcularse nada ahí).
+        guiaPageMap = new Map();
+        groups.forEach(g => {
+            if (!g.matchedId) return;
+            if (!guiaPageMap.has(g.matchedId)) guiaPageMap.set(g.matchedId, []);
+            guiaPageMap.get(g.matchedId).push(...g.pages);
+        });
+        guiaPageMap.forEach(pages => pages.sort((a, b) => a - b));
+
+        const pagesToKeep = [...guiaPageMap.values()].flat().sort((a, b) => a - b);
 
         if (pagesToKeep.length) {
             const srcDoc = await PDFLib.PDFDocument.load(pdfBytes);
@@ -360,13 +371,43 @@ function renderResults(foundSet, notFoundIds) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = excelIds.map(id => {
         const ok = foundSet.has(id);
+        const accionCell = ok
+            ? `<button type="button" class="btn-print-row" data-guia="${esc(id)}" title="Imprimir guía ${esc(id)}">🖨️ Imprimir</button>`
+            : '<span class="cell-dash">—</span>';
         return `<tr data-guia="${esc(id)}"><td style="font-family:var(--mono)">${esc(id)}</td><td>${
             ok
                 ? '<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Encontrada ✓</span>'
                 : '<span class="badge badge-pend"><i class="fas fa-times-circle"></i> No encontrada</span>'
-        }</td></tr>`;
+        }</td><td>${accionCell}</td></tr>`;
     }).join('');
     document.getElementById('tablaContador').textContent = excelIds.length;
+}
+
+/* ── IMPRESIÓN INDIVIDUAL POR GUÍA ─────────────────────────
+ * Reutiliza guiaPageMap (ya calculado en compareAndFilter) para saber
+ * qué páginas del PDF original corresponden a esta guía puntual — no
+ * se vuelve a comparar ni a leer texto de páginas. Igual que el PDF
+ * completo, pdf-lib copia esas páginas del original sin regenerarlas.
+ */
+async function printGuiaIndividual(guiaId) {
+    const pages = guiaPageMap.get(guiaId);
+    if (!pages || !pages.length) { notify(`No se encontraron páginas para la guía ${guiaId}`, 'err'); return; }
+    if (!pdfBytes) { notify('El PDF original ya no está disponible', 'err'); return; }
+    try {
+        const srcDoc = await PDFLib.PDFDocument.load(pdfBytes);
+        const outDoc = await PDFLib.PDFDocument.create();
+        const copiedPages = await outDoc.copyPages(srcDoc, pages.map(p => p - 1));
+        copiedPages.forEach(p => outDoc.addPage(p));
+        const outBytes = await outDoc.save();
+        const blob = new Blob([outBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        addLog(`PDF individual abierto para guía ${guiaId} (${pages.length} página${pages.length > 1 ? 's' : ''})`, 'ok');
+    } catch (err) {
+        console.error('Error al generar PDF individual:', err);
+        notify(`Error al generar el PDF de la guía ${guiaId}: ${err.message}`, 'err');
+        addLog(`Error al imprimir guía ${guiaId}: ${err.message}`, 'er');
+    }
 }
 
 /* ── BÚSQUEDA EN TABLA DE RESULTADOS ───────────────────── */
@@ -393,5 +434,10 @@ document.getElementById('printBtn').addEventListener('click', () => {
     addLog('PDF filtrado abierto para impresión', 'ok');
 });
 document.getElementById('tablaSearch').addEventListener('input', e => filtrarTablaDebounced(e.target.value));
+document.getElementById('tableBody').addEventListener('click', e => {
+    const btn = e.target.closest('.btn-print-row');
+    if (!btn) return;
+    printGuiaIndividual(btn.dataset.guia);
+});
 
 loadLogs();
