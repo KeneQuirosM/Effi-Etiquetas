@@ -374,6 +374,15 @@ function findMatchingGuide(pageTextRaw, pageTextStripped, guideList) {
     return best;
 }
 
+// Números de 10+ dígitos en el texto de una página — no necesariamente
+// una guía del Excel, pero indican que la página trae SU PROPIO número
+// de guía (de cualquier transportadora). Se usa para distinguir una
+// página de continuación real (sin número propio) de la primera página
+// de una guía distinta que el PDF trae pero que no está en el Excel.
+function extractCandidateGuideNumbers(strippedText) {
+    return strippedText.match(/\d{10,}/g) || [];
+}
+
 async function getPageText(pdfDoc, pageNum) {
     const page = await pdfDoc.getPage(pageNum);
     const content = await page.getTextContent();
@@ -399,7 +408,20 @@ async function runCompareAndFilter() {
             const raw = await getPageText(pdfDoc, i);
             const stripped = normalizeStripped(raw);
             const matched = findMatchingGuide(raw, stripped, guideList);
-            if (matched) currentGuide = matched;
+            if (matched) {
+                currentGuide = matched;
+            } else if (currentGuide) {
+                // Solo es continuación real de currentGuide si la página NO
+                // trae un número de guía propio distinto. Si trae uno, es la
+                // primera página de OTRA guía (probablemente una que el PDF
+                // incluye pero que no está en el Excel) y no debe arrastrarse
+                // — si no, sus páginas terminan impresas como si fueran de la
+                // guía anterior, inflando el conteo de páginas filtradas.
+                const candidates = extractCandidateGuideNumbers(stripped);
+                const currentStripped = normalizeStripped(currentGuide);
+                const belongsToOtherGuide = candidates.some(c => c !== currentStripped);
+                if (belongsToOtherGuide) currentGuide = null;
+            }
             pageGuideMap[i] = matched || currentGuide;
             if (i % 15 === 0) await new Promise(r => setTimeout(r, 0)); // deja respirar la UI
         }
