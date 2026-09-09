@@ -16,12 +16,22 @@ let excelHeaders = [];
 let excelRows = [];
 let excelGuideColumn = null;
 let excelGuideSet = new Set();
+let excelProductColumn = null;
+let excelGuideProductMap = new Map();
 
 let pdfFile = null;
 let pdfNumPages = 0;
 
 let filteredPdfBlobUrl = null;
 let auditLog = [];
+
+// guiaId -> [índices de página 0-based en el PDF original], en orden ascendente.
+// Se construye una sola vez por comparación y se reutiliza tanto para la
+// impresión individual por guía como para reordenar el PDF por producto,
+// sin volver a extraer texto del PDF.
+let guidePagesMap = new Map();
+let srcPdfLibDoc = null;
+let sortMode = 'original';
 
 /* ── AUDITORÍA ────────────────────────────────────────── */
 function saveLogs() { localStorage.setItem(LOG_KEY, JSON.stringify(auditLog.slice(-200))); }
@@ -88,6 +98,40 @@ function extractGuideSet(rows, column) {
     return set;
 }
 
+/* ── DETECCIÓN DE COLUMNA DE PRODUCTO ────────────────────
+ * Solo se usa para el modo "Agrupar por producto" al ordenar la
+ * impresión — si no se detecta, esa opción queda deshabilitada.
+ */
+const PRODUCT_COLUMN_NAME_CANDIDATES = [
+    'descripción en la venta', 'descripcion en la venta',
+    'descripción de venta', 'descripcion de venta',
+    'descripción original artículo', 'descripcion original articulo',
+    'descripción artículo', 'descripcion articulo',
+    'nombre artículo', 'nombre articulo', 'producto',
+    'nombre producto', 'nombre del producto'
+];
+
+function detectProductColumn(headers) {
+    const lowerMap = headers.map(h => String(h).toLowerCase().trim());
+    let idx = lowerMap.findIndex(h => PRODUCT_COLUMN_NAME_CANDIDATES.includes(h));
+    if (idx === -1) idx = lowerMap.findIndex(h => PRODUCT_COLUMN_NAME_CANDIDATES.some(c => h.includes(c)));
+    return idx !== -1 ? headers[idx] : null;
+}
+
+// Guarda el nombre de producto de la PRIMERA fila en que aparece cada
+// guía (una guía puede tener varios artículos/filas en el Excel).
+function buildGuideProductMap(rows, guideColumn, productColumn) {
+    const map = new Map();
+    if (!productColumn) return map;
+    rows.forEach(r => {
+        const gid = String(r[guideColumn] ?? '').trim();
+        if (!gid || map.has(gid)) return;
+        const prod = String(r[productColumn] ?? '').trim();
+        if (prod) map.set(gid, prod);
+    });
+    return map;
+}
+
 /* ── DROPZONE GENÉRICA ───────────────────────────────────
  * Cablea drag&drop + click + input[type=file] para una dropzone,
  * delegando la lectura del archivo al callback onFile(file).
@@ -131,6 +175,17 @@ function resetResults() {
     document.getElementById('resultsPanel').classList.remove('show');
     document.getElementById('printBtn').disabled = true;
     if (filteredPdfBlobUrl) { URL.revokeObjectURL(filteredPdfBlobUrl); filteredPdfBlobUrl = null; }
+    guidePagesMap = new Map();
+    srcPdfLibDoc = null;
+
+    sortMode = 'original';
+    const sortSelect = document.getElementById('sortModeSelect');
+    sortSelect.value = 'original';
+    const byProductOption = sortSelect.querySelector('option[value="byProduct"]');
+    byProductOption.disabled = false;
+    byProductOption.textContent = 'Agrupar por producto';
+    document.getElementById('sortOrderHint').textContent = 'Misma secuencia que en el PDF original';
+    document.getElementById('productGroupsSummary').innerHTML = '';
 }
 
 /* ── EXCEL ────────────────────────────────────────────── */
@@ -183,6 +238,20 @@ function finalizeExcel(column) {
         updateCompareButton();
         return;
     }
+
+    excelProductColumn = detectProductColumn(excelHeaders);
+    excelGuideProductMap = buildGuideProductMap(excelRows, column, excelProductColumn);
+    const byProductOption = document.querySelector('#sortModeSelect option[value="byProduct"]');
+    if (excelProductColumn) {
+        byProductOption.disabled = false;
+        byProductOption.textContent = 'Agrupar por producto';
+    } else {
+        byProductOption.disabled = true;
+        byProductOption.textContent = 'Agrupar por producto (no disponible: sin columna de producto)';
+        sortMode = 'original';
+        document.getElementById('sortModeSelect').value = 'original';
+    }
+
     setExcelLoaded(excelFile, excelGuideSet.size, column);
     hideColumnSelect();
     addLog('EXCEL CARGADO', `${excelFile.name} · ${excelGuideSet.size} guías · columna "${column}"`);
@@ -329,43 +398,41 @@ async function runCompareAndFilter() {
             if (i % 15 === 0) await new Promise(r => setTimeout(r, 0)); // deja respirar la UI
         }
 
-        const foundGuides = new Set();
-        const pagesToKeep = [];
+        // guiaId -> [páginas 0-based], en el mismo orden en que aparecen
+        // en el PDF original — se reutiliza para imprimir una sola guía y
+        // para reordenar por producto sin volver a leer el PDF.
+        guidePagesMap = new Map();
         for (let i = 1; i <= numPages; i++) {
             const g = pageGuideMap[i];
             if (g && excelGuideSet.has(g)) {
-                foundGuides.add(g);
-                pagesToKeep.push(i - 1); // pdf-lib usa índices 0-based
+                if (!guidePagesMap.has(g)) guidePagesMap.set(g, []);
+                guidePagesMap.get(g).push(i - 1); // pdf-lib usa índices 0-based
             }
         }
-        const notFoundGuides = guideList.filter(g => !foundGuides.has(g));
+        const foundGuides = [...guidePagesMap.keys()];
+        const notFoundGuides = guideList.filter(g => !guidePagesMap.has(g));
 
-        if (!pagesToKeep.length) {
+        renderGuidesTable(guideList, notFoundGuides);
+        renderResultsSummary(guideList.length, foundGuides.length, notFoundGuides.length);
+        document.getElementById('resultsPanel').classList.add('show');
+
+        if (!foundGuides.length) {
             notify('No se encontró ninguna guía del Excel en el PDF', 'err');
             addLog('COMPARACIÓN: SIN COINCIDENCIAS', `${guideList.length} guías en Excel, 0 encontradas`);
-            renderResults(guideList.length, 0, notFoundGuides, []);
             btn.disabled = false; btn.innerHTML = originalHtml;
             return;
         }
 
-        // Copia byte a byte de las páginas originales con pdf-lib (sin
-        // regenerar contenido, fuentes ni imágenes).
+        // Se carga una sola vez con pdf-lib y se reutiliza en cada
+        // (re)construcción del PDF filtrado — copyPages no modifica el
+        // documento fuente, así que es seguro reusarlo entre llamadas.
         const originalBytes = await pdfFile.arrayBuffer();
-        const srcDoc = await PDFLib.PDFDocument.load(originalBytes);
-        const outDoc = await PDFLib.PDFDocument.create();
-        const copiedPages = await outDoc.copyPages(srcDoc, pagesToKeep);
-        copiedPages.forEach(p => outDoc.addPage(p));
-        const outBytes = await outDoc.save();
+        srcPdfLibDoc = await PDFLib.PDFDocument.load(originalBytes);
+        await rebuildFilteredPdf();
+        renderProductGroupsSummary();
 
-        if (filteredPdfBlobUrl) URL.revokeObjectURL(filteredPdfBlobUrl);
-        const blob = new Blob([outBytes], { type: 'application/pdf' });
-        filteredPdfBlobUrl = URL.createObjectURL(blob);
-
-        renderResults(guideList.length, foundGuides.size, notFoundGuides, [...foundGuides]);
-        document.getElementById('printBtn').disabled = false;
-
-        addLog('COMPARACIÓN EJECUTADA', `${guideList.length} en Excel · ${foundGuides.size} encontradas · ${notFoundGuides.length} no encontradas · ${pagesToKeep.length} páginas filtradas`);
-        notify(`Comparación completa: ${foundGuides.size} de ${guideList.length} guías encontradas`, foundGuides.size === guideList.length ? 'ok' : 'warn');
+        addLog('COMPARACIÓN EJECUTADA', `${guideList.length} en Excel · ${foundGuides.length} encontradas · ${notFoundGuides.length} no encontradas`);
+        notify(`Comparación completa: ${foundGuides.length} de ${guideList.length} guías encontradas`, foundGuides.length === guideList.length ? 'ok' : 'warn');
     } catch (err) {
         notify(`Error al comparar/filtrar: ${err.message}`, 'err');
         addLog('COMPARACIÓN: ERROR', err.message);
@@ -375,21 +442,92 @@ async function runCompareAndFilter() {
     }
 }
 
-function renderResults(total, foundCount, notFoundGuides, foundGuides) {
-    document.getElementById('resultsPanel').classList.add('show');
+function renderResultsSummary(total, foundCount, notFoundCount) {
     document.getElementById('totalExcelCount').innerText = total;
     document.getElementById('foundCount').innerText = foundCount;
-    document.getElementById('notFoundCount').innerText = notFoundGuides.length;
+    document.getElementById('notFoundCount').innerText = notFoundCount;
+}
 
-    document.getElementById('notFoundBlockCount').innerText = `${notFoundGuides.length} guías`;
-    document.getElementById('notFoundBadges').innerHTML = notFoundGuides.length
-        ? notFoundGuides.map(g => `<span class="guide-badge notfound"><i class="fas fa-times"></i> ${esc(g)}</span>`).join('')
-        : '<div class="empty-results">Ninguna — todas las guías del Excel están en el PDF</div>';
+// Tabla unificada Guía/Estado/Acción — cada guía encontrada tiene un
+// botón de impresión individual; las no encontradas muestran un guión,
+// ya que no hay páginas del PDF que les correspondan.
+function renderGuidesTable(guideList, notFoundGuides) {
+    const tbody = document.getElementById('guidesTableBody');
+    document.getElementById('guidesTableCount').textContent = `${guideList.length} guías`;
 
-    document.getElementById('foundBlockCount').innerText = `${foundGuides.length} guías`;
-    document.getElementById('foundBadges').innerHTML = foundGuides.length
-        ? foundGuides.map(g => `<span class="guide-badge found"><i class="fas fa-check"></i> ${esc(g)} — Encontrada</span>`).join('')
-        : '<div class="empty-results">Ninguna</div>';
+    if (!guideList.length) {
+        tbody.innerHTML = `<tr><td colspan="3" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">∅</span><div class="empty-t">Sin resultados</div></div></td></tr>`;
+        return;
+    }
+
+    const notFoundSet = new Set(notFoundGuides);
+    tbody.innerHTML = guideList.map(gid => {
+        const found = !notFoundSet.has(gid);
+        const estado = found
+            ? '<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Encontrada</span>'
+            : '<span class="badge badge-err"><i class="fas fa-times-circle"></i> No encontrada</span>';
+        const accion = found
+            ? `<button type="button" class="print-guide-btn" data-guia="${esc(gid)}"><i class="fas fa-print"></i> Imprimir</button>`
+            : '<span class="action-none">—</span>';
+        return `<tr><td><span class="guide-id-pill">${esc(gid)}</span></td><td>${estado}</td><td style="text-align:center;">${accion}</td></tr>`;
+    }).join('');
+}
+
+/* ── ORDEN DE IMPRESIÓN (original / agrupado por producto) ─────────────
+ * Ambos modos solo cambian el ORDEN en que pdf-lib copia las páginas
+ * del PDF original — ninguna página se modifica, regenera ni se
+ * reescribe su contenido, fuentes o imágenes.
+ */
+function computePageOrder() {
+    const guideIds = [...guidePagesMap.keys()];
+    if (sortMode === 'byProduct') {
+        const groups = new Map(); // nombre de producto -> [guiaId, ...]
+        guideIds.forEach(gid => {
+            const prod = excelGuideProductMap.get(gid) || 'Sin producto identificado';
+            if (!groups.has(prod)) groups.set(prod, []);
+            groups.get(prod).push(gid);
+        });
+        groups.forEach(list => list.sort((a, b) => guidePagesMap.get(a)[0] - guidePagesMap.get(b)[0]));
+        const sortedProductNames = [...groups.keys()].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        return sortedProductNames.flatMap(p => groups.get(p)).flatMap(gid => guidePagesMap.get(gid));
+    }
+    // Orden original: unión de todas las páginas encontradas, ascendente.
+    return guideIds.flatMap(gid => guidePagesMap.get(gid)).sort((a, b) => a - b);
+}
+
+async function buildOutputPdf(pageOrder) {
+    const outDoc = await PDFLib.PDFDocument.create();
+    const copiedPages = await outDoc.copyPages(srcPdfLibDoc, pageOrder);
+    copiedPages.forEach(p => outDoc.addPage(p));
+    const bytes = await outDoc.save();
+    return new Blob([bytes], { type: 'application/pdf' });
+}
+
+async function rebuildFilteredPdf() {
+    if (!srcPdfLibDoc || !guidePagesMap.size) return;
+    const order = computePageOrder();
+    const blob = await buildOutputPdf(order);
+    if (filteredPdfBlobUrl) URL.revokeObjectURL(filteredPdfBlobUrl);
+    filteredPdfBlobUrl = URL.createObjectURL(blob);
+    document.getElementById('printBtn').disabled = false;
+}
+
+function renderProductGroupsSummary() {
+    const container = document.getElementById('productGroupsSummary');
+    if (sortMode !== 'byProduct' || !guidePagesMap.size) { container.innerHTML = ''; return; }
+
+    const counts = new Map(); // nombre de producto -> cantidad de guías
+    [...guidePagesMap.keys()].forEach(gid => {
+        const prod = excelGuideProductMap.get(gid) || 'Sin producto identificado';
+        counts.set(prod, (counts.get(prod) || 0) + 1);
+    });
+    const sortedNames = [...counts.keys()].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    container.innerHTML = sortedNames.map(name => `
+        <div class="product-group-row">
+            <i class="fas fa-box"></i>
+            <span class="product-group-name">${esc(name)}</span>
+            <span class="product-group-count">${counts.get(name)} guías</span>
+        </div>`).join('');
 }
 
 /* ── IMPRESIÓN ────────────────────────────────────────── */
@@ -397,6 +535,23 @@ function printFiltered() {
     if (!filteredPdfBlobUrl) { notify('Primero ejecute la comparación', 'err'); return; }
     window.open(filteredPdfBlobUrl, '_blank');
     addLog('IMPRESIÓN', 'PDF filtrado abierto en nueva pestaña');
+}
+
+// Imprime únicamente las páginas de una guía puntual — reutiliza el mapa
+// guiaId -> páginas ya construido durante la comparación, sin recalcular
+// nada. No se ve afectado por el modo de ordenamiento (orderna solo
+// aplica al PDF completo).
+async function printSingleGuide(guideId) {
+    const pages = guidePagesMap.get(guideId);
+    if (!pages || !pages.length || !srcPdfLibDoc) { notify('No hay páginas para esa guía', 'err'); return; }
+    try {
+        const blob = await buildOutputPdf(pages);
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        addLog('IMPRESIÓN INDIVIDUAL', `Guía ${guideId} · ${pages.length} página(s)`);
+    } catch (err) {
+        notify(`Error al preparar la impresión: ${err.message}`, 'err');
+    }
 }
 
 /* ── INIT ─────────────────────────────────────────────── */
@@ -408,6 +563,24 @@ document.getElementById('printBtn').addEventListener('click', printFiltered);
 document.getElementById('columnConfirmBtn').addEventListener('click', () => {
     const column = document.getElementById('columnSelect').value;
     if (column) finalizeExcel(column);
+});
+
+document.getElementById('guidesTableBody').addEventListener('click', (e) => {
+    const btn = e.target.closest('.print-guide-btn');
+    if (!btn) return;
+    printSingleGuide(btn.getAttribute('data-guia'));
+});
+
+document.getElementById('sortModeSelect').addEventListener('change', async (e) => {
+    sortMode = e.target.value;
+    document.getElementById('sortOrderHint').textContent = sortMode === 'byProduct'
+        ? 'Las guías se agrupan por producto en el PDF de impresión'
+        : 'Misma secuencia que en el PDF original';
+    renderProductGroupsSummary();
+    if (guidePagesMap.size && srcPdfLibDoc) {
+        await rebuildFilteredPdf();
+        addLog('ORDEN DE IMPRESIÓN CAMBIADO', sortMode === 'byProduct' ? 'Agrupado por producto' : 'Orden original');
+    }
 });
 
 loadLogs();

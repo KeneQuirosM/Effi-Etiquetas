@@ -134,24 +134,44 @@
                 </div>
             </div>
 
-            <div class="results-block" id="notFoundBlock">
+            <div class="results-block" id="guidesTableBlock">
                 <div class="results-block-head">
-                    <div class="results-block-title"><i class="fas fa-triangle-exclamation"></i> Guías no encontradas en el PDF</div>
-                    <div class="results-block-count" id="notFoundBlockCount">0 guías</div>
+                    <div class="results-block-title"><i class="fas fa-list-check"></i> Detalle de guías</div>
+                    <div class="results-block-count" id="guidesTableCount">0 guías</div>
                 </div>
-                <div class="guide-badges" id="notFoundBadges">
-                    <div class="empty-results">Ninguna</div>
+                <div class="tbl-wrap">
+                    <table id="guidesTable">
+                        <thead>
+                            <tr>
+                                <th>Guía</th>
+                                <th>Estado</th>
+                                <th style="text-align:center;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="guidesTableBody">
+                            <tr><td colspan="3" style="padding:0;border:none;">
+                                <div class="empty">
+                                    <span class="empty-ico">∅</span>
+                                    <div class="empty-t">Sin resultados</div>
+                                </div>
+                            </td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="results-block" id="foundBlock">
+            <div class="results-block" id="sortOrderBlock">
                 <div class="results-block-head">
-                    <div class="results-block-title"><i class="fas fa-check-double"></i> Guías encontradas en ambos archivos</div>
-                    <div class="results-block-count" id="foundBlockCount">0 guías</div>
+                    <div class="results-block-title"><i class="fas fa-arrow-down-wide-short"></i> Ordenar guías para impresión</div>
                 </div>
-                <div class="guide-badges" id="foundBadges">
-                    <div class="empty-results">Ninguna</div>
+                <div class="sort-order-row">
+                    <select id="sortModeSelect">
+                        <option value="original">Orden original</option>
+                        <option value="byProduct">Agrupar por producto</option>
+                    </select>
+                    <span class="sort-order-hint" id="sortOrderHint">Misma secuencia que en el PDF original</span>
                 </div>
+                <div class="product-groups-summary" id="productGroupsSummary"></div>
             </div>
 
             <div class="print-action">

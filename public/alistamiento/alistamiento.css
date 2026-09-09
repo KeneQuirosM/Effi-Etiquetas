@@ -314,6 +314,109 @@ body {
 
 .empty-results { text-align: center; padding: 20px; color: var(--neutral-400); font-size: .8rem; }
 
+/* ══ TABLA DE GUÍAS — mismos estilos que la tabla de devoluciones ══ */
+.tbl-wrap {
+    overflow-x: auto; overflow-y: auto;
+    max-height: 420px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+}
+.tbl-wrap::-webkit-scrollbar { width: 5px; height: 5px; }
+.tbl-wrap::-webkit-scrollbar-track { background: var(--neutral-50); }
+.tbl-wrap::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 99px; }
+
+table { width: 100%; border-collapse: collapse; font-size: .78rem; background: white; }
+thead { position: sticky; top: 0; z-index: 10; }
+th {
+    text-align: left; padding: 11px 13px;
+    background: var(--brand-800);
+    color: white;
+    font-weight: 600; font-size: .67rem;
+    text-transform: uppercase; letter-spacing: .06em;
+    border-bottom: 1.5px solid var(--brand-700);
+    white-space: nowrap;
+}
+td {
+    padding: 10px 13px;
+    border-bottom: 1px solid var(--neutral-100);
+    color: var(--neutral-600);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--brand-50); color: var(--neutral-800); }
+tbody tr:nth-child(even) td { background: var(--neutral-50); }
+tbody tr:nth-child(even):hover td { background: var(--brand-50); }
+
+.empty { text-align: center; padding: 40px 24px; }
+.empty-ico { font-size: 2rem; opacity: .2; margin-bottom: 10px; display: block; }
+.empty-t { font-size: .82rem; color: var(--neutral-400); font-weight: 500; }
+
+.guide-id-pill {
+    font-family: var(--mono); font-size: .82rem;
+    color: var(--brand-500);
+    background: var(--brand-50);
+    border: 1px solid var(--brand-100);
+    padding: 3px 10px; border-radius: var(--radius-sm);
+    display: inline-block;
+}
+.action-none { color: var(--neutral-400); }
+
+/* ══ BADGES DE ESTADO (tabla de guías) ══ */
+.badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 999px;
+    font-size: .7rem; font-weight: 600; border: 1px solid;
+}
+.badge-ok  { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+.badge-err { background: var(--danger-bg);  color: var(--danger-text);  border-color: var(--danger-border); }
+
+/* ══ IMPRESIÓN INDIVIDUAL POR GUÍA ══ */
+.print-guide-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-family: var(--sans); font-weight: 500; font-size: .72rem;
+    border: 1.5px solid var(--brand-500);
+    background: white; color: var(--brand-500);
+    cursor: pointer; transition: var(--transition);
+}
+.print-guide-btn:hover { background: var(--brand-500); color: white; }
+.print-guide-btn:active { transform: scale(.96); }
+
+/* ══ ORDEN DE IMPRESIÓN ══ */
+.sort-order-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sort-order-row select {
+    padding: 8px 12px;
+    border: 1.5px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    font-family: var(--sans); font-size: .8rem;
+    background: white; color: var(--neutral-800);
+    cursor: pointer; transition: var(--transition);
+}
+.sort-order-row select:focus { border-color: var(--brand-500); }
+.sort-order-hint { font-size: .72rem; color: var(--neutral-400); }
+
+.product-groups-summary {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 14px;
+    max-height: 220px; overflow-y: auto;
+}
+.product-group-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: var(--neutral-50);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md);
+    font-size: .78rem;
+}
+.product-group-row i { color: var(--brand-500); flex-shrink: 0; }
+.product-group-name { flex: 1; color: var(--neutral-800); font-weight: 500; }
+.product-group-count {
+    font-family: var(--mono); font-size: .72rem;
+    color: var(--neutral-600);
+    background: white; border: 1px solid var(--neutral-200);
+    padding: 2px 8px; border-radius: 999px;
+}
+
 /* ══ IMPRIMIR ══ */
 .print-action { display: flex; justify-content: center; padding-top: 4px; }
 
