@@ -949,8 +949,8 @@ function generarExcelDevoluciones(filas, horaFinal) {
   for (let i = 0; i < filas.length; i++) {
     const fila = i + 2; // fila 1 = encabezados
     ws[`D${fila}`] = { t: 'n', v: fechaSerial, z: 'm/d/yyyy' };
-    ws[`E${fila}`] = { t: 'n', v: horaLlegadaSerial, z: 'h:mm:ss AM/PM' };
-    ws[`F${fila}`] = { t: 'n', v: horaFinalSerial, z: 'h:mm:ss AM/PM' };
+    ws[`E${fila}`] = { t: 'n', v: horaLlegadaSerial, z: 'HH:mm:ss' };
+    ws[`F${fila}`] = { t: 'n', v: horaFinalSerial, z: 'HH:mm:ss' };
     ws[`G${fila}`] = { t: 'n', f: `(F${fila}-E${fila})*1440` };
   }
 
