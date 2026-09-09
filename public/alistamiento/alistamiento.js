@@ -219,17 +219,25 @@ function setExcelError(msg) {
     document.getElementById('excelBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('excelInput').click(); });
 }
 
-function showColumnSelect(headers) {
+// El selector de columna queda visible mientras haya un Excel cargado —
+// no solo como resguardo cuando falla la detección automática — para
+// poder cambiarla en cualquier momento sin recargar el archivo.
+function showColumnSelect(headers, selectedColumn, autoDetectFailed) {
     const row = document.getElementById('columnSelectRow');
     const select = document.getElementById('columnSelect');
-    select.innerHTML = headers.map(h => `<option value="${esc(h)}">${esc(h)}</option>`).join('');
+    select.innerHTML = headers.map(h => `<option value="${esc(h)}">${esc(h || '(columna sin nombre)')}</option>`).join('');
+    select.value = selectedColumn;
     row.classList.add('show');
+    row.classList.toggle('auto-detect-failed', !!autoDetectFailed);
 }
 function hideColumnSelect() {
-    document.getElementById('columnSelectRow').classList.remove('show');
+    const row = document.getElementById('columnSelectRow');
+    row.classList.remove('show');
+    row.classList.remove('auto-detect-failed');
 }
 
 function finalizeExcel(column) {
+    resetResults();
     excelGuideColumn = column;
     excelGuideSet = extractGuideSet(excelRows, column);
     if (!excelGuideSet.size) {
@@ -253,7 +261,6 @@ function finalizeExcel(column) {
     }
 
     setExcelLoaded(excelFile, excelGuideSet.size, column);
-    hideColumnSelect();
     addLog('EXCEL CARGADO', `${excelFile.name} · ${excelGuideSet.size} guías · columna "${column}"`);
     notify(`${excelGuideSet.size} guías detectadas en el Excel`, 'ok');
     updateCompareButton();
@@ -278,14 +285,13 @@ function handleExcelFile(file) {
             excelRows = json;
 
             const detected = detectGuideColumn(excelHeaders, excelRows);
-            if (detected) {
-                finalizeExcel(detected);
-            } else {
-                setExcelError('No se detectó la columna de guía automáticamente');
-                showColumnSelect(excelHeaders);
+            const initialColumn = detected || excelHeaders[0];
+            showColumnSelect(excelHeaders, initialColumn, !detected);
+            if (!detected) {
                 addLog('EXCEL: SELECCIÓN MANUAL REQUERIDA', file.name);
-                notify('No se pudo detectar la columna de guía, selecciónala manualmente', 'warn');
+                notify('No se pudo detectar la columna de guía automáticamente, verifica la selección', 'warn');
             }
+            finalizeExcel(initialColumn);
         } catch (err) {
             setExcelError('Archivo corrupto o formato inválido');
             addLog('EXCEL: ERROR', err.message);
@@ -560,9 +566,9 @@ wireDropzone('pdfDropzone', 'pdfInput', 'pdfBrowseBtn', '.pdf', handlePdfFile);
 
 document.getElementById('compareBtn').addEventListener('click', runCompareAndFilter);
 document.getElementById('printBtn').addEventListener('click', printFiltered);
-document.getElementById('columnConfirmBtn').addEventListener('click', () => {
-    const column = document.getElementById('columnSelect').value;
-    if (column) finalizeExcel(column);
+document.getElementById('columnSelect').addEventListener('change', (e) => {
+    document.getElementById('columnSelectRow').classList.remove('auto-detect-failed');
+    finalizeExcel(e.target.value);
 });
 
 document.getElementById('guidesTableBody').addEventListener('click', (e) => {
