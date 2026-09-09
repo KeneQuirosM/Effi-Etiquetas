@@ -1,443 +1,586 @@
-/* ── CLAVE LOCAL DE AUDITORÍA ──────────────────────────
- * No se agrega a STORAGE_KEYS (shared/dom-utils.js) para no tocar ese
- * archivo compartido — clave propia de este módulo, sin colisión con
- * las demás (effi_dev_log, cargoexpreso_historial, etc.).
+/* ══ MÓDULO ALISTAMIENTO ══
+ * Compara un Excel (fuente de verdad de qué guías se despachan) contra un
+ * PDF con todas las etiquetas de guías, y genera un PDF filtrado que solo
+ * contiene las páginas de las guías presentes en el Excel. Todo corre en
+ * el navegador (sin backend): SheetJS lee el Excel, PDF.js extrae texto
+ * por página para identificar guías, y pdf-lib copia las páginas
+ * originales byte a byte (sin regenerarlas) al PDF filtrado.
  */
-const ALISTAMIENTO_LOG_KEY = 'effi_alistamiento_log';
 
-const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let excelHeaders = [];   // fila de encabezados del Excel
-let excelRowsRaw = [];   // filas de datos (arrays), sin encabezado
-let guiaColIndex = -1;   // índice de columna de guía dentro de excelHeaders
-let excelIds = [];       // IDs de guía únicos extraídos de la columna elegida
-let excelFileName = '';
+const LOG_KEY = 'effi_alistamiento_log';
 
-let pdfBytes = null;     // bytes originales del PDF (Uint8Array), intactos
-let pdfFileName = '';
+let excelFile = null;
+let excelHeaders = [];
+let excelRows = [];
+let excelGuideColumn = null;
+let excelGuideSet = new Set();
+let excelProductColumn = null;
+let excelGuideProductMap = new Map();
 
-let filteredPdfUrl = null;
-let guiaPageMap = new Map(); // guiaId -> [páginas 1-based en el PDF original], del último comparar
+let pdfFile = null;
+let pdfNumPages = 0;
+
+let filteredPdfBlobUrl = null;
 let auditLog = [];
 
-/* ── AUDITORÍA ──────────────────────────────────────── */
-function saveLogs() {
-    try { localStorage.setItem(ALISTAMIENTO_LOG_KEY, JSON.stringify(auditLog.slice(-200))); } catch (e) {}
-}
+// guiaId -> [índices de página 0-based en el PDF original], en orden ascendente.
+// Se construye una sola vez por comparación y se reutiliza tanto para la
+// impresión individual por guía como para reordenar el PDF por producto,
+// sin volver a extraer texto del PDF.
+let guidePagesMap = new Map();
+let srcPdfLibDoc = null;
+let sortMode = 'original';
+
+/* ── AUDITORÍA ────────────────────────────────────────── */
+function saveLogs() { localStorage.setItem(LOG_KEY, JSON.stringify(auditLog.slice(-200))); }
 function loadLogs() {
     try {
-        const s = localStorage.getItem(ALISTAMIENTO_LOG_KEY);
+        const s = localStorage.getItem(LOG_KEY);
         if (s) { auditLog = JSON.parse(s); renderLogs(); }
     } catch (e) {}
 }
-function addLog(text, kind) {
-    auditLog.unshift({ ts: new Date().toLocaleString('es-CR'), text, kind: kind || 'inf' });
+function addLog(action, detail) {
+    auditLog.unshift({ ts: new Date().toLocaleString('es-CR'), action, detail: detail || '' });
     if (auditLog.length > 300) auditLog.pop();
     renderLogs(); saveLogs();
 }
 function renderLogs() {
-    const el = document.getElementById('logEntries');
-    if (!auditLog.length) { el.innerHTML = '<span style="color:rgba(255,255,255,.15)">Sin registros</span>'; return; }
-    el.innerHTML = auditLog.slice(0, 60).map(l => {
-        const cls = l.kind === 'ok' ? 'log-ok' : (l.kind === 'er' ? 'log-er' : '');
-        return `<div class="log-row"><span class="log-ts">[${esc(l.ts)}]</span> <span class="${cls}">${esc(l.text)}</span></div>`;
+    const logEntriesDiv = document.getElementById('logEntries');
+    if (!auditLog.length) { logEntriesDiv.innerHTML = '<span style="color:rgba(255,255,255,.15)">Sin registros</span>'; return; }
+    logEntriesDiv.innerHTML = auditLog.slice(0, 60).map(l => {
+        const cls = /error|no encontrada/i.test(l.action) ? 'log-er' : 'log-ok';
+        return `<div class="log-row"><span class="log-ts">[${esc(l.ts)}]</span> <span class="${cls}">${esc(l.action)}</span>${l.detail ? ` — <span class="log-gu">${esc(l.detail)}</span>` : ''}</div>`;
     }).join('');
 }
 
-/* ── DETECCIÓN DE COLUMNA DE GUÍA ───────────────────────
- * 1) Busca un encabezado cuyo texto normalizado contenga "guia" o
- *    "tracking" (cubre "Guía", "Número de guía", "No. Guía", etc.).
- * 2) Si no hay match, elige la columna cuyos valores se parezcan más
- *    a números de guía (alfanuméricos de 10+ caracteres).
- * 3) Si ninguna columna alcanza suficiente confianza, deja que el
- *    usuario elija manualmente en el <select> (ver populateColSelect).
+/* ── DETECCIÓN DE COLUMNA DE GUÍA ────────────────────────
+ * Busca por nombre de columna primero; si no hay coincidencia clara,
+ * cae a heurística (valores numéricos/alfanuméricos largos), y si sigue
+ * siendo ambiguo, deja que el usuario elija manualmente.
  */
-function normalizeHeader(h) {
-    return String(h || '')
-        .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .trim();
-}
-function detectGuiaColumn(headers, rows) {
-    for (let i = 0; i < headers.length; i++) {
-        const h = normalizeHeader(headers[i]);
-        if (h && (h.includes('guia') || h.includes('tracking'))) return i;
-    }
-    let bestIdx = -1, bestScore = 0;
-    for (let c = 0; c < headers.length; c++) {
-        let matches = 0, total = 0;
-        for (const r of rows) {
-            const v = String(r[c] ?? '').trim();
-            if (!v) continue;
-            total++;
-            if (/^[a-z0-9]{10,}$/i.test(v)) matches++;
-        }
-        const score = total > 0 ? matches / total : 0;
-        if (score > bestScore && score > 0.5) { bestScore = score; bestIdx = c; }
-    }
-    return bestIdx;
-}
-function populateColSelect(headers, detectedIdx) {
-    const sel = document.getElementById('colSelect');
-    const wrap = document.getElementById('dzColSelect');
-    sel.innerHTML = headers.map((h, i) => `<option value="${i}">${esc(h || ('(columna ' + (i + 1) + ')'))}</option>`).join('');
-    sel.value = String(detectedIdx >= 0 ? detectedIdx : 0);
-    wrap.style.display = 'flex';
-    sel.onchange = () => {
-        guiaColIndex = parseInt(sel.value, 10);
-        extractExcelIds();
-        resetResults();
-        addLog(`Columna de guía seleccionada manualmente: "${headers[guiaColIndex]}" (${excelIds.length} guías)`, 'inf');
-        notify(`${excelIds.length} guías detectadas`, 'ok');
-        updateCompareState();
-    };
-    if (detectedIdx < 0) {
-        notify('No se detectó automáticamente la columna de guía. Selecciónela manualmente.', 'warn');
-    }
-}
-function extractExcelIds() {
-    const set = new Set();
-    excelRowsRaw.forEach(r => {
-        const v = String(r[guiaColIndex] ?? '').trim();
-        if (v) set.add(v);
+const GUIDE_COLUMN_NAME_CANDIDATES = [
+    'guía', 'guia', 'número de guía', 'numero de guia', 'no. guía', 'no. guia',
+    'no guía', 'no guia', 'guía transportadora', 'guia transportadora',
+    'tracking', 'tracking number', 'número', 'numero', 'id guía', 'id guia'
+];
+
+function detectGuideColumn(headers, rows) {
+    const lowerMap = headers.map(h => String(h).toLowerCase().trim());
+
+    let idx = lowerMap.findIndex(h => GUIDE_COLUMN_NAME_CANDIDATES.includes(h));
+    if (idx === -1) idx = lowerMap.findIndex(h => GUIDE_COLUMN_NAME_CANDIDATES.some(c => h.includes(c)));
+    if (idx !== -1) return headers[idx];
+
+    // Heurística: columna cuyos valores parecen guías (numéricos 10+ dígitos
+    // o alfanuméricos 8+ caracteres) en más de la mitad de las filas.
+    let best = null, bestScore = 0;
+    headers.forEach(h => {
+        let score = 0;
+        rows.forEach(r => {
+            const v = String(r[h] ?? '').trim();
+            if (/^\d{10,}$/.test(v) || /^[a-zA-Z0-9-]{8,}$/.test(v)) score++;
+        });
+        if (score > bestScore) { bestScore = score; best = h; }
     });
-    excelIds = [...set];
-}
+    if (best && rows.length && bestScore > rows.length * 0.5) return best;
 
-/* ── ZONAS DE CARGA (drag & drop + examinar) ───────────── */
-function setupDropzone(ids, accept, onFile) {
-    const zone = document.getElementById(ids.zone);
-    const input = document.getElementById(ids.input);
-    const browseBtn = document.getElementById(ids.browse);
-    const removeBtn = document.getElementById(ids.remove);
-    const loadingEl = document.getElementById(ids.loading);
-    const fileEl = document.getElementById(ids.file);
-    const filenameEl = document.getElementById(ids.filename);
-
-    function showEmpty() {
-        loadingEl.style.display = 'none';
-        fileEl.style.display = 'none';
-        zone.classList.remove('has-file');
-        removeBtn.style.display = 'none';
-        browseBtn.style.display = 'inline-flex';
-    }
-    function showLoading() {
-        zone.classList.remove('has-file');
-        loadingEl.style.display = 'flex';
-        fileEl.style.display = 'none';
-        browseBtn.style.display = 'none';
-    }
-    function showLoaded(name) {
-        loadingEl.style.display = 'none';
-        fileEl.style.display = 'flex';
-        filenameEl.textContent = name;
-        zone.classList.add('has-file');
-        removeBtn.style.display = 'flex';
-        browseBtn.style.display = 'none';
-    }
-
-    function handleFile(file) {
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (accept === 'xlsx' && ext !== 'xlsx') { notify('Seleccione un archivo .xlsx', 'err'); return; }
-        if (accept === 'pdf' && ext !== 'pdf') { notify('Seleccione un archivo .pdf', 'err'); return; }
-        showLoading();
-        onFile(file, { showLoaded, showEmpty });
-    }
-
-    browseBtn.addEventListener('click', () => input.click());
-    input.addEventListener('change', e => { const f = e.target.files[0]; if (f) handleFile(f); });
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-    zone.addEventListener('drop', e => {
-        e.preventDefault(); zone.classList.remove('drag-over');
-        const f = e.dataTransfer.files[0]; if (f) handleFile(f);
-    });
-    removeBtn.addEventListener('click', () => {
-        input.value = '';
-        showEmpty();
-        onFile(null, { showLoaded, showEmpty });
-    });
-
-    return { showEmpty, showLoaded, showLoading };
-}
-
-function resetResults() {
-    document.getElementById('resultsPanel').style.display = 'none';
-    document.getElementById('printBtn').disabled = true;
-    if (filteredPdfUrl) { URL.revokeObjectURL(filteredPdfUrl); filteredPdfUrl = null; }
-    guiaPageMap = new Map();
-}
-function updateCompareState() {
-    document.getElementById('compareBtn').disabled = !(excelIds.length && pdfBytes);
-}
-
-setupDropzone(
-    { zone: 'dzExcel', input: 'excelInput', browse: 'dzExcelBrowse', remove: 'dzExcelRemove', loading: 'dzExcelLoading', file: 'dzExcelFile', filename: 'dzExcelFilename' },
-    'xlsx',
-    (file, ctrl) => {
-        resetResults();
-        if (!file) {
-            excelHeaders = []; excelRowsRaw = []; excelIds = []; guiaColIndex = -1; excelFileName = '';
-            document.getElementById('dzColSelect').style.display = 'none';
-            updateCompareState();
-            addLog('Excel removido', 'inf');
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = evt => {
-            try {
-                const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-                const sheetName = wb.SheetNames[0];
-                const ws = wb.Sheets[sheetName];
-                const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-                if (!rows.length) { notify('Excel sin datos', 'err'); ctrl.showEmpty(); return; }
-                excelHeaders = rows[0].map(h => String(h || '').trim());
-                excelRowsRaw = rows.slice(1);
-                const detected = detectGuiaColumn(excelHeaders, excelRowsRaw);
-                guiaColIndex = detected >= 0 ? detected : 0;
-                populateColSelect(excelHeaders, detected);
-                extractExcelIds();
-                excelFileName = file.name;
-                ctrl.showLoaded(file.name);
-                addLog(`Excel cargado: ${file.name} (${excelIds.length} guías detectadas)`, 'ok');
-                notify(`${excelIds.length} guías detectadas en el Excel`, 'ok');
-                updateCompareState();
-            } catch (err) {
-                notify(`Archivo corrupto o formato inválido: ${err.message}`, 'err');
-                addLog(`Error leyendo Excel: ${err.message}`, 'er');
-                ctrl.showEmpty();
-            }
-        };
-        reader.onerror = () => { notify('Error leyendo el archivo', 'err'); ctrl.showEmpty(); };
-        reader.readAsArrayBuffer(file);
-    }
-);
-
-setupDropzone(
-    { zone: 'dzPdf', input: 'pdfInput', browse: 'dzPdfBrowse', remove: 'dzPdfRemove', loading: 'dzPdfLoading', file: 'dzPdfFile', filename: 'dzPdfFilename' },
-    'pdf',
-    (file, ctrl) => {
-        resetResults();
-        if (!file) {
-            pdfBytes = null; pdfFileName = '';
-            updateCompareState();
-            addLog('PDF removido', 'inf');
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = evt => {
-            pdfBytes = new Uint8Array(evt.target.result);
-            pdfFileName = file.name;
-            ctrl.showLoaded(file.name);
-            addLog(`PDF cargado: ${file.name}`, 'ok');
-            notify('PDF cargado', 'ok');
-            updateCompareState();
-        };
-        reader.onerror = () => { notify('Error leyendo el PDF', 'err'); ctrl.showEmpty(); };
-        reader.readAsArrayBuffer(file);
-    }
-);
-
-/* ── COMPARACIÓN Y FILTRADO ─────────────────────────────
- * Para cada página del PDF se extrae su texto con PDF.js. Si el texto
- * contiene un token largo (8+ caracteres alfanuméricos con algún
- * dígito) se asume que la página es el inicio de una guía nueva —
- * comparándolo (o buscándolo como substring, por si el texto viene
- * fragmentado por espacios) contra los IDs del Excel. Las páginas sin
- * ese tipo de token se consideran continuación de la guía anterior,
- * cubriendo el caso de guías con más de una página.
- */
-function extractCandidateTokens(text) {
-    const tokens = [];
-    const re = /[A-Za-z0-9]{8,}/g;
-    let m;
-    while ((m = re.exec(text))) {
-        if (/\d/.test(m[0])) tokens.push(m[0].toUpperCase());
-    }
-    return tokens;
-}
-function matchExcelId(rawText, excelIdCompactMap) {
-    // Compactar (quitar todo lo que no sea alfanumérico) cubre IDs de guía
-    // partidos por espacios, saltos de línea u otros caracteres en el PDF.
-    const compactText = rawText.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-    for (const [compactId, origId] of excelIdCompactMap) {
-        if (compactText.includes(compactId)) return origId;
-    }
     return null;
 }
 
-async function compareAndFilter() {
-    if (!excelIds.length || !pdfBytes) return;
+function extractGuideSet(rows, column) {
+    const set = new Set();
+    rows.forEach(r => {
+        const v = String(r[column] ?? '').trim();
+        if (v) set.add(v);
+    });
+    return set;
+}
+
+/* ── DETECCIÓN DE COLUMNA DE PRODUCTO ────────────────────
+ * Solo se usa para el modo "Agrupar por producto" al ordenar la
+ * impresión — si no se detecta, esa opción queda deshabilitada.
+ */
+const PRODUCT_COLUMN_NAME_CANDIDATES = [
+    'descripción en la venta', 'descripcion en la venta',
+    'descripción de venta', 'descripcion de venta',
+    'descripción original artículo', 'descripcion original articulo',
+    'descripción artículo', 'descripcion articulo',
+    'nombre artículo', 'nombre articulo', 'producto',
+    'nombre producto', 'nombre del producto'
+];
+
+function detectProductColumn(headers) {
+    const lowerMap = headers.map(h => String(h).toLowerCase().trim());
+    let idx = lowerMap.findIndex(h => PRODUCT_COLUMN_NAME_CANDIDATES.includes(h));
+    if (idx === -1) idx = lowerMap.findIndex(h => PRODUCT_COLUMN_NAME_CANDIDATES.some(c => h.includes(c)));
+    return idx !== -1 ? headers[idx] : null;
+}
+
+// Guarda el nombre de producto de la PRIMERA fila en que aparece cada
+// guía (una guía puede tener varios artículos/filas en el Excel).
+function buildGuideProductMap(rows, guideColumn, productColumn) {
+    const map = new Map();
+    if (!productColumn) return map;
+    rows.forEach(r => {
+        const gid = String(r[guideColumn] ?? '').trim();
+        if (!gid || map.has(gid)) return;
+        const prod = String(r[productColumn] ?? '').trim();
+        if (prod) map.set(gid, prod);
+    });
+    return map;
+}
+
+/* ── DROPZONE GENÉRICA ───────────────────────────────────
+ * Cablea drag&drop + click + input[type=file] para una dropzone,
+ * delegando la lectura del archivo al callback onFile(file).
+ */
+function wireDropzone(zoneId, inputId, browseBtnId, accept, onFile) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const browseBtn = document.getElementById(browseBtnId);
+
+    function pick() { input.click(); }
+    zone.addEventListener('click', (e) => { if (!zone.classList.contains('has-file')) pick(); });
+    browseBtn.addEventListener('click', (e) => { e.stopPropagation(); pick(); });
+
+    input.addEventListener('change', () => {
+        const file = input.files[0];
+        if (file) onFile(file);
+        input.value = '';
+    });
+
+    ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, (e) => {
+        e.preventDefault(); e.stopPropagation(); zone.classList.add('dragover');
+    }));
+    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, (e) => {
+        e.preventDefault(); e.stopPropagation(); zone.classList.remove('dragover');
+    }));
+    zone.addEventListener('drop', (e) => {
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        if (accept.split(',').map(s => s.trim()).includes(ext)) onFile(file);
+        else notify(`Formato inválido, se esperaba ${accept}`, 'err');
+    });
+}
+
+/* ── RESET DE RESULTADOS ─────────────────────────────────
+ * Al cargar un archivo nuevo se invalida cualquier comparación previa,
+ * para no permitir imprimir un PDF filtrado que ya no corresponde a los
+ * archivos actualmente cargados.
+ */
+function resetResults() {
+    document.getElementById('resultsPanel').classList.remove('show');
+    document.getElementById('printBtn').disabled = true;
+    if (filteredPdfBlobUrl) { URL.revokeObjectURL(filteredPdfBlobUrl); filteredPdfBlobUrl = null; }
+    guidePagesMap = new Map();
+    srcPdfLibDoc = null;
+
+    sortMode = 'original';
+    const sortSelect = document.getElementById('sortModeSelect');
+    sortSelect.value = 'original';
+    const byProductOption = sortSelect.querySelector('option[value="byProduct"]');
+    byProductOption.disabled = false;
+    byProductOption.textContent = 'Agrupar por producto';
+    document.getElementById('sortOrderHint').textContent = 'Misma secuencia que en el PDF original';
+    document.getElementById('productGroupsSummary').innerHTML = '';
+}
+
+/* ── EXCEL ────────────────────────────────────────────── */
+function setExcelLoading() {
+    const zone = document.getElementById('excelDropzone');
+    zone.classList.remove('has-file', 'is-error');
+    zone.classList.add('is-loading');
+    document.getElementById('excelDropzoneContent').innerHTML = `
+        <div class="spinner"></div>
+        <div class="dropzone-title">Leyendo Excel...</div>`;
+}
+function setExcelLoaded(file, guideCount, column) {
+    const zone = document.getElementById('excelDropzone');
+    zone.classList.remove('is-loading', 'is-error');
+    zone.classList.add('has-file');
+    document.getElementById('excelDropzoneContent').innerHTML = `
+        <div class="dropzone-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="dropzone-filename">${esc(file.name)}</div>
+        <div class="dropzone-meta">${guideCount} guías detectadas · columna "${esc(column)}"</div>
+        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn"><i class="fas fa-rotate"></i> Cambiar archivo</button>`;
+    document.getElementById('excelBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('excelInput').click(); });
+}
+function setExcelError(msg) {
+    const zone = document.getElementById('excelDropzone');
+    zone.classList.remove('has-file', 'is-loading');
+    zone.classList.add('is-error');
+    document.getElementById('excelDropzoneContent').innerHTML = `
+        <div class="dropzone-icon"><i class="fas fa-triangle-exclamation"></i></div>
+        <div class="dropzone-title">${esc(msg)}</div>
+        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn"><i class="fas fa-upload"></i> Intentar de nuevo</button>`;
+    document.getElementById('excelBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('excelInput').click(); });
+}
+
+function showColumnSelect(headers) {
+    const row = document.getElementById('columnSelectRow');
+    const select = document.getElementById('columnSelect');
+    select.innerHTML = headers.map(h => `<option value="${esc(h)}">${esc(h)}</option>`).join('');
+    row.classList.add('show');
+}
+function hideColumnSelect() {
+    document.getElementById('columnSelectRow').classList.remove('show');
+}
+
+function finalizeExcel(column) {
+    excelGuideColumn = column;
+    excelGuideSet = extractGuideSet(excelRows, column);
+    if (!excelGuideSet.size) {
+        setExcelError('La columna seleccionada no tiene valores de guía');
+        addLog('EXCEL: ERROR', 'columna sin valores');
+        updateCompareButton();
+        return;
+    }
+
+    excelProductColumn = detectProductColumn(excelHeaders);
+    excelGuideProductMap = buildGuideProductMap(excelRows, column, excelProductColumn);
+    const byProductOption = document.querySelector('#sortModeSelect option[value="byProduct"]');
+    if (excelProductColumn) {
+        byProductOption.disabled = false;
+        byProductOption.textContent = 'Agrupar por producto';
+    } else {
+        byProductOption.disabled = true;
+        byProductOption.textContent = 'Agrupar por producto (no disponible: sin columna de producto)';
+        sortMode = 'original';
+        document.getElementById('sortModeSelect').value = 'original';
+    }
+
+    setExcelLoaded(excelFile, excelGuideSet.size, column);
+    hideColumnSelect();
+    addLog('EXCEL CARGADO', `${excelFile.name} · ${excelGuideSet.size} guías · columna "${column}"`);
+    notify(`${excelGuideSet.size} guías detectadas en el Excel`, 'ok');
+    updateCompareButton();
+}
+
+function handleExcelFile(file) {
+    resetResults();
+    excelFile = file;
+    excelGuideSet = new Set();
+    hideColumnSelect();
+    setExcelLoading();
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        try {
+            const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+            const sheetName = wb.SheetNames[0];
+            const ws = wb.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+            if (!json.length) { setExcelError('Excel sin datos'); addLog('EXCEL: ERROR', 'sin datos'); updateCompareButton(); return; }
+            const headerRow = XLSX.utils.sheet_to_json(ws, { header: 1 })[0];
+            excelHeaders = headerRow ? [...headerRow].map(h => String(h)) : Object.keys(json[0]);
+            excelRows = json;
+
+            const detected = detectGuideColumn(excelHeaders, excelRows);
+            if (detected) {
+                finalizeExcel(detected);
+            } else {
+                setExcelError('No se detectó la columna de guía automáticamente');
+                showColumnSelect(excelHeaders);
+                addLog('EXCEL: SELECCIÓN MANUAL REQUERIDA', file.name);
+                notify('No se pudo detectar la columna de guía, selecciónala manualmente', 'warn');
+            }
+        } catch (err) {
+            setExcelError('Archivo corrupto o formato inválido');
+            addLog('EXCEL: ERROR', err.message);
+            notify(`Error leyendo Excel: ${err.message}`, 'err');
+        }
+        updateCompareButton();
+    };
+    reader.onerror = () => { setExcelError('Error leyendo el archivo'); notify('Error leyendo el archivo', 'err'); };
+    reader.readAsArrayBuffer(file);
+}
+
+/* ── PDF ──────────────────────────────────────────────── */
+function setPdfLoading() {
+    const zone = document.getElementById('pdfDropzone');
+    zone.classList.remove('has-file', 'is-error');
+    zone.classList.add('is-loading');
+    document.getElementById('pdfDropzoneContent').innerHTML = `
+        <div class="spinner"></div>
+        <div class="dropzone-title">Leyendo PDF...</div>`;
+}
+function setPdfLoaded(file, numPages) {
+    const zone = document.getElementById('pdfDropzone');
+    zone.classList.remove('is-loading', 'is-error');
+    zone.classList.add('has-file');
+    document.getElementById('pdfDropzoneContent').innerHTML = `
+        <div class="dropzone-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="dropzone-filename">${esc(file.name)}</div>
+        <div class="dropzone-meta">${numPages} páginas</div>
+        <button type="button" class="dropzone-browse-btn" id="pdfBrowseBtn"><i class="fas fa-rotate"></i> Cambiar archivo</button>`;
+    document.getElementById('pdfBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('pdfInput').click(); });
+}
+function setPdfError(msg) {
+    const zone = document.getElementById('pdfDropzone');
+    zone.classList.remove('has-file', 'is-loading');
+    zone.classList.add('is-error');
+    document.getElementById('pdfDropzoneContent').innerHTML = `
+        <div class="dropzone-icon"><i class="fas fa-triangle-exclamation"></i></div>
+        <div class="dropzone-title">${esc(msg)}</div>
+        <button type="button" class="dropzone-browse-btn" id="pdfBrowseBtn"><i class="fas fa-upload"></i> Intentar de nuevo</button>`;
+    document.getElementById('pdfBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('pdfInput').click(); });
+}
+
+async function handlePdfFile(file) {
+    resetResults();
+    pdfFile = file;
+    pdfNumPages = 0;
+    setPdfLoading();
+    try {
+        const buf = await file.arrayBuffer();
+        const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+        pdfNumPages = doc.numPages;
+        setPdfLoaded(file, pdfNumPages);
+        addLog('PDF CARGADO', `${file.name} · ${pdfNumPages} páginas`);
+        notify(`PDF cargado: ${pdfNumPages} páginas`, 'ok');
+    } catch (err) {
+        setPdfError('Archivo corrupto o formato inválido');
+        addLog('PDF: ERROR', err.message);
+        notify(`Error leyendo PDF: ${err.message}`, 'err');
+    }
+    updateCompareButton();
+}
+
+/* ── HABILITAR BOTÓN COMPARAR ───────────────────────────── */
+function updateCompareButton() {
     const btn = document.getElementById('compareBtn');
-    const originalBtnHtml = btn.innerHTML;
+    btn.disabled = !(excelGuideSet.size && pdfFile && pdfNumPages);
+}
+
+/* ── COMPARACIÓN + FILTRADO ─────────────────────────────── */
+function normalizeStripped(s) { return String(s).replace(/\s+/g, ''); }
+
+function findMatchingGuide(pageTextRaw, pageTextStripped, guideList) {
+    let best = null;
+    for (const g of guideList) {
+        const gStripped = normalizeStripped(g);
+        if (pageTextRaw.includes(g) || pageTextStripped.includes(gStripped)) {
+            if (!best || g.length > best.length) best = g;
+        }
+    }
+    return best;
+}
+
+async function getPageText(pdfDoc, pageNum) {
+    const page = await pdfDoc.getPage(pageNum);
+    const content = await page.getTextContent();
+    return content.items.map(it => it.str).join(' ');
+}
+
+async function runCompareAndFilter() {
+    const btn = document.getElementById('compareBtn');
+    const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;margin:0;border-width:2px;"></div> Comparando...';
 
     try {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
-        // Se pasa una copia (slice) a PDF.js: su worker puede transferir/"detach"
-        // el ArrayBuffer, y los bytes originales de pdfBytes deben quedar
-        // intactos para que pdf-lib copie las páginas byte a byte más abajo.
-        const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
-        const totalPages = pdf.numPages;
+        const guideList = [...excelGuideSet];
+        const buf = await pdfFile.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+        const numPages = pdfDoc.numPages;
 
-        const excelIdCompactMap = new Map();
-        excelIds.forEach(id => {
-            const compact = id.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-            if (compact) excelIdCompactMap.set(compact, id);
-        });
+        const pageGuideMap = new Array(numPages + 1).fill(null);
+        let currentGuide = null;
 
-        const foundIds = new Set();
-        const groups = [];
-        let currentGroup = null;
+        for (let i = 1; i <= numPages; i++) {
+            const raw = await getPageText(pdfDoc, i);
+            const stripped = normalizeStripped(raw);
+            const matched = findMatchingGuide(raw, stripped, guideList);
+            if (matched) currentGuide = matched;
+            pageGuideMap[i] = matched || currentGuide;
+            if (i % 15 === 0) await new Promise(r => setTimeout(r, 0)); // deja respirar la UI
+        }
 
-        for (let i = 1; i <= totalPages; i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            const rawText = content.items.map(it => it.str).join(' ');
-            // matchedId se busca primero por substring sobre el texto compactado
-            // (cubre IDs de guía partidos por espacios de kerning en el PDF).
-            // Solo si no hay match se usa la extracción de tokens genéricos,
-            // para detectar de todas formas que la página inicia una guía nueva
-            // (aunque no esté en el Excel) y no la cuente como continuación de
-            // la guía anterior.
-            const matchedId = matchExcelId(rawText, excelIdCompactMap);
-            const hasGenericToken = matchedId ? true : extractCandidateTokens(rawText).length > 0;
-            if (hasGenericToken) {
-                currentGroup = { matchedId, pages: [i] };
-                groups.push(currentGroup);
-                if (matchedId) foundIds.add(matchedId);
-            } else if (currentGroup) {
-                currentGroup.pages.push(i);
-            } else {
-                groups.push({ matchedId: null, pages: [i] });
+        // guiaId -> [páginas 0-based], en el mismo orden en que aparecen
+        // en el PDF original — se reutiliza para imprimir una sola guía y
+        // para reordenar por producto sin volver a leer el PDF.
+        guidePagesMap = new Map();
+        for (let i = 1; i <= numPages; i++) {
+            const g = pageGuideMap[i];
+            if (g && excelGuideSet.has(g)) {
+                if (!guidePagesMap.has(g)) guidePagesMap.set(g, []);
+                guidePagesMap.get(g).push(i - 1); // pdf-lib usa índices 0-based
             }
         }
+        const foundGuides = [...guidePagesMap.keys()];
+        const notFoundGuides = guideList.filter(g => !guidePagesMap.has(g));
 
-        const notFoundIds = excelIds.filter(id => !foundIds.has(id));
+        renderGuidesTable(guideList, notFoundGuides);
+        renderResultsSummary(guideList.length, foundGuides.length, notFoundGuides.length);
+        document.getElementById('resultsPanel').classList.add('show');
 
-        // Mapa guiaId -> páginas, reutilizado tal cual por el botón de
-        // impresión individual (no vuelve a recalcularse nada ahí).
-        guiaPageMap = new Map();
-        groups.forEach(g => {
-            if (!g.matchedId) return;
-            if (!guiaPageMap.has(g.matchedId)) guiaPageMap.set(g.matchedId, []);
-            guiaPageMap.get(g.matchedId).push(...g.pages);
-        });
-        guiaPageMap.forEach(pages => pages.sort((a, b) => a - b));
-
-        const pagesToKeep = [...guiaPageMap.values()].flat().sort((a, b) => a - b);
-
-        if (pagesToKeep.length) {
-            const srcDoc = await PDFLib.PDFDocument.load(pdfBytes);
-            const outDoc = await PDFLib.PDFDocument.create();
-            const copiedPages = await outDoc.copyPages(srcDoc, pagesToKeep.map(p => p - 1));
-            copiedPages.forEach(p => outDoc.addPage(p));
-            const outBytes = await outDoc.save();
-            const blob = new Blob([outBytes], { type: 'application/pdf' });
-            filteredPdfUrl = URL.createObjectURL(blob);
-            document.getElementById('printBtn').disabled = false;
+        if (!foundGuides.length) {
+            notify('No se encontró ninguna guía del Excel en el PDF', 'err');
+            addLog('COMPARACIÓN: SIN COINCIDENCIAS', `${guideList.length} guías en Excel, 0 encontradas`);
+            btn.disabled = false; btn.innerHTML = originalHtml;
+            return;
         }
 
-        renderResults(foundIds, notFoundIds);
-        addLog(`Comparación ejecutada: ${excelIds.length} en Excel, ${foundIds.size} encontradas, ${notFoundIds.length} no encontradas`, notFoundIds.length ? 'inf' : 'ok');
-        if (!pagesToKeep.length) {
-            notify('Ninguna guía del Excel se encontró en el PDF', 'err');
-            addLog('Comparación sin resultados: ninguna guía coincide con el PDF', 'er');
-        } else {
-            notify(`Comparación completa: ${foundIds.size}/${excelIds.length} guías encontradas`, notFoundIds.length ? 'warn' : 'ok');
-        }
+        // Se carga una sola vez con pdf-lib y se reutiliza en cada
+        // (re)construcción del PDF filtrado — copyPages no modifica el
+        // documento fuente, así que es seguro reusarlo entre llamadas.
+        const originalBytes = await pdfFile.arrayBuffer();
+        srcPdfLibDoc = await PDFLib.PDFDocument.load(originalBytes);
+        await rebuildFilteredPdf();
+        renderProductGroupsSummary();
+
+        addLog('COMPARACIÓN EJECUTADA', `${guideList.length} en Excel · ${foundGuides.length} encontradas · ${notFoundGuides.length} no encontradas`);
+        notify(`Comparación completa: ${foundGuides.length} de ${guideList.length} guías encontradas`, foundGuides.length === guideList.length ? 'ok' : 'warn');
     } catch (err) {
-        console.error('Error al comparar/filtrar PDF:', err);
-        notify(`Error al procesar: ${err.message}`, 'err');
-        addLog(`Error en comparación: ${err.message}`, 'er');
+        notify(`Error al comparar/filtrar: ${err.message}`, 'err');
+        addLog('COMPARACIÓN: ERROR', err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = originalBtnHtml;
+        btn.innerHTML = originalHtml;
     }
 }
 
-function renderResults(foundSet, notFoundIds) {
-    document.getElementById('resultsPanel').style.display = 'block';
-    document.getElementById('totalExcelCount').textContent = excelIds.length;
-    document.getElementById('foundCount').textContent = foundSet.size;
-    document.getElementById('notFoundCount').textContent = notFoundIds.length;
-
-    const pillsWrap = document.getElementById('notfoundPills');
-    pillsWrap.innerHTML = notFoundIds.length
-        ? notFoundIds.map(id => `<span class="notfound-pill">${esc(id)}</span>`).join('')
-        : '<span class="notfound-empty">Ninguna — todas las guías del Excel están en el PDF</span>';
-
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = excelIds.map(id => {
-        const ok = foundSet.has(id);
-        const accionCell = ok
-            ? `<button type="button" class="btn-print-row" data-guia="${esc(id)}" title="Imprimir guía ${esc(id)}">🖨️ Imprimir</button>`
-            : '<span class="cell-dash">—</span>';
-        return `<tr data-guia="${esc(id)}"><td style="font-family:var(--mono)">${esc(id)}</td><td>${
-            ok
-                ? '<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Encontrada ✓</span>'
-                : '<span class="badge badge-pend"><i class="fas fa-times-circle"></i> No encontrada</span>'
-        }</td><td>${accionCell}</td></tr>`;
-    }).join('');
-    document.getElementById('tablaContador').textContent = excelIds.length;
+function renderResultsSummary(total, foundCount, notFoundCount) {
+    document.getElementById('totalExcelCount').innerText = total;
+    document.getElementById('foundCount').innerText = foundCount;
+    document.getElementById('notFoundCount').innerText = notFoundCount;
 }
 
-/* ── IMPRESIÓN INDIVIDUAL POR GUÍA ─────────────────────────
- * Reutiliza guiaPageMap (ya calculado en compareAndFilter) para saber
- * qué páginas del PDF original corresponden a esta guía puntual — no
- * se vuelve a comparar ni a leer texto de páginas. Igual que el PDF
- * completo, pdf-lib copia esas páginas del original sin regenerarlas.
+// Tabla unificada Guía/Estado/Acción — cada guía encontrada tiene un
+// botón de impresión individual; las no encontradas muestran un guión,
+// ya que no hay páginas del PDF que les correspondan.
+function renderGuidesTable(guideList, notFoundGuides) {
+    const tbody = document.getElementById('guidesTableBody');
+    document.getElementById('guidesTableCount').textContent = `${guideList.length} guías`;
+
+    if (!guideList.length) {
+        tbody.innerHTML = `<tr><td colspan="3" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">∅</span><div class="empty-t">Sin resultados</div></div></td></tr>`;
+        return;
+    }
+
+    const notFoundSet = new Set(notFoundGuides);
+    tbody.innerHTML = guideList.map(gid => {
+        const found = !notFoundSet.has(gid);
+        const estado = found
+            ? '<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Encontrada</span>'
+            : '<span class="badge badge-err"><i class="fas fa-times-circle"></i> No encontrada</span>';
+        const accion = found
+            ? `<button type="button" class="print-guide-btn" data-guia="${esc(gid)}"><i class="fas fa-print"></i> Imprimir</button>`
+            : '<span class="action-none">—</span>';
+        return `<tr><td><span class="guide-id-pill">${esc(gid)}</span></td><td>${estado}</td><td style="text-align:center;">${accion}</td></tr>`;
+    }).join('');
+}
+
+/* ── ORDEN DE IMPRESIÓN (original / agrupado por producto) ─────────────
+ * Ambos modos solo cambian el ORDEN en que pdf-lib copia las páginas
+ * del PDF original — ninguna página se modifica, regenera ni se
+ * reescribe su contenido, fuentes o imágenes.
  */
-async function printGuiaIndividual(guiaId) {
-    const pages = guiaPageMap.get(guiaId);
-    if (!pages || !pages.length) { notify(`No se encontraron páginas para la guía ${guiaId}`, 'err'); return; }
-    if (!pdfBytes) { notify('El PDF original ya no está disponible', 'err'); return; }
+function computePageOrder() {
+    const guideIds = [...guidePagesMap.keys()];
+    if (sortMode === 'byProduct') {
+        const groups = new Map(); // nombre de producto -> [guiaId, ...]
+        guideIds.forEach(gid => {
+            const prod = excelGuideProductMap.get(gid) || 'Sin producto identificado';
+            if (!groups.has(prod)) groups.set(prod, []);
+            groups.get(prod).push(gid);
+        });
+        groups.forEach(list => list.sort((a, b) => guidePagesMap.get(a)[0] - guidePagesMap.get(b)[0]));
+        const sortedProductNames = [...groups.keys()].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        return sortedProductNames.flatMap(p => groups.get(p)).flatMap(gid => guidePagesMap.get(gid));
+    }
+    // Orden original: unión de todas las páginas encontradas, ascendente.
+    return guideIds.flatMap(gid => guidePagesMap.get(gid)).sort((a, b) => a - b);
+}
+
+async function buildOutputPdf(pageOrder) {
+    const outDoc = await PDFLib.PDFDocument.create();
+    const copiedPages = await outDoc.copyPages(srcPdfLibDoc, pageOrder);
+    copiedPages.forEach(p => outDoc.addPage(p));
+    const bytes = await outDoc.save();
+    return new Blob([bytes], { type: 'application/pdf' });
+}
+
+async function rebuildFilteredPdf() {
+    if (!srcPdfLibDoc || !guidePagesMap.size) return;
+    const order = computePageOrder();
+    const blob = await buildOutputPdf(order);
+    if (filteredPdfBlobUrl) URL.revokeObjectURL(filteredPdfBlobUrl);
+    filteredPdfBlobUrl = URL.createObjectURL(blob);
+    document.getElementById('printBtn').disabled = false;
+}
+
+function renderProductGroupsSummary() {
+    const container = document.getElementById('productGroupsSummary');
+    if (sortMode !== 'byProduct' || !guidePagesMap.size) { container.innerHTML = ''; return; }
+
+    const counts = new Map(); // nombre de producto -> cantidad de guías
+    [...guidePagesMap.keys()].forEach(gid => {
+        const prod = excelGuideProductMap.get(gid) || 'Sin producto identificado';
+        counts.set(prod, (counts.get(prod) || 0) + 1);
+    });
+    const sortedNames = [...counts.keys()].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    container.innerHTML = sortedNames.map(name => `
+        <div class="product-group-row">
+            <i class="fas fa-box"></i>
+            <span class="product-group-name">${esc(name)}</span>
+            <span class="product-group-count">${counts.get(name)} guías</span>
+        </div>`).join('');
+}
+
+/* ── IMPRESIÓN ────────────────────────────────────────── */
+function printFiltered() {
+    if (!filteredPdfBlobUrl) { notify('Primero ejecute la comparación', 'err'); return; }
+    window.open(filteredPdfBlobUrl, '_blank');
+    addLog('IMPRESIÓN', 'PDF filtrado abierto en nueva pestaña');
+}
+
+// Imprime únicamente las páginas de una guía puntual — reutiliza el mapa
+// guiaId -> páginas ya construido durante la comparación, sin recalcular
+// nada. No se ve afectado por el modo de ordenamiento (orderna solo
+// aplica al PDF completo).
+async function printSingleGuide(guideId) {
+    const pages = guidePagesMap.get(guideId);
+    if (!pages || !pages.length || !srcPdfLibDoc) { notify('No hay páginas para esa guía', 'err'); return; }
     try {
-        const srcDoc = await PDFLib.PDFDocument.load(pdfBytes);
-        const outDoc = await PDFLib.PDFDocument.create();
-        const copiedPages = await outDoc.copyPages(srcDoc, pages.map(p => p - 1));
-        copiedPages.forEach(p => outDoc.addPage(p));
-        const outBytes = await outDoc.save();
-        const blob = new Blob([outBytes], { type: 'application/pdf' });
+        const blob = await buildOutputPdf(pages);
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
-        addLog(`PDF individual abierto para guía ${guiaId} (${pages.length} página${pages.length > 1 ? 's' : ''})`, 'ok');
+        addLog('IMPRESIÓN INDIVIDUAL', `Guía ${guideId} · ${pages.length} página(s)`);
     } catch (err) {
-        console.error('Error al generar PDF individual:', err);
-        notify(`Error al generar el PDF de la guía ${guiaId}: ${err.message}`, 'err');
-        addLog(`Error al imprimir guía ${guiaId}: ${err.message}`, 'er');
+        notify(`Error al preparar la impresión: ${err.message}`, 'err');
     }
 }
 
-/* ── BÚSQUEDA EN TABLA DE RESULTADOS ───────────────────── */
-const filtrarTablaDebounced = debounce(function (term) {
-    term = term.trim().toLowerCase();
-    const filas = document.querySelectorAll('#tableBody tr');
-    let visibles = 0, total = 0;
-    filas.forEach(tr => {
-        if (tr.querySelector('.empty')) { tr.style.display = ''; return; }
-        total++;
-        const coincide = !term || tr.textContent.trim().toLowerCase().includes(term);
-        tr.style.display = coincide ? '' : 'none';
-        if (coincide) visibles++;
-    });
-    const cnt = document.getElementById('tablaContador');
-    if (cnt) cnt.textContent = term ? `${visibles} de ${total}` : total;
-}, 200);
+/* ── INIT ─────────────────────────────────────────────── */
+wireDropzone('excelDropzone', 'excelInput', 'excelBrowseBtn', '.xlsx', handleExcelFile);
+wireDropzone('pdfDropzone', 'pdfInput', 'pdfBrowseBtn', '.pdf', handlePdfFile);
 
-/* ── EVENTOS ────────────────────────────────────────────── */
-document.getElementById('compareBtn').addEventListener('click', compareAndFilter);
-document.getElementById('printBtn').addEventListener('click', () => {
-    if (!filteredPdfUrl) { notify('Primero ejecute la comparación', 'err'); return; }
-    window.open(filteredPdfUrl, '_blank');
-    addLog('PDF filtrado abierto para impresión', 'ok');
+document.getElementById('compareBtn').addEventListener('click', runCompareAndFilter);
+document.getElementById('printBtn').addEventListener('click', printFiltered);
+document.getElementById('columnConfirmBtn').addEventListener('click', () => {
+    const column = document.getElementById('columnSelect').value;
+    if (column) finalizeExcel(column);
 });
-document.getElementById('tablaSearch').addEventListener('input', e => filtrarTablaDebounced(e.target.value));
-document.getElementById('tableBody').addEventListener('click', e => {
-    const btn = e.target.closest('.btn-print-row');
+
+document.getElementById('guidesTableBody').addEventListener('click', (e) => {
+    const btn = e.target.closest('.print-guide-btn');
     if (!btn) return;
-    printGuiaIndividual(btn.dataset.guia);
+    printSingleGuide(btn.getAttribute('data-guia'));
+});
+
+document.getElementById('sortModeSelect').addEventListener('change', async (e) => {
+    sortMode = e.target.value;
+    document.getElementById('sortOrderHint').textContent = sortMode === 'byProduct'
+        ? 'Las guías se agrupan por producto en el PDF de impresión'
+        : 'Misma secuencia que en el PDF original';
+    renderProductGroupsSummary();
+    if (guidePagesMap.size && srcPdfLibDoc) {
+        await rebuildFilteredPdf();
+        addLog('ORDEN DE IMPRESIÓN CAMBIADO', sortMode === 'byProduct' ? 'Agrupado por producto' : 'Orden original');
+    }
 });
 
 loadLogs();

@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Efficommerce | Alistamiento</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js" integrity="sha384-uLiAv4VcjM5H2Jsqzl8EajEaxPugj1CIzQaCjQ8c5//vC+elhxO5pZfXGxoLQi1W" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
@@ -17,7 +17,7 @@
 
 <div class="app-container">
 
-    <!-- HEADER — mismo diseño que devoluciones -->
+    <!-- HEADER — idéntico a devoluciones/manifiesto -->
     <header class="app-header">
         <div class="header-main-row">
             <div class="header-left">
@@ -28,7 +28,7 @@
                 </div>
                 <div class="header-divider"></div>
                 <div class="header-titles">
-                    <h1>Alistamiento</h1>
+                    <h1>Gestión de Alistamiento</h1>
                     <span class="header-sub">Fulfillment · Filtro de guías</span>
                 </div>
             </div>
@@ -41,7 +41,7 @@
 
     <!-- SECTION HEADER -->
     <div class="section-header">
-        <i class="fas fa-dolly"></i>
+        <i class="fas fa-clipboard-check"></i>
         <h2>Panel de Control — Alistamiento</h2>
     </div>
 
@@ -51,129 +51,108 @@
         <!-- ZONA DE CARGA -->
         <div class="upload-grid">
 
-            <!-- DROPZONE EXCEL -->
-            <div class="dropzone" id="dzExcel">
-                <input type="file" id="excelInput" class="dz-input" accept=".xlsx">
-                <div class="dz-icon"><i class="fas fa-file-excel"></i></div>
-                <div class="dz-title">Reporte de Alistamiento (.xlsx)</div>
-                <div class="dz-hint" id="dzExcelHint">Arrastre el archivo aquí o</div>
-                <button type="button" class="btn btn-outline" id="dzExcelBrowse">
-                    <i class="fas fa-upload"></i> Examinar archivo
-                </button>
-                <div class="dz-loading" id="dzExcelLoading" style="display:none;">
-                    <i class="fas fa-spinner fa-spin"></i> Leyendo Excel...
+            <!-- EXCEL -->
+            <div class="dropzone-card">
+                <div class="dropzone-card-label">
+                    <i class="fas fa-file-excel"></i>
+                    Reporte de Alistamiento (.xlsx)
                 </div>
-                <div class="dz-file" id="dzExcelFile" style="display:none;">
-                    <i class="fas fa-check-circle"></i>
-                    <span class="dz-filename" id="dzExcelFilename"></span>
+                <div class="dropzone" id="excelDropzone">
+                    <input type="file" id="excelInput" accept=".xlsx">
+                    <div id="excelDropzoneContent">
+                        <div class="dropzone-icon"><i class="fas fa-file-excel"></i></div>
+                        <div class="dropzone-title">Arrastra el Excel aquí</div>
+                        <div class="dropzone-hint">o haz clic para seleccionar un archivo .xlsx</div>
+                        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn">
+                            <i class="fas fa-upload"></i> Examinar archivo
+                        </button>
+                    </div>
                 </div>
-                <div class="dz-colselect" id="dzColSelect" style="display:none;">
-                    <label for="colSelect">Columna de guía:</label>
-                    <select id="colSelect"></select>
+                <div class="column-select-row" id="columnSelectRow">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>No se detectó automáticamente la columna de guía. Selecciónala:</span>
+                    <select id="columnSelect"></select>
+                    <button type="button" class="btn btn-outline" id="columnConfirmBtn" style="padding:6px 14px;font-size:.72rem;">
+                        Confirmar
+                    </button>
                 </div>
-                <button type="button" class="dz-remove" id="dzExcelRemove" style="display:none;" title="Quitar archivo">
-                    <i class="fas fa-times"></i>
-                </button>
             </div>
 
-            <!-- DROPZONE PDF -->
-            <div class="dropzone" id="dzPdf">
-                <input type="file" id="pdfInput" class="dz-input" accept=".pdf">
-                <div class="dz-icon"><i class="fas fa-file-pdf"></i></div>
-                <div class="dz-title">Etiquetas de Guías (.pdf)</div>
-                <div class="dz-hint" id="dzPdfHint">Arrastre el archivo aquí o</div>
-                <button type="button" class="btn btn-outline" id="dzPdfBrowse">
-                    <i class="fas fa-upload"></i> Examinar archivo
-                </button>
-                <div class="dz-loading" id="dzPdfLoading" style="display:none;">
-                    <i class="fas fa-spinner fa-spin"></i> Cargando PDF...
+            <!-- PDF -->
+            <div class="dropzone-card">
+                <div class="dropzone-card-label">
+                    <i class="fas fa-file-pdf"></i>
+                    Etiquetas de Guías (.pdf)
                 </div>
-                <div class="dz-file" id="dzPdfFile" style="display:none;">
-                    <i class="fas fa-check-circle"></i>
-                    <span class="dz-filename" id="dzPdfFilename"></span>
+                <div class="dropzone" id="pdfDropzone">
+                    <input type="file" id="pdfInput" accept=".pdf">
+                    <div id="pdfDropzoneContent">
+                        <div class="dropzone-icon"><i class="fas fa-file-pdf"></i></div>
+                        <div class="dropzone-title">Arrastra el PDF aquí</div>
+                        <div class="dropzone-hint">o haz clic para seleccionar un archivo .pdf</div>
+                        <button type="button" class="dropzone-browse-btn" id="pdfBrowseBtn">
+                            <i class="fas fa-upload"></i> Examinar archivo
+                        </button>
+                    </div>
                 </div>
-                <button type="button" class="dz-remove" id="dzPdfRemove" style="display:none;" title="Quitar archivo">
-                    <i class="fas fa-times"></i>
-                </button>
             </div>
 
         </div>
 
-        <!-- BOTÓN COMPARAR -->
-        <div class="compare-bar">
-            <button type="button" class="btn btn-primary" id="compareBtn" disabled>
-                <i class="fas fa-random"></i>
+        <!-- ACCIÓN PRINCIPAL -->
+        <div class="compare-action">
+            <button class="btn btn-primary" id="compareBtn" disabled>
+                <i class="fas fa-code-compare"></i>
                 Comparar y Filtrar
             </button>
         </div>
 
         <!-- PANEL DE RESULTADOS -->
-        <div id="resultsPanel" style="display:none;">
+        <div class="results-panel" id="resultsPanel">
 
-            <!-- MÉTRICAS -->
             <div class="metrics-grid">
                 <div class="metric-card total">
                     <div class="metric-icon"><i class="fas fa-file-excel"></i></div>
                     <div>
                         <div class="metric-value" id="totalExcelCount">0</div>
-                        <div class="metric-label">Guías en Excel</div>
+                        <div class="metric-label">Guías en el Excel</div>
                     </div>
                 </div>
                 <div class="metric-card correct">
                     <div class="metric-icon"><i class="fas fa-check-circle"></i></div>
                     <div>
                         <div class="metric-value" id="foundCount">0</div>
-                        <div class="metric-label">Encontradas en PDF</div>
+                        <div class="metric-label">Encontradas en el PDF</div>
                     </div>
                 </div>
                 <div class="metric-card warning">
-                    <div class="metric-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="metric-icon"><i class="fas fa-times-circle"></i></div>
                     <div>
                         <div class="metric-value" id="notFoundCount">0</div>
-                        <div class="metric-label">No encontradas</div>
+                        <div class="metric-label">No encontradas en el PDF</div>
                     </div>
                 </div>
             </div>
 
-            <!-- NO ENCONTRADAS -->
-            <div class="notfound-wrap">
-                <div class="notfound-title">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Guías no encontradas en el PDF
+            <div class="results-block" id="guidesTableBlock">
+                <div class="results-block-head">
+                    <div class="results-block-title"><i class="fas fa-list-check"></i> Detalle de guías</div>
+                    <div class="results-block-count" id="guidesTableCount">0 guías</div>
                 </div>
-                <div class="notfound-pills" id="notfoundPills">
-                    <span class="notfound-empty">Ninguna — todas las guías del Excel están en el PDF</span>
-                </div>
-            </div>
-
-            <!-- TABLA DE GUÍAS -->
-            <div class="tabla-section">
-                <div class="tabla-toolbar">
-                    <div class="tabla-toolbar-left">
-                        <div class="tabla-counter">
-                            Mostrando <strong id="tablaContador">0</strong> guías
-                        </div>
-                        <div class="tabla-search-wrapper">
-                            <i class="fas fa-search"></i>
-                            <input type="text" class="tabla-search"
-                                   id="tablaSearch"
-                                   placeholder="Buscar guía..."
-                                   autocomplete="off">
-                        </div>
-                    </div>
-                </div>
-
                 <div class="tbl-wrap">
-                    <table id="dataTable">
+                    <table id="guidesTable">
                         <thead>
-                            <tr><th>Guía</th><th>Estado</th><th>Acción</th></tr>
+                            <tr>
+                                <th>Guía</th>
+                                <th>Estado</th>
+                                <th style="text-align:center;">Acción</th>
+                            </tr>
                         </thead>
-                        <tbody id="tableBody">
+                        <tbody id="guidesTableBody">
                             <tr><td colspan="3" style="padding:0;border:none;">
                                 <div class="empty">
                                     <span class="empty-ico">∅</span>
-                                    <div class="empty-t">Sin comparación ejecutada</div>
-                                    <div class="empty-s">Cargue ambos archivos y compare para ver resultados</div>
+                                    <div class="empty-t">Sin resultados</div>
                                 </div>
                             </td></tr>
                         </tbody>
@@ -181,9 +160,22 @@
                 </div>
             </div>
 
-            <!-- IMPRIMIR -->
-            <div class="print-bar">
-                <button type="button" class="btn btn-green" id="printBtn" disabled>
+            <div class="results-block" id="sortOrderBlock">
+                <div class="results-block-head">
+                    <div class="results-block-title"><i class="fas fa-arrow-down-wide-short"></i> Ordenar guías para impresión</div>
+                </div>
+                <div class="sort-order-row">
+                    <select id="sortModeSelect">
+                        <option value="original">Orden original</option>
+                        <option value="byProduct">Agrupar por producto</option>
+                    </select>
+                    <span class="sort-order-hint" id="sortOrderHint">Misma secuencia que en el PDF original</span>
+                </div>
+                <div class="product-groups-summary" id="productGroupsSummary"></div>
+            </div>
+
+            <div class="print-action">
+                <button class="btn btn-green" id="printBtn" disabled>
                     <i class="fas fa-print"></i>
                     Imprimir guías filtradas
                 </button>
