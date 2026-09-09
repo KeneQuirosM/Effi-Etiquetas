@@ -833,7 +833,7 @@ function renderTablaGuias() {
                        f.estado === 'nomanif'  ? 'badge-nomanif'  : 'badge-faltante';
     const badgeText  = f.estado === 'correcta' ? 'En manifiesto' :
                        f.estado === 'nomanif'  ? 'No manifestada' : 'En manifiesto pero no recibida en físico';
-    const obsActual = observacionesGuias[f.guia] || '';
+    const obsActual = observacionesGuias[f.guia] || 'Buen estado';
     const opciones = OBSERVACION_ESTADOS.map(o =>
       `<option value="${o.value}" ${obsActual === o.value ? 'selected' : ''}>${o.value}</option>`
     ).join('');
@@ -845,7 +845,6 @@ function renderTablaGuias() {
       <td style="text-align:center;">
         <select class="obs-select ${claseObservacion(obsActual)}"
           onchange="setObservacion('${esc(f.guia.replace(/'/g,"\\'"))}', this.value, this)">
-          <option value="" ${obsActual === '' ? 'selected' : ''}>Seleccionar...</option>
           ${opciones}
         </select>
       </td>
@@ -931,7 +930,7 @@ function generarExcelDevoluciones(filas, horaFinal) {
     wsData.push([
       guia,
       datos.transportadora || transportadoraGlobal,
-      observacionesGuias[guia] || '',
+      observacionesGuias[guia] || 'Buen estado',
       null,
       null,
       null,
