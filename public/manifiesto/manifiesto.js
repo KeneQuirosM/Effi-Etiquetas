@@ -8,6 +8,18 @@ let guiasEscaneadas = new Map();
 window.nombreRuta = "-";
 window.piloto = "-";
 window.bodeguero = "-";
+window.horaLlegada = null;
+
+const OBSERVACION_ESTADOS = [
+  { value: 'Alterado', clase: 'obs-alterado' },
+  { value: 'Buen estado', clase: 'obs-buen-estado' },
+  { value: 'Incompleto', clase: 'obs-incompleto' },
+  { value: 'Mal estado', clase: 'obs-mal-estado' },
+];
+function claseObservacion(estado) {
+  const found = OBSERVACION_ESTADOS.find(o => o.value === estado);
+  return found ? found.clase : '';
+}
 
 const guiaRegex = /^(CR\d{9,}$|(?:CR)?(BC|1W|2W|3W|4W)[A-Z0-9\-]+$|^\d{10}$)/i;
 const rxRuta = /ruta\s*[:\-]\s*(.+)$/i;
@@ -73,8 +85,20 @@ function onScanEnter(e) {
   const guiaNormalizada = normalizarGuia(guia);
   const ahora = new Date();
   const hora = ahora.toLocaleTimeString();
+  if (!window.horaLlegada) window.horaLlegada = ahora;
   if (!guiasEscaneadas.has(guiaNormalizada)) {
-    guiasEscaneadas.set(guiaNormalizada, { veces: 1, timestamps: [hora], primeraVez: hora, ultimaVez: hora });
+    const empleadoSel = document.getElementById('empleadoSelect');
+    const transportadoraSel = document.getElementById('transportadoraSelect');
+    const mensajeroInput = document.getElementById('mensajeroInput');
+    guiasEscaneadas.set(guiaNormalizada, {
+      veces: 1,
+      timestamps: [hora],
+      primeraVez: hora,
+      ultimaVez: hora,
+      empleado: empleadoSel ? empleadoSel.value : '',
+      transportadora: transportadoraSel ? transportadoraSel.value : '',
+      mensajero: mensajeroInput ? mensajeroInput.value.trim() : '',
+    });
   } else {
     const datos = guiasEscaneadas.get(guiaNormalizada);
     datos.veces++;
@@ -273,6 +297,7 @@ async function handleFile(event) {
   window.nombreRuta = "-";
   window.piloto = "-";
   window.bodeguero = "-";
+  window.horaLlegada = null;
 
   const infoRuta = document.getElementById("infoRuta");
   const infoPiloto = document.getElementById("infoPiloto");
@@ -282,6 +307,7 @@ async function handleFile(event) {
   if (infoBodeguero) infoBodeguero.textContent = "-";
 
   guiasEscaneadas.clear();
+  Object.keys(observacionesGuias).forEach(k => delete observacionesGuias[k]);
 
   const reader = new FileReader();
 
@@ -744,8 +770,8 @@ function limpiarBusqueda() {
 
 // ====== TABLA DE GUÍAS ======
 
-// Estado de checkboxes: guia -> boolean
-const paquetesAbiertos = {};
+// Estado de observaciones (condición del paquete): guia -> estado ('', 'Alterado', 'Buen estado', 'Incompleto', 'Mal estado')
+const observacionesGuias = {};
 
 function renderTablaGuias() {
   const tbody = document.getElementById('guiasTableBody');
@@ -807,87 +833,138 @@ function renderTablaGuias() {
                        f.estado === 'nomanif'  ? 'badge-nomanif'  : 'badge-faltante';
     const badgeText  = f.estado === 'correcta' ? 'En manifiesto' :
                        f.estado === 'nomanif'  ? 'No manifestada' : 'En manifiesto pero no recibida en físico';
-    const abierto = paquetesAbiertos[f.guia] || false;
-    return `<tr class="${abierto ? 'paquete-abierto' : ''}">
+    const obsActual = observacionesGuias[f.guia] || '';
+    const opciones = OBSERVACION_ESTADOS.map(o =>
+      `<option value="${o.value}" ${obsActual === o.value ? 'selected' : ''}>${o.value}</option>`
+    ).join('');
+    return `<tr>
       <td style="color:#999;font-size:12px;">${i + 1}</td>
       <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${esc(f.guia)}</td>
       <td><span class="badge-estado ${badgeClass}">${badgeText}</span></td>
       <td style="color:#888;font-size:12px;">${esc(f.hora)}</td>
       <td style="text-align:center;">
-        <label class="check-abierto">
-          <input type="checkbox" ${abierto ? 'checked' : ''}
-            onchange="togglePaqueteAbierto('${esc(f.guia.replace(/'/g,"\\'"))}', this.checked)" />
-        </label>
+        <select class="obs-select ${claseObservacion(obsActual)}"
+          onchange="setObservacion('${esc(f.guia.replace(/'/g,"\\'"))}', this.value, this)">
+          <option value="" ${obsActual === '' ? 'selected' : ''}>Seleccionar...</option>
+          ${opciones}
+        </select>
       </td>
     </tr>`;
   }).join('');
 }
 
-function togglePaqueteAbierto(guia, checked) {
-  paquetesAbiertos[guia] = checked;
-  // Resaltar fila sin re-renderizar toda la tabla
-  const filas = document.querySelectorAll('#guiasTableBody tr');
-  filas.forEach(tr => {
-    const celdaGuia = tr.querySelector('td:nth-child(2)');
-    if (celdaGuia && celdaGuia.textContent.trim() === guia) {
-      if (checked) tr.classList.add('paquete-abierto');
-      else tr.classList.remove('paquete-abierto');
-    }
-  });
+function setObservacion(guia, valor, selectEl) {
+  observacionesGuias[guia] = valor;
+  if (selectEl) {
+    selectEl.className = 'obs-select ' + claseObservacion(valor);
+  }
 }
 
-function exportarExcelDevoluciones() {
-  const hoy = new Date();
-  const fecha = hoy.toISOString().slice(0, 10); // YYYY-MM-DD
-  const nombreArchivo = `Devoluciones RedLogistics ${fecha}.xlsx`;
-
-  // Construir datos igual que renderTablaGuias
+// Construye la lista de guías escaneadas (recibidas) a exportar, con sus datos de escaneo
+function construirFilasExportacion() {
   const filas = [];
-
   for (const g of correctasSet) {
     const datos = guiasEscaneadas.get(g) || guiasEscaneadas.get(normalizarGuia(g));
-    filas.push({ guia: g, estado: 'En manifiesto', hora: datos ? datos.primeraVez : '-' });
+    filas.push({ guia: g, datos: datos || {} });
   }
   for (const g of noManifestadasSet) {
     const datos = guiasEscaneadas.get(normalizarGuia(g));
-    filas.push({ guia: g, estado: 'No manifestada', hora: datos ? datos.primeraVez : '-' });
+    filas.push({ guia: g, datos: datos || {} });
   }
-  for (const g of faltantesSet) {
-    filas.push({ guia: g, estado: 'En manifiesto pero no recibida en físico', hora: '-' });
-  }
+  return filas;
+}
 
+let filasExportacionPendiente = null;
+
+function exportarExcelDevoluciones() {
+  const filas = construirFilasExportacion();
   if (filas.length === 0) {
-    notify('No hay guías para exportar.', 'warning');
+    notify('No hay guías escaneadas para exportar.', 'warning');
     return;
   }
+  filasExportacionPendiente = filas;
+  const cnt = document.getElementById('confirmExportCount');
+  if (cnt) cnt.textContent = filas.length;
+  const modal = document.getElementById('confirmExportModal');
+  if (modal) modal.style.display = 'block';
+}
+
+function cerrarConfirmExportModal() {
+  const modal = document.getElementById('confirmExportModal');
+  if (modal) modal.style.display = 'none';
+  filasExportacionPendiente = null;
+}
+
+function confirmarGenerarReporte() {
+  if (!filasExportacionPendiente || filasExportacionPendiente.length === 0) {
+    cerrarConfirmExportModal();
+    return;
+  }
+  const horaFinal = new Date();
+  generarExcelDevoluciones(filasExportacionPendiente, horaFinal);
+  cerrarConfirmExportModal();
+}
+
+// Serial de fecha (días desde 1899-12-30) para celdas de Excel
+function fechaAFraccionExcel(fecha) {
+  const utcEpoch = Date.UTC(1899, 11, 30);
+  const utcFecha = Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  return (utcFecha - utcEpoch) / 86400000;
+}
+
+// Fracción de día (0-1) para celdas de hora de Excel
+function horaAFraccionExcel(fecha) {
+  return (fecha.getHours() * 3600 + fecha.getMinutes() * 60 + fecha.getSeconds()) / 86400;
+}
+
+function generarExcelDevoluciones(filas, horaFinal) {
+  const empleadoGlobal = document.getElementById('empleadoSelect')?.value || '';
+  const transportadoraGlobal = document.getElementById('transportadoraSelect')?.value || '';
+  const mensajeroGlobal = document.getElementById('mensajeroInput')?.value.trim() || '';
+  const horaLlegada = window.horaLlegada || horaFinal;
 
   const wsData = [
-    ['#', 'Número de Guía', 'Estado', 'Hora Escaneo', 'Paquete Abierto']
+    ['GUIA DEVOLUCION', 'TRANSPORTADORA', 'OBSERVACIONES', 'FECHA', 'HORA LLEGADA', 'HORA FINAL', 'TOMA DE', 'EMPLEADO', 'MENSAJERO']
   ];
 
-  filas.forEach((f, i) => {
+  filas.forEach(({ guia, datos }) => {
     wsData.push([
-      i + 1,
-      f.guia,
-      f.estado,
-      f.hora,
-      paquetesAbiertos[f.guia] ? 'Sí' : 'No'
+      guia,
+      datos.transportadora || transportadoraGlobal,
+      observacionesGuias[guia] || '',
+      null,
+      null,
+      null,
+      null,
+      datos.empleado || empleadoGlobal,
+      datos.mensajero || mensajeroGlobal
     ]);
   });
 
-  const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  // Ancho de columnas
+  const fechaSerial = fechaAFraccionExcel(horaFinal);
+  const horaLlegadaSerial = horaAFraccionExcel(horaLlegada);
+  const horaFinalSerial = horaAFraccionExcel(horaFinal);
+
+  for (let i = 0; i < filas.length; i++) {
+    const fila = i + 2; // fila 1 = encabezados
+    ws[`D${fila}`] = { t: 'n', v: fechaSerial, z: 'm/d/yyyy' };
+    ws[`E${fila}`] = { t: 'n', v: horaLlegadaSerial, z: 'h:mm:ss AM/PM' };
+    ws[`F${fila}`] = { t: 'n', v: horaFinalSerial, z: 'h:mm:ss AM/PM' };
+    ws[`G${fila}`] = { t: 'n', f: `(F${fila}-E${fila})*1440` };
+  }
+
   ws['!cols'] = [
-    { wch: 5 },
-    { wch: 22 },
-    { wch: 38 },
-    { wch: 14 },
-    { wch: 16 }
+    { wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 12 },
+    { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 18 }, { wch: 18 }
   ];
 
+  const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Devoluciones');
+
+  const fechaArchivo = horaFinal.toISOString().slice(0, 10);
+  const nombreArchivo = `Recepcion Devoluciones ${fechaArchivo}.xlsx`;
   XLSX.writeFile(wb, nombreArchivo);
   notify(`Excel exportado: ${nombreArchivo}`, 'success');
 }

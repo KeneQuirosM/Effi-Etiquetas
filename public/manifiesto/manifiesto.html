@@ -86,6 +86,30 @@
   </div>
 </div>
 
+<!-- Modal Confirmación Generar Reporte -->
+<div id="confirmExportModal" class="modal">
+  <div class="modal-content" style="max-width: 420px;">
+    <div class="modal-header">
+      <h3>Confirmar Generación de Reporte</h3>
+      <span class="close" onclick="cerrarConfirmExportModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <p>¿Estás seguro de que deseas generar el reporte de devoluciones?</p>
+      <p style="font-size: 12px; color: #666; margin-top: 10px;">
+        Se incluirán <strong id="confirmExportCount">0</strong> guía(s) y se registrará la hora final del reporte.
+      </p>
+    </div>
+    <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 15px;">
+      <button class="btn-action secondary" onclick="cerrarConfirmExportModal()">
+        <i class="fas fa-times"></i> Cancelar
+      </button>
+      <button class="btn-action btn-marcar" onclick="confirmarGenerarReporte()">
+        <i class="fas fa-check"></i> Sí, Generar
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal guías repetidas -->
 <div id="repetidasModal" class="modal">
   <div class="modal-content">
@@ -167,6 +191,41 @@
 
       <div class="dashboard-content">
         <div class="input-card">
+          <div class="input-group input-row-3">
+            <div>
+              <label for="empleadoSelect">
+                <i class="fas fa-user"></i>
+                Empleado
+              </label>
+              <select id="empleadoSelect">
+                <option value="">Seleccionar...</option>
+                <option value="Elianeth Martinez">Elianeth Martinez</option>
+                <option value="Kene Quiros">Kene Quiros</option>
+                <option value="Cesar Navarro">Cesar Navarro</option>
+                <option value="Alexander Alvarez">Alexander Alvarez</option>
+              </select>
+            </div>
+            <div>
+              <label for="mensajeroInput">
+                <i class="fas fa-motorcycle"></i>
+                Mensajero
+              </label>
+              <input type="text" id="mensajeroInput" placeholder="Nombre del mensajero..." autocomplete="off" />
+            </div>
+            <div>
+              <label for="transportadoraSelect">
+                <i class="fas fa-truck"></i>
+                Transportadora
+              </label>
+              <select id="transportadoraSelect">
+                <option value="">Seleccionar...</option>
+                <option value="Red Logistics">Red Logistics</option>
+                <option value="Cargo Expresso">Cargo Expresso</option>
+                <option value="Moovin">Moovin</option>
+              </select>
+            </div>
+          </div>
+
           <div class="input-group">
             <label for="fileInput">
               <i class="fas fa-file-excel"></i>
@@ -285,7 +344,7 @@
                   <th>Número de Guía</th>
                   <th>Estado</th>
                   <th>Hora Escaneo</th>
-                  <th style="text-align:center;">Paquete Abierto</th>
+                  <th style="text-align:center;">Observaciones</th>
                 </tr>
               </thead>
               <tbody id="guiasTableBody">
