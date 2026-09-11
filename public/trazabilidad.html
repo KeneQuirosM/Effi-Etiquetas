@@ -483,6 +483,7 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                                 <tr>
                                     <th data-key="tienda">Tienda/Distribuidor <i class="fas fa-sort sort-icon"></i></th>
                                     <th data-key="id">ID artículo <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="productName">Producto <i class="fas fa-sort sort-icon"></i></th>
                                     <th data-key="fecha">Fecha despacho <i class="fas fa-sort sort-icon"></i></th>
                                     <th class="num" data-key="cantBase">Cant. Base <i class="fas fa-sort sort-icon"></i></th>
                                     <th class="num" data-key="cantMov">Cant. Movimientos <i class="fas fa-sort sort-icon"></i></th>
@@ -490,7 +491,7 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                                 </tr>
                             </thead>
                             <tbody id="tableABody">
-                                <tr><td colspan="6" style="padding:0;border:none;">
+                                <tr><td colspan="7" style="padding:0;border:none;">
                                     <div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados</div></div>
                                 </td></tr>
                             </tbody>
@@ -515,6 +516,7 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                                 <tr>
                                     <th data-key="tienda">Tienda <i class="fas fa-sort sort-icon"></i></th>
                                     <th data-key="id">ID <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="productName">Producto <i class="fas fa-sort sort-icon"></i></th>
                                     <th data-key="fecha">Fecha <i class="fas fa-sort sort-icon"></i></th>
                                     <th class="num" data-key="cantMov">Cant. en Mov. <i class="fas fa-sort sort-icon"></i></th>
                                     <th class="num" data-key="cantDev">Cant. en Dev. <i class="fas fa-sort sort-icon"></i></th>
@@ -522,7 +524,7 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                                 </tr>
                             </thead>
                             <tbody id="tableBBody">
-                                <tr><td colspan="6" style="padding:0;border:none;">
+                                <tr><td colspan="7" style="padding:0;border:none;">
                                     <div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados</div></div>
                                 </td></tr>
                             </tbody>
@@ -709,6 +711,119 @@ function formatSigned(n) {
     return (n > 0 ? '+' : '') + formatNumber(n);
 }
 
+/* ── BASE DE DATOS DE TIENDAS/PRODUCTOS (misma fuente que usa el
+   módulo de Reporte Distribuidor/Proveedor: GET /api/tiendas, público,
+   sin autenticación) ──────────────────────────────────────────────
+   El Excel de trazabilidad solo trae los códigos que el distribuidor
+   usa internamente; esta carga cruza esos códigos contra la base real
+   de tiendas y productos para mostrar nombres legibles en vez de solo
+   IDs, igual que hace public/reporte/reporte.js. Si no hay conexión
+   (por ejemplo, abierto como file://) la página sigue funcionando con
+   los valores tal como vienen del Excel — esto es una mejora visual,
+   no una dependencia dura. */
+let dbTiendas = [];
+let tiendaByClean = new Map();      // nombre de tienda normalizado -> { id, nombre }
+let productByCode = new Map();      // código de producto normalizado -> { nombre, tiendaNombre, tiendaId }
+let productByTiendaCode = new Map(); // "tienda normalizada||código normalizado" -> { nombre, tiendaNombre, tiendaId }
+let dbLoaded = false;
+
+// Limpieza para comparar nombres/códigos tolerando acentos y mayúsculas —
+// misma función que reporte.js (cleanCompareText), sin tocar normalizeText()
+// que ya usa detectColumn()/isSalida()/isDevolucion() con reglas propias.
+function cleanCompareText(t) {
+    return String(t ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+// El Excel suele traer la tienda como "40881 - Grupo Hoshi"; para cruzarla
+// contra el nombre real en la base de datos hay que quitar ese prefijo.
+function stripExcelIdPrefix(str) {
+    return String(str ?? '').replace(/^\d+\s*[-–]\s*/, '').trim();
+}
+
+async function loadTiendaDatabase() {
+    try {
+        const resp = await fetch('/api/tiendas');
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        dbTiendas = data.tiendas || [];
+        tiendaByClean = new Map();
+        productByCode = new Map();
+        productByTiendaCode = new Map();
+        dbTiendas.forEach(t => {
+            const cleanTienda = cleanCompareText(t.nombre);
+            tiendaByClean.set(cleanTienda, t);
+            (t.inventario || []).forEach(p => {
+                const cleanCode = cleanCompareText(p.id);
+                if (!cleanCode) return;
+                const info = { nombre: p.producto, tiendaNombre: t.nombre, tiendaId: t.id };
+                if (!productByCode.has(cleanCode)) productByCode.set(cleanCode, info);
+                productByTiendaCode.set(`${cleanTienda}||${cleanCode}`, info);
+            });
+        });
+        dbLoaded = true;
+        addLog('BASE DE DATOS SINCRONIZADA', `${dbTiendas.length} tienda(s) con catálogo de productos`);
+        // Si ya había un análisis en pantalla, refrescarlo con los nombres reales.
+        if (analysisAFull.length || analysisBFull.length) { renderTableA(); renderTableB(); }
+        refreshFilterLabels();
+    } catch (err) {
+        addLog('ADVERTENCIA: SIN CONEXIÓN A BASE DE DATOS', 'Se usarán los nombres de tienda/producto tal como vienen en el Excel');
+    }
+}
+
+// Traduce el valor crudo de tienda del Excel al nombre real de la BD
+// (formato "ID - Nombre", igual que en el resto de la suite). Devuelve
+// null si no hay match, para que el llamador decida el respaldo.
+function resolveTiendaLabel(rawTienda) {
+    if (!rawTienda || rawTienda === 'N/D') return null;
+    const candidates = [cleanCompareText(stripExcelIdPrefix(rawTienda)), cleanCompareText(rawTienda)];
+    for (const c of candidates) {
+        if (tiendaByClean.has(c)) {
+            const t = tiendaByClean.get(c);
+            return `${t.id} - ${t.nombre}`;
+        }
+    }
+    return null;
+}
+
+// Resuelve el producto (nombre real) para un ID de artículo, priorizando
+// el match dentro de la tienda conocida y cayendo al catálogo completo.
+function resolveProduct(id, rawTienda) {
+    const cleanId = cleanCompareText(id);
+    if (!cleanId) return null;
+    if (rawTienda && rawTienda !== 'N/D') {
+        for (const c of [cleanCompareText(stripExcelIdPrefix(rawTienda)), cleanCompareText(rawTienda)]) {
+            const hit = productByTiendaCode.get(`${c}||${cleanId}`);
+            if (hit) return hit;
+        }
+    }
+    return productByCode.get(cleanId) || null;
+}
+
+// Para las filas de Devoluciones donde el lado de Movimientos no tenía
+// tienda (r.tienda === 'N/D'), intenta inferirla a partir de a qué
+// tienda pertenece el producto en la base de datos.
+function inferTiendaFromProduct(id) {
+    const info = productByCode.get(cleanCompareText(id));
+    return info ? `${info.tiendaId} - ${info.tiendaNombre} (inferida)` : null;
+}
+
+// Etiqueta de tienda para mostrar en pantalla: nombre real de la BD si
+// hay match, tienda inferida por producto si estaba en "N/D", o el
+// valor crudo del Excel como último recurso.
+function tiendaDisplay(rawTienda, id) {
+    return resolveTiendaLabel(rawTienda)
+        || (rawTienda === 'N/D' ? inferTiendaFromProduct(id) : null)
+        || rawTienda;
+}
+
+// Añade a cada fila de un análisis los campos de solo-lectura que
+// dependen de la base de datos (tiendaLabel, productName), sin tocar
+// tienda/id crudos — esos siguen siendo la clave que usan los filtros.
+function enrichRow(r) {
+    const prod = resolveProduct(r.id, r.tienda);
+    return { ...r, tiendaLabel: tiendaDisplay(r.tienda, r.id), productName: prod ? prod.nombre : '' };
+}
+
 /* ── ESTADO/TIPO DE MOVIMIENTO ────────────────────────────────── */
 function isSalida(val) {
     const v = normalizeText(val);
@@ -891,9 +1006,29 @@ function populateFilters() {
     const tiendaSelect = document.getElementById('filterTienda');
     const sortedIds = [...ids].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
     const sortedTiendas = [...tiendas].sort((a, b) => a.localeCompare(b, 'es'));
-    idSelect.innerHTML = '<option value="">-- Todos --</option>' + sortedIds.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
-    tiendaSelect.innerHTML = '<option value="">-- Todas --</option>' + sortedTiendas.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    idSelect.innerHTML = '<option value="">-- Todos --</option>' + sortedIds.map(v => `<option value="${esc(v)}">${esc(idFilterLabel(v))}</option>`).join('');
+    tiendaSelect.innerHTML = '<option value="">-- Todas --</option>' + sortedTiendas.map(v => `<option value="${esc(v)}">${esc(resolveTiendaLabel(v) || v)}</option>`).join('');
     document.getElementById('filtersRow').classList.add('show');
+}
+
+// Etiqueta de un ID en los selects de filtro: "ID - Nombre real" cuando la
+// base de datos lo resuelve, o solo el ID crudo si no hay match/conexión.
+function idFilterLabel(id) {
+    const prod = resolveProduct(id, null);
+    return prod && prod.nombre ? `${id} - ${prod.nombre}` : id;
+}
+
+// Se llama cuando la base de tiendas/productos llega DESPUÉS de haber
+// poblado los filtros con los valores crudos del Excel: reconstruye las
+// etiquetas sin perder la selección que el usuario ya haya hecho.
+function refreshFilterLabels() {
+    const idSelect = document.getElementById('filterId');
+    const tiendaSelect = document.getElementById('filterTienda');
+    if (!idSelect.options.length && !tiendaSelect.options.length) return;
+    const keepId = idSelect.value, keepTienda = tiendaSelect.value;
+    [...idSelect.options].forEach(opt => { if (opt.value) opt.textContent = idFilterLabel(opt.value); });
+    [...tiendaSelect.options].forEach(opt => { if (opt.value) opt.textContent = resolveTiendaLabel(opt.value) || opt.value; });
+    idSelect.value = keepId; tiendaSelect.value = keepTienda;
 }
 
 /* ── AGRUPACIÓN GENÉRICA POR (TIENDA + ID + FECHA), SUMANDO CANTIDAD ── */
@@ -1057,16 +1192,17 @@ function renderMetrics() {
    muestra el estado vacío positivo "Todo cuadra". */
 function renderTableA() {
     const tbody = document.getElementById('tableABody');
-    const filtered = sortRows(applyFilters(analysisAFull), sortStateA);
+    const enriched = analysisAFull.map(enrichRow);
+    const filtered = sortRows(applyFilters(enriched), sortStateA);
     document.getElementById('countA').textContent = `${filtered.length} discrepancia${filtered.length === 1 ? '' : 's'}`;
     updateSortIcons('tableA', sortStateA);
 
     if (!analysisAFull.length) {
-        tbody.innerHTML = `<tr><td colspan="6" style="padding:0;border:none;"><div class="empty positive"><span class="empty-ico">&#10003;</span><div class="empty-t">Todo cuadra &#10003; — no hay discrepancias entre Base y Salidas</div></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:0;border:none;"><div class="empty positive"><span class="empty-ico">&#10003;</span><div class="empty-t">Todo cuadra &#10003; — no hay discrepancias entre Base y Salidas</div></div></td></tr>`;
         return;
     }
     if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="6" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados para el filtro aplicado</div></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados para el filtro aplicado</div></div></td></tr>`;
         return;
     }
 
@@ -1076,9 +1212,13 @@ function renderTableA() {
         const badge = critico
             ? `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Crítico · -${formatNumber(r.diferencia)} uds</span>`
             : `<span class="badge badge-warn"><i class="fas fa-circle-exclamation"></i> Leve · -${formatNumber(r.diferencia)} uds</span>`;
+        const productCell = r.productName
+            ? esc(r.productName)
+            : '<span style="color:var(--neutral-400)">— sin nombre en BD —</span>';
         return `<tr class="${rowClass}">
-            <td><i class="fas fa-store cell-icon"></i>${esc(r.tienda)}</td>
+            <td><i class="fas fa-store cell-icon"></i>${esc(r.tiendaLabel)}</td>
             <td><span class="id-pill">${esc(r.id)}</span></td>
+            <td>${productCell}</td>
             <td><i class="fas fa-calendar-day cell-icon"></i>${esc(r.fecha)}</td>
             <td class="num">${formatNumber(r.cantBase)}</td>
             <td class="num">${formatNumber(r.cantMov)}</td>
@@ -1092,18 +1232,19 @@ function renderTableA() {
    verde para las que cuadran y amarillo/rojo para las que difieren. */
 function renderTableB() {
     const tbody = document.getElementById('tableBBody');
-    const filtered = sortRows(applyFilters(analysisBFull), sortStateB);
+    const enriched = analysisBFull.map(enrichRow);
+    const filtered = sortRows(applyFilters(enriched), sortStateB);
     const diffCount = filtered.filter(r => r.diferencia !== 0).length;
     document.getElementById('countB').textContent = `${diffCount} diferencia${diffCount === 1 ? '' : 's'}`;
     updateSortIcons('tableB', sortStateB);
 
     const totalDiff = analysisBFull.filter(r => r.diferencia !== 0).length;
     if (!analysisBFull.length || !totalDiff) {
-        tbody.innerHTML = `<tr><td colspan="6" style="padding:0;border:none;"><div class="empty positive"><span class="empty-ico">&#10003;</span><div class="empty-t">Todo cuadra &#10003; — Movimientos y Devoluciones coinciden</div></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:0;border:none;"><div class="empty positive"><span class="empty-ico">&#10003;</span><div class="empty-t">Todo cuadra &#10003; — Movimientos y Devoluciones coinciden</div></div></td></tr>`;
         return;
     }
     if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="6" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados para el filtro aplicado</div></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados para el filtro aplicado</div></div></td></tr>`;
         return;
     }
 
@@ -1118,9 +1259,13 @@ function renderTableB() {
             rowClass = 'row-crit';
             badge = `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Diferencia crítica · ${formatSigned(r.diferencia)} uds</span>`;
         }
+        const productCell = r.productName
+            ? esc(r.productName)
+            : '<span style="color:var(--neutral-400)">— sin nombre en BD —</span>';
         return `<tr class="${rowClass}">
-            <td><i class="fas fa-store cell-icon"></i>${esc(r.tienda)}</td>
+            <td><i class="fas fa-store cell-icon"></i>${esc(r.tiendaLabel)}</td>
             <td><span class="id-pill">${esc(r.id)}</span></td>
+            <td>${productCell}</td>
             <td><i class="fas fa-calendar-day cell-icon"></i>${esc(r.fecha)}</td>
             <td class="num">${formatNumber(r.cantMov)}</td>
             <td class="num">${formatNumber(r.cantDev)}</td>
@@ -1146,12 +1291,14 @@ let activeMetric = null;
 
 // Agrupa las filas de un análisis por ID artículo, para pasar del total
 // agregado de la tarjeta a la lista concreta de items que lo componen.
+// Recibe filas ya enriquecidas (enrichRow) para mostrar tienda/producto
+// resueltos contra la base de datos en vez de los valores crudos.
 function buildIdBreakdown(rows, useAbs) {
     const map = new Map();
     rows.forEach(r => {
-        if (!map.has(r.id)) map.set(r.id, { id: r.id, tiendas: new Set(), combos: 0, total: 0 });
+        if (!map.has(r.id)) map.set(r.id, { id: r.id, productName: r.productName, tiendas: new Set(), combos: 0, total: 0 });
         const o = map.get(r.id);
-        o.tiendas.add(r.tienda);
+        o.tiendas.add(r.tiendaLabel);
         o.combos += 1;
         o.total += useAbs ? Math.abs(r.diferencia) : r.diferencia;
     });
@@ -1162,7 +1309,7 @@ function buildIdBreakdown(rows, useAbs) {
 
 function getBreakdownForMetric(key) {
     const cfg = METRIC_CONFIG[key];
-    const rows = cfg.side === 'A' ? analysisAFull : analysisBFull.filter(r => r.diferencia !== 0);
+    const rows = (cfg.side === 'A' ? analysisAFull : analysisBFull.filter(r => r.diferencia !== 0)).map(enrichRow);
     const list = buildIdBreakdown(rows, cfg.side === 'B');
     list.sort((a, b) => cfg.order === 'id' ? a.id.localeCompare(b.id, 'es', { numeric: true }) : b.total - a.total);
     return list;
@@ -1186,6 +1333,7 @@ function renderMetricDetail(key) {
         <div class="metric-detail-row">
             <span class="id-pill">${esc(item.id)}</span>
             <div class="metric-detail-info">
+                ${item.productName ? `<span class="md-line"><i class="fas fa-tag"></i> ${esc(item.productName)}</span>` : ''}
                 <span class="md-line"><i class="fas fa-store"></i> ${esc(item.tiendasList || 'N/D')}</span>
                 <span class="md-line"><i class="fas fa-layer-group"></i> ${item.combos} ${item.combos === 1 ? 'combinación' : 'combinaciones'} tienda/fecha</span>
             </div>
@@ -1278,12 +1426,12 @@ function wireSortableHeaders(tableId, getState, setState, render) {
 function exportResults() {
     if (!analysisAFull.length && !analysisBFull.length) { notify('Ejecute el análisis antes de exportar', 'err'); return; }
     try {
-        const rowsA = sortRows(applyFilters(analysisAFull), sortStateA).map(r => ({
-            'Tienda/Distribuidor': r.tienda, 'ID artículo': r.id, 'Fecha despacho': r.fecha,
-            'Cant. Base': r.cantBase, 'Cant. Movimientos': r.cantMov, 'Diferencia': r.diferencia
+        const rowsA = sortRows(applyFilters(analysisAFull.map(enrichRow)), sortStateA).map(r => ({
+            'Tienda/Distribuidor': r.tiendaLabel, 'ID artículo': r.id, 'Producto': r.productName || '',
+            'Fecha despacho': r.fecha, 'Cant. Base': r.cantBase, 'Cant. Movimientos': r.cantMov, 'Diferencia': r.diferencia
         }));
-        const rowsB = sortRows(applyFilters(analysisBFull), sortStateB).map(r => ({
-            'Tienda': r.tienda, 'ID': r.id, 'Fecha': r.fecha,
+        const rowsB = sortRows(applyFilters(analysisBFull.map(enrichRow)), sortStateB).map(r => ({
+            'Tienda': r.tiendaLabel, 'ID': r.id, 'Producto': r.productName || '', 'Fecha': r.fecha,
             'Cant. en Mov.': r.cantMov, 'Cant. en Dev.': r.cantDev, 'Diferencia': r.diferencia
         }));
         const wb = XLSX.utils.book_new();
@@ -1303,6 +1451,7 @@ function exportResults() {
 wireDropzone('excelDropzone', 'excelInput', 'excelBrowseBtn', '.xlsx', handleExcelFile);
 wireAccordion();
 wireMetricCards();
+loadTiendaDatabase(); // no bloqueante — si falla (p.ej. abierto como file://), sigue con los valores del Excel
 wireSortableHeaders('tableA', () => sortStateA, (s) => { sortStateA = s; }, renderTableA);
 wireSortableHeaders('tableB', () => sortStateB, (s) => { sortStateB = s; }, renderTableB);
 
