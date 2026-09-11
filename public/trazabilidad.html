@@ -250,6 +250,12 @@ body {
 .results-block-title i { color: var(--brand-500); }
 .results-block-head-right { display: flex; align-items: center; gap: 12px; }
 .results-block-count { font-size: .72rem; color: var(--neutral-400); }
+.results-block-desc {
+    font-size: .76rem; line-height: 1.5; color: var(--neutral-600);
+    background: var(--neutral-50); border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px;
+}
+.results-block-desc strong { color: var(--neutral-800); }
 .accordion-chevron { color: var(--neutral-400); transition: var(--transition); }
 .results-block.collapsed .accordion-chevron { transform: rotate(-90deg); }
 .results-block.collapsed .accordion-body { display: none; }
@@ -476,6 +482,9 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                         <i class="fas fa-chevron-down accordion-chevron"></i>
                     </div>
                 </div>
+                <div class="results-block-desc">
+                    Compara, para cada combinación de tienda + artículo + fecha, cuánto dice la hoja <strong>Base</strong> que se despachó contra cuánto quedó registrado como <strong>salida</strong> en Movimientos. Solo se listan los casos donde Base es mayor — es decir, unidades que debieron salir pero no aparecen registradas como salida.
+                </div>
                 <div class="accordion-body">
                     <div class="tbl-wrap">
                         <table id="tableA">
@@ -508,6 +517,9 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                         <span class="results-block-count" id="countB">0 diferencias</span>
                         <i class="fas fa-chevron-down accordion-chevron"></i>
                     </div>
+                </div>
+                <div class="results-block-desc">
+                    Compara, por artículo + fecha, las unidades marcadas como <strong>devolución</strong> en Movimientos contra las registradas en la hoja <strong>Devoluciones</strong>. Verde = coinciden; amarillo/rojo = hay diferencia entre lo que dice una hoja y la otra.
                 </div>
                 <div class="accordion-body">
                     <div class="tbl-wrap">
@@ -778,6 +790,7 @@ async function loadTiendaDatabase() {
         // Si ya había un análisis en pantalla, refrescarlo con los nombres reales.
         if (analysisAFull.length || analysisBFull.length) { renderTableA(); renderTableB(); }
         refreshFilterLabels();
+        updateIdFilterOptions(); // por si la BD llegó después de que ya se había elegido una tienda
     } catch (err) {
         addLog('ADVERTENCIA: SIN CONEXIÓN A BASE DE DATOS', 'Se usarán los nombres de tienda/producto tal como vienen en el Excel');
     }
@@ -1022,26 +1035,50 @@ function resetAnalysisState() {
 }
 
 /* ── FILTROS OPCIONALES (por ID artículo y por tienda/distribuidor) ── */
+let allDetectedIds = []; // todos los IDs vistos en el archivo, sin filtrar por tienda — base para el filtro en cascada
+
 function populateFilters() {
     const ids = new Set(), tiendas = new Set();
     baseRows.forEach(r => {
         if (cols.baseId) { const v = String(r[cols.baseId] ?? '').trim(); if (v) ids.add(v); }
-        const t = rawTiendaValue(r, { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor });
+        const t = canonicalTienda(rawTiendaValue(r, { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor }));
         if (t !== 'N/D') tiendas.add(t);
     });
     movRows.forEach(r => {
         if (cols.movId) { const v = String(r[cols.movId] ?? '').trim(); if (v) ids.add(v); }
-        const t = rawTiendaValue(r, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor });
+        const t = canonicalTienda(rawTiendaValue(r, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor }));
         if (t !== 'N/D') tiendas.add(t);
     });
 
-    const idSelect = document.getElementById('filterId');
     const tiendaSelect = document.getElementById('filterTienda');
-    const sortedIds = [...ids].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+    allDetectedIds = [...ids].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
     const sortedTiendas = [...tiendas].sort((a, b) => a.localeCompare(b, 'es'));
-    idSelect.innerHTML = '<option value="">-- Todos --</option>' + sortedIds.map(v => `<option value="${esc(v)}">${esc(idFilterLabel(v))}</option>`).join('');
-    tiendaSelect.innerHTML = '<option value="">-- Todas --</option>' + sortedTiendas.map(v => `<option value="${esc(v)}">${esc(resolveTiendaLabel(v) || v)}</option>`).join('');
+    tiendaSelect.innerHTML = '<option value="">-- Todas --</option>' + sortedTiendas.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    updateIdFilterOptions();
     document.getElementById('filtersRow').classList.add('show');
+}
+
+// Filtro en cascada: si hay una tienda seleccionada y la BD la reconoce,
+// el select de ID solo muestra los códigos del catálogo de ESA tienda
+// (cruzado con los IDs que realmente aparecen en el archivo cargado).
+// Sin tienda seleccionada, o sin match en BD, muestra todos los IDs del
+// archivo — igual que antes.
+function updateIdFilterOptions() {
+    const idSelect = document.getElementById('filterId');
+    const tiendaVal = document.getElementById('filterTienda').value;
+    const keepId = idSelect.value;
+
+    let idsToShow = allDetectedIds;
+    if (tiendaVal) {
+        const dbTienda = tiendaByClean.get(cleanCompareText(stripExcelIdPrefix(tiendaVal))) || tiendaByClean.get(cleanCompareText(tiendaVal));
+        if (dbTienda) {
+            const allowedCodes = new Set((dbTienda.inventario || []).map(p => cleanCompareText(p.id)));
+            idsToShow = allDetectedIds.filter(id => allowedCodes.has(cleanCompareText(id)));
+        }
+    }
+
+    idSelect.innerHTML = '<option value="">-- Todos --</option>' + idsToShow.map(v => `<option value="${esc(v)}">${esc(idFilterLabel(v))}</option>`).join('');
+    idSelect.value = idsToShow.includes(keepId) ? keepId : '';
 }
 
 // Etiqueta de un ID en los selects de filtro: "ID - Nombre real" cuando la
@@ -1074,13 +1111,26 @@ function rawTiendaValue(row, colMap) {
     return distribuidorVal || 'N/D';
 }
 
+// Convierte el valor crudo de tienda a su forma canónica ("ID - Nombre" de
+// la BD) ANTES de usarlo como clave de cruce entre Base y Movimientos —no
+// solo al mostrarlo. Es clave: Base y Movimientos pueden escribir la misma
+// tienda con formato distinto (con/sin prefijo de ID, mayúsculas, etc.); si
+// se cruzara por el texto crudo tal cual, esas diferencias de formato harían
+// que NINGUNA fila coincida entre las dos hojas, mostrando cantidad de
+// movimientos en 0 para absolutamente todo (falso positivo masivo). Al
+// canonicalizar contra la BD antes de agrupar, ambas hojas caen en la misma
+// clave siempre que se refieran a la misma tienda real.
+function canonicalTienda(rawTienda) {
+    return resolveTiendaLabel(rawTienda) || rawTienda;
+}
+
 /* ── AGRUPACIÓN GENÉRICA POR (TIENDA + ID + FECHA), SUMANDO CANTIDAD ── */
 function groupRows(rows, colMap) {
     const map = new Map();
     rows.forEach(r => {
         const id = String(r[colMap.id] ?? '').trim();
         if (!id) return;
-        const tienda = rawTiendaValue(r, colMap);
+        const tienda = canonicalTienda(rawTiendaValue(r, colMap));
         const { key: fechaKey, display: fechaDisplay } = parseDate(r[colMap.fecha]);
         const qty = parseQty(r[colMap.cantidad]);
         const mapKey = `${tienda}||${id}||${fechaKey}`;
@@ -1501,10 +1551,11 @@ wireSortableHeaders('tableB', () => sortStateB, (s) => { sortStateB = s; }, rend
 document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
 document.getElementById('exportBtn').addEventListener('click', exportResults);
 document.getElementById('filterId').addEventListener('change', () => { renderTableA(); renderTableB(); });
-document.getElementById('filterTienda').addEventListener('change', () => { renderTableA(); renderTableB(); });
+document.getElementById('filterTienda').addEventListener('change', () => { updateIdFilterOptions(); renderTableA(); renderTableB(); });
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-    document.getElementById('filterId').value = '';
     document.getElementById('filterTienda').value = '';
+    updateIdFilterOptions();
+    document.getElementById('filterId').value = '';
     renderTableA(); renderTableB();
 });
 
