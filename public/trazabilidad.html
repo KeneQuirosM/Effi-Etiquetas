@@ -646,7 +646,14 @@ function detectColumn(headers, candidates) {
     return null;
 }
 
-const TIENDA_CANDS = ['distribuidor tienda', 'distribuidor', 'tienda', 'punto de venta', 'pdv', 'cliente', 'sucursal'];
+// El Excel trae la tienda repartida en DOS columnas posibles: "Distribuidor"
+// (bodega propia) y "Proveedor Dropshipping". Cuando ambas tienen valor en
+// la misma fila, la tienda real es la del proveedor (es la que de verdad
+// despachó/tiene el producto); "Distribuidor" ahí es solo el cliente/revendedor.
+// Solo cuando Proveedor viene vacía, la tienda es la de Distribuidor.
+// Ver rawTiendaValue() más abajo, donde se aplica esta prioridad.
+const DISTRIBUIDOR_CANDS = ['distribuidor', 'tienda', 'punto de venta', 'pdv', 'cliente', 'sucursal'];
+const PROVEEDOR_CANDS = ['proveedor dropshipping', 'proveedor', 'dropshipping'];
 const ID_CANDS = ['id articulo', 'id producto', 'codigo articulo', 'codigo producto', 'sku', 'id item', 'articulo'];
 const ID_MOV_CANDS = ID_CANDS.concat(['movimiento', 'id movimiento', 'no movimiento', 'numero movimiento']);
 const FECHA_DESPACHO_CANDS = ['fecha relacion de despacho', 'fecha relacion despacho', 'fecha rel despacho', 'fecha despacho', 'fecha de despacho', 'fecha relacion'];
@@ -926,18 +933,21 @@ function handleExcelFile(file) {
             const devHeaders = Object.keys(devRows[0]);
 
             cols = {
-                baseTienda: detectColumn(baseHeaders, TIENDA_CANDS),
+                baseDistribuidor: detectColumn(baseHeaders, DISTRIBUIDOR_CANDS),
+                baseProveedor: detectColumn(baseHeaders, PROVEEDOR_CANDS),
                 baseId: detectColumn(baseHeaders, ID_CANDS),
                 baseFecha: detectColumn(baseHeaders, FECHA_DESPACHO_CANDS) || detectColumn(baseHeaders, FECHA_GENERIC_CANDS),
                 baseCantidad: detectColumn(baseHeaders, CANTIDAD_CANDS),
 
-                movTienda: detectColumn(movHeaders, TIENDA_CANDS),
+                movDistribuidor: detectColumn(movHeaders, DISTRIBUIDOR_CANDS),
+                movProveedor: detectColumn(movHeaders, PROVEEDOR_CANDS),
                 movId: detectColumn(movHeaders, ID_CANDS),
                 movFecha: detectColumn(movHeaders, FECHA_GENERIC_CANDS),
                 movCantidad: detectColumn(movHeaders, CANTIDAD_CANDS),
                 movEstado: detectColumn(movHeaders, ESTADO_CANDS),
 
-                devTienda: detectColumn(devHeaders, TIENDA_CANDS),
+                devDistribuidor: detectColumn(devHeaders, DISTRIBUIDOR_CANDS),
+                devProveedor: detectColumn(devHeaders, PROVEEDOR_CANDS),
                 devId: detectColumn(devHeaders, ID_MOV_CANDS),
                 devFecha: detectColumn(devHeaders, FECHA_GENERIC_CANDS),
                 devCantidad: detectColumn(devHeaders, CANTIDAD_CANDS)
@@ -948,11 +958,11 @@ function handleExcelFile(file) {
             addLog('HOJA DEVOLUCIONES CARGADA', `${devRows.length} filas`);
 
             const missingCols = [];
-            if (!cols.baseTienda) missingCols.push('Base: Distribuidor/Tienda');
+            if (!cols.baseDistribuidor && !cols.baseProveedor) missingCols.push('Base: Distribuidor/Proveedor Dropshipping');
             if (!cols.baseId) missingCols.push('Base: ID artículo');
             if (!cols.baseFecha) missingCols.push('Base: Fecha relación de despacho');
             if (!cols.baseCantidad) missingCols.push('Base: Cantidad');
-            if (!cols.movTienda) missingCols.push('Movimientos: Distribuidor/Tienda');
+            if (!cols.movDistribuidor && !cols.movProveedor) missingCols.push('Movimientos: Distribuidor/Proveedor Dropshipping');
             if (!cols.movId) missingCols.push('Movimientos: ID artículo');
             if (!cols.movFecha) missingCols.push('Movimientos: Fecha');
             if (!cols.movCantidad) missingCols.push('Movimientos: Cantidad');
@@ -995,11 +1005,13 @@ function populateFilters() {
     const ids = new Set(), tiendas = new Set();
     baseRows.forEach(r => {
         if (cols.baseId) { const v = String(r[cols.baseId] ?? '').trim(); if (v) ids.add(v); }
-        if (cols.baseTienda) { const v = String(r[cols.baseTienda] ?? '').trim(); if (v) tiendas.add(v); }
+        const t = rawTiendaValue(r, { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor });
+        if (t !== 'N/D') tiendas.add(t);
     });
     movRows.forEach(r => {
         if (cols.movId) { const v = String(r[cols.movId] ?? '').trim(); if (v) ids.add(v); }
-        if (cols.movTienda) { const v = String(r[cols.movTienda] ?? '').trim(); if (v) tiendas.add(v); }
+        const t = rawTiendaValue(r, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor });
+        if (t !== 'N/D') tiendas.add(t);
     });
 
     const idSelect = document.getElementById('filterId');
@@ -1031,13 +1043,23 @@ function refreshFilterLabels() {
     idSelect.value = keepId; tiendaSelect.value = keepTienda;
 }
 
+// La tienda real de una fila: si "Proveedor Dropshipping" viene con valor,
+// esa es la tienda (Distribuidor ahí es solo el cliente/revendedor); si
+// Proveedor viene vacía, la tienda es la de "Distribuidor" (bodega propia).
+function rawTiendaValue(row, colMap) {
+    const proveedorVal = colMap.proveedor ? String(row[colMap.proveedor] ?? '').trim() : '';
+    if (proveedorVal) return proveedorVal;
+    const distribuidorVal = colMap.distribuidor ? String(row[colMap.distribuidor] ?? '').trim() : '';
+    return distribuidorVal || 'N/D';
+}
+
 /* ── AGRUPACIÓN GENÉRICA POR (TIENDA + ID + FECHA), SUMANDO CANTIDAD ── */
 function groupRows(rows, colMap) {
     const map = new Map();
     rows.forEach(r => {
         const id = String(r[colMap.id] ?? '').trim();
         if (!id) return;
-        const tienda = colMap.tienda ? (String(r[colMap.tienda] ?? '').trim() || 'N/D') : 'N/D';
+        const tienda = rawTiendaValue(r, colMap);
         const { key: fechaKey, display: fechaDisplay } = parseDate(r[colMap.fecha]);
         const qty = parseQty(r[colMap.cantidad]);
         const mapKey = `${tienda}||${id}||${fechaKey}`;
@@ -1053,9 +1075,9 @@ function groupRows(rows, colMap) {
    reportan combinaciones donde Base > Movimientos (unidades que se
    suponía salieron pero no quedaron registradas como salida). */
 function computeAnalysisA() {
-    const baseMap = groupRows(baseRows, { tienda: cols.baseTienda, id: cols.baseId, fecha: cols.baseFecha, cantidad: cols.baseCantidad });
+    const baseMap = groupRows(baseRows, { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId, fecha: cols.baseFecha, cantidad: cols.baseCantidad });
     const movSalidaRows = movRows.filter(r => isSalida(r[cols.movEstado]));
-    const movMap = groupRows(movSalidaRows, { tienda: cols.movTienda, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
+    const movMap = groupRows(movSalidaRows, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
 
     const results = [];
     baseMap.forEach((b, key) => {
@@ -1076,7 +1098,7 @@ function computeAnalysisA() {
    combinación donde las cantidades no coinciden. */
 function computeAnalysisB() {
     const movDevRows = movRows.filter(r => isDevolucion(r[cols.movEstado]));
-    const movDevMap = groupRows(movDevRows, { tienda: cols.movTienda, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
+    const movDevMap = groupRows(movDevRows, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
 
     const movByIdFecha = new Map(); // "id||fechaKey" -> { qty, tiendas:Set, fechaDisplay }
     movDevMap.forEach(entry => {
@@ -1087,7 +1109,7 @@ function computeAnalysisB() {
         o.tiendas.add(entry.tienda);
     });
 
-    const devMap = groupRows(devRows, { tienda: cols.devTienda, id: cols.devId, fecha: cols.devFecha, cantidad: cols.devCantidad });
+    const devMap = groupRows(devRows, { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor, id: cols.devId, fecha: cols.devFecha, cantidad: cols.devCantidad });
     const devByIdFecha = new Map(); // "id||fechaKey" -> qty
     const displayByIdFecha = new Map();
     devMap.forEach(entry => {
