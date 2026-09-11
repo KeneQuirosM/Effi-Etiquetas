@@ -667,9 +667,17 @@ function detectColumn(headers, candidates) {
 // despachó/tiene el producto); "Distribuidor" ahí es solo el cliente/revendedor.
 // Solo cuando Proveedor viene vacía, la tienda es la de Distribuidor.
 // Ver rawTiendaValue() más abajo, donde se aplica esta prioridad.
-const DISTRIBUIDOR_CANDS = ['distribuidor', 'tienda', 'punto de venta', 'pdv', 'cliente', 'sucursal'];
+// "cliente" se sacó de la lista: en la hoja Devoluciones real hay una
+// columna "NOMBRE CLIENTE" (el comprador final, no una tienda) que
+// calzaba por substring ("nombre cliente".includes("cliente")) y se
+// detectaba por error como si fuera la columna de tienda.
+const DISTRIBUIDOR_CANDS = ['distribuidor', 'tienda', 'punto de venta', 'pdv', 'sucursal'];
 const PROVEEDOR_CANDS = ['proveedor dropshipping', 'proveedor', 'dropshipping'];
-const ID_CANDS = ['id articulo', 'id producto', 'codigo articulo', 'codigo producto', 'sku', 'id item', 'articulo'];
+// "id" y "codigo" van al final (menor prioridad): son genéricos, así que solo
+// se usan cuando no hay un candidato más específico como "id articulo" en la
+// misma hoja. Necesarios porque Movimientos/Devoluciones suelen traer el
+// artículo simplemente bajo el encabezado "ID", sin calificarlo.
+const ID_CANDS = ['id articulo', 'id producto', 'codigo articulo', 'codigo producto', 'sku', 'id item', 'articulo', 'id', 'codigo'];
 const ID_MOV_CANDS = ID_CANDS.concat(['movimiento', 'id movimiento', 'no movimiento', 'numero movimiento']);
 const FECHA_DESPACHO_CANDS = ['fecha relacion de despacho', 'fecha relacion despacho', 'fecha rel despacho', 'fecha despacho', 'fecha de despacho', 'fecha relacion'];
 const FECHA_GENERIC_CANDS = ['fecha movimiento', 'fecha mov', 'fecha'];
@@ -1140,6 +1148,29 @@ function groupRows(rows, colMap) {
     return map;
 }
 
+/* ── COBERTURA DE FECHAS ──────────────────────────────────────────
+   Si Movimientos empieza a registrar salidas en una fecha muy posterior
+   al primer despacho en Base, cualquier despacho anterior a esa fecha
+   nunca podrá tener una salida correspondiente — no porque falte
+   registrarla, sino porque Movimientos todavía no existía para ese
+   período. Sin este aviso, esos casos se ven idénticos a una
+   discrepancia real y el resultado del Análisis A es difícil de leer. */
+function checkDateCoverage() {
+    if (!cols.baseFecha || !cols.movFecha) return;
+    const baseDates = baseRows.map(r => parseDate(r[cols.baseFecha]).key).filter(Boolean).sort();
+    const movSalidaRows = movRows.filter(r => isSalida(r[cols.movEstado]));
+    const movDates = movSalidaRows.map(r => parseDate(r[cols.movFecha]).key).filter(Boolean).sort();
+    if (!baseDates.length || !movDates.length) return;
+
+    const baseMin = baseDates[0];
+    const movMin = movDates[0];
+    if (movMin > baseMin) {
+        const msg = `Base tiene despachos desde ${baseMin}, pero Movimientos solo registra salidas desde ${movMin}. Los despachos anteriores a esa fecha no pueden tener coincidencia y van a aparecer como discrepancia aunque no sea un error real.`;
+        addLog('ADVERTENCIA: COBERTURA DE FECHAS DISTINTA', msg);
+        notify(msg, 'warn', 9000);
+    }
+}
+
 /* ── ANÁLISIS 1 — BASE VS SALIDAS ────────────────────────────────
    Compara, por (tienda + id + fecha), la cantidad despachada en Base
    contra la cantidad registrada como salida en Movimientos. Solo se
@@ -1151,12 +1182,45 @@ function computeAnalysisA() {
     const movMap = groupRows(movSalidaRows, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
 
     const results = [];
-    baseMap.forEach((b, key) => {
-        const m = movMap.get(key);
-        const movQty = m ? m.qty : 0;
+    // Movimientos suele ser un registro de bodega general que no distingue
+    // tienda por fila (a diferencia de Base). Si no se detectó ninguna
+    // columna de tienda ahí, cruzar por tienda+id+fecha nunca podría calzar
+    // — cada fila de Base marcaría "falta todo" aunque sí haya salida
+    // registrada, solo que a nivel de bodega. En ese caso se compara a
+    // nivel id+fecha (sumando Base entre todas sus tiendas), igual que ya
+    // se hace en el Análisis 2 para Devoluciones.
+    const movHasTienda = !!(cols.movDistribuidor || cols.movProveedor);
+
+    if (movHasTienda) {
+        baseMap.forEach((b, key) => {
+            const m = movMap.get(key);
+            const movQty = m ? m.qty : 0;
+            const diferencia = b.qty - movQty;
+            if (diferencia > 0) {
+                results.push({ tienda: b.tienda, id: b.id, fecha: b.fechaDisplay || b.fechaKey, fechaKey: b.fechaKey, cantBase: b.qty, cantMov: movQty, diferencia });
+            }
+        });
+        return results;
+    }
+
+    const baseByIdFecha = new Map(); // "id||fechaKey" -> { id, fechaKey, fechaDisplay, qty, tiendas:Set }
+    baseMap.forEach(entry => {
+        const k = `${entry.id}||${entry.fechaKey}`;
+        if (!baseByIdFecha.has(k)) baseByIdFecha.set(k, { id: entry.id, fechaKey: entry.fechaKey, fechaDisplay: entry.fechaDisplay, qty: 0, tiendas: new Set() });
+        const o = baseByIdFecha.get(k);
+        o.qty += entry.qty;
+        o.tiendas.add(entry.tienda);
+    });
+    const movByIdFecha = new Map(); // "id||fechaKey" -> qty
+    movMap.forEach(entry => {
+        const k = `${entry.id}||${entry.fechaKey}`;
+        movByIdFecha.set(k, (movByIdFecha.get(k) || 0) + entry.qty);
+    });
+    baseByIdFecha.forEach((b, key) => {
+        const movQty = movByIdFecha.get(key) || 0;
         const diferencia = b.qty - movQty;
         if (diferencia > 0) {
-            results.push({ tienda: b.tienda, id: b.id, fecha: b.fechaDisplay || b.fechaKey, fechaKey: b.fechaKey, cantBase: b.qty, cantMov: movQty, diferencia });
+            results.push({ tienda: [...b.tiendas].join(', ') || 'N/D', id: b.id, fecha: b.fechaDisplay || b.fechaKey, fechaKey: b.fechaKey, cantBase: b.qty, cantMov: movQty, diferencia });
         }
     });
     return results;
@@ -1216,6 +1280,7 @@ async function runAnalysis() {
 
     try {
         addLog('ANÁLISIS INICIADO', excelFile ? excelFile.name : '');
+        checkDateCoverage();
         analysisAFull = computeAnalysisA();
         addLog('ANÁLISIS A COMPLETADO', `${analysisAFull.length} discrepancia(s) en Base vs Salidas`);
         analysisBFull = computeAnalysisB();
