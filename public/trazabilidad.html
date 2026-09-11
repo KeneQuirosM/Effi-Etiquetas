@@ -118,7 +118,7 @@ body {
 
 /* ══ DROPZONE ══ */
 .upload-grid { display: flex; gap: 18px; flex-wrap: wrap; }
-.dropzone-card { flex: 1 1 100%; }
+.dropzone-card { flex: 1 1 260px; min-width: 220px; }
 .dropzone-card-label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--neutral-800); font-weight: 500; font-size: 13px; }
 .dropzone-card-label i { color: var(--brand-500); font-size: 14px; }
 .dropzone {
@@ -173,6 +173,8 @@ body {
     cursor: pointer; min-width: 190px;
 }
 .filters-row select:focus { border-color: var(--brand-500); }
+.filters-hint { display: none; font-size: .72rem; color: var(--neutral-500); margin-top: -6px; padding-left: 2px; }
+.filters-hint.show { display: block; }
 
 /* ══ ACCIÓN PRINCIPAL ══ */
 .compare-action { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
@@ -378,20 +380,45 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
 
     <div class="section-content">
 
-        <!-- ZONA DE CARGA -->
+        <!-- ZONA DE CARGA — 3 archivos independientes, uno por hoja -->
         <div class="upload-grid">
             <div class="dropzone-card">
-                <div class="dropzone-card-label">
-                    <i class="fas fa-file-excel"></i>
-                    Archivo de Trazabilidad (.xlsx) — hojas "Base", "Movimientos" y "Devoluciones"
-                </div>
-                <div class="dropzone" id="excelDropzone">
-                    <input type="file" id="excelInput" accept=".xlsx">
-                    <div id="excelDropzoneContent">
+                <div class="dropzone-card-label"><i class="fas fa-file-excel"></i> Base (.xlsx)</div>
+                <div class="dropzone" id="baseDropzone">
+                    <input type="file" id="baseInput" accept=".xlsx">
+                    <div id="baseDropzoneContent">
                         <div class="dropzone-icon"><i class="fas fa-file-excel"></i></div>
-                        <div class="dropzone-title">Arrastra el Excel aquí</div>
+                        <div class="dropzone-title">Arrastra el Excel de Base aquí</div>
                         <div class="dropzone-hint">o haz clic para seleccionar un archivo .xlsx</div>
-                        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn">
+                        <button type="button" class="dropzone-browse-btn" id="baseBrowseBtn">
+                            <i class="fas fa-upload"></i> Examinar archivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="dropzone-card">
+                <div class="dropzone-card-label"><i class="fas fa-file-excel"></i> Movimientos (.xlsx)</div>
+                <div class="dropzone" id="movDropzone">
+                    <input type="file" id="movInput" accept=".xlsx">
+                    <div id="movDropzoneContent">
+                        <div class="dropzone-icon"><i class="fas fa-file-excel"></i></div>
+                        <div class="dropzone-title">Arrastra el Excel de Movimientos aquí</div>
+                        <div class="dropzone-hint">o haz clic para seleccionar un archivo .xlsx</div>
+                        <button type="button" class="dropzone-browse-btn" id="movBrowseBtn">
+                            <i class="fas fa-upload"></i> Examinar archivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="dropzone-card">
+                <div class="dropzone-card-label"><i class="fas fa-file-excel"></i> Devoluciones (.xlsx)</div>
+                <div class="dropzone" id="devDropzone">
+                    <input type="file" id="devInput" accept=".xlsx">
+                    <div id="devDropzoneContent">
+                        <div class="dropzone-icon"><i class="fas fa-file-excel"></i></div>
+                        <div class="dropzone-title">Arrastra el Excel de Devoluciones aquí</div>
+                        <div class="dropzone-hint">o haz clic para seleccionar un archivo .xlsx</div>
+                        <button type="button" class="dropzone-browse-btn" id="devBrowseBtn">
                             <i class="fas fa-upload"></i> Examinar archivo
                         </button>
                     </div>
@@ -399,14 +426,17 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
             </div>
         </div>
 
-        <!-- FILTROS OPCIONALES -->
+        <!-- FILTROS / ALCANCE DEL ANÁLISIS -->
         <div class="filters-row" id="filtersRow">
             <i class="fas fa-filter"></i>
+            <label for="filterTienda">Tienda para trazabilidad:</label>
+            <select id="filterTienda"><option value="">-- Todas las tiendas --</option></select>
             <label for="filterId">Filtrar por ID artículo:</label>
             <select id="filterId"><option value="">-- Todos --</option></select>
-            <label for="filterTienda">Filtrar por tienda/distribuidor:</label>
-            <select id="filterTienda"><option value="">-- Todas --</option></select>
             <button type="button" class="btn btn-ghost" id="clearFiltersBtn"><i class="fas fa-eraser"></i> Limpiar filtros</button>
+        </div>
+        <div class="filters-hint" id="filtersHint">
+            Selecciona una tienda para enfocar el análisis solo en ella (recalcula automáticamente) — útil para una trazabilidad más detallada.
         </div>
 
         <!-- ACCIONES PRINCIPALES -->
@@ -601,7 +631,8 @@ function notify(msg, type = 'info', duration) {
 }
 
 /* ── ESTADO GLOBAL ────────────────────────────────────────────── */
-let excelFile = null;
+let baseFile = null, movFile = null, devFile = null;
+let baseLoaded = false, movLoaded = false, devLoaded = false;
 let baseRows = [], movRows = [], devRows = [];
 let cols = {}; // columnas detectadas por hoja
 let analysisAFull = []; // Base vs Salidas (todas las discrepancias, sin filtrar)
@@ -609,6 +640,7 @@ let analysisBFull = []; // Mov. Devoluciones vs Devoluciones (todas las filas, s
 let sortStateA = { key: 'diferencia', dir: 'desc' };
 let sortStateB = { key: 'diferencia', dir: 'desc' };
 let auditLog = [];
+let hasAnalyzed = false; // true tras la primera corrida — habilita el re-análisis automático al cambiar de tienda
 
 /* ── AUDITORÍA ────────────────────────────────────────────────── */
 function addLog(action, detail) {
@@ -895,151 +927,182 @@ function wireDropzone(zoneId, inputId, browseBtnId, accept, onFile) {
     });
 }
 
-function setExcelLoading() {
-    const zone = document.getElementById('excelDropzone');
+function setFileLoading(prefix, label) {
+    const zone = document.getElementById(prefix + 'Dropzone');
     zone.classList.remove('has-file', 'is-error');
     zone.classList.add('is-loading');
-    document.getElementById('excelDropzoneContent').innerHTML = `<div class="spinner"></div><div class="dropzone-title">Leyendo Excel...</div>`;
+    document.getElementById(prefix + 'DropzoneContent').innerHTML = `<div class="spinner"></div><div class="dropzone-title">Leyendo ${esc(label)}...</div>`;
 }
-function setExcelLoaded(file, summary) {
-    const zone = document.getElementById('excelDropzone');
+function setFileLoaded(prefix, file, summary) {
+    const zone = document.getElementById(prefix + 'Dropzone');
     zone.classList.remove('is-loading', 'is-error');
     zone.classList.add('has-file');
-    document.getElementById('excelDropzoneContent').innerHTML = `
+    document.getElementById(prefix + 'DropzoneContent').innerHTML = `
         <div class="dropzone-icon"><i class="fas fa-check-circle"></i></div>
         <div class="dropzone-filename">${esc(file.name)}</div>
         <div class="dropzone-meta">${esc(summary)}</div>
-        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn"><i class="fas fa-rotate"></i> Cambiar archivo</button>`;
-    document.getElementById('excelBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('excelInput').click(); });
+        <button type="button" class="dropzone-browse-btn" id="${prefix}BrowseBtn"><i class="fas fa-rotate"></i> Cambiar archivo</button>`;
+    document.getElementById(prefix + 'BrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById(prefix + 'Input').click(); });
 }
-function setExcelError(msg) {
-    const zone = document.getElementById('excelDropzone');
+function setFileError(prefix, msg) {
+    const zone = document.getElementById(prefix + 'Dropzone');
     zone.classList.remove('has-file', 'is-loading');
     zone.classList.add('is-error');
-    document.getElementById('excelDropzoneContent').innerHTML = `
+    document.getElementById(prefix + 'DropzoneContent').innerHTML = `
         <div class="dropzone-icon"><i class="fas fa-triangle-exclamation"></i></div>
         <div class="dropzone-title">${esc(msg)}</div>
-        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn"><i class="fas fa-upload"></i> Intentar de nuevo</button>`;
-    document.getElementById('excelBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('excelInput').click(); });
+        <button type="button" class="dropzone-browse-btn" id="${prefix}BrowseBtn"><i class="fas fa-upload"></i> Intentar de nuevo</button>`;
+    document.getElementById(prefix + 'BrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById(prefix + 'Input').click(); });
 }
 
-/* ── LECTURA Y VALIDACIÓN DEL EXCEL ──────────────────────────────
-   Carga las 3 hojas requeridas, detecta sus columnas clave y puebla
-   los filtros. No bloquea el análisis si falta alguna columna
-   secundaria (usa "N/D" como respaldo), pero siempre avisa. */
-function handleExcelFile(file) {
-    excelFile = file;
+// Lee un archivo .xlsx y devuelve el workbook completo (SheetJS) — cada
+// hoja individual puede tener su propio nombre de pestaña o incluso venir
+// sin nombrar "Base"/"Movimientos"/"Devoluciones" si el usuario exportó un
+// único-hoja por archivo, así que el llamador decide con qué hoja quedarse.
+function readWorkbook(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try { resolve(XLSX.read(new Uint8Array(evt.target.result), { type: 'array', cellDates: true })); }
+            catch (err) { reject(err); }
+        };
+        reader.onerror = () => reject(new Error('Error leyendo el archivo'));
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+/* ── CARGA DE LOS 3 ARCHIVOS INDEPENDIENTES ──────────────────────
+   Cada archivo se procesa por separado: se busca la hoja por nombre
+   ("Base"/"Movimientos"/"Devoluciones") y, si no se encuentra con ese
+   nombre exacto (el usuario pudo exportar el archivo con una sola hoja
+   sin renombrarla), se usa la primera hoja del libro. "Analizar" solo
+   se habilita cuando los 3 están cargados. */
+async function handleBaseFile(file) {
+    baseFile = file; baseLoaded = false;
     resetAnalysisState();
-    setExcelLoading();
+    setFileLoading('base', 'Base');
+    try {
+        const wb = await readWorkbook(file);
+        const sheetName = findSheet(wb, ['base']) || wb.SheetNames[0];
+        baseRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+        if (!baseRows.length) throw new Error('La hoja no tiene filas de datos');
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-        try {
-            const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array', cellDates: true });
+        const headers = Object.keys(baseRows[0]);
+        cols.baseDistribuidor = detectColumn(headers, DISTRIBUIDOR_CANDS);
+        cols.baseProveedor = detectColumn(headers, PROVEEDOR_CANDS);
+        cols.baseId = detectColumn(headers, ID_CANDS);
+        cols.baseFecha = detectColumn(headers, FECHA_DESPACHO_CANDS) || detectColumn(headers, FECHA_GENERIC_CANDS);
+        cols.baseCantidad = detectColumn(headers, CANTIDAD_CANDS);
 
-            const baseSheet = findSheet(wb, ['base']);
-            const movSheet = findSheet(wb, ['movimientos', 'movimiento']);
-            const devSheet = findSheet(wb, ['devoluciones', 'devolucion']);
-            const missingSheets = [];
-            if (!baseSheet) missingSheets.push('Base');
-            if (!movSheet) missingSheets.push('Movimientos');
-            if (!devSheet) missingSheets.push('Devoluciones');
-            if (missingSheets.length) {
-                setExcelError(`Faltan hojas: ${missingSheets.join(', ')}`);
-                addLog('EXCEL: ERROR', `Hojas faltantes: ${missingSheets.join(', ')}`);
-                notify(`El archivo no tiene las hojas requeridas: ${missingSheets.join(', ')}`, 'err');
-                return;
-            }
+        addLog('ARCHIVO BASE CARGADO', `${file.name} · ${baseRows.length} filas (hoja "${sheetName}")`);
+        addLog('COLUMNAS DETECTADAS — BASE', `Distribuidor: "${cols.baseDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.baseProveedor || '(no encontrada)'}" · ID: "${cols.baseId || '(no encontrada)'}" · Fecha: "${cols.baseFecha || '(no encontrada)'}" · Cantidad: "${cols.baseCantidad || '(no encontrada)'}"`);
+        setFileLoaded('base', file, `${baseRows.length} filas (hoja "${sheetName}")`);
+        baseLoaded = true;
+        notify(`Base cargada: ${baseRows.length} filas`, 'ok');
+    } catch (err) {
+        setFileError('base', 'Archivo corrupto o formato inválido');
+        addLog('BASE: ERROR', err.message);
+        notify(`Error leyendo Base: ${err.message}`, 'err');
+    }
+    afterFileLoaded();
+}
 
-            baseRows = XLSX.utils.sheet_to_json(wb.Sheets[baseSheet], { defval: '' });
-            movRows = XLSX.utils.sheet_to_json(wb.Sheets[movSheet], { defval: '' });
-            devRows = XLSX.utils.sheet_to_json(wb.Sheets[devSheet], { defval: '' });
+async function handleMovFile(file) {
+    movFile = file; movLoaded = false;
+    resetAnalysisState();
+    setFileLoading('mov', 'Movimientos');
+    try {
+        const wb = await readWorkbook(file);
+        const sheetName = findSheet(wb, ['movimientos', 'movimiento']) || wb.SheetNames[0];
+        movRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+        if (!movRows.length) throw new Error('La hoja no tiene filas de datos');
 
-            if (!baseRows.length || !movRows.length || !devRows.length) {
-                setExcelError('Una o más hojas no tienen filas de datos');
-                addLog('EXCEL: ERROR', 'Hoja(s) vacía(s)');
-                notify('Una o más hojas están vacías', 'err');
-                return;
-            }
+        const headers = Object.keys(movRows[0]);
+        cols.movDistribuidor = detectColumn(headers, DISTRIBUIDOR_CANDS);
+        cols.movProveedor = detectColumn(headers, PROVEEDOR_CANDS);
+        cols.movId = detectColumn(headers, ID_CANDS);
+        cols.movFecha = detectColumn(headers, FECHA_GENERIC_CANDS);
+        cols.movCantidad = detectColumn(headers, CANTIDAD_CANDS);
+        cols.movEstado = detectColumn(headers, ESTADO_CANDS);
 
-            const baseHeaders = Object.keys(baseRows[0]);
-            const movHeaders = Object.keys(movRows[0]);
-            const devHeaders = Object.keys(devRows[0]);
+        addLog('ARCHIVO MOVIMIENTOS CARGADO', `${file.name} · ${movRows.length} filas (hoja "${sheetName}")`);
+        addLog('COLUMNAS DETECTADAS — MOVIMIENTOS', `Distribuidor: "${cols.movDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.movProveedor || '(no encontrada)'}" · ID: "${cols.movId || '(no encontrada)'}" · Fecha: "${cols.movFecha || '(no encontrada)'}" · Cantidad: "${cols.movCantidad || '(no encontrada)'}" · Estado: "${cols.movEstado || '(no encontrada)'}"`);
+        setFileLoaded('mov', file, `${movRows.length} filas (hoja "${sheetName}")`);
+        movLoaded = true;
+        notify(`Movimientos cargado: ${movRows.length} filas`, 'ok');
+    } catch (err) {
+        setFileError('mov', 'Archivo corrupto o formato inválido');
+        addLog('MOVIMIENTOS: ERROR', err.message);
+        notify(`Error leyendo Movimientos: ${err.message}`, 'err');
+    }
+    afterFileLoaded();
+}
 
-            cols = {
-                baseDistribuidor: detectColumn(baseHeaders, DISTRIBUIDOR_CANDS),
-                baseProveedor: detectColumn(baseHeaders, PROVEEDOR_CANDS),
-                baseId: detectColumn(baseHeaders, ID_CANDS),
-                baseFecha: detectColumn(baseHeaders, FECHA_DESPACHO_CANDS) || detectColumn(baseHeaders, FECHA_GENERIC_CANDS),
-                baseCantidad: detectColumn(baseHeaders, CANTIDAD_CANDS),
+async function handleDevFile(file) {
+    devFile = file; devLoaded = false;
+    resetAnalysisState();
+    setFileLoading('dev', 'Devoluciones');
+    try {
+        const wb = await readWorkbook(file);
+        const sheetName = findSheet(wb, ['devoluciones', 'devolucion']) || wb.SheetNames[0];
+        devRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+        if (!devRows.length) throw new Error('La hoja no tiene filas de datos');
 
-                movDistribuidor: detectColumn(movHeaders, DISTRIBUIDOR_CANDS),
-                movProveedor: detectColumn(movHeaders, PROVEEDOR_CANDS),
-                movId: detectColumn(movHeaders, ID_CANDS),
-                movFecha: detectColumn(movHeaders, FECHA_GENERIC_CANDS),
-                movCantidad: detectColumn(movHeaders, CANTIDAD_CANDS),
-                movEstado: detectColumn(movHeaders, ESTADO_CANDS),
+        const headers = Object.keys(devRows[0]);
+        cols.devDistribuidor = detectColumn(headers, DISTRIBUIDOR_CANDS);
+        cols.devProveedor = detectColumn(headers, PROVEEDOR_CANDS);
+        cols.devId = detectColumn(headers, ID_MOV_CANDS);
+        cols.devFecha = detectColumn(headers, FECHA_GENERIC_CANDS);
+        cols.devCantidad = detectColumn(headers, CANTIDAD_CANDS);
 
-                devDistribuidor: detectColumn(devHeaders, DISTRIBUIDOR_CANDS),
-                devProveedor: detectColumn(devHeaders, PROVEEDOR_CANDS),
-                devId: detectColumn(devHeaders, ID_MOV_CANDS),
-                devFecha: detectColumn(devHeaders, FECHA_GENERIC_CANDS),
-                devCantidad: detectColumn(devHeaders, CANTIDAD_CANDS)
-            };
+        addLog('ARCHIVO DEVOLUCIONES CARGADO', `${file.name} · ${devRows.length} filas (hoja "${sheetName}")`);
+        addLog('COLUMNAS DETECTADAS — DEVOLUCIONES', `Distribuidor: "${cols.devDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.devProveedor || '(no encontrada)'}" · ID: "${cols.devId || '(no encontrada)'}" · Fecha: "${cols.devFecha || '(no encontrada)'}" · Cantidad: "${cols.devCantidad || '(no encontrada)'}"`);
+        setFileLoaded('dev', file, `${devRows.length} filas (hoja "${sheetName}")`);
+        devLoaded = true;
+        notify(`Devoluciones cargado: ${devRows.length} filas`, 'ok');
+    } catch (err) {
+        setFileError('dev', 'Archivo corrupto o formato inválido');
+        addLog('DEVOLUCIONES: ERROR', err.message);
+        notify(`Error leyendo Devoluciones: ${err.message}`, 'err');
+    }
+    afterFileLoaded();
+}
 
-            addLog('HOJA BASE CARGADA', `${baseRows.length} filas`);
-            addLog('HOJA MOVIMIENTOS CARGADA', `${movRows.length} filas`);
-            addLog('HOJA DEVOLUCIONES CARGADA', `${devRows.length} filas`);
+// Se llama tras cada carga individual: habilita "Analizar" solo cuando
+// los 3 archivos están listos, y solo entonces valida columnas y puebla
+// los filtros (antes de eso no hay suficiente información para avisar
+// nada útil).
+function afterFileLoaded() {
+    document.getElementById('analyzeBtn').disabled = !(baseLoaded && movLoaded && devLoaded);
+    if (!(baseLoaded && movLoaded && devLoaded)) return;
 
-            // Deja explícito en la auditoría qué columna se usó para cada campo
-            // clave — así, si el filtro de tienda muestra algo raro (números
-            // sueltos, texto que no corresponde), se puede ver de inmediato
-            // qué encabezado del Excel se está leyendo, sin adivinar.
-            addLog('COLUMNAS DETECTADAS — BASE', `Distribuidor: "${cols.baseDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.baseProveedor || '(no encontrada)'}" · ID: "${cols.baseId || '(no encontrada)'}" · Fecha: "${cols.baseFecha || '(no encontrada)'}" · Cantidad: "${cols.baseCantidad || '(no encontrada)'}"`);
-            addLog('COLUMNAS DETECTADAS — MOVIMIENTOS', `Distribuidor: "${cols.movDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.movProveedor || '(no encontrada)'}" · ID: "${cols.movId || '(no encontrada)'}" · Fecha: "${cols.movFecha || '(no encontrada)'}" · Cantidad: "${cols.movCantidad || '(no encontrada)'}" · Estado: "${cols.movEstado || '(no encontrada)'}"`);
-            addLog('COLUMNAS DETECTADAS — DEVOLUCIONES', `Distribuidor: "${cols.devDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.devProveedor || '(no encontrada)'}" · ID: "${cols.devId || '(no encontrada)'}" · Fecha: "${cols.devFecha || '(no encontrada)'}" · Cantidad: "${cols.devCantidad || '(no encontrada)'}"`);
+    const missingCols = [];
+    if (!cols.baseDistribuidor && !cols.baseProveedor) missingCols.push('Base: Distribuidor/Proveedor Dropshipping');
+    if (!cols.baseId) missingCols.push('Base: ID artículo');
+    if (!cols.baseFecha) missingCols.push('Base: Fecha relación de despacho');
+    if (!cols.baseCantidad) missingCols.push('Base: Cantidad');
+    if (!cols.movDistribuidor && !cols.movProveedor) missingCols.push('Movimientos: Distribuidor/Proveedor Dropshipping');
+    if (!cols.movId) missingCols.push('Movimientos: ID artículo');
+    if (!cols.movFecha) missingCols.push('Movimientos: Fecha');
+    if (!cols.movCantidad) missingCols.push('Movimientos: Cantidad');
+    if (!cols.movEstado) missingCols.push('Movimientos: Estado/Tipo');
+    if (!cols.devId) missingCols.push('Devoluciones: ID/Movimiento');
+    if (!cols.devFecha) missingCols.push('Devoluciones: Fecha');
+    if (!cols.devCantidad) missingCols.push('Devoluciones: Cantidad');
+    if (missingCols.length) {
+        addLog('ADVERTENCIA: COLUMNAS NO DETECTADAS', missingCols.join(' · '));
+        notify(`No se detectaron algunas columnas clave: ${missingCols.join(', ')}`, 'warn');
+    }
 
-            const missingCols = [];
-            if (!cols.baseDistribuidor && !cols.baseProveedor) missingCols.push('Base: Distribuidor/Proveedor Dropshipping');
-            if (!cols.baseId) missingCols.push('Base: ID artículo');
-            if (!cols.baseFecha) missingCols.push('Base: Fecha relación de despacho');
-            if (!cols.baseCantidad) missingCols.push('Base: Cantidad');
-            if (!cols.movDistribuidor && !cols.movProveedor) missingCols.push('Movimientos: Distribuidor/Proveedor Dropshipping');
-            if (!cols.movId) missingCols.push('Movimientos: ID artículo');
-            if (!cols.movFecha) missingCols.push('Movimientos: Fecha');
-            if (!cols.movCantidad) missingCols.push('Movimientos: Cantidad');
-            if (!cols.movEstado) missingCols.push('Movimientos: Estado/Tipo');
-            if (!cols.devId) missingCols.push('Devoluciones: ID/Movimiento');
-            if (!cols.devFecha) missingCols.push('Devoluciones: Fecha');
-            if (!cols.devCantidad) missingCols.push('Devoluciones: Cantidad');
-
-            if (missingCols.length) {
-                addLog('ADVERTENCIA: COLUMNAS NO DETECTADAS', missingCols.join(' · '));
-                notify(`No se detectaron algunas columnas clave: ${missingCols.join(', ')}`, 'warn');
-            }
-
-            populateFilters();
-            const summary = `Base: ${baseRows.length} filas · Movimientos: ${movRows.length} filas · Devoluciones: ${devRows.length} filas`;
-            setExcelLoaded(file, summary);
-            notify(summary, 'ok');
-            document.getElementById('analyzeBtn').disabled = false;
-        } catch (err) {
-            setExcelError('Archivo corrupto o formato inválido');
-            addLog('EXCEL: ERROR', err.message);
-            notify(`Error leyendo Excel: ${err.message}`, 'err');
-        }
-    };
-    reader.onerror = () => { setExcelError('Error leyendo el archivo'); notify('Error leyendo el archivo', 'err'); };
-    reader.readAsArrayBuffer(file);
+    populateFilters();
 }
 
 function resetAnalysisState() {
     document.getElementById('resultsPanel').classList.remove('show');
-    document.getElementById('analyzeBtn').disabled = true;
     document.getElementById('exportBtn').disabled = true;
-    document.getElementById('filtersRow').classList.remove('show');
     closeMetricDetail();
     analysisAFull = []; analysisBFull = [];
+    hasAnalyzed = false;
 }
 
 /* ── FILTROS OPCIONALES (por ID artículo y por tienda/distribuidor) ── */
@@ -1061,9 +1124,10 @@ function populateFilters() {
     const tiendaSelect = document.getElementById('filterTienda');
     allDetectedIds = [...ids].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
     const sortedTiendas = [...tiendas].sort((a, b) => a.localeCompare(b, 'es'));
-    tiendaSelect.innerHTML = '<option value="">-- Todas --</option>' + sortedTiendas.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    tiendaSelect.innerHTML = '<option value="">-- Todas las tiendas --</option>' + sortedTiendas.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
     updateIdFilterOptions();
     document.getElementById('filtersRow').classList.add('show');
+    document.getElementById('filtersHint').classList.add('show');
 }
 
 // Filtro en cascada: si hay una tienda seleccionada y la BD la reconoce,
@@ -1176,10 +1240,25 @@ function checkDateCoverage() {
    contra la cantidad registrada como salida en Movimientos. Solo se
    reportan combinaciones donde Base > Movimientos (unidades que se
    suponía salieron pero no quedaron registradas como salida). */
-function computeAnalysisA() {
-    const baseMap = groupRows(baseRows, { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId, fecha: cols.baseFecha, cantidad: cols.baseCantidad });
-    const movSalidaRows = movRows.filter(r => isSalida(r[cols.movEstado]));
-    const movMap = groupRows(movSalidaRows, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
+// Restringe las filas a una sola tienda cuando se seleccionó una para el
+// análisis ("trazabilidad detallada"). Si la hoja no tiene columna de
+// tienda (Movimientos/Devoluciones suelen no tenerla), no hay nada que
+// filtrar ahí — se devuelven las filas tal cual, porque esa hoja no puede
+// atribuirse a una tienda en particular.
+function maybeScopeRows(rows, colMap, tiendaScope) {
+    if (!tiendaScope) return rows;
+    if (!colMap.distribuidor && !colMap.proveedor) return rows;
+    return rows.filter(r => canonicalTienda(rawTiendaValue(r, colMap)) === tiendaScope);
+}
+
+function computeAnalysisA(tiendaScope) {
+    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor };
+    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor };
+    const scopedBaseRows = maybeScopeRows(baseRows, baseColMap, tiendaScope);
+    const movSalidaRows = maybeScopeRows(movRows.filter(r => isSalida(r[cols.movEstado])), movColMap, tiendaScope);
+
+    const baseMap = groupRows(scopedBaseRows, { ...baseColMap, id: cols.baseId, fecha: cols.baseFecha, cantidad: cols.baseCantidad });
+    const movMap = groupRows(movSalidaRows, { ...movColMap, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
 
     const results = [];
     // Movimientos suele ser un registro de bodega general que no distingue
@@ -1231,9 +1310,11 @@ function computeAnalysisA() {
    y las de la hoja Devoluciones (id+fecha, sin tienda). Reduce ambas a
    la clave común (id+fecha) para comparar los totales, señalando toda
    combinación donde las cantidades no coinciden. */
-function computeAnalysisB() {
-    const movDevRows = movRows.filter(r => isDevolucion(r[cols.movEstado]));
-    const movDevMap = groupRows(movDevRows, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
+function computeAnalysisB(tiendaScope) {
+    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor };
+    const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor };
+    const movDevRows = maybeScopeRows(movRows.filter(r => isDevolucion(r[cols.movEstado])), movColMap, tiendaScope);
+    const movDevMap = groupRows(movDevRows, { ...movColMap, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
 
     const movByIdFecha = new Map(); // "id||fechaKey" -> { qty, tiendas:Set, fechaDisplay }
     movDevMap.forEach(entry => {
@@ -1244,7 +1325,8 @@ function computeAnalysisB() {
         o.tiendas.add(entry.tienda);
     });
 
-    const devMap = groupRows(devRows, { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor, id: cols.devId, fecha: cols.devFecha, cantidad: cols.devCantidad });
+    const scopedDevRows = maybeScopeRows(devRows, devColMap, tiendaScope);
+    const devMap = groupRows(scopedDevRows, { ...devColMap, id: cols.devId, fecha: cols.devFecha, cantidad: cols.devCantidad });
     const devByIdFecha = new Map(); // "id||fechaKey" -> qty
     const displayByIdFecha = new Map();
     devMap.forEach(entry => {
@@ -1279,18 +1361,21 @@ async function runAnalysis() {
     await new Promise(r => setTimeout(r, 30)); // deja pintar el spinner antes del cálculo síncrono
 
     try {
-        addLog('ANÁLISIS INICIADO', excelFile ? excelFile.name : '');
+        const tiendaScope = document.getElementById('filterTienda').value || null;
+        const filesLabel = [baseFile, movFile, devFile].filter(Boolean).map(f => f.name).join(' · ');
+        addLog('ANÁLISIS INICIADO', tiendaScope ? `${filesLabel} — tienda: ${tiendaScope}` : filesLabel);
         checkDateCoverage();
-        analysisAFull = computeAnalysisA();
+        analysisAFull = computeAnalysisA(tiendaScope);
         addLog('ANÁLISIS A COMPLETADO', `${analysisAFull.length} discrepancia(s) en Base vs Salidas`);
-        analysisBFull = computeAnalysisB();
+        analysisBFull = computeAnalysisB(tiendaScope);
         const diffCountB = analysisBFull.filter(r => r.diferencia !== 0).length;
         addLog('ANÁLISIS B COMPLETADO', `${diffCountB} diferencia(s) en Devoluciones`);
 
         renderAll();
         document.getElementById('resultsPanel').classList.add('show');
         document.getElementById('exportBtn').disabled = false;
-        notify('Análisis de trazabilidad completado', 'ok');
+        hasAnalyzed = true;
+        notify(tiendaScope ? `Análisis completado para "${tiendaScope}"` : 'Análisis de trazabilidad completado', 'ok');
     } catch (err) {
         notify(`Error al analizar: ${err.message}`, 'err');
         addLog('ANÁLISIS: ERROR', err.message);
@@ -1606,7 +1691,9 @@ function exportResults() {
 }
 
 /* ── INIT ─────────────────────────────────────────────────────── */
-wireDropzone('excelDropzone', 'excelInput', 'excelBrowseBtn', '.xlsx', handleExcelFile);
+wireDropzone('baseDropzone', 'baseInput', 'baseBrowseBtn', '.xlsx', handleBaseFile);
+wireDropzone('movDropzone', 'movInput', 'movBrowseBtn', '.xlsx', handleMovFile);
+wireDropzone('devDropzone', 'devInput', 'devBrowseBtn', '.xlsx', handleDevFile);
 wireAccordion();
 wireMetricCards();
 loadTiendaDatabase(); // no bloqueante — si falla (p.ej. abierto como file://), sigue con los valores del Excel
@@ -1616,12 +1703,18 @@ wireSortableHeaders('tableB', () => sortStateB, (s) => { sortStateB = s; }, rend
 document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
 document.getElementById('exportBtn').addEventListener('click', exportResults);
 document.getElementById('filterId').addEventListener('change', () => { renderTableA(); renderTableB(); });
-document.getElementById('filterTienda').addEventListener('change', () => { updateIdFilterOptions(); renderTableA(); renderTableB(); });
+// Cambiar la tienda de trazabilidad, una vez que ya se corrió un análisis,
+// vuelve a calcular todo con ese nuevo alcance (no es un simple filtro de
+// pantalla) — así el dropdown "pregunta" la tienda y recalcula en el acto.
+document.getElementById('filterTienda').addEventListener('change', () => {
+    updateIdFilterOptions();
+    if (hasAnalyzed) runAnalysis(); else { renderTableA(); renderTableB(); }
+});
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
     document.getElementById('filterTienda').value = '';
     updateIdFilterOptions();
     document.getElementById('filterId').value = '';
-    renderTableA(); renderTableB();
+    if (hasAnalyzed) runAnalysis(); else { renderTableA(); renderTableB(); }
 });
 
 renderLogs();
