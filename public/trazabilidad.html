@@ -182,14 +182,16 @@ body {
 .metrics-grid { display: flex; flex-wrap: nowrap; gap: 14px; overflow-x: auto; padding-bottom: 4px; }
 .metric-card {
     flex: 1; min-width: 190px; display: flex; align-items: center; gap: 14px;
-    padding: 18px 20px; border-radius: var(--radius-lg); color: white;
+    padding: 18px 20px; padding-bottom: 26px; border-radius: var(--radius-lg); color: white;
     transition: var(--transition); position: relative; overflow: hidden;
+    cursor: pointer; border: 2px solid transparent; text-align: left;
 }
 .metric-card::after {
     content: ''; position: absolute; top: -30%; right: -10%;
     width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,.08);
 }
 .metric-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.metric-card.active { border-color: rgba(255,255,255,.7); box-shadow: var(--shadow-md); transform: translateY(-3px); }
 .metric-card.total { background: var(--brand-800); }
 .metric-card.correct { background: var(--success-mid); }
 .metric-card.warning { background: var(--warning-mid); }
@@ -197,6 +199,44 @@ body {
 .metric-icon { font-size: 1.5rem; opacity: .85; flex-shrink: 0; }
 .metric-value { font-size: 2rem; font-weight: 700; line-height: 1; letter-spacing: -.02em; }
 .metric-label { margin-top: 4px; font-size: 11.5px; opacity: .85; font-weight: 400; }
+.metric-expand-hint {
+    position: absolute; bottom: 7px; right: 12px; z-index: 1;
+    display: flex; align-items: center; gap: 4px;
+    font-size: .6rem; text-transform: uppercase; letter-spacing: .04em; opacity: .8;
+}
+.metric-expand-hint i { transition: var(--transition); font-size: .62rem; }
+.metric-card.active .metric-expand-hint i { transform: rotate(180deg); }
+
+/* ══ DETALLE DE MÉTRICA (desplegable al hacer clic en una tarjeta) ══ */
+.metric-detail { display: none; background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: var(--radius-lg); padding: 16px 18px; }
+.metric-detail.show { display: block; }
+.metric-detail-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+.metric-detail-title { font-size: .9rem; font-weight: 700; color: var(--brand-800); display: flex; align-items: center; gap: 8px; }
+.metric-detail-title i { color: var(--brand-500); }
+.metric-detail-sub { font-size: .74rem; color: var(--neutral-500); margin-top: 3px; }
+.metric-detail-close {
+    background: white; border: 1.5px solid var(--neutral-200); color: var(--neutral-600);
+    cursor: pointer; font-size: .8rem; padding: 6px 10px; border-radius: var(--radius-sm); transition: var(--transition);
+}
+.metric-detail-close:hover { border-color: var(--brand-500); color: var(--brand-500); }
+.metric-detail-list { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; padding: 2px; }
+.metric-detail-row {
+    display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+    background: white; border: 1px solid var(--neutral-200); border-radius: var(--radius-md); flex-wrap: wrap;
+}
+.metric-detail-row .id-pill { font-size: .9rem; }
+.metric-detail-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 180px; }
+.metric-detail-info .md-line { font-size: .76rem; color: var(--neutral-600); display: flex; align-items: center; gap: 6px; }
+.metric-detail-info .md-line i { color: var(--neutral-400); width: 12px; text-align: center; }
+.metric-detail-stat { display: flex; flex-direction: column; align-items: flex-end; min-width: 100px; }
+.metric-detail-stat .md-num { font-family: var(--mono); font-weight: 700; font-size: 1.05rem; color: var(--neutral-800); }
+.metric-detail-stat .md-lbl { font-size: .62rem; color: var(--neutral-400); text-transform: uppercase; letter-spacing: .04em; }
+.metric-detail-view-btn {
+    padding: 7px 13px; border-radius: var(--radius-sm); border: 1.5px solid var(--brand-500);
+    background: white; color: var(--brand-500); font-size: .74rem; font-weight: 600; cursor: pointer;
+    transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.metric-detail-view-btn:hover { background: var(--brand-500); color: white; }
 
 /* ══ RESULTADOS / ACORDEÓN ══ */
 .results-panel { display: none; flex-direction: column; gap: 18px; }
@@ -219,17 +259,27 @@ body {
 .tbl-wrap::-webkit-scrollbar { width: 5px; height: 5px; }
 .tbl-wrap::-webkit-scrollbar-track { background: var(--neutral-50); }
 .tbl-wrap::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 99px; }
-table { width: 100%; border-collapse: collapse; font-size: .78rem; background: white; }
+table { width: 100%; border-collapse: collapse; font-size: .86rem; background: white; }
 thead { position: sticky; top: 0; z-index: 10; }
 th {
-    text-align: left; padding: 11px 13px; background: var(--brand-800); color: white;
-    font-weight: 600; font-size: .67rem; text-transform: uppercase; letter-spacing: .06em;
+    text-align: left; padding: 12px 15px; background: var(--brand-800); color: white;
+    font-weight: 600; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
     border-bottom: 1.5px solid var(--brand-700); white-space: nowrap;
 }
+th.num, td.num { text-align: right; }
+th.center, td.center { text-align: center; }
 th[data-key] { cursor: pointer; }
 th[data-key]:hover { background: var(--brand-700); }
 .sort-icon { margin-left: 5px; opacity: .55; font-size: .62rem; }
-td { padding: 10px 13px; border-bottom: 1px solid var(--neutral-100); color: var(--neutral-600); }
+td {
+    padding: 12px 15px; border-bottom: 1px solid var(--neutral-100);
+    color: var(--neutral-700); line-height: 1.5;
+}
+td.num {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-weight: 600; color: var(--neutral-800);
+}
+td .cell-icon { color: var(--neutral-400); margin-right: 6px; font-size: .82em; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--brand-50); color: var(--neutral-800); }
 tbody tr:nth-child(even) td { background: var(--neutral-50); }
@@ -369,34 +419,52 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
         <div class="results-panel" id="resultsPanel">
 
             <div class="metrics-grid">
-                <div class="metric-card total">
+                <div class="metric-card total" data-metric="idsSalida" tabindex="0" role="button" aria-expanded="false" aria-controls="metricDetail">
                     <div class="metric-icon"><i class="fas fa-truck-ramp-box"></i></div>
                     <div>
                         <div class="metric-value" id="metricIdsSalida">0</div>
                         <div class="metric-label">IDs con discrepancia en Salidas</div>
                     </div>
+                    <div class="metric-expand-hint">Ver items <i class="fas fa-chevron-down"></i></div>
                 </div>
-                <div class="metric-card warning">
+                <div class="metric-card warning" data-metric="unidadesSalida" tabindex="0" role="button" aria-expanded="false" aria-controls="metricDetail">
                     <div class="metric-icon"><i class="fas fa-box-open"></i></div>
                     <div>
                         <div class="metric-value" id="metricUnidadesSalida">0</div>
                         <div class="metric-label">Unidades faltantes en Salidas</div>
                     </div>
+                    <div class="metric-expand-hint">Ver items <i class="fas fa-chevron-down"></i></div>
                 </div>
-                <div class="metric-card total">
+                <div class="metric-card total" data-metric="idsDev" tabindex="0" role="button" aria-expanded="false" aria-controls="metricDetail">
                     <div class="metric-icon"><i class="fas fa-rotate-left"></i></div>
                     <div>
                         <div class="metric-value" id="metricIdsDev">0</div>
                         <div class="metric-label">IDs con discrepancia en Devoluciones</div>
                     </div>
+                    <div class="metric-expand-hint">Ver items <i class="fas fa-chevron-down"></i></div>
                 </div>
-                <div class="metric-card danger">
+                <div class="metric-card danger" data-metric="unidadesDev" tabindex="0" role="button" aria-expanded="false" aria-controls="metricDetail">
                     <div class="metric-icon"><i class="fas fa-scale-unbalanced"></i></div>
                     <div>
                         <div class="metric-value" id="metricUnidadesDev">0</div>
                         <div class="metric-label">Unidades en diferencia (Devoluciones)</div>
                     </div>
+                    <div class="metric-expand-hint">Ver items <i class="fas fa-chevron-down"></i></div>
                 </div>
+            </div>
+
+            <!-- DETALLE DESPLEGABLE DE LA MÉTRICA SELECCIONADA -->
+            <div class="metric-detail" id="metricDetail">
+                <div class="metric-detail-head">
+                    <div>
+                        <div class="metric-detail-title" id="metricDetailTitle"><i class="fas fa-list-ul"></i> Detalle</div>
+                        <div class="metric-detail-sub" id="metricDetailSub"></div>
+                    </div>
+                    <button type="button" class="metric-detail-close" id="metricDetailClose">
+                        <i class="fas fa-xmark"></i> Cerrar
+                    </button>
+                </div>
+                <div class="metric-detail-list" id="metricDetailBody"></div>
             </div>
 
             <!-- SECCIÓN A — BASE VS SALIDAS -->
@@ -416,9 +484,9 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                                     <th data-key="tienda">Tienda/Distribuidor <i class="fas fa-sort sort-icon"></i></th>
                                     <th data-key="id">ID artículo <i class="fas fa-sort sort-icon"></i></th>
                                     <th data-key="fecha">Fecha despacho <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="cantBase">Cant. Base <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="cantMov">Cant. Movimientos <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="diferencia">Diferencia <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="num" data-key="cantBase">Cant. Base <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="num" data-key="cantMov">Cant. Movimientos <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="center" data-key="diferencia">Diferencia <i class="fas fa-sort sort-icon"></i></th>
                                 </tr>
                             </thead>
                             <tbody id="tableABody">
@@ -448,9 +516,9 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                                     <th data-key="tienda">Tienda <i class="fas fa-sort sort-icon"></i></th>
                                     <th data-key="id">ID <i class="fas fa-sort sort-icon"></i></th>
                                     <th data-key="fecha">Fecha <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="cantMov">Cant. en Mov. <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="cantDev">Cant. en Dev. <i class="fas fa-sort sort-icon"></i></th>
-                                    <th data-key="diferencia">Diferencia <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="num" data-key="cantMov">Cant. en Mov. <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="num" data-key="cantDev">Cant. en Dev. <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="center" data-key="diferencia">Diferencia <i class="fas fa-sort sort-icon"></i></th>
                                 </tr>
                             </thead>
                             <tbody id="tableBBody">
@@ -629,6 +697,18 @@ function parseQty(v) {
     return isNaN(n) ? 0 : n;
 }
 
+/* ── FORMATO DE NÚMEROS ───────────────────────────────────────────
+   Miles separados con espacio y máx. 2 decimales (locale es-CR), para
+   que cantidades grandes ("25505") se lean de un vistazo ("25 505"). */
+function formatNumber(n) {
+    if (n === null || n === undefined || isNaN(n)) return '0';
+    const rounded = Math.round(n * 100) / 100;
+    return rounded.toLocaleString('es-CR', { maximumFractionDigits: 2 });
+}
+function formatSigned(n) {
+    return (n > 0 ? '+' : '') + formatNumber(n);
+}
+
 /* ── ESTADO/TIPO DE MOVIMIENTO ────────────────────────────────── */
 function isSalida(val) {
     const v = normalizeText(val);
@@ -791,6 +871,7 @@ function resetAnalysisState() {
     document.getElementById('analyzeBtn').disabled = true;
     document.getElementById('exportBtn').disabled = true;
     document.getElementById('filtersRow').classList.remove('show');
+    closeMetricDetail();
     analysisAFull = []; analysisBFull = [];
 }
 
@@ -965,10 +1046,10 @@ function renderMetrics() {
     const idsDev = new Set(diffB.map(r => r.id)).size;
     const unidadesDev = diffB.reduce((sum, r) => sum + Math.abs(r.diferencia), 0);
 
-    document.getElementById('metricIdsSalida').textContent = idsSalida;
-    document.getElementById('metricUnidadesSalida').textContent = unidadesSalida;
-    document.getElementById('metricIdsDev').textContent = idsDev;
-    document.getElementById('metricUnidadesDev').textContent = unidadesDev;
+    document.getElementById('metricIdsSalida').textContent = formatNumber(idsSalida);
+    document.getElementById('metricUnidadesSalida').textContent = formatNumber(unidadesSalida);
+    document.getElementById('metricIdsDev').textContent = formatNumber(idsDev);
+    document.getElementById('metricUnidadesDev').textContent = formatNumber(unidadesDev);
 }
 
 /* ── RENDER: TABLA A (Base vs Salidas) ───────────────────────────
@@ -993,15 +1074,15 @@ function renderTableA() {
         const critico = r.diferencia > 5;
         const rowClass = critico ? 'row-crit' : 'row-warn';
         const badge = critico
-            ? `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Crítico (-${r.diferencia})</span>`
-            : `<span class="badge badge-warn"><i class="fas fa-circle-exclamation"></i> Leve (-${r.diferencia})</span>`;
+            ? `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Crítico · -${formatNumber(r.diferencia)} uds</span>`
+            : `<span class="badge badge-warn"><i class="fas fa-circle-exclamation"></i> Leve · -${formatNumber(r.diferencia)} uds</span>`;
         return `<tr class="${rowClass}">
-            <td>${esc(r.tienda)}</td>
+            <td><i class="fas fa-store cell-icon"></i>${esc(r.tienda)}</td>
             <td><span class="id-pill">${esc(r.id)}</span></td>
-            <td>${esc(r.fecha)}</td>
-            <td>${r.cantBase}</td>
-            <td>${r.cantMov}</td>
-            <td>${badge}</td>
+            <td><i class="fas fa-calendar-day cell-icon"></i>${esc(r.fecha)}</td>
+            <td class="num">${formatNumber(r.cantBase)}</td>
+            <td class="num">${formatNumber(r.cantMov)}</td>
+            <td class="center">${badge}</td>
         </tr>`;
     }).join('');
 }
@@ -1032,23 +1113,139 @@ function renderTableB() {
             badge = `<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Coincide</span>`;
         } else if (Math.abs(r.diferencia) <= 5) {
             rowClass = 'row-warn';
-            badge = `<span class="badge badge-warn"><i class="fas fa-circle-exclamation"></i> Diferencia leve (${r.diferencia > 0 ? '+' : ''}${r.diferencia})</span>`;
+            badge = `<span class="badge badge-warn"><i class="fas fa-circle-exclamation"></i> Diferencia leve · ${formatSigned(r.diferencia)} uds</span>`;
         } else {
             rowClass = 'row-crit';
-            badge = `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Diferencia crítica (${r.diferencia > 0 ? '+' : ''}${r.diferencia})</span>`;
+            badge = `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Diferencia crítica · ${formatSigned(r.diferencia)} uds</span>`;
         }
         return `<tr class="${rowClass}">
-            <td>${esc(r.tienda)}</td>
+            <td><i class="fas fa-store cell-icon"></i>${esc(r.tienda)}</td>
             <td><span class="id-pill">${esc(r.id)}</span></td>
-            <td>${esc(r.fecha)}</td>
-            <td>${r.cantMov}</td>
-            <td>${r.cantDev}</td>
-            <td>${badge}</td>
+            <td><i class="fas fa-calendar-day cell-icon"></i>${esc(r.fecha)}</td>
+            <td class="num">${formatNumber(r.cantMov)}</td>
+            <td class="num">${formatNumber(r.cantDev)}</td>
+            <td class="center">${badge}</td>
         </tr>`;
     }).join('');
 }
 
-function renderAll() { renderMetrics(); renderTableA(); renderTableB(); }
+function renderAll() { closeMetricDetail(); renderMetrics(); renderTableA(); renderTableB(); }
+
+/* ── DETALLE DESPLEGABLE DE MÉTRICAS ──────────────────────────────
+   Cada tarjeta de métrica es un botón: al hacer clic despliega un
+   panel con los IDs individuales que componen ese número (con sus
+   tiendas, combinaciones afectadas y unidades), para no dejar el
+   "cuáles son los items" solo implícito en el total. */
+const METRIC_CONFIG = {
+    idsSalida:      { side: 'A', order: 'id',    title: 'IDs con discrepancia en Salidas',           icon: 'fa-truck-ramp-box', unitLabel: 'uds. faltantes' },
+    unidadesSalida: { side: 'A', order: 'total', title: 'Unidades faltantes en Salidas',              icon: 'fa-box-open',       unitLabel: 'uds. faltantes' },
+    idsDev:         { side: 'B', order: 'id',    title: 'IDs con discrepancia en Devoluciones',       icon: 'fa-rotate-left',    unitLabel: 'uds. en diferencia' },
+    unidadesDev:    { side: 'B', order: 'total', title: 'Unidades en diferencia (Devoluciones)',      icon: 'fa-scale-unbalanced', unitLabel: 'uds. en diferencia' }
+};
+let activeMetric = null;
+
+// Agrupa las filas de un análisis por ID artículo, para pasar del total
+// agregado de la tarjeta a la lista concreta de items que lo componen.
+function buildIdBreakdown(rows, useAbs) {
+    const map = new Map();
+    rows.forEach(r => {
+        if (!map.has(r.id)) map.set(r.id, { id: r.id, tiendas: new Set(), combos: 0, total: 0 });
+        const o = map.get(r.id);
+        o.tiendas.add(r.tienda);
+        o.combos += 1;
+        o.total += useAbs ? Math.abs(r.diferencia) : r.diferencia;
+    });
+    const list = [...map.values()];
+    list.forEach(o => { o.tiendasList = [...o.tiendas].join(', '); });
+    return list;
+}
+
+function getBreakdownForMetric(key) {
+    const cfg = METRIC_CONFIG[key];
+    const rows = cfg.side === 'A' ? analysisAFull : analysisBFull.filter(r => r.diferencia !== 0);
+    const list = buildIdBreakdown(rows, cfg.side === 'B');
+    list.sort((a, b) => cfg.order === 'id' ? a.id.localeCompare(b.id, 'es', { numeric: true }) : b.total - a.total);
+    return list;
+}
+
+function renderMetricDetail(key) {
+    const cfg = METRIC_CONFIG[key];
+    const list = getBreakdownForMetric(key);
+
+    document.getElementById('metricDetailTitle').innerHTML = `<i class="fas ${cfg.icon}"></i> ${esc(cfg.title)}`;
+    document.getElementById('metricDetailSub').textContent = list.length
+        ? `${list.length} ID${list.length === 1 ? '' : 's'} distinto${list.length === 1 ? '' : 's'} — clic en "Ver en tabla" para filtrar el detalle completo`
+        : 'Sin datos para mostrar';
+
+    const body = document.getElementById('metricDetailBody');
+    if (!list.length) {
+        body.innerHTML = `<div class="empty positive" style="padding:16px;"><span class="empty-ico">&#10003;</span><div class="empty-t">Todo cuadra &#10003; — no hay items en esta categoría</div></div>`;
+        return;
+    }
+    body.innerHTML = list.map(item => `
+        <div class="metric-detail-row">
+            <span class="id-pill">${esc(item.id)}</span>
+            <div class="metric-detail-info">
+                <span class="md-line"><i class="fas fa-store"></i> ${esc(item.tiendasList || 'N/D')}</span>
+                <span class="md-line"><i class="fas fa-layer-group"></i> ${item.combos} ${item.combos === 1 ? 'combinación' : 'combinaciones'} tienda/fecha</span>
+            </div>
+            <div class="metric-detail-stat">
+                <span class="md-num">${formatNumber(item.total)}</span>
+                <span class="md-lbl">${esc(cfg.unitLabel)}</span>
+            </div>
+            <button type="button" class="metric-detail-view-btn" data-view-id="${esc(item.id)}" data-view-side="${cfg.side}">
+                <i class="fas fa-magnifying-glass"></i> Ver en tabla
+            </button>
+        </div>`).join('');
+}
+
+function toggleMetricDetail(key) {
+    if (activeMetric === key) { closeMetricDetail(); return; }
+    activeMetric = key;
+    document.querySelectorAll('.metric-card[data-metric]').forEach(c => {
+        const isActive = c.getAttribute('data-metric') === key;
+        c.classList.toggle('active', isActive);
+        c.setAttribute('aria-expanded', String(isActive));
+    });
+    renderMetricDetail(key);
+    document.getElementById('metricDetail').classList.add('show');
+}
+
+function closeMetricDetail() {
+    activeMetric = null;
+    document.querySelectorAll('.metric-card[data-metric]').forEach(c => { c.classList.remove('active'); c.setAttribute('aria-expanded', 'false'); });
+    const panel = document.getElementById('metricDetail');
+    if (panel) panel.classList.remove('show');
+}
+
+// Desde el detalle de una métrica, salta a la tabla completa ya filtrada
+// por ese ID artículo, expandiendo el acordeón correspondiente si estaba
+// colapsado y llevando la vista hasta ahí.
+function jumpToTableFilteredById(id, side) {
+    document.getElementById('filterId').value = id;
+    document.getElementById('filterTienda').value = '';
+    renderTableA(); renderTableB();
+    const block = document.getElementById(side === 'A' ? 'blockA' : 'blockB');
+    block.classList.remove('collapsed');
+    closeMetricDetail();
+    block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function wireMetricCards() {
+    document.querySelectorAll('.metric-card[data-metric]').forEach(card => {
+        const key = card.getAttribute('data-metric');
+        card.addEventListener('click', () => toggleMetricDetail(key));
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMetricDetail(key); }
+        });
+    });
+    document.getElementById('metricDetailClose').addEventListener('click', closeMetricDetail);
+    document.getElementById('metricDetailBody').addEventListener('click', (e) => {
+        const btn = e.target.closest('.metric-detail-view-btn');
+        if (!btn) return;
+        jumpToTableFilteredById(btn.getAttribute('data-view-id'), btn.getAttribute('data-view-side'));
+    });
+}
 
 /* ── ACORDEÓN ─────────────────────────────────────────────────── */
 function wireAccordion() {
@@ -1105,6 +1302,7 @@ function exportResults() {
 /* ── INIT ─────────────────────────────────────────────────────── */
 wireDropzone('excelDropzone', 'excelInput', 'excelBrowseBtn', '.xlsx', handleExcelFile);
 wireAccordion();
+wireMetricCards();
 wireSortableHeaders('tableA', () => sortStateA, (s) => { sortStateA = s; }, renderTableA);
 wireSortableHeaders('tableB', () => sortStateB, (s) => { sortStateB = s; }, renderTableB);
 
