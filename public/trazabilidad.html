@@ -639,10 +639,13 @@ function detectColumn(headers, candidates) {
         const idx = normHeaders.findIndex(h => h.includes(cand));
         if (idx !== -1) return headers[idx];
     }
-    for (const cand of candidates) {
-        const idx = normHeaders.findIndex(h => h.length >= 2 && cand.includes(h));
-        if (idx !== -1) return headers[idx];
-    }
+    // (Antes había un tercer intento que aceptaba un encabezado corto —p.ej.
+    // "ID" o "No."— como match si ese encabezado era substring de alguna
+    // palabra candidata ("distribuidor".includes("id") = true). Eso hacía
+    // que columnas genéricas sin relación se confundieran con Distribuidor/
+    // Proveedor y arrastraran números sueltos al filtro de tienda. Se quitó:
+    // las abreviaturas legítimas ya están listadas explícitamente arriba
+    // (ej. "pdv", "sku").
     return null;
 }
 
@@ -730,6 +733,7 @@ function formatSigned(n) {
    no una dependencia dura. */
 let dbTiendas = [];
 let tiendaByClean = new Map();      // nombre de tienda normalizado -> { id, nombre }
+let tiendaById = new Map();         // String(id de tienda) -> { id, nombre } — para Excel que solo trae el código sin nombre
 let productByCode = new Map();      // código de producto normalizado -> { nombre, tiendaNombre, tiendaId }
 let productByTiendaCode = new Map(); // "tienda normalizada||código normalizado" -> { nombre, tiendaNombre, tiendaId }
 let dbLoaded = false;
@@ -754,11 +758,13 @@ async function loadTiendaDatabase() {
         const data = await resp.json();
         dbTiendas = data.tiendas || [];
         tiendaByClean = new Map();
+        tiendaById = new Map();
         productByCode = new Map();
         productByTiendaCode = new Map();
         dbTiendas.forEach(t => {
             const cleanTienda = cleanCompareText(t.nombre);
             tiendaByClean.set(cleanTienda, t);
+            tiendaById.set(String(t.id), t);
             (t.inventario || []).forEach(p => {
                 const cleanCode = cleanCompareText(p.id);
                 if (!cleanCode) return;
@@ -788,6 +794,13 @@ function resolveTiendaLabel(rawTienda) {
             const t = tiendaByClean.get(c);
             return `${t.id} - ${t.nombre}`;
         }
+    }
+    // El Excel a veces trae solo el código numérico sin nombre (ej. "10"
+    // en vez de "10 - Grupo Hoshi"); en ese caso buscar por ID de tienda.
+    const trimmed = String(rawTienda).trim();
+    if (/^\d+$/.test(trimmed) && tiendaById.has(trimmed)) {
+        const t = tiendaById.get(trimmed);
+        return `${t.id} - ${t.nombre}`;
     }
     return null;
 }
@@ -956,6 +969,14 @@ function handleExcelFile(file) {
             addLog('HOJA BASE CARGADA', `${baseRows.length} filas`);
             addLog('HOJA MOVIMIENTOS CARGADA', `${movRows.length} filas`);
             addLog('HOJA DEVOLUCIONES CARGADA', `${devRows.length} filas`);
+
+            // Deja explícito en la auditoría qué columna se usó para cada campo
+            // clave — así, si el filtro de tienda muestra algo raro (números
+            // sueltos, texto que no corresponde), se puede ver de inmediato
+            // qué encabezado del Excel se está leyendo, sin adivinar.
+            addLog('COLUMNAS DETECTADAS — BASE', `Distribuidor: "${cols.baseDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.baseProveedor || '(no encontrada)'}" · ID: "${cols.baseId || '(no encontrada)'}" · Fecha: "${cols.baseFecha || '(no encontrada)'}" · Cantidad: "${cols.baseCantidad || '(no encontrada)'}"`);
+            addLog('COLUMNAS DETECTADAS — MOVIMIENTOS', `Distribuidor: "${cols.movDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.movProveedor || '(no encontrada)'}" · ID: "${cols.movId || '(no encontrada)'}" · Fecha: "${cols.movFecha || '(no encontrada)'}" · Cantidad: "${cols.movCantidad || '(no encontrada)'}" · Estado: "${cols.movEstado || '(no encontrada)'}"`);
+            addLog('COLUMNAS DETECTADAS — DEVOLUCIONES', `Distribuidor: "${cols.devDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.devProveedor || '(no encontrada)'}" · ID: "${cols.devId || '(no encontrada)'}" · Fecha: "${cols.devFecha || '(no encontrada)'}" · Cantidad: "${cols.devCantidad || '(no encontrada)'}"`);
 
             const missingCols = [];
             if (!cols.baseDistribuidor && !cols.baseProveedor) missingCols.push('Base: Distribuidor/Proveedor Dropshipping');
