@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Efficommerce | Trazabilidad</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+<style>
+/* ══ TOKENS — copiados de /shared/tokens.css + alistamiento.css.
+   Este archivo debe funcionar abriéndose directamente con file://, así
+   que no puede depender de hojas de estilo con rutas absolutas ("/shared/..."),
+   por eso todo el sistema visual va inline en este único .html. ══ */
+:root {
+    --brand-900: #07104a; --brand-800: #0d1b6e; --brand-700: #1227a0;
+    --brand-500: #2a47d4; --brand-300: #7a9df3; --brand-100: #dde6fd; --brand-50: #f0f4fe;
+
+    --success-bg: #e8f5e9; --success-text: #1b5e20; --success-mid: #2e7d32; --success-border: #a5d6a7;
+    --warning-bg: #fff8e1; --warning-text: #e65100; --warning-mid: #f57f17; --warning-border: #ffe082;
+    --danger-bg: #fce4ec; --danger-text: #880e4f; --danger-mid: #c62828; --danger-border: #f48fb1;
+
+    --neutral-50: #f8f9fb; --neutral-100: #f1f3f7; --neutral-200: #e2e6ef;
+    --neutral-400: #5a6482; --neutral-600: #5a6482; --neutral-800: #1e2540;
+
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+
+    --shadow-xs: 0 1px 3px rgba(13,27,110,.06);
+    --shadow-sm: 0 2px 8px rgba(13,27,110,.09);
+    --shadow-md: 0 4px 16px rgba(13,27,110,.11);
+    --shadow-lg: 0 8px 28px rgba(13,27,110,.13);
+
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --transition: all .18s ease;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, [tabindex]:focus-visible, [role="button"]:focus-visible {
+    outline: 2px solid #2a9fd6; outline-offset: 2px;
+}
+
+body {
+    font-family: var(--sans);
+    font-size: 14px; line-height: 1.6;
+    color: var(--neutral-800);
+    background: var(--neutral-100);
+    min-height: 100vh; padding: 24px 16px;
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+    max-width: 1240px; margin: 0 auto;
+    background: white; border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg); overflow: hidden;
+    border: 1px solid var(--neutral-200);
+}
+
+/* ══ HEADER ══ */
+.app-header { background: var(--brand-800); display: flex; flex-direction: column; }
+.header-main-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 22px; }
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header-logo-pill {
+    display: flex; align-items: center;
+    background: rgba(255,255,255,.1);
+    border: 0.5px solid rgba(255,255,255,.2);
+    border-radius: 8px; padding: 6px 12px;
+}
+.header-logo-img { height: 28px; object-fit: contain; filter: brightness(0) invert(1); }
+.header-divider { width: 1px; height: 30px; background: rgba(255,255,255,.15); }
+.header-titles { display: flex; flex-direction: column; gap: 2px; }
+.header-titles h1 { font-size: 1rem; font-weight: 500; margin: 0; color: white; letter-spacing: .2px; }
+.header-sub { font-size: .7rem; color: rgba(255,255,255,.5); font-weight: 400; }
+.header-status-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 22px; background: rgba(0,0,0,.15);
+    border-top: .5px solid rgba(255,255,255,.08);
+}
+.header-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; flex-shrink: 0; }
+.header-status-text { font-size: .7rem; color: rgba(255,255,255,.45); }
+
+/* ══ SECTION HEADER ══ */
+.section-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 28px; background: var(--neutral-50);
+    border-bottom: 1px solid var(--neutral-200);
+}
+.section-header i { font-size: 1.1rem; color: var(--brand-500); }
+.section-header h2 { color: var(--neutral-800); font-size: 1rem; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+
+.section-content { padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; }
+
+/* ══ BUTTONS ══ */
+.btn {
+    padding: 10px 20px; border-radius: var(--radius-md);
+    font-family: var(--sans); font-weight: 500; font-size: .8rem;
+    border: 1.5px solid transparent; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+    white-space: nowrap; transition: var(--transition);
+}
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+.btn-primary {
+    background: var(--brand-800); color: white; border-color: var(--brand-800);
+    box-shadow: 0 2px 8px rgba(13,27,110,.2);
+}
+.btn-primary:hover:not(:disabled) {
+    background: var(--brand-700); border-color: var(--brand-700);
+    transform: translateY(-1px); box-shadow: 0 4px 14px rgba(13,27,110,.28);
+}
+.btn-ghost { background: white; color: var(--neutral-600); border-color: var(--neutral-200); }
+.btn-ghost:hover:not(:disabled) { background: var(--neutral-50); border-color: var(--neutral-400); }
+.btn-outline { background: white; color: var(--neutral-600); border-color: var(--neutral-200); }
+.btn-outline:hover:not(:disabled) { border-color: var(--brand-500); color: var(--brand-500); background: var(--brand-50); }
+
+/* ══ DROPZONE ══ */
+.upload-grid { display: flex; gap: 18px; flex-wrap: wrap; }
+.dropzone-card { flex: 1 1 100%; }
+.dropzone-card-label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--neutral-800); font-weight: 500; font-size: 13px; }
+.dropzone-card-label i { color: var(--brand-500); font-size: 14px; }
+.dropzone {
+    position: relative; border: 2px dashed var(--neutral-200);
+    border-radius: var(--radius-lg); background: var(--neutral-50);
+    padding: 26px 18px; text-align: center; cursor: pointer; transition: var(--transition);
+}
+.dropzone:hover { border-color: var(--brand-300); background: var(--brand-50); }
+.dropzone.dragover { border-color: var(--brand-500); background: var(--brand-50); box-shadow: 0 0 0 3px rgba(42,71,212,.1); }
+.dropzone.has-file { border-style: solid; border-color: var(--success-border); background: var(--success-bg); }
+.dropzone.is-loading { border-color: var(--brand-500); border-style: solid; }
+.dropzone.is-error { border-style: solid; border-color: var(--danger-border); background: var(--danger-bg); }
+.dropzone input[type="file"] { display: none; }
+.dropzone-icon { font-size: 1.7rem; color: var(--neutral-400); margin-bottom: 10px; }
+.dropzone.has-file .dropzone-icon { color: var(--success-mid); }
+.dropzone.is-error .dropzone-icon { color: var(--danger-mid); }
+.dropzone-title { font-size: .84rem; font-weight: 600; color: var(--neutral-800); margin-bottom: 3px; }
+.dropzone-hint { font-size: .68rem; color: var(--neutral-400); margin-bottom: 14px; }
+.dropzone-filename {
+    font-family: var(--mono); font-size: .76rem; color: var(--neutral-800);
+    word-break: break-all; background: white; border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm); padding: 5px 10px; display: inline-block; margin-bottom: 4px;
+}
+.dropzone-meta { font-size: .68rem; color: var(--neutral-500); margin-top: 2px; }
+.dropzone-browse-btn {
+    margin-top: 12px; padding: 8px 16px; border-radius: var(--radius-md);
+    font-family: var(--sans); font-weight: 500; font-size: .74rem;
+    border: 1.5px solid var(--neutral-200); background: white; color: var(--neutral-600);
+    cursor: pointer; transition: var(--transition);
+}
+.dropzone-browse-btn:hover { border-color: var(--brand-500); color: var(--brand-500); background: var(--brand-50); }
+
+.spinner {
+    width: 22px; height: 22px; border: 2.5px solid var(--neutral-200);
+    border-top-color: var(--brand-500); border-radius: 50%;
+    margin: 0 auto 10px; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ══ FILTROS ══ */
+.filters-row {
+    display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--neutral-50); border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-md); padding: 12px 16px;
+}
+.filters-row.show { display: flex; }
+.filters-row i { color: var(--brand-500); }
+.filters-row label { font-weight: 500; font-size: .8rem; color: var(--neutral-700); }
+.filters-row select {
+    padding: 7px 10px; border: 1.5px solid var(--neutral-200); border-radius: var(--radius-sm);
+    font-family: var(--sans); font-size: .78rem; background: white; color: var(--neutral-800);
+    cursor: pointer; min-width: 190px;
+}
+.filters-row select:focus { border-color: var(--brand-500); }
+
+/* ══ ACCIÓN PRINCIPAL ══ */
+.compare-action { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.compare-action .btn { padding: 13px 32px; font-size: .88rem; }
+
+/* ══ MÉTRICAS ══ */
+.metrics-grid { display: flex; flex-wrap: nowrap; gap: 14px; overflow-x: auto; padding-bottom: 4px; }
+.metric-card {
+    flex: 1; min-width: 190px; display: flex; align-items: center; gap: 14px;
+    padding: 18px 20px; border-radius: var(--radius-lg); color: white;
+    transition: var(--transition); position: relative; overflow: hidden;
+}
+.metric-card::after {
+    content: ''; position: absolute; top: -30%; right: -10%;
+    width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,.08);
+}
+.metric-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.metric-card.total { background: var(--brand-800); }
+.metric-card.correct { background: var(--success-mid); }
+.metric-card.warning { background: var(--warning-mid); }
+.metric-card.danger { background: var(--danger-mid); }
+.metric-icon { font-size: 1.5rem; opacity: .85; flex-shrink: 0; }
+.metric-value { font-size: 2rem; font-weight: 700; line-height: 1; letter-spacing: -.02em; }
+.metric-label { margin-top: 4px; font-size: 11.5px; opacity: .85; font-weight: 400; }
+
+/* ══ RESULTADOS / ACORDEÓN ══ */
+.results-panel { display: none; flex-direction: column; gap: 18px; }
+.results-panel.show { display: flex; }
+.results-block { background: white; border: 1px solid var(--neutral-200); border-radius: var(--radius-lg); padding: 18px 20px; box-shadow: var(--shadow-xs); }
+.results-block-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;
+}
+.results-block-title { font-size: .82rem; font-weight: 600; color: var(--neutral-800); display: flex; align-items: center; gap: 8px; }
+.results-block-title i { color: var(--brand-500); }
+.results-block-head-right { display: flex; align-items: center; gap: 12px; }
+.results-block-count { font-size: .72rem; color: var(--neutral-400); }
+.accordion-chevron { color: var(--neutral-400); transition: var(--transition); }
+.results-block.collapsed .accordion-chevron { transform: rotate(-90deg); }
+.results-block.collapsed .accordion-body { display: none; }
+
+/* ══ TABLA ══ */
+.tbl-wrap { overflow-x: auto; overflow-y: auto; max-height: 420px; border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); }
+.tbl-wrap::-webkit-scrollbar { width: 5px; height: 5px; }
+.tbl-wrap::-webkit-scrollbar-track { background: var(--neutral-50); }
+.tbl-wrap::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 99px; }
+table { width: 100%; border-collapse: collapse; font-size: .78rem; background: white; }
+thead { position: sticky; top: 0; z-index: 10; }
+th {
+    text-align: left; padding: 11px 13px; background: var(--brand-800); color: white;
+    font-weight: 600; font-size: .67rem; text-transform: uppercase; letter-spacing: .06em;
+    border-bottom: 1.5px solid var(--brand-700); white-space: nowrap;
+}
+th[data-key] { cursor: pointer; }
+th[data-key]:hover { background: var(--brand-700); }
+.sort-icon { margin-left: 5px; opacity: .55; font-size: .62rem; }
+td { padding: 10px 13px; border-bottom: 1px solid var(--neutral-100); color: var(--neutral-600); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--brand-50); color: var(--neutral-800); }
+tbody tr:nth-child(even) td { background: var(--neutral-50); }
+tbody tr:nth-child(even):hover td { background: var(--brand-50); }
+tbody tr.row-crit td { background: var(--danger-bg); }
+tbody tr.row-crit:hover td { background: var(--danger-bg); filter: brightness(.97); }
+tbody tr.row-warn td { background: var(--warning-bg); }
+tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.97); }
+
+.empty { text-align: center; padding: 40px 24px; }
+.empty-ico { font-size: 2rem; opacity: .2; margin-bottom: 10px; display: block; }
+.empty-t { font-size: .82rem; color: var(--neutral-400); font-weight: 500; }
+.empty.positive .empty-ico { opacity: .55; color: var(--success-mid); }
+.empty.positive .empty-t { color: var(--success-text); font-weight: 600; }
+
+.id-pill {
+    font-family: var(--mono); font-size: .82rem; color: var(--brand-500);
+    background: var(--brand-50); border: 1px solid var(--brand-100);
+    padding: 3px 10px; border-radius: var(--radius-sm); display: inline-block;
+}
+
+/* ══ BADGES ══ */
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 999px; font-size: .7rem; font-weight: 600; border: 1px solid; white-space: nowrap; }
+.badge-ok { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+.badge-warn { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning-border); }
+.badge-err { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); }
+
+/* ══ LOG DE AUDITORÍA ══ */
+.log-wrap { margin-top: 4px; background: #0d1b2e; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(255,255,255,.04); }
+.log-head { padding: 9px 16px; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 8px; }
+.log-head-lbl { font-family: var(--mono); font-size: .6rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+.log-body { padding: 10px 14px; max-height: 160px; overflow-y: auto; }
+.log-body::-webkit-scrollbar { width: 3px; }
+.log-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 99px; }
+.log-row { font-family: var(--mono); font-size: .64rem; line-height: 1.6; color: rgba(255,255,255,.55); padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.03); }
+.log-row:last-child { border-bottom: none; }
+.log-ts { color: rgba(255,255,255,.48); }
+.log-ok { color: #4caf50; }
+.log-warn { color: #ffb74d; }
+.log-er { color: #ef5350; }
+.log-gu { color: var(--brand-300); }
+
+/* ══ TOAST ══ */
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+
+/* ══ RESPONSIVE ══ */
+@media(max-width: 768px){
+    body { padding: 12px 8px; }
+    .section-content { padding: 18px 16px; }
+    .metrics-grid { gap: 10px; }
+    .metric-card { min-width: 150px; padding: 14px 16px; }
+    .metric-value { font-size: 1.6rem; }
+    .filters-row select { min-width: 140px; flex: 1 1 140px; }
+}
+@media(max-width: 480px){
+    .metric-card { min-width: 120px; flex-direction: column; text-align: center; gap: 6px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- HEADER — mismo patrón visual que el resto de la suite -->
+    <header class="app-header">
+        <div class="header-main-row">
+            <div class="header-left">
+                <div class="header-logo-pill">
+                    <img src="https://effi.com.co/public/images/logos/Logo-Efficommerce-H.png"
+                         alt="Efficommerce" class="header-logo-img"
+                         onerror="this.style.display='none'">
+                </div>
+                <div class="header-divider"></div>
+                <div class="header-titles">
+                    <h1>Trazabilidad de Inventario</h1>
+                    <span class="header-sub">Logística · Auditoría de movimientos y devoluciones</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-status-bar">
+            <span class="header-status-dot"></span>
+            <span class="header-status-text">Sistema activo</span>
+        </div>
+    </header>
+
+    <div class="section-header">
+        <i class="fas fa-route"></i>
+        <h2>Panel de Control — Trazabilidad</h2>
+    </div>
+
+    <div class="section-content">
+
+        <!-- ZONA DE CARGA -->
+        <div class="upload-grid">
+            <div class="dropzone-card">
+                <div class="dropzone-card-label">
+                    <i class="fas fa-file-excel"></i>
+                    Archivo de Trazabilidad (.xlsx) — hojas "Base", "Movimientos" y "Devoluciones"
+                </div>
+                <div class="dropzone" id="excelDropzone">
+                    <input type="file" id="excelInput" accept=".xlsx">
+                    <div id="excelDropzoneContent">
+                        <div class="dropzone-icon"><i class="fas fa-file-excel"></i></div>
+                        <div class="dropzone-title">Arrastra el Excel aquí</div>
+                        <div class="dropzone-hint">o haz clic para seleccionar un archivo .xlsx</div>
+                        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn">
+                            <i class="fas fa-upload"></i> Examinar archivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTROS OPCIONALES -->
+        <div class="filters-row" id="filtersRow">
+            <i class="fas fa-filter"></i>
+            <label for="filterId">Filtrar por ID artículo:</label>
+            <select id="filterId"><option value="">-- Todos --</option></select>
+            <label for="filterTienda">Filtrar por tienda/distribuidor:</label>
+            <select id="filterTienda"><option value="">-- Todas --</option></select>
+            <button type="button" class="btn btn-ghost" id="clearFiltersBtn"><i class="fas fa-eraser"></i> Limpiar filtros</button>
+        </div>
+
+        <!-- ACCIONES PRINCIPALES -->
+        <div class="compare-action">
+            <button class="btn btn-primary" id="analyzeBtn" disabled>
+                <i class="fas fa-magnifying-glass-chart"></i>
+                Analizar trazabilidad
+            </button>
+            <button class="btn btn-outline" id="exportBtn" disabled>
+                <i class="fas fa-file-export"></i>
+                Exportar resultados
+            </button>
+        </div>
+
+        <!-- PANEL DE RESULTADOS -->
+        <div class="results-panel" id="resultsPanel">
+
+            <div class="metrics-grid">
+                <div class="metric-card total">
+                    <div class="metric-icon"><i class="fas fa-truck-ramp-box"></i></div>
+                    <div>
+                        <div class="metric-value" id="metricIdsSalida">0</div>
+                        <div class="metric-label">IDs con discrepancia en Salidas</div>
+                    </div>
+                </div>
+                <div class="metric-card warning">
+                    <div class="metric-icon"><i class="fas fa-box-open"></i></div>
+                    <div>
+                        <div class="metric-value" id="metricUnidadesSalida">0</div>
+                        <div class="metric-label">Unidades faltantes en Salidas</div>
+                    </div>
+                </div>
+                <div class="metric-card total">
+                    <div class="metric-icon"><i class="fas fa-rotate-left"></i></div>
+                    <div>
+                        <div class="metric-value" id="metricIdsDev">0</div>
+                        <div class="metric-label">IDs con discrepancia en Devoluciones</div>
+                    </div>
+                </div>
+                <div class="metric-card danger">
+                    <div class="metric-icon"><i class="fas fa-scale-unbalanced"></i></div>
+                    <div>
+                        <div class="metric-value" id="metricUnidadesDev">0</div>
+                        <div class="metric-label">Unidades en diferencia (Devoluciones)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN A — BASE VS SALIDAS -->
+            <div class="results-block" id="blockA">
+                <div class="results-block-head" data-toggle="blockA">
+                    <div class="results-block-title"><i class="fas fa-truck-ramp-box"></i> Base vs Salidas</div>
+                    <div class="results-block-head-right">
+                        <span class="results-block-count" id="countA">0 discrepancias</span>
+                        <i class="fas fa-chevron-down accordion-chevron"></i>
+                    </div>
+                </div>
+                <div class="accordion-body">
+                    <div class="tbl-wrap">
+                        <table id="tableA">
+                            <thead>
+                                <tr>
+                                    <th data-key="tienda">Tienda/Distribuidor <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="id">ID artículo <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="fecha">Fecha despacho <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="cantBase">Cant. Base <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="cantMov">Cant. Movimientos <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="diferencia">Diferencia <i class="fas fa-sort sort-icon"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableABody">
+                                <tr><td colspan="6" style="padding:0;border:none;">
+                                    <div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados</div></div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN B — MOV. DEVOLUCIONES VS DEVOLUCIONES -->
+            <div class="results-block" id="blockB">
+                <div class="results-block-head" data-toggle="blockB">
+                    <div class="results-block-title"><i class="fas fa-rotate-left"></i> Mov. Devoluciones vs Devoluciones</div>
+                    <div class="results-block-head-right">
+                        <span class="results-block-count" id="countB">0 diferencias</span>
+                        <i class="fas fa-chevron-down accordion-chevron"></i>
+                    </div>
+                </div>
+                <div class="accordion-body">
+                    <div class="tbl-wrap">
+                        <table id="tableB">
+                            <thead>
+                                <tr>
+                                    <th data-key="tienda">Tienda <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="id">ID <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="fecha">Fecha <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="cantMov">Cant. en Mov. <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="cantDev">Cant. en Dev. <i class="fas fa-sort sort-icon"></i></th>
+                                    <th data-key="diferencia">Diferencia <i class="fas fa-sort sort-icon"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBBody">
+                                <tr><td colspan="6" style="padding:0;border:none;">
+                                    <div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados</div></div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- AUDITORÍA -->
+        <div class="log-wrap">
+            <div class="log-head">
+                <i class="fas fa-terminal" style="font-size:9px;color:rgba(255,255,255,.2);"></i>
+                <span class="log-head-lbl">Auditoría</span>
+            </div>
+            <div class="log-body">
+                <div id="logEntries" style="font-family:var(--mono);font-size:.65rem;color:rgba(255,255,255,.55);">
+                    Sin registros
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /section-content -->
+</div><!-- /app-container -->
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   MÓDULO TRAZABILIDAD DE INVENTARIO
+   Archivo único, sin backend: SheetJS lee un Excel con 3 hojas (Base,
+   Movimientos, Devoluciones), detecta sus columnas por coincidencia de
+   nombre y cruza los datos para encontrar discrepancias de cantidades
+   entre lo despachado y lo devuelto. Corre íntegramente en el navegador.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── UTILIDADES BÁSICAS (copiadas de /shared/dom-utils.js, inline
+   porque este archivo no puede depender de rutas absolutas bajo file://) ── */
+
+// Escapa caracteres HTML para prevenir XSS en innerHTML.
+function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Toast de notificación — misma lógica/estilo que el resto de la suite.
+function notify(msg, type = 'info', duration) {
+    const TYPE_ALIASES = { success:'success', ok:'success', danger:'error', err:'error', error:'error', warning:'warn', warn:'warn', info:'info', inf:'info', '':'info' };
+    const kind = TYPE_ALIASES[type] ?? 'info';
+    const ICONS = { success:'✅', error:'❌', warn:'⚠️', info:'ℹ️' };
+    const COLORS = { success:'#1fa971', error:'#e14848', warn:'#e0a300', info:'#3b82f6' };
+    if (duration === undefined) duration = (kind === 'warn' || kind === 'error') ? 6000 : 3200;
+
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.style.cssText = `pointer-events:auto;background:#1a1a2e;color:#fff;border-left:4px solid ${COLORS[kind]};border-radius:6px;padding:10px 14px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:.92rem;line-height:1.4;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s`;
+    toast.innerHTML = `${ICONS[kind]} ${esc(msg)}`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; });
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(8px)'; setTimeout(() => toast.remove(), 250); }, duration);
+}
+
+/* ── ESTADO GLOBAL ────────────────────────────────────────────── */
+let excelFile = null;
+let baseRows = [], movRows = [], devRows = [];
+let cols = {}; // columnas detectadas por hoja
+let analysisAFull = []; // Base vs Salidas (todas las discrepancias, sin filtrar)
+let analysisBFull = []; // Mov. Devoluciones vs Devoluciones (todas las filas, sin filtrar)
+let sortStateA = { key: 'diferencia', dir: 'desc' };
+let sortStateB = { key: 'diferencia', dir: 'desc' };
+let auditLog = [];
+
+/* ── AUDITORÍA ────────────────────────────────────────────────── */
+function addLog(action, detail) {
+    auditLog.unshift({ ts: new Date().toLocaleString('es-CR'), action, detail: detail || '' });
+    if (auditLog.length > 300) auditLog.pop();
+    renderLogs();
+}
+function renderLogs() {
+    const box = document.getElementById('logEntries');
+    if (!auditLog.length) { box.innerHTML = '<span style="color:rgba(255,255,255,.15)">Sin registros</span>'; return; }
+    box.innerHTML = auditLog.slice(0, 80).map(l => {
+        let cls = 'log-ok';
+        if (/error/i.test(l.action)) cls = 'log-er';
+        else if (/advertencia|warn/i.test(l.action)) cls = 'log-warn';
+        return `<div class="log-row"><span class="log-ts">[${esc(l.ts)}]</span> <span class="${cls}">${esc(l.action)}</span>${l.detail ? ` — <span class="log-gu">${esc(l.detail)}</span>` : ''}</div>`;
+    }).join('');
+}
+
+/* ── NORMALIZACIÓN DE TEXTO ──────────────────────────────────────
+   Usado tanto para nombres de columna como para valores de celda
+   (estado/tipo): minúsculas, sin tildes, sin puntuación.          */
+function normalizeText(v) {
+    return String(v ?? '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+}
+
+/* ── DETECCIÓN INTELIGENTE DE COLUMNAS ───────────────────────────
+   Busca primero coincidencia exacta del nombre normalizado, luego
+   coincidencia parcial en ambas direcciones (para abreviaturas). */
+function detectColumn(headers, candidates) {
+    const normHeaders = headers.map(normalizeText);
+    for (const cand of candidates) {
+        const idx = normHeaders.indexOf(cand);
+        if (idx !== -1) return headers[idx];
+    }
+    for (const cand of candidates) {
+        const idx = normHeaders.findIndex(h => h.includes(cand));
+        if (idx !== -1) return headers[idx];
+    }
+    for (const cand of candidates) {
+        const idx = normHeaders.findIndex(h => h.length >= 2 && cand.includes(h));
+        if (idx !== -1) return headers[idx];
+    }
+    return null;
+}
+
+const TIENDA_CANDS = ['distribuidor tienda', 'distribuidor', 'tienda', 'punto de venta', 'pdv', 'cliente', 'sucursal'];
+const ID_CANDS = ['id articulo', 'id producto', 'codigo articulo', 'codigo producto', 'sku', 'id item', 'articulo'];
+const ID_MOV_CANDS = ID_CANDS.concat(['movimiento', 'id movimiento', 'no movimiento', 'numero movimiento']);
+const FECHA_DESPACHO_CANDS = ['fecha relacion de despacho', 'fecha relacion despacho', 'fecha rel despacho', 'fecha despacho', 'fecha de despacho', 'fecha relacion'];
+const FECHA_GENERIC_CANDS = ['fecha movimiento', 'fecha mov', 'fecha'];
+const CANTIDAD_CANDS = ['cantidad', 'cant', 'qty', 'unidades'];
+const ESTADO_CANDS = ['estado tipo', 'tipo movimiento', 'estado', 'tipo', 'movimiento'];
+
+/* ── DETECCIÓN DE HOJAS (nombres flexibles: Base/Movimientos/Devoluciones) ── */
+function findSheet(workbook, candidates) {
+    const name = workbook.SheetNames.find(n => candidates.includes(normalizeText(n)));
+    return name || null;
+}
+
+/* ── PARSEO DE FECHAS ─────────────────────────────────────────────
+   Devuelve { key, display }: key es una fecha ISO usada para agrupar
+   de forma consistente, display es el texto que se muestra en tabla.
+   cellDates:true en XLSX.read ya convierte la mayoría de celdas de
+   fecha a objetos Date; el resto (texto o serial numérico) se cubre
+   con heurísticas de respaldo. */
+function parseDate(value) {
+    if (value instanceof Date && !isNaN(value)) {
+        return { key: value.toISOString().slice(0, 10), display: value.toLocaleDateString('es-CR') };
+    }
+    if (typeof value === 'number' && XLSX.SSF && XLSX.SSF.parse_date_code) {
+        const p = XLSX.SSF.parse_date_code(value);
+        if (p) {
+            const d = new Date(Date.UTC(p.y, p.m - 1, p.d));
+            return { key: d.toISOString().slice(0, 10), display: d.toLocaleDateString('es-CR') };
+        }
+    }
+    const str = String(value ?? '').trim();
+    if (!str) return { key: '', display: '' };
+    const parsed = new Date(str);
+    if (!isNaN(parsed) && /\d/.test(str)) {
+        return { key: parsed.toISOString().slice(0, 10), display: parsed.toLocaleDateString('es-CR') };
+    }
+    return { key: str.toLowerCase(), display: str };
+}
+
+/* ── PARSEO DE CANTIDADES ─────────────────────────────────────────
+   Tolera formatos "1.234,50" (miles con punto, decimal con coma) y
+   "1234.5" (decimal con punto) sin confundir uno con otro. */
+function parseQty(v) {
+    if (typeof v === 'number') return v;
+    let s = String(v ?? '').trim();
+    if (!s) return 0;
+    if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+    else if (s.includes(',')) s = s.replace(',', '.');
+    const n = parseFloat(s.replace(/[^0-9.\-]/g, ''));
+    return isNaN(n) ? 0 : n;
+}
+
+/* ── ESTADO/TIPO DE MOVIMIENTO ────────────────────────────────── */
+function isSalida(val) {
+    const v = normalizeText(val);
+    return (v.includes('salida') || v.includes('egreso')) && !v.includes('devoluc') && !v.includes('entrada');
+}
+function isDevolucion(val) {
+    const v = normalizeText(val);
+    return v.includes('devoluc') || v.includes('devolver');
+}
+
+/* ── DROPZONE ─────────────────────────────────────────────────── */
+function wireDropzone(zoneId, inputId, browseBtnId, accept, onFile) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const browseBtn = document.getElementById(browseBtnId);
+    function pick() { input.click(); }
+    zone.addEventListener('click', () => { if (!zone.classList.contains('has-file')) pick(); });
+    browseBtn.addEventListener('click', (e) => { e.stopPropagation(); pick(); });
+    input.addEventListener('change', () => { const file = input.files[0]; if (file) onFile(file); input.value = ''; });
+    ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('dragover'); }));
+    zone.addEventListener('drop', (e) => {
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        if (accept.split(',').map(s => s.trim()).includes(ext)) onFile(file);
+        else notify(`Formato inválido, se esperaba ${accept}`, 'err');
+    });
+}
+
+function setExcelLoading() {
+    const zone = document.getElementById('excelDropzone');
+    zone.classList.remove('has-file', 'is-error');
+    zone.classList.add('is-loading');
+    document.getElementById('excelDropzoneContent').innerHTML = `<div class="spinner"></div><div class="dropzone-title">Leyendo Excel...</div>`;
+}
+function setExcelLoaded(file, summary) {
+    const zone = document.getElementById('excelDropzone');
+    zone.classList.remove('is-loading', 'is-error');
+    zone.classList.add('has-file');
+    document.getElementById('excelDropzoneContent').innerHTML = `
+        <div class="dropzone-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="dropzone-filename">${esc(file.name)}</div>
+        <div class="dropzone-meta">${esc(summary)}</div>
+        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn"><i class="fas fa-rotate"></i> Cambiar archivo</button>`;
+    document.getElementById('excelBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('excelInput').click(); });
+}
+function setExcelError(msg) {
+    const zone = document.getElementById('excelDropzone');
+    zone.classList.remove('has-file', 'is-loading');
+    zone.classList.add('is-error');
+    document.getElementById('excelDropzoneContent').innerHTML = `
+        <div class="dropzone-icon"><i class="fas fa-triangle-exclamation"></i></div>
+        <div class="dropzone-title">${esc(msg)}</div>
+        <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn"><i class="fas fa-upload"></i> Intentar de nuevo</button>`;
+    document.getElementById('excelBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('excelInput').click(); });
+}
+
+/* ── LECTURA Y VALIDACIÓN DEL EXCEL ──────────────────────────────
+   Carga las 3 hojas requeridas, detecta sus columnas clave y puebla
+   los filtros. No bloquea el análisis si falta alguna columna
+   secundaria (usa "N/D" como respaldo), pero siempre avisa. */
+function handleExcelFile(file) {
+    excelFile = file;
+    resetAnalysisState();
+    setExcelLoading();
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        try {
+            const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array', cellDates: true });
+
+            const baseSheet = findSheet(wb, ['base']);
+            const movSheet = findSheet(wb, ['movimientos', 'movimiento']);
+            const devSheet = findSheet(wb, ['devoluciones', 'devolucion']);
+            const missingSheets = [];
+            if (!baseSheet) missingSheets.push('Base');
+            if (!movSheet) missingSheets.push('Movimientos');
+            if (!devSheet) missingSheets.push('Devoluciones');
+            if (missingSheets.length) {
+                setExcelError(`Faltan hojas: ${missingSheets.join(', ')}`);
+                addLog('EXCEL: ERROR', `Hojas faltantes: ${missingSheets.join(', ')}`);
+                notify(`El archivo no tiene las hojas requeridas: ${missingSheets.join(', ')}`, 'err');
+                return;
+            }
+
+            baseRows = XLSX.utils.sheet_to_json(wb.Sheets[baseSheet], { defval: '' });
+            movRows = XLSX.utils.sheet_to_json(wb.Sheets[movSheet], { defval: '' });
+            devRows = XLSX.utils.sheet_to_json(wb.Sheets[devSheet], { defval: '' });
+
+            if (!baseRows.length || !movRows.length || !devRows.length) {
+                setExcelError('Una o más hojas no tienen filas de datos');
+                addLog('EXCEL: ERROR', 'Hoja(s) vacía(s)');
+                notify('Una o más hojas están vacías', 'err');
+                return;
+            }
+
+            const baseHeaders = Object.keys(baseRows[0]);
+            const movHeaders = Object.keys(movRows[0]);
+            const devHeaders = Object.keys(devRows[0]);
+
+            cols = {
+                baseTienda: detectColumn(baseHeaders, TIENDA_CANDS),
+                baseId: detectColumn(baseHeaders, ID_CANDS),
+                baseFecha: detectColumn(baseHeaders, FECHA_DESPACHO_CANDS) || detectColumn(baseHeaders, FECHA_GENERIC_CANDS),
+                baseCantidad: detectColumn(baseHeaders, CANTIDAD_CANDS),
+
+                movTienda: detectColumn(movHeaders, TIENDA_CANDS),
+                movId: detectColumn(movHeaders, ID_CANDS),
+                movFecha: detectColumn(movHeaders, FECHA_GENERIC_CANDS),
+                movCantidad: detectColumn(movHeaders, CANTIDAD_CANDS),
+                movEstado: detectColumn(movHeaders, ESTADO_CANDS),
+
+                devTienda: detectColumn(devHeaders, TIENDA_CANDS),
+                devId: detectColumn(devHeaders, ID_MOV_CANDS),
+                devFecha: detectColumn(devHeaders, FECHA_GENERIC_CANDS),
+                devCantidad: detectColumn(devHeaders, CANTIDAD_CANDS)
+            };
+
+            addLog('HOJA BASE CARGADA', `${baseRows.length} filas`);
+            addLog('HOJA MOVIMIENTOS CARGADA', `${movRows.length} filas`);
+            addLog('HOJA DEVOLUCIONES CARGADA', `${devRows.length} filas`);
+
+            const missingCols = [];
+            if (!cols.baseTienda) missingCols.push('Base: Distribuidor/Tienda');
+            if (!cols.baseId) missingCols.push('Base: ID artículo');
+            if (!cols.baseFecha) missingCols.push('Base: Fecha relación de despacho');
+            if (!cols.baseCantidad) missingCols.push('Base: Cantidad');
+            if (!cols.movTienda) missingCols.push('Movimientos: Distribuidor/Tienda');
+            if (!cols.movId) missingCols.push('Movimientos: ID artículo');
+            if (!cols.movFecha) missingCols.push('Movimientos: Fecha');
+            if (!cols.movCantidad) missingCols.push('Movimientos: Cantidad');
+            if (!cols.movEstado) missingCols.push('Movimientos: Estado/Tipo');
+            if (!cols.devId) missingCols.push('Devoluciones: ID/Movimiento');
+            if (!cols.devFecha) missingCols.push('Devoluciones: Fecha');
+            if (!cols.devCantidad) missingCols.push('Devoluciones: Cantidad');
+
+            if (missingCols.length) {
+                addLog('ADVERTENCIA: COLUMNAS NO DETECTADAS', missingCols.join(' · '));
+                notify(`No se detectaron algunas columnas clave: ${missingCols.join(', ')}`, 'warn');
+            }
+
+            populateFilters();
+            const summary = `Base: ${baseRows.length} filas · Movimientos: ${movRows.length} filas · Devoluciones: ${devRows.length} filas`;
+            setExcelLoaded(file, summary);
+            notify(summary, 'ok');
+            document.getElementById('analyzeBtn').disabled = false;
+        } catch (err) {
+            setExcelError('Archivo corrupto o formato inválido');
+            addLog('EXCEL: ERROR', err.message);
+            notify(`Error leyendo Excel: ${err.message}`, 'err');
+        }
+    };
+    reader.onerror = () => { setExcelError('Error leyendo el archivo'); notify('Error leyendo el archivo', 'err'); };
+    reader.readAsArrayBuffer(file);
+}
+
+function resetAnalysisState() {
+    document.getElementById('resultsPanel').classList.remove('show');
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('exportBtn').disabled = true;
+    document.getElementById('filtersRow').classList.remove('show');
+    analysisAFull = []; analysisBFull = [];
+}
+
+/* ── FILTROS OPCIONALES (por ID artículo y por tienda/distribuidor) ── */
+function populateFilters() {
+    const ids = new Set(), tiendas = new Set();
+    baseRows.forEach(r => {
+        if (cols.baseId) { const v = String(r[cols.baseId] ?? '').trim(); if (v) ids.add(v); }
+        if (cols.baseTienda) { const v = String(r[cols.baseTienda] ?? '').trim(); if (v) tiendas.add(v); }
+    });
+    movRows.forEach(r => {
+        if (cols.movId) { const v = String(r[cols.movId] ?? '').trim(); if (v) ids.add(v); }
+        if (cols.movTienda) { const v = String(r[cols.movTienda] ?? '').trim(); if (v) tiendas.add(v); }
+    });
+
+    const idSelect = document.getElementById('filterId');
+    const tiendaSelect = document.getElementById('filterTienda');
+    const sortedIds = [...ids].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+    const sortedTiendas = [...tiendas].sort((a, b) => a.localeCompare(b, 'es'));
+    idSelect.innerHTML = '<option value="">-- Todos --</option>' + sortedIds.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    tiendaSelect.innerHTML = '<option value="">-- Todas --</option>' + sortedTiendas.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    document.getElementById('filtersRow').classList.add('show');
+}
+
+/* ── AGRUPACIÓN GENÉRICA POR (TIENDA + ID + FECHA), SUMANDO CANTIDAD ── */
+function groupRows(rows, colMap) {
+    const map = new Map();
+    rows.forEach(r => {
+        const id = String(r[colMap.id] ?? '').trim();
+        if (!id) return;
+        const tienda = colMap.tienda ? (String(r[colMap.tienda] ?? '').trim() || 'N/D') : 'N/D';
+        const { key: fechaKey, display: fechaDisplay } = parseDate(r[colMap.fecha]);
+        const qty = parseQty(r[colMap.cantidad]);
+        const mapKey = `${tienda}||${id}||${fechaKey}`;
+        if (!map.has(mapKey)) map.set(mapKey, { tienda, id, fechaKey, fechaDisplay, qty: 0 });
+        map.get(mapKey).qty += qty;
+    });
+    return map;
+}
+
+/* ── ANÁLISIS 1 — BASE VS SALIDAS ────────────────────────────────
+   Compara, por (tienda + id + fecha), la cantidad despachada en Base
+   contra la cantidad registrada como salida en Movimientos. Solo se
+   reportan combinaciones donde Base > Movimientos (unidades que se
+   suponía salieron pero no quedaron registradas como salida). */
+function computeAnalysisA() {
+    const baseMap = groupRows(baseRows, { tienda: cols.baseTienda, id: cols.baseId, fecha: cols.baseFecha, cantidad: cols.baseCantidad });
+    const movSalidaRows = movRows.filter(r => isSalida(r[cols.movEstado]));
+    const movMap = groupRows(movSalidaRows, { tienda: cols.movTienda, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
+
+    const results = [];
+    baseMap.forEach((b, key) => {
+        const m = movMap.get(key);
+        const movQty = m ? m.qty : 0;
+        const diferencia = b.qty - movQty;
+        if (diferencia > 0) {
+            results.push({ tienda: b.tienda, id: b.id, fecha: b.fechaDisplay || b.fechaKey, fechaKey: b.fechaKey, cantBase: b.qty, cantMov: movQty, diferencia });
+        }
+    });
+    return results;
+}
+
+/* ── ANÁLISIS 2 — MOV. DEVOLUCIONES VS DEVOLUCIONES ──────────────
+   Agrupa las devoluciones registradas en Movimientos (tienda+id+fecha)
+   y las de la hoja Devoluciones (id+fecha, sin tienda). Reduce ambas a
+   la clave común (id+fecha) para comparar los totales, señalando toda
+   combinación donde las cantidades no coinciden. */
+function computeAnalysisB() {
+    const movDevRows = movRows.filter(r => isDevolucion(r[cols.movEstado]));
+    const movDevMap = groupRows(movDevRows, { tienda: cols.movTienda, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
+
+    const movByIdFecha = new Map(); // "id||fechaKey" -> { qty, tiendas:Set, fechaDisplay }
+    movDevMap.forEach(entry => {
+        const k = `${entry.id}||${entry.fechaKey}`;
+        if (!movByIdFecha.has(k)) movByIdFecha.set(k, { id: entry.id, fechaKey: entry.fechaKey, fechaDisplay: entry.fechaDisplay, qty: 0, tiendas: new Set() });
+        const o = movByIdFecha.get(k);
+        o.qty += entry.qty;
+        o.tiendas.add(entry.tienda);
+    });
+
+    const devMap = groupRows(devRows, { tienda: cols.devTienda, id: cols.devId, fecha: cols.devFecha, cantidad: cols.devCantidad });
+    const devByIdFecha = new Map(); // "id||fechaKey" -> qty
+    const displayByIdFecha = new Map();
+    devMap.forEach(entry => {
+        const k = `${entry.id}||${entry.fechaKey}`;
+        devByIdFecha.set(k, (devByIdFecha.get(k) || 0) + entry.qty);
+        if (!displayByIdFecha.has(k)) displayByIdFecha.set(k, entry.fechaDisplay);
+    });
+
+    const allKeys = new Set([...movByIdFecha.keys(), ...devByIdFecha.keys()]);
+    const results = [];
+    allKeys.forEach(k => {
+        const m = movByIdFecha.get(k);
+        const movQty = m ? m.qty : 0;
+        const devQty = devByIdFecha.get(k) || 0;
+        const diferencia = movQty - devQty;
+        const [id, fechaKey] = k.split('||');
+        const fechaDisplay = (m && m.fechaDisplay) || displayByIdFecha.get(k) || fechaKey;
+        const tienda = m && m.tiendas.size ? [...m.tiendas].join(', ') : 'N/D';
+        results.push({ tienda, id, fecha: fechaDisplay, fechaKey, cantMov: movQty, cantDev: devQty, diferencia });
+    });
+    return results;
+}
+
+/* ── EJECUCIÓN DEL ANÁLISIS ──────────────────────────────────────
+   Se dispara al hacer clic en "Analizar trazabilidad". Corre ambos
+   análisis, actualiza métricas y tablas, y deja registro en auditoría. */
+async function runAnalysis() {
+    const btn = document.getElementById('analyzeBtn');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;margin:0;border-width:2px;"></div> Analizando...';
+    await new Promise(r => setTimeout(r, 30)); // deja pintar el spinner antes del cálculo síncrono
+
+    try {
+        addLog('ANÁLISIS INICIADO', excelFile ? excelFile.name : '');
+        analysisAFull = computeAnalysisA();
+        addLog('ANÁLISIS A COMPLETADO', `${analysisAFull.length} discrepancia(s) en Base vs Salidas`);
+        analysisBFull = computeAnalysisB();
+        const diffCountB = analysisBFull.filter(r => r.diferencia !== 0).length;
+        addLog('ANÁLISIS B COMPLETADO', `${diffCountB} diferencia(s) en Devoluciones`);
+
+        renderAll();
+        document.getElementById('resultsPanel').classList.add('show');
+        document.getElementById('exportBtn').disabled = false;
+        notify('Análisis de trazabilidad completado', 'ok');
+    } catch (err) {
+        notify(`Error al analizar: ${err.message}`, 'err');
+        addLog('ANÁLISIS: ERROR', err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
+/* ── FILTRADO PARA VISUALIZACIÓN ─────────────────────────────────
+   Los filtros de ID/tienda solo afectan qué se muestra en las tablas;
+   las métricas siempre reflejan el análisis completo. */
+function applyFilters(rows) {
+    const idVal = document.getElementById('filterId').value;
+    const tiendaVal = document.getElementById('filterTienda').value;
+    return rows.filter(r => (!idVal || r.id === idVal) && (!tiendaVal || r.tienda === tiendaVal));
+}
+
+function sortRows(rows, state) {
+    const sorted = [...rows];
+    sorted.sort((a, b) => {
+        let va = a[state.key], vb = b[state.key];
+        if (typeof va === 'number' && typeof vb === 'number') return state.dir === 'asc' ? va - vb : vb - va;
+        va = String(va ?? '').toLowerCase(); vb = String(vb ?? '').toLowerCase();
+        return state.dir === 'asc' ? va.localeCompare(vb, 'es') : vb.localeCompare(va, 'es');
+    });
+    return sorted;
+}
+
+function updateSortIcons(tableId, state) {
+    document.querySelectorAll(`#${tableId} thead th[data-key]`).forEach(th => {
+        const icon = th.querySelector('.sort-icon');
+        if (th.getAttribute('data-key') === state.key) {
+            icon.className = 'fas sort-icon ' + (state.dir === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
+        } else {
+            icon.className = 'fas fa-sort sort-icon';
+        }
+    });
+}
+
+/* ── RENDER: MÉTRICAS ─────────────────────────────────────────── */
+function renderMetrics() {
+    const idsSalida = new Set(analysisAFull.map(r => r.id)).size;
+    const unidadesSalida = analysisAFull.reduce((sum, r) => sum + r.diferencia, 0);
+    const diffB = analysisBFull.filter(r => r.diferencia !== 0);
+    const idsDev = new Set(diffB.map(r => r.id)).size;
+    const unidadesDev = diffB.reduce((sum, r) => sum + Math.abs(r.diferencia), 0);
+
+    document.getElementById('metricIdsSalida').textContent = idsSalida;
+    document.getElementById('metricUnidadesSalida').textContent = unidadesSalida;
+    document.getElementById('metricIdsDev').textContent = idsDev;
+    document.getElementById('metricUnidadesDev').textContent = unidadesDev;
+}
+
+/* ── RENDER: TABLA A (Base vs Salidas) ───────────────────────────
+   Solo lista discrepancias (diferencia > 0); si no hay ninguna, se
+   muestra el estado vacío positivo "Todo cuadra". */
+function renderTableA() {
+    const tbody = document.getElementById('tableABody');
+    const filtered = sortRows(applyFilters(analysisAFull), sortStateA);
+    document.getElementById('countA').textContent = `${filtered.length} discrepancia${filtered.length === 1 ? '' : 's'}`;
+    updateSortIcons('tableA', sortStateA);
+
+    if (!analysisAFull.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:0;border:none;"><div class="empty positive"><span class="empty-ico">&#10003;</span><div class="empty-t">Todo cuadra &#10003; — no hay discrepancias entre Base y Salidas</div></div></td></tr>`;
+        return;
+    }
+    if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados para el filtro aplicado</div></div></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(r => {
+        const critico = r.diferencia > 5;
+        const rowClass = critico ? 'row-crit' : 'row-warn';
+        const badge = critico
+            ? `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Crítico (-${r.diferencia})</span>`
+            : `<span class="badge badge-warn"><i class="fas fa-circle-exclamation"></i> Leve (-${r.diferencia})</span>`;
+        return `<tr class="${rowClass}">
+            <td>${esc(r.tienda)}</td>
+            <td><span class="id-pill">${esc(r.id)}</span></td>
+            <td>${esc(r.fecha)}</td>
+            <td>${r.cantBase}</td>
+            <td>${r.cantMov}</td>
+            <td>${badge}</td>
+        </tr>`;
+    }).join('');
+}
+
+/* ── RENDER: TABLA B (Mov. Devoluciones vs Devoluciones) ─────────
+   Lista todas las combinaciones id+fecha, coincidan o no, con badge
+   verde para las que cuadran y amarillo/rojo para las que difieren. */
+function renderTableB() {
+    const tbody = document.getElementById('tableBBody');
+    const filtered = sortRows(applyFilters(analysisBFull), sortStateB);
+    const diffCount = filtered.filter(r => r.diferencia !== 0).length;
+    document.getElementById('countB').textContent = `${diffCount} diferencia${diffCount === 1 ? '' : 's'}`;
+    updateSortIcons('tableB', sortStateB);
+
+    const totalDiff = analysisBFull.filter(r => r.diferencia !== 0).length;
+    if (!analysisBFull.length || !totalDiff) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:0;border:none;"><div class="empty positive"><span class="empty-ico">&#10003;</span><div class="empty-t">Todo cuadra &#10003; — Movimientos y Devoluciones coinciden</div></div></td></tr>`;
+        return;
+    }
+    if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin resultados para el filtro aplicado</div></div></td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(r => {
+        let rowClass = '', badge;
+        if (r.diferencia === 0) {
+            badge = `<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Coincide</span>`;
+        } else if (Math.abs(r.diferencia) <= 5) {
+            rowClass = 'row-warn';
+            badge = `<span class="badge badge-warn"><i class="fas fa-circle-exclamation"></i> Diferencia leve (${r.diferencia > 0 ? '+' : ''}${r.diferencia})</span>`;
+        } else {
+            rowClass = 'row-crit';
+            badge = `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Diferencia crítica (${r.diferencia > 0 ? '+' : ''}${r.diferencia})</span>`;
+        }
+        return `<tr class="${rowClass}">
+            <td>${esc(r.tienda)}</td>
+            <td><span class="id-pill">${esc(r.id)}</span></td>
+            <td>${esc(r.fecha)}</td>
+            <td>${r.cantMov}</td>
+            <td>${r.cantDev}</td>
+            <td>${badge}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderAll() { renderMetrics(); renderTableA(); renderTableB(); }
+
+/* ── ACORDEÓN ─────────────────────────────────────────────────── */
+function wireAccordion() {
+    document.querySelectorAll('.results-block-head[data-toggle]').forEach(head => {
+        head.addEventListener('click', () => {
+            document.getElementById(head.getAttribute('data-toggle')).classList.toggle('collapsed');
+        });
+    });
+}
+
+/* ── ORDENAMIENTO POR CLIC EN ENCABEZADO ─────────────────────────
+   Numéricas ("cant*"/"diferencia") empiezan descendente; el resto,
+   ascendente. Un segundo clic en la misma columna invierte el orden. */
+function wireSortableHeaders(tableId, getState, setState, render) {
+    document.querySelectorAll(`#${tableId} thead th[data-key]`).forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.getAttribute('data-key');
+            const state = getState();
+            if (state.key === key) state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+            else { state.key = key; state.dir = /cant|diferencia/.test(key) ? 'desc' : 'asc'; }
+            setState(state);
+            render();
+        });
+    });
+}
+
+/* ── EXPORTAR RESULTADOS A EXCEL ──────────────────────────────────
+   Genera un .xlsx con dos pestañas (una por análisis), respetando los
+   filtros y el orden actualmente aplicados en pantalla. */
+function exportResults() {
+    if (!analysisAFull.length && !analysisBFull.length) { notify('Ejecute el análisis antes de exportar', 'err'); return; }
+    try {
+        const rowsA = sortRows(applyFilters(analysisAFull), sortStateA).map(r => ({
+            'Tienda/Distribuidor': r.tienda, 'ID artículo': r.id, 'Fecha despacho': r.fecha,
+            'Cant. Base': r.cantBase, 'Cant. Movimientos': r.cantMov, 'Diferencia': r.diferencia
+        }));
+        const rowsB = sortRows(applyFilters(analysisBFull), sortStateB).map(r => ({
+            'Tienda': r.tienda, 'ID': r.id, 'Fecha': r.fecha,
+            'Cant. en Mov.': r.cantMov, 'Cant. en Dev.': r.cantDev, 'Diferencia': r.diferencia
+        }));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsA.length ? rowsA : [{ 'Resultado': 'Todo cuadra - sin discrepancias' }]), 'Base vs Salidas');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsB.length ? rowsB : [{ 'Resultado': 'Todo cuadra - sin diferencias' }]), 'Dev. Movimientos vs Dev');
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        XLSX.writeFile(wb, `trazabilidad_${stamp}.xlsx`);
+        addLog('EXPORTACIÓN', `${rowsA.length} fila(s) en Base vs Salidas · ${rowsB.length} fila(s) en Devoluciones`);
+        notify('Resultados exportados a Excel', 'ok');
+    } catch (err) {
+        notify(`Error al exportar: ${err.message}`, 'err');
+        addLog('EXPORTACIÓN: ERROR', err.message);
+    }
+}
+
+/* ── INIT ─────────────────────────────────────────────────────── */
+wireDropzone('excelDropzone', 'excelInput', 'excelBrowseBtn', '.xlsx', handleExcelFile);
+wireAccordion();
+wireSortableHeaders('tableA', () => sortStateA, (s) => { sortStateA = s; }, renderTableA);
+wireSortableHeaders('tableB', () => sortStateB, (s) => { sortStateB = s; }, renderTableB);
+
+document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
+document.getElementById('exportBtn').addEventListener('click', exportResults);
+document.getElementById('filterId').addEventListener('change', () => { renderTableA(); renderTableB(); });
+document.getElementById('filterTienda').addEventListener('change', () => { renderTableA(); renderTableB(); });
+document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+    document.getElementById('filterId').value = '';
+    document.getElementById('filterTienda').value = '';
+    renderTableA(); renderTableB();
+});
+
+renderLogs();
+</script>
+</body>
+</html>
