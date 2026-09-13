@@ -872,6 +872,7 @@ async function loadTiendaDatabase() {
         if (analysisAFull.length || analysisBFull.length) { renderTableA(); renderTableB(); }
         refreshFilterLabels();
         updateIdFilterOptions(); // por si la BD llegó después de que ya se había elegido una tienda
+        checkTiendaMismatches(); // por si la BD llegó después de que ya se habían cargado los archivos
     } catch (err) {
         addLog('ADVERTENCIA: SIN CONEXIÓN A BASE DE DATOS', 'Se usarán los nombres de tienda/producto tal como vienen en el Excel');
     }
@@ -1136,6 +1137,7 @@ function afterFileLoaded() {
     }
 
     populateFilters();
+    checkTiendaMismatches();
 }
 
 function resetAnalysisState() {
@@ -1152,13 +1154,15 @@ let allDetectedIds = []; // todos los IDs vistos en el archivo, sin filtrar por 
 function populateFilters() {
     const ids = new Set(), tiendas = new Set();
     baseRows.forEach(r => {
-        if (cols.baseId) { const v = String(r[cols.baseId] ?? '').trim(); if (v) ids.add(v); }
-        const t = canonicalTienda(rawTiendaValue(r, { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor }));
+        const id = cols.baseId ? String(r[cols.baseId] ?? '').trim() : '';
+        if (id) ids.add(id);
+        const t = resolveRowTienda(r, { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor }, id);
         if (t !== 'N/D') tiendas.add(t);
     });
     movRows.forEach(r => {
-        if (cols.movId) { const v = String(r[cols.movId] ?? '').trim(); if (v) ids.add(v); }
-        const t = canonicalTienda(rawTiendaValue(r, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor }));
+        const id = cols.movId ? String(r[cols.movId] ?? '').trim() : '';
+        if (id) ids.add(id);
+        const t = resolveRowTienda(r, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor }, id);
         if (t !== 'N/D') tiendas.add(t);
     });
 
@@ -1185,7 +1189,7 @@ function updateIdFilterOptions() {
 
     let idsToShow = allDetectedIds;
     if (tiendaVal) {
-        const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor };
+        const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId };
         const idsInTienda = new Set();
         maybeScopeRows(baseRows, baseColMap, tiendaVal).forEach(r => {
             const v = String(r[cols.baseId] ?? '').trim();
@@ -1241,13 +1245,58 @@ function canonicalTienda(rawTienda) {
     return resolveTiendaLabel(rawTienda) || rawTienda;
 }
 
+// Resuelve la tienda REAL de una fila: primero por el ID del producto
+// contra la base de datos (fuente confiable de "qué tienda tiene este
+// producto" — cada código está registrado bajo una sola tienda), y solo
+// si ese producto no está registrado en la BD, cae al valor de
+// Distribuidor/Proveedor que traiga el Excel. La columna del Excel puede
+// venir mal puesta (el mismo producto etiquetado con una tienda que no le
+// corresponde); la BD no tiene ese problema porque cada código de
+// producto pertenece a una sola tienda por diseño.
+function resolveRowTienda(row, colMap, id) {
+    const dbInfo = id ? productByCode.get(cleanCompareText(id)) : null;
+    if (dbInfo && dbInfo.tiendaId != null) return `${dbInfo.tiendaId} - ${dbInfo.tiendaNombre}`;
+    return canonicalTienda(rawTiendaValue(row, colMap));
+}
+
+// Compara, fila por fila de Base, la tienda que declara el Excel
+// (Distribuidor/Proveedor Dropshipping) contra la tienda que la base de
+// datos tiene registrada para ese código de producto. El análisis ya usa
+// la BD como fuente de verdad (resolveRowTienda), pero esto deja
+// explícito en la auditoría cuántas filas del Excel traían una tienda
+// distinta a la registrada, para que se pueda revisar el archivo fuente
+// si el número es alto.
+function checkTiendaMismatches() {
+    if (!dbLoaded || !baseRows.length || !cols.baseId) return;
+    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor };
+    let mismatches = 0;
+    const examples = [];
+    baseRows.forEach(r => {
+        const id = String(r[cols.baseId] ?? '').trim();
+        if (!id) return;
+        const dbInfo = productByCode.get(cleanCompareText(id));
+        if (!dbInfo || dbInfo.tiendaId == null) return;
+        const excelTienda = canonicalTienda(rawTiendaValue(r, baseColMap));
+        const dbTienda = `${dbInfo.tiendaId} - ${dbInfo.tiendaNombre}`;
+        if (excelTienda !== 'N/D' && excelTienda !== dbTienda) {
+            mismatches++;
+            if (examples.length < 5) examples.push(`ID ${id}: Excel dice "${excelTienda}", BD dice "${dbTienda}"`);
+        }
+    });
+    if (mismatches > 0) {
+        const msg = `${formatNumber(mismatches)} fila(s) de Base traen Distribuidor/Proveedor distinto al que la base de datos tiene registrado para ese producto — se usa la tienda de la BD en el análisis. Ejemplos: ${examples.join(' · ')}`;
+        addLog('ADVERTENCIA: TIENDA EN EXCEL NO COINCIDE CON BD', msg);
+        notify(`${formatNumber(mismatches)} fila(s) de Base traen una tienda distinta a la registrada en la BD para ese producto — se usa la de la BD.`, 'warn', 9000);
+    }
+}
+
 /* ── AGRUPACIÓN GENÉRICA POR (TIENDA + ID + FECHA), SUMANDO CANTIDAD ── */
 function groupRows(rows, colMap) {
     const map = new Map();
     rows.forEach(r => {
         const id = String(r[colMap.id] ?? '').trim();
         if (!id) return;
-        const tienda = canonicalTienda(rawTiendaValue(r, colMap));
+        const tienda = resolveRowTienda(r, colMap, id);
         const { key: fechaKey, display: fechaDisplay } = parseDate(r[colMap.fecha]);
         const qty = parseQty(r[colMap.cantidad]);
         const mapKey = `${tienda}||${id}||${fechaKey}`;
@@ -1286,19 +1335,25 @@ function checkDateCoverage() {
    reportan combinaciones donde Base > Movimientos (unidades que se
    suponía salieron pero no quedaron registradas como salida). */
 // Restringe las filas a una sola tienda cuando se seleccionó una para el
-// análisis ("trazabilidad detallada"). Si la hoja no tiene columna de
-// tienda (Movimientos/Devoluciones suelen no tenerla), no hay nada que
-// filtrar ahí — se devuelven las filas tal cual, porque esa hoja no puede
-// atribuirse a una tienda en particular.
+// análisis ("trazabilidad detallada"). Resuelve la tienda de cada fila
+// vía resolveRowTienda (BD primero, por el ID del producto — así se
+// puede atribuir tienda incluso en hojas como Movimientos/Devoluciones
+// que no tienen columna de Distribuidor/Proveedor). Solo si ni la BD ni
+// el Excel dan una tienda para esa fila, se conserva sin filtrar (no hay
+// forma de saber a quién pertenece, así que no se descarta).
 function maybeScopeRows(rows, colMap, tiendaScope) {
     if (!tiendaScope) return rows;
-    if (!colMap.distribuidor && !colMap.proveedor) return rows;
-    return rows.filter(r => canonicalTienda(rawTiendaValue(r, colMap)) === tiendaScope);
+    return rows.filter(r => {
+        const id = String(r[colMap.id] ?? '').trim();
+        const resolved = resolveRowTienda(r, colMap, id);
+        if (resolved === 'N/D' && !colMap.distribuidor && !colMap.proveedor) return true;
+        return resolved === tiendaScope;
+    });
 }
 
 function computeAnalysisA(tiendaScope) {
-    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor };
-    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor };
+    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId };
+    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId };
     const scopedBaseRows = maybeScopeRows(baseRows, baseColMap, tiendaScope);
     const movSalidaRows = maybeScopeRows(movRows.filter(r => isSalida(r[cols.movEstado])), movColMap, tiendaScope);
 
@@ -1356,8 +1411,8 @@ function computeAnalysisA(tiendaScope) {
    la clave común (id+fecha) para comparar los totales, señalando toda
    combinación donde las cantidades no coinciden. */
 function computeAnalysisB(tiendaScope) {
-    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor };
-    const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor };
+    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId };
+    const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor, id: cols.devId };
     const movDevRows = maybeScopeRows(movRows.filter(r => isDevolucion(r[cols.movEstado])), movColMap, tiendaScope);
     const movDevMap = groupRows(movDevRows, { ...movColMap, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
 
@@ -1420,9 +1475,9 @@ function sumByDay(rows, colMap) {
 }
 
 function buildIdTraceDaily(id, tiendaScope) {
-    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor };
-    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor };
-    const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor };
+    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId };
+    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId };
+    const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor, id: cols.devId };
 
     const baseIdRows = baseRows.filter(r => String(r[cols.baseId] ?? '').trim() === id);
     const movIdRows = movRows.filter(r => String(r[cols.movId] ?? '').trim() === id);
