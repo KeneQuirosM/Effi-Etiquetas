@@ -312,6 +312,8 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
     background: var(--brand-50); border: 1px solid var(--brand-100);
     padding: 3px 10px; border-radius: var(--radius-sm); display: inline-block;
 }
+.id-pill-link { cursor: pointer; transition: var(--transition); }
+.id-pill-link:hover { background: var(--brand-500); color: white; border-color: var(--brand-500); }
 
 /* ══ BADGES ══ */
 .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 999px; font-size: .7rem; font-weight: 600; border: 1px solid; white-space: nowrap; }
@@ -1612,7 +1614,7 @@ function renderTableA() {
             : '<span style="color:var(--neutral-400)">— sin nombre en BD —</span>';
         return `<tr class="${rowClass}">
             <td><i class="fas fa-store cell-icon"></i>${esc(r.tiendaLabel)}</td>
-            <td><span class="id-pill">${esc(r.id)}</span></td>
+            <td><span class="id-pill id-pill-link" data-jump-id="${esc(r.id)}" title="Ver trazabilidad diaria de este ID">${esc(r.id)}</span></td>
             <td>${productCell}</td>
             <td><i class="fas fa-calendar-day cell-icon"></i>${esc(r.fecha)}</td>
             <td class="num">${formatNumber(r.cantBase)}</td>
@@ -1659,7 +1661,7 @@ function renderTableB() {
             : '<span style="color:var(--neutral-400)">— sin nombre en BD —</span>';
         return `<tr class="${rowClass}">
             <td><i class="fas fa-store cell-icon"></i>${esc(r.tiendaLabel)}</td>
-            <td><span class="id-pill">${esc(r.id)}</span></td>
+            <td><span class="id-pill id-pill-link" data-jump-id="${esc(r.id)}" title="Ver trazabilidad diaria de este ID">${esc(r.id)}</span></td>
             <td>${productCell}</td>
             <td><i class="fas fa-calendar-day cell-icon"></i>${esc(r.fecha)}</td>
             <td class="num">${formatNumber(r.cantMov)}</td>
@@ -1774,6 +1776,20 @@ function jumpToTableFilteredById(id, side) {
     block.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Clic en el ID de cualquier fila de Base vs Salidas / Mov. Devoluciones vs
+// Devoluciones: selecciona ese ID y salta a "Trazabilidad diaria" para ver
+// exactamente qué días componen el total agregado de esa fila. Mantiene la
+// tienda actualmente seleccionada (si hay una), a diferencia del salto desde
+// las tarjetas de métrica, que sí la limpia.
+function jumpToIdTraceFromRow(id) {
+    document.getElementById('filterId').value = id;
+    updateIdFilterOptions();
+    renderTableA(); renderTableB(); renderIdTrace();
+    const block = document.getElementById('idTraceBlock');
+    block.classList.remove('collapsed');
+    block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function wireMetricCards() {
     document.querySelectorAll('.metric-card[data-metric]').forEach(card => {
         const key = card.getAttribute('data-metric');
@@ -1854,6 +1870,14 @@ wireSortableHeaders('tableB', () => sortStateB, (s) => { sortStateB = s; }, rend
 
 document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
 document.getElementById('exportBtn').addEventListener('click', exportResults);
+document.getElementById('tableABody').addEventListener('click', (e) => {
+    const pill = e.target.closest('.id-pill-link');
+    if (pill) jumpToIdTraceFromRow(pill.getAttribute('data-jump-id'));
+});
+document.getElementById('tableBBody').addEventListener('click', (e) => {
+    const pill = e.target.closest('.id-pill-link');
+    if (pill) jumpToIdTraceFromRow(pill.getAttribute('data-jump-id'));
+});
 document.getElementById('filterId').addEventListener('change', () => { renderTableA(); renderTableB(); renderIdTrace(); });
 // Cambiar la tienda de trazabilidad, una vez que ya se corrió un análisis,
 // vuelve a calcular todo con ese nuevo alcance (no es un simple filtro de
