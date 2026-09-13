@@ -1169,11 +1169,13 @@ function populateFilters() {
     document.getElementById('filtersHint').classList.add('show');
 }
 
-// Filtro en cascada: si hay una tienda seleccionada y la BD la reconoce,
-// el select de ID solo muestra los códigos del catálogo de ESA tienda
-// (cruzado con los IDs que realmente aparecen en el archivo cargado).
-// Sin tienda seleccionada, o sin match en BD, muestra todos los IDs del
-// archivo — igual que antes.
+// Filtro en cascada: si hay una tienda seleccionada, el select de ID solo
+// muestra los códigos que REALMENTE aparecen en la hoja Base bajo esa
+// tienda en el archivo cargado — no el catálogo que la base de datos
+// tenga registrado para ella. Usar el catálogo de la BD podía mostrar
+// productos que en este archivo nunca salen bajo esa tienda (o que la BD
+// tiene mal asignados), que es justo lo que no tiene sentido para el
+// usuario. Sin tienda seleccionada, muestra todos los IDs del archivo.
 function updateIdFilterOptions() {
     const idSelect = document.getElementById('filterId');
     const tiendaVal = document.getElementById('filterTienda').value;
@@ -1181,11 +1183,13 @@ function updateIdFilterOptions() {
 
     let idsToShow = allDetectedIds;
     if (tiendaVal) {
-        const dbTienda = tiendaByClean.get(cleanCompareText(stripExcelIdPrefix(tiendaVal))) || tiendaByClean.get(cleanCompareText(tiendaVal));
-        if (dbTienda) {
-            const allowedCodes = new Set((dbTienda.inventario || []).map(p => cleanCompareText(p.id)));
-            idsToShow = allDetectedIds.filter(id => allowedCodes.has(cleanCompareText(id)));
-        }
+        const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor };
+        const idsInTienda = new Set();
+        maybeScopeRows(baseRows, baseColMap, tiendaVal).forEach(r => {
+            const v = String(r[cols.baseId] ?? '').trim();
+            if (v) idsInTienda.add(v);
+        });
+        idsToShow = allDetectedIds.filter(id => idsInTienda.has(id));
     }
 
     idSelect.innerHTML = '<option value="">-- Todos --</option>' + idsToShow.map(v => `<option value="${esc(v)}">${esc(idFilterLabel(v))}</option>`).join('');
