@@ -244,6 +244,10 @@ body {
 .results-panel { display: none; flex-direction: column; gap: 18px; }
 .results-panel.show { display: flex; }
 .results-block { background: white; border: 1px solid var(--neutral-200); border-radius: var(--radius-lg); padding: 18px 20px; box-shadow: var(--shadow-xs); }
+#idTraceBlock { display: none; border-color: var(--brand-100); }
+#idTraceBlock.show { display: block; }
+#idTraceBlock .results-block-title { color: var(--brand-800); }
+#idTraceTable tfoot td, #idTraceTable tr.trace-total td { font-weight: 700; background: var(--brand-50); color: var(--neutral-800); }
 .results-block-head {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 12px; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;
@@ -501,6 +505,41 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                     </button>
                 </div>
                 <div class="metric-detail-list" id="metricDetailBody"></div>
+            </div>
+
+            <!-- TRAZABILIDAD DIARIA DE UN ID — solo visible con un ID elegido en
+                 "Filtrar por ID artículo"; replica (a nivel de día exacto, no
+                 mensual) la tabla dinámica de Excel que compara Base/Salidas/
+                 Devoluciones para un solo artículo, día por día. -->
+            <div class="results-block" id="idTraceBlock">
+                <div class="results-block-head" data-toggle="idTraceBlock">
+                    <div class="results-block-title" id="idTraceTitle"><i class="fas fa-magnifying-glass-chart"></i> Trazabilidad diaria</div>
+                    <div class="results-block-head-right">
+                        <span class="results-block-count" id="idTraceCount">0 días</span>
+                        <i class="fas fa-chevron-down accordion-chevron"></i>
+                    </div>
+                </div>
+                <div class="results-block-desc">
+                    Día por día (año, mes y día exactos) del ID seleccionado en las tres fuentes: cuánto dice <strong>Base</strong> que se despachó, cuánto quedó como <strong>salida</strong> en Movimientos, y cuánto aparece como <strong>devolución</strong> en Movimientos vs. en la hoja Devoluciones. Así se detecta el día puntual en que un ID no se subió a Movimientos.
+                </div>
+                <div class="accordion-body">
+                    <div class="tbl-wrap">
+                        <table id="idTraceTable">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th class="num">Cant. Base</th>
+                                    <th class="num">Cant. Salidas (Mov.)</th>
+                                    <th class="center">Diferencia</th>
+                                    <th class="num">Cant. Devolución (Mov.)</th>
+                                    <th class="num">Cant. Devolución (Hoja)</th>
+                                    <th class="center">Diferencia</th>
+                                </tr>
+                            </thead>
+                            <tbody id="idTraceBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- SECCIÓN A — BASE VS SALIDAS -->
@@ -1350,6 +1389,115 @@ function computeAnalysisB(tiendaScope) {
     return results;
 }
 
+/* ── TRAZABILIDAD DIARIA DE UN ID ──────────────────────────────────
+   Réplica (y afina) la tabla dinámica que el usuario ya arma a mano en
+   Excel: fija un ID (y opcionalmente una tienda) y compara, día por
+   día — año, mes y día exactos, no un resumen mensual — cuánto dice
+   Base que se despachó contra cuánto quedó como salida en Movimientos,
+   y cuánto aparece como devolución en Movimientos contra la hoja
+   Devoluciones. El nivel de día es el que importa: hay movimientos
+   todos los días, y el objetivo es detectar el día puntual en que un
+   ID no se subió a Movimientos (o a Devoluciones). */
+
+// Suma "cantidad" agrupando por fecha exacta (misma clave que usa el resto
+// del análisis, vía parseDate) — ya recibe las filas pre-filtradas por ID
+// (y tienda, si aplica).
+function sumByDay(rows, colMap) {
+    const map = new Map(); // fechaKey ISO -> { display, qty }
+    rows.forEach(r => {
+        const { key: fechaKey, display } = parseDate(r[colMap.fecha]);
+        if (!fechaKey) return;
+        if (!map.has(fechaKey)) map.set(fechaKey, { display: display || fechaKey, qty: 0 });
+        map.get(fechaKey).qty += parseQty(r[colMap.cantidad]);
+    });
+    return map;
+}
+
+function buildIdTraceDaily(id, tiendaScope) {
+    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor };
+    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor };
+    const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor };
+
+    const baseIdRows = baseRows.filter(r => String(r[cols.baseId] ?? '').trim() === id);
+    const movIdRows = movRows.filter(r => String(r[cols.movId] ?? '').trim() === id);
+    const devIdRows = devRows.filter(r => String(r[cols.devId] ?? '').trim() === id);
+
+    const baseByDay = sumByDay(maybeScopeRows(baseIdRows, baseColMap, tiendaScope), { fecha: cols.baseFecha, cantidad: cols.baseCantidad });
+    const salidaByDay = sumByDay(maybeScopeRows(movIdRows.filter(r => isSalida(r[cols.movEstado])), movColMap, tiendaScope), { fecha: cols.movFecha, cantidad: cols.movCantidad });
+    const devMovByDay = sumByDay(maybeScopeRows(movIdRows.filter(r => isDevolucion(r[cols.movEstado])), movColMap, tiendaScope), { fecha: cols.movFecha, cantidad: cols.movCantidad });
+    const devHojaByDay = sumByDay(maybeScopeRows(devIdRows, devColMap, tiendaScope), { fecha: cols.devFecha, cantidad: cols.devCantidad });
+
+    const allDayKeys = new Set([...baseByDay.keys(), ...salidaByDay.keys(), ...devMovByDay.keys(), ...devHojaByDay.keys()]);
+    const rows = [...allDayKeys].sort().map(k => {
+        const display = (baseByDay.get(k) || salidaByDay.get(k) || devMovByDay.get(k) || devHojaByDay.get(k)).display;
+        return {
+            fechaKey: k, fecha: display,
+            base: baseByDay.get(k)?.qty || 0,
+            salidas: salidaByDay.get(k)?.qty || 0,
+            devMov: devMovByDay.get(k)?.qty || 0,
+            devHoja: devHojaByDay.get(k)?.qty || 0
+        };
+    });
+
+    const totals = rows.reduce((acc, r) => ({
+        base: acc.base + r.base, salidas: acc.salidas + r.salidas, devMov: acc.devMov + r.devMov, devHoja: acc.devHoja + r.devHoja
+    }), { base: 0, salidas: 0, devMov: 0, devHoja: 0 });
+
+    return { rows, totals };
+}
+
+// Badge compartido para una diferencia puntual (se usa tanto por mes como
+// en la fila de Total general).
+function traceDiffBadge(diff) {
+    if (diff === 0) return `<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Coincide</span>`;
+    if (Math.abs(diff) <= 5) return `<span class="badge badge-warn"><i class="fas fa-circle-exclamation"></i> Leve · ${formatSigned(diff)} uds</span>`;
+    return `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Crítico · ${formatSigned(diff)} uds</span>`;
+}
+
+function renderIdTrace() {
+    const block = document.getElementById('idTraceBlock');
+    const idVal = document.getElementById('filterId').value;
+    if (!idVal) { block.classList.remove('show'); return; }
+
+    const tiendaScope = document.getElementById('filterTienda').value || null;
+    const { rows, totals } = buildIdTraceDaily(idVal, tiendaScope);
+    const prod = resolveProduct(idVal, tiendaScope);
+
+    document.getElementById('idTraceTitle').innerHTML =
+        `<i class="fas fa-magnifying-glass-chart"></i> Trazabilidad diaria — ID ${esc(idVal)}${prod ? ' · ' + esc(prod.nombre) : ''}`;
+    document.getElementById('idTraceCount').textContent = `${rows.length} día${rows.length === 1 ? '' : 's'} con movimiento`;
+
+    const tbody = document.getElementById('idTraceBody');
+    if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin datos para este ID${tiendaScope ? ' en esta tienda' : ''}</div></div></td></tr>`;
+        block.classList.add('show');
+        return;
+    }
+
+    const dayRows = rows.map(r => `<tr>
+        <td><i class="fas fa-calendar-day cell-icon"></i>${esc(r.fecha)}</td>
+        <td class="num">${formatNumber(r.base)}</td>
+        <td class="num">${formatNumber(r.salidas)}</td>
+        <td class="center">${traceDiffBadge(r.base - r.salidas)}</td>
+        <td class="num">${formatNumber(r.devMov)}</td>
+        <td class="num">${formatNumber(r.devHoja)}</td>
+        <td class="center">${traceDiffBadge(r.devMov - r.devHoja)}</td>
+    </tr>`).join('');
+
+    const totalRow = `<tr class="trace-total">
+        <td>Total general</td>
+        <td class="num">${formatNumber(totals.base)}</td>
+        <td class="num">${formatNumber(totals.salidas)}</td>
+        <td class="center">${traceDiffBadge(totals.base - totals.salidas)}</td>
+        <td class="num">${formatNumber(totals.devMov)}</td>
+        <td class="num">${formatNumber(totals.devHoja)}</td>
+        <td class="center">${traceDiffBadge(totals.devMov - totals.devHoja)}</td>
+    </tr>`;
+
+    tbody.innerHTML = dayRows + totalRow;
+    block.classList.add('show');
+}
+
 /* ── EJECUCIÓN DEL ANÁLISIS ──────────────────────────────────────
    Se dispara al hacer clic en "Analizar trazabilidad". Corre ambos
    análisis, actualiza métricas y tablas, y deja registro en auditoría. */
@@ -1517,7 +1665,7 @@ function renderTableB() {
     }).join('');
 }
 
-function renderAll() { closeMetricDetail(); renderMetrics(); renderTableA(); renderTableB(); }
+function renderAll() { closeMetricDetail(); renderMetrics(); renderTableA(); renderTableB(); renderIdTrace(); }
 
 /* ── DETALLE DESPLEGABLE DE MÉTRICAS ──────────────────────────────
    Cada tarjeta de métrica es un botón: al hacer clic despliega un
@@ -1702,19 +1850,19 @@ wireSortableHeaders('tableB', () => sortStateB, (s) => { sortStateB = s; }, rend
 
 document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
 document.getElementById('exportBtn').addEventListener('click', exportResults);
-document.getElementById('filterId').addEventListener('change', () => { renderTableA(); renderTableB(); });
+document.getElementById('filterId').addEventListener('change', () => { renderTableA(); renderTableB(); renderIdTrace(); });
 // Cambiar la tienda de trazabilidad, una vez que ya se corrió un análisis,
 // vuelve a calcular todo con ese nuevo alcance (no es un simple filtro de
 // pantalla) — así el dropdown "pregunta" la tienda y recalcula en el acto.
 document.getElementById('filterTienda').addEventListener('change', () => {
     updateIdFilterOptions();
-    if (hasAnalyzed) runAnalysis(); else { renderTableA(); renderTableB(); }
+    if (hasAnalyzed) runAnalysis(); else { renderTableA(); renderTableB(); renderIdTrace(); }
 });
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
     document.getElementById('filterTienda').value = '';
     updateIdFilterOptions();
     document.getElementById('filterId').value = '';
-    if (hasAnalyzed) runAnalysis(); else { renderTableA(); renderTableB(); }
+    if (hasAnalyzed) runAnalysis(); else { renderTableA(); renderTableB(); renderIdTrace(); }
 });
 
 renderLogs();
