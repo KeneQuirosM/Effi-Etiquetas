@@ -1254,9 +1254,25 @@ function canonicalTienda(rawTienda) {
 // corresponde); la BD no tiene ese problema porque cada código de
 // producto pertenece a una sola tienda por diseño.
 function resolveRowTienda(row, colMap, id) {
-    const dbInfo = id ? productByCode.get(cleanCompareText(id)) : null;
-    if (dbInfo && dbInfo.tiendaId != null) return `${dbInfo.tiendaId} - ${dbInfo.tiendaNombre}`;
-    return canonicalTienda(rawTiendaValue(row, colMap));
+    const rawTienda = rawTiendaValue(row, colMap);
+    if (id) {
+        const cleanId = cleanCompareText(id);
+        // Un mismo código de producto puede repetirse en catálogos de
+        // distintas tiendas (numeración propia por tienda). Si el Excel
+        // ya trae una pista de tienda, buscar primero el código DENTRO de
+        // esa tienda (productByTiendaCode) evita que el mapa global
+        // productByCode (que solo recuerda la primera tienda que registró
+        // cada código) le robe filas a la tienda real.
+        if (rawTienda && rawTienda !== 'N/D') {
+            for (const c of [cleanCompareText(stripExcelIdPrefix(rawTienda)), cleanCompareText(rawTienda)]) {
+                const hit = productByTiendaCode.get(`${c}||${cleanId}`);
+                if (hit) return `${hit.tiendaId} - ${hit.tiendaNombre}`;
+            }
+        }
+        const dbInfo = productByCode.get(cleanId);
+        if (dbInfo && dbInfo.tiendaId != null) return `${dbInfo.tiendaId} - ${dbInfo.tiendaNombre}`;
+    }
+    return canonicalTienda(rawTienda);
 }
 
 // Compara, fila por fila de Base, la tienda que declara el Excel
@@ -1274,9 +1290,18 @@ function checkTiendaMismatches() {
     baseRows.forEach(r => {
         const id = String(r[cols.baseId] ?? '').trim();
         if (!id) return;
-        const dbInfo = productByCode.get(cleanCompareText(id));
-        if (!dbInfo || dbInfo.tiendaId == null) return;
+        const cleanId = cleanCompareText(id);
         const excelTienda = canonicalTienda(rawTiendaValue(r, baseColMap));
+        // Si el código ya está registrado en la BD bajo la tienda que dice
+        // el Excel, no es un mismatch (el mismo código puede repetirse en
+        // catálogos de otras tiendas sin que eso sea un error).
+        if (excelTienda !== 'N/D') {
+            for (const c of [cleanCompareText(stripExcelIdPrefix(excelTienda)), cleanCompareText(excelTienda)]) {
+                if (productByTiendaCode.has(`${c}||${cleanId}`)) return;
+            }
+        }
+        const dbInfo = productByCode.get(cleanId);
+        if (!dbInfo || dbInfo.tiendaId == null) return;
         const dbTienda = `${dbInfo.tiendaId} - ${dbInfo.tiendaNombre}`;
         if (excelTienda !== 'N/D' && excelTienda !== dbTienda) {
             mismatches++;
