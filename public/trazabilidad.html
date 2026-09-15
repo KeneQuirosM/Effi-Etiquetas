@@ -247,7 +247,17 @@ body {
 #idTraceBlock { display: none; border-color: var(--brand-100); }
 #idTraceBlock.show { display: block; }
 #idTraceBlock .results-block-title { color: var(--brand-800); }
-#idTraceTable tfoot td, #idTraceTable tr.trace-total td { font-weight: 700; background: var(--brand-50); color: var(--neutral-800); }
+#idTraceTable tfoot td, #idTraceTable tr.trace-total td,
+#idTraceMonthlyTable tfoot td, #idTraceMonthlyTable tr.trace-total td { font-weight: 700; background: var(--brand-50); color: var(--neutral-800); }
+.id-trace-daily-details { margin-top: 16px; }
+.id-trace-daily-details summary {
+    cursor: pointer; font-weight: 600; font-size: .8rem; color: var(--brand-700);
+    padding: 8px 0; list-style: none; display: flex; align-items: center; gap: 6px;
+}
+.id-trace-daily-details summary::-webkit-details-marker { display: none; }
+.id-trace-daily-details summary::before { content: '\25B8'; transition: var(--transition); display: inline-block; }
+.id-trace-daily-details[open] summary::before { transform: rotate(90deg); }
+.id-trace-scope-note { font-size: .72rem; color: var(--neutral-500); font-weight: 400; }
 .results-block-head {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 12px; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;
@@ -509,38 +519,60 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
                 <div class="metric-detail-list" id="metricDetailBody"></div>
             </div>
 
-            <!-- TRAZABILIDAD DIARIA DE UN ID — solo visible con un ID elegido en
-                 "Filtrar por ID artículo"; replica (a nivel de día exacto, no
-                 mensual) la tabla dinámica de Excel que compara Base/Salidas/
-                 Devoluciones para un solo artículo, día por día. -->
+            <!-- TRAZABILIDAD DE UN ID — solo visible con un ID elegido en
+                 "Filtrar por ID artículo". Cruza Base/Movimientos/Devoluciones
+                 siempre por tienda+ID (tienda seleccionada en el filtro, o
+                 inferida automáticamente desde las salidas de Movimientos si
+                 no se eligió ninguna). Muestra primero el resumen mensual
+                 (lo principal) y, debajo, en un <details> desplegable, el
+                 detalle día por día. -->
             <div class="results-block" id="idTraceBlock">
                 <div class="results-block-head" data-toggle="idTraceBlock">
-                    <div class="results-block-title" id="idTraceTitle"><i class="fas fa-magnifying-glass-chart"></i> Trazabilidad diaria</div>
+                    <div class="results-block-title" id="idTraceTitle"><i class="fas fa-magnifying-glass-chart"></i> Trazabilidad</div>
                     <div class="results-block-head-right">
-                        <span class="results-block-count" id="idTraceCount">0 días</span>
+                        <span class="results-block-count" id="idTraceCount">0 meses</span>
                         <i class="fas fa-chevron-down accordion-chevron"></i>
                     </div>
                 </div>
                 <div class="results-block-desc">
-                    Día por día (año, mes y día exactos) del ID seleccionado en las tres fuentes: cuánto dice <strong>Base</strong> que se despachó, cuánto quedó como <strong>salida</strong> en Movimientos, y cuánto aparece como <strong>devolución</strong> en Movimientos vs. en la hoja Devoluciones. Así se detecta el día puntual en que un ID no se subió a Movimientos.
+                    Resumen mensual del ID seleccionado, cruzando siempre por <strong>tienda + ID</strong> entre las tres fuentes: cuánto dice <strong>Base</strong> que se despachó ese mes, cuánto quedó como <strong>salida</strong> en Movimientos, y cuánto aparece como <strong>devolución</strong> en Movimientos vs. en la hoja Devoluciones. Debajo, en "Ver detalle diario", el desglose día por día (año, mes y día exactos) para ubicar la fecha puntual de cualquier diferencia.
                 </div>
                 <div class="accordion-body">
                     <div class="tbl-wrap">
-                        <table id="idTraceTable">
+                        <table id="idTraceMonthlyTable">
                             <thead>
                                 <tr>
-                                    <th>Fecha</th>
-                                    <th class="num">Cant. Base</th>
-                                    <th class="num">Cant. Salidas (Mov.)</th>
-                                    <th class="center">Diferencia</th>
-                                    <th class="num">Cant. Devolución (Mov.)</th>
-                                    <th class="num">Cant. Devolución (Hoja)</th>
-                                    <th class="center">Diferencia</th>
+                                    <th>Mes</th>
+                                    <th class="num">Base Salidas</th>
+                                    <th class="num">Mov. Salidas</th>
+                                    <th class="center">Dif</th>
+                                    <th class="num">Mov. Dev.</th>
+                                    <th class="num">Hoja Dev.</th>
+                                    <th class="center">Dif</th>
                                 </tr>
                             </thead>
-                            <tbody id="idTraceBody"></tbody>
+                            <tbody id="idTraceMonthlyBody"></tbody>
                         </table>
                     </div>
+                    <details class="id-trace-daily-details" id="idTraceDailyDetails">
+                        <summary>Ver detalle diario</summary>
+                        <div class="tbl-wrap">
+                            <table id="idTraceTable">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th class="num">Cant. Base</th>
+                                        <th class="num">Cant. Salidas (Mov.)</th>
+                                        <th class="center">Diferencia</th>
+                                        <th class="num">Cant. Devolución (Mov.)</th>
+                                        <th class="num">Cant. Devolución (Hoja)</th>
+                                        <th class="center">Diferencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="idTraceBody"></tbody>
+                            </table>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -744,6 +776,11 @@ function detectColumn(headers, candidates) {
 // columna "NOMBRE CLIENTE" (el comprador final, no una tienda) que
 // calzaba por substring ("nombre cliente".includes("cliente")) y se
 // detectaba por error como si fuera la columna de tienda.
+// Movimientos y Devoluciones ahora traen su propia columna "TIENDA"
+// (candidato 'tienda' de esta lista, coincidencia exacta) — ya funciona
+// sin cambios: columnas vecinas como "PROCEDENCIA", "TRANSPORTADORA" o
+// "NOMBRE CLIENTE" no contienen ninguno de estos candidatos ni como
+// substring, así que no compiten por la coincidencia exacta.
 const DISTRIBUIDOR_CANDS = ['distribuidor', 'tienda', 'punto de venta', 'pdv', 'sucursal'];
 const PROVEEDOR_CANDS = ['proveedor dropshipping', 'proveedor', 'dropshipping'];
 // "id" y "codigo" van al final (menor prioridad): son genéricos, así que solo
@@ -1431,15 +1468,39 @@ function computeAnalysisA(tiendaScope) {
 }
 
 /* ── ANÁLISIS 2 — MOV. DEVOLUCIONES VS DEVOLUCIONES ──────────────
-   Agrupa las devoluciones registradas en Movimientos (tienda+id+fecha)
-   y las de la hoja Devoluciones (id+fecha, sin tienda). Reduce ambas a
-   la clave común (id+fecha) para comparar los totales, señalando toda
-   combinación donde las cantidades no coinciden. */
+   Ambas hojas ahora suelen traer columna de tienda propia (Movimientos:
+   TIENDA/Distribuidor; Devoluciones: TIENDA), así que el cruce se hace
+   siempre por tienda+id+fecha (groupRows ya arma esa clave). Solo si a
+   alguna de las dos hojas le falta la columna de tienda (archivo viejo
+   sin ese dato) se cae al comportamiento anterior: reducir a id+fecha,
+   sumando entre tiendas, porque no hay forma de saber a cuál pertenece
+   cada fila. */
 function computeAnalysisB(tiendaScope) {
     const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId };
     const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor, id: cols.devId };
     const movDevRows = maybeScopeRows(movRows.filter(r => isDevolucion(r[cols.movEstado])), movColMap, tiendaScope);
     const movDevMap = groupRows(movDevRows, { ...movColMap, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
+
+    const scopedDevRows = maybeScopeRows(devRows, devColMap, tiendaScope);
+    const devMap = groupRows(scopedDevRows, { ...devColMap, id: cols.devId, fecha: cols.devFecha, cantidad: cols.devCantidad });
+
+    const movHasTienda = !!(cols.movDistribuidor || cols.movProveedor);
+    const devHasTienda = !!(cols.devDistribuidor || cols.devProveedor);
+
+    if (movHasTienda && devHasTienda) {
+        const allKeys = new Set([...movDevMap.keys(), ...devMap.keys()]);
+        const results = [];
+        allKeys.forEach(key => {
+            const m = movDevMap.get(key);
+            const d = devMap.get(key);
+            const movQty = m ? m.qty : 0;
+            const devQty = d ? d.qty : 0;
+            const diferencia = movQty - devQty;
+            const base = m || d;
+            results.push({ tienda: base.tienda, id: base.id, fecha: base.fechaDisplay || base.fechaKey, fechaKey: base.fechaKey, cantMov: movQty, cantDev: devQty, diferencia });
+        });
+        return results;
+    }
 
     const movByIdFecha = new Map(); // "id||fechaKey" -> { qty, tiendas:Set, fechaDisplay }
     movDevMap.forEach(entry => {
@@ -1450,8 +1511,6 @@ function computeAnalysisB(tiendaScope) {
         o.tiendas.add(entry.tienda);
     });
 
-    const scopedDevRows = maybeScopeRows(devRows, devColMap, tiendaScope);
-    const devMap = groupRows(scopedDevRows, { ...devColMap, id: cols.devId, fecha: cols.devFecha, cantidad: cols.devCantidad });
     const devByIdFecha = new Map(); // "id||fechaKey" -> qty
     const displayByIdFecha = new Map();
     devMap.forEach(entry => {
@@ -1475,15 +1534,33 @@ function computeAnalysisB(tiendaScope) {
     return results;
 }
 
-/* ── TRAZABILIDAD DIARIA DE UN ID ──────────────────────────────────
-   Réplica (y afina) la tabla dinámica que el usuario ya arma a mano en
-   Excel: fija un ID (y opcionalmente una tienda) y compara, día por
-   día — año, mes y día exactos, no un resumen mensual — cuánto dice
-   Base que se despachó contra cuánto quedó como salida en Movimientos,
-   y cuánto aparece como devolución en Movimientos contra la hoja
-   Devoluciones. El nivel de día es el que importa: hay movimientos
-   todos los días, y el objetivo es detectar el día puntual en que un
-   ID no se subió a Movimientos (o a Devoluciones). */
+/* ── TRAZABILIDAD DE UN ID ──────────────────────────────────────────
+   Fija un ID y una tienda, y cruza Base/Movimientos/Devoluciones siempre
+   por esa combinación tienda+ID: primero un resumen mensual (lo
+   principal), y por separado, a pedido, el detalle día por día — año,
+   mes y día exactos — para ubicar la fecha puntual de una diferencia. */
+
+// Si el usuario no eligió tienda en el filtro, no hay forma de saber a
+// cuál pertenecen los despachos de Base para este ID sin adivinar — y
+// sumar todas las tiendas mezcladas es exactamente el bug que se quiere
+// evitar (un ID que existe en varias tiendas infla el total de Base).
+// Se infiere la tienda a partir de las propias filas de SALIDAS de este
+// ID en Movimientos (ya trae su columna TIENDA): se usa la tienda que
+// más se repite ahí. Devuelve null si no hay ninguna pista.
+function inferTiendaForId(id) {
+    if (!cols.movId) return null;
+    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId };
+    const counts = new Map();
+    movRows.forEach(r => {
+        if (String(r[cols.movId] ?? '').trim() !== id) return;
+        if (!isSalida(r[cols.movEstado])) return;
+        const tienda = resolveRowTienda(r, movColMap, id);
+        if (!tienda || tienda === 'N/D') return;
+        counts.set(tienda, (counts.get(tienda) || 0) + 1);
+    });
+    if (!counts.size) return null;
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+}
 
 // Suma "cantidad" agrupando por fecha exacta (misma clave que usa el resto
 // del análisis, vía parseDate) — ya recibe las filas pre-filtradas por ID
@@ -1532,31 +1609,116 @@ function buildIdTraceDaily(id, tiendaScope) {
     return { rows, totals };
 }
 
-// Badge compartido para una diferencia puntual (se usa tanto por mes como
-// en la fila de Total general).
+// Igual que sumByDay pero agrupando por mes (año+mes) en vez de por día
+// exacto — es la granularidad que pide el resumen mensual de trazabilidad.
+function sumByMonth(rows, colMap) {
+    const map = new Map(); // "AAAA-MM" -> qty
+    rows.forEach(r => {
+        const { key: fechaKey } = parseDate(r[colMap.fecha]);
+        if (!fechaKey || fechaKey.length < 7) return;
+        const monthKey = fechaKey.slice(0, 7);
+        map.set(monthKey, (map.get(monthKey) || 0) + parseQty(r[colMap.cantidad]));
+    });
+    return map;
+}
+
+const MES_ABBR = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+function monthKeyLabel(monthKey) {
+    const [y, m] = monthKey.split('-');
+    return `${MES_ABBR[parseInt(m, 10) - 1] || m} ${y}`;
+}
+
+// Resumen mensual de un ID: cruza Base/Movimientos/Devoluciones siempre
+// por tienda+ID (tiendaScope ya viene resuelta — seleccionada o inferida
+// — antes de llegar aquí), agrupando por mes. Un mes sin ninguna fila en
+// una fuente queda como null (se muestra "—", no "0": no es que haya
+// discrepancia, es que esa fuente no tiene datos ese mes).
+function buildIdTraceMonthly(id, tiendaScope) {
+    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId };
+    const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId };
+    const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor, id: cols.devId };
+
+    const baseIdRows = baseRows.filter(r => String(r[cols.baseId] ?? '').trim() === id);
+    const movIdRows = movRows.filter(r => String(r[cols.movId] ?? '').trim() === id);
+    const devIdRows = devRows.filter(r => String(r[cols.devId] ?? '').trim() === id);
+
+    // Base se suma completa, sin filtrar por Estado (regla que no cambia).
+    const baseByMonth = sumByMonth(maybeScopeRows(baseIdRows, baseColMap, tiendaScope), { fecha: cols.baseFecha, cantidad: cols.baseCantidad });
+    const salidaByMonth = sumByMonth(maybeScopeRows(movIdRows.filter(r => isSalida(r[cols.movEstado])), movColMap, tiendaScope), { fecha: cols.movFecha, cantidad: cols.movCantidad });
+    const devMovByMonth = sumByMonth(maybeScopeRows(movIdRows.filter(r => isDevolucion(r[cols.movEstado])), movColMap, tiendaScope), { fecha: cols.movFecha, cantidad: cols.movCantidad });
+    const devHojaByMonth = sumByMonth(maybeScopeRows(devIdRows, devColMap, tiendaScope), { fecha: cols.devFecha, cantidad: cols.devCantidad });
+
+    const allMonthKeys = new Set([...baseByMonth.keys(), ...salidaByMonth.keys(), ...devMovByMonth.keys(), ...devHojaByMonth.keys()]);
+    const rows = [...allMonthKeys].sort().map(monthKey => ({
+        monthKey, monthLabel: monthKeyLabel(monthKey),
+        base: baseByMonth.has(monthKey) ? baseByMonth.get(monthKey) : null,
+        salidas: salidaByMonth.has(monthKey) ? salidaByMonth.get(monthKey) : null,
+        devMov: devMovByMonth.has(monthKey) ? devMovByMonth.get(monthKey) : null,
+        devHoja: devHojaByMonth.has(monthKey) ? devHojaByMonth.get(monthKey) : null
+    }));
+
+    const totals = rows.reduce((acc, r) => ({
+        base: acc.base + (r.base || 0), salidas: acc.salidas + (r.salidas || 0),
+        devMov: acc.devMov + (r.devMov || 0), devHoja: acc.devHoja + (r.devHoja || 0)
+    }), { base: 0, salidas: 0, devMov: 0, devHoja: 0 });
+
+    return { rows, totals };
+}
+
+// Badge compartido para una diferencia puntual (se usa tanto por día como
+// en la fila de Total general del detalle diario).
 function traceDiffBadge(diff) {
     if (diff === 0) return `<span class="badge badge-ok"><i class="fas fa-check-circle"></i> Coincide</span>`;
     if (Math.abs(diff) <= 5) return `<span class="badge badge-warn"><i class="fas fa-circle-exclamation"></i> Leve · ${formatSigned(diff)} uds</span>`;
     return `<span class="badge badge-err"><i class="fas fa-triangle-exclamation"></i> Crítico · ${formatSigned(diff)} uds</span>`;
 }
 
-function renderIdTrace() {
-    const block = document.getElementById('idTraceBlock');
-    const idVal = document.getElementById('filterId').value;
-    if (!idVal) { block.classList.remove('show'); return; }
+// Celda numérica del resumen mensual: "—" cuando esa fuente no tuvo
+// ninguna fila ese mes (null), no cuando la cantidad es 0.
+function traceMonthNum(v) {
+    return v === null ? '<span style="color:var(--neutral-400)">—</span>' : formatNumber(v);
+}
+// Celda de diferencia del resumen mensual: "—" si ninguna de las dos
+// fuentes tuvo datos ese mes (nada que comparar); si al menos una sí,
+// la ausencia de la otra cuenta como 0 (discrepancia real, no vacío).
+function traceMonthDiffCell(a, b) {
+    if (a === null && b === null) return '<span style="color:var(--neutral-400)">—</span>';
+    return traceDiffBadge((a || 0) - (b || 0));
+}
 
-    const tiendaScope = document.getElementById('filterTienda').value || null;
-    const { rows, totals } = buildIdTraceDaily(idVal, tiendaScope);
-    const prod = resolveProduct(idVal, tiendaScope);
+function renderIdTraceMonthly(monthly) {
+    const tbody = document.getElementById('idTraceMonthlyBody');
+    if (!monthly.rows.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin datos para este ID</div></div></td></tr>`;
+        return;
+    }
+    const monthRows = monthly.rows.map(r => `<tr>
+        <td><i class="fas fa-calendar cell-icon"></i>${esc(r.monthLabel)}</td>
+        <td class="num">${traceMonthNum(r.base)}</td>
+        <td class="num">${traceMonthNum(r.salidas)}</td>
+        <td class="center">${traceMonthDiffCell(r.base, r.salidas)}</td>
+        <td class="num">${traceMonthNum(r.devMov)}</td>
+        <td class="num">${traceMonthNum(r.devHoja)}</td>
+        <td class="center">${traceMonthDiffCell(r.devMov, r.devHoja)}</td>
+    </tr>`).join('');
 
-    document.getElementById('idTraceTitle').innerHTML =
-        `<i class="fas fa-magnifying-glass-chart"></i> Trazabilidad diaria — ID ${esc(idVal)}${prod ? ' · ' + esc(prod.nombre) : ''}`;
-    document.getElementById('idTraceCount').textContent = `${rows.length} día${rows.length === 1 ? '' : 's'} con movimiento`;
+    const totalRow = `<tr class="trace-total">
+        <td>Total</td>
+        <td class="num">${formatNumber(monthly.totals.base)}</td>
+        <td class="num">${formatNumber(monthly.totals.salidas)}</td>
+        <td class="center">${traceMonthDiffCell(monthly.totals.base, monthly.totals.salidas)}</td>
+        <td class="num">${formatNumber(monthly.totals.devMov)}</td>
+        <td class="num">${formatNumber(monthly.totals.devHoja)}</td>
+        <td class="center">${traceMonthDiffCell(monthly.totals.devMov, monthly.totals.devHoja)}</td>
+    </tr>`;
 
+    tbody.innerHTML = monthRows + totalRow;
+}
+
+function renderIdTraceDaily(rows, totals, tiendaScope) {
     const tbody = document.getElementById('idTraceBody');
     if (!rows.length) {
         tbody.innerHTML = `<tr><td colspan="7" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">&#8709;</span><div class="empty-t">Sin datos para este ID${tiendaScope ? ' en esta tienda' : ''}</div></div></td></tr>`;
-        block.classList.add('show');
         return;
     }
 
@@ -1581,6 +1743,36 @@ function renderIdTrace() {
     </tr>`;
 
     tbody.innerHTML = dayRows + totalRow;
+}
+
+function renderIdTrace() {
+    const block = document.getElementById('idTraceBlock');
+    const idVal = document.getElementById('filterId').value;
+    if (!idVal) { block.classList.remove('show'); return; }
+
+    const selectedTienda = document.getElementById('filterTienda').value || null;
+    let tiendaScope = selectedTienda;
+    let inferred = false;
+    if (!tiendaScope) {
+        const guess = inferTiendaForId(idVal);
+        if (guess) { tiendaScope = guess; inferred = true; }
+    }
+
+    const monthly = buildIdTraceMonthly(idVal, tiendaScope);
+    const { rows, totals } = buildIdTraceDaily(idVal, tiendaScope);
+    const prod = resolveProduct(idVal, tiendaScope);
+
+    document.getElementById('idTraceTitle').innerHTML =
+        `<i class="fas fa-magnifying-glass-chart"></i> Trazabilidad — ID ${esc(idVal)}${prod ? ' · ' + esc(prod.nombre) : ''}`;
+
+    const scopeNote = tiendaScope
+        ? `${esc(tiendaScope)}${inferred ? ' (inferida desde Movimientos)' : ''}`
+        : 'sin tienda detectada';
+    document.getElementById('idTraceCount').innerHTML =
+        `${monthly.rows.length} mes${monthly.rows.length === 1 ? '' : 'es'} · <span class="id-trace-scope-note">${scopeNote}</span>`;
+
+    renderIdTraceMonthly(monthly);
+    renderIdTraceDaily(rows, totals, tiendaScope);
     block.classList.add('show');
 }
 
@@ -1857,16 +2049,17 @@ function jumpToTableFilteredById(id, side) {
 }
 
 // Clic en el ID de cualquier fila de Base vs Salidas / Mov. Devoluciones vs
-// Devoluciones: selecciona ese ID y salta a "Trazabilidad diaria" para ver
-// exactamente qué días componen el total agregado de esa fila. Mantiene la
-// tienda actualmente seleccionada (si hay una), a diferencia del salto desde
-// las tarjetas de métrica, que sí la limpia.
+// Devoluciones: selecciona ese ID y salta a "Trazabilidad" (abriendo el
+// detalle diario) para ver exactamente qué días componen el total agregado
+// de esa fila. Mantiene la tienda actualmente seleccionada (si hay una), a
+// diferencia del salto desde las tarjetas de métrica, que sí la limpia.
 function jumpToIdTraceFromRow(id) {
     document.getElementById('filterId').value = id;
     updateIdFilterOptions();
     renderTableA(); renderTableB(); renderIdTrace();
     const block = document.getElementById('idTraceBlock');
     block.classList.remove('collapsed');
+    document.getElementById('idTraceDailyDetails').open = true;
     block.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
