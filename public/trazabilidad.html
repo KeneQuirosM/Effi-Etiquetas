@@ -802,6 +802,32 @@ function detectBaseFechaColumn(headers) {
     return { column: generic, source: generic ? 'generica' : 'ninguna' };
 }
 
+// Verificación cruzada, no solo confiada en silencio: Base suele traer
+// OTRAS columnas de fecha además de la de despacho (ej. "Fecha de
+// creación transacción", "Fecha de anulación transacción"), y filas
+// puntuales pueden tener un día distinto en cada una (el pedido se creó
+// un día y se despachó otro). El análisis Base vs Salidas agrupa SIEMPRE
+// por cols.baseFecha (ver groupRows/buildIdTraceDaily/buildIdTraceMonthly)
+// — esta función deja constancia en el log de auditoría de cuántas filas
+// habrían caído en un día distinto si por error se usara cada una de esas
+// otras columnas, para que quede visible y verificable sin tener que
+// adivinar ni depender de que nadie vuelva a introducir esa regresión.
+function auditBaseFechaChoice(headers) {
+    if (!cols.baseFecha) return;
+    const otherDateHeaders = headers.filter(h => h !== cols.baseFecha && normalizeText(h).includes('fecha'));
+    otherDateHeaders.forEach(otherHeader => {
+        let diffCount = 0;
+        baseRows.forEach(r => {
+            const chosenKey = parseDate(r[cols.baseFecha]).key;
+            const otherKey = parseDate(r[otherHeader]).key;
+            if (chosenKey && otherKey && chosenKey !== otherKey) diffCount++;
+        });
+        if (diffCount > 0) {
+            addLog('VERIFICACIÓN FECHA BASE', `${formatNumber(diffCount)} fila(s) tienen un día distinto entre "${cols.baseFecha}" (la que usa el análisis) y "${otherHeader}" (no se usa) — Base vs Salidas agrupa SIEMPRE por "${cols.baseFecha}".`);
+        }
+    });
+}
+
 // El Excel trae la tienda repartida en DOS columnas posibles: "Distribuidor"
 // (bodega propia) y "Proveedor Dropshipping". Cuando ambas tienen valor en
 // la misma fila, la tienda real es la del proveedor (es la que de verdad
@@ -1134,6 +1160,7 @@ async function handleBaseFile(file) {
         } else if (fechaDetect.source === 'ninguna') {
             addLog('ADVERTENCIA: SIN COLUMNA DE FECHA — BASE', 'No se encontró ninguna columna de fecha utilizable en Base.');
         }
+        auditBaseFechaChoice(headers);
         setFileLoaded('base', file, `${baseRows.length} filas (hoja "${sheetName}")`);
         baseLoaded = true;
         notify(`Base cargada: ${baseRows.length} filas`, 'ok');
