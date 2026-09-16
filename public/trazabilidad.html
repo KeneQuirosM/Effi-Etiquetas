@@ -766,18 +766,37 @@ function detectColumn(headers, candidates) {
     return null;
 }
 
-// Detección específica de la columna de fecha de despacho en Base. Intenta
-// primero FECHA_DESPACHO_CANDS (el nombre real de la columna, con o sin
-// "de"); si ninguna variante calza, cae al fallback genérico de "fecha"
-// pero DESCARTANDO antes las columnas ya identificadas como decoy
-// (Vigencia, Fecha de creación/anulación transacción) para no repetir el
-// bug de agarrar por error la primera columna con "fecha" en el nombre.
-// Devuelve { column, source } — source indica cómo se encontró, para que
-// el llamador pueda loguearlo/advertir cuando fue por el camino genérico.
+// Detección de la columna de fecha de despacho en Base — a propósito NO
+// usa detección genérica por lista de candidatos (ese enfoque falló en
+// producción más de una vez: la hoja también trae "Fecha de creación
+// transacción" y "Fecha de anulación transacción", y una detección laxa
+// por substring "fecha" podía agarrar cualquiera de esas por error,
+// rompiendo el cruce día a día de Base vs Salidas aunque el mensual
+// pareciera cuadrar). En su lugar sigue un orden de prioridad estricto:
+//   1-2. Coincidencia EXACTA con "Fecha relación de despacho" — con o sin
+//        tilde, sin distinguir mayúsculas (normalizeText ya resuelve
+//        ambas formas con el mismo comparador, por eso es un solo paso).
+//   3.   Cualquier header que contenga a la vez "relacion" Y "despacho"
+//        (en cualquier orden) — cubre variantes de redacción como
+//        "Fecha de relación de despacho" o "Fecha Rel. Despacho".
+//   4.   Solo si nada de lo anterior existe, cae al fallback genérico de
+//        "fecha", excluyendo las columnas ya identificadas como decoy.
+// Devuelve { column, source } — source indica cómo se encontró, para el
+// log de auditoría ("FECHA BASE DETECTADA") y para advertir cuando fue
+// por el camino genérico.
 function detectBaseFechaColumn(headers) {
-    const specific = detectColumn(headers, FECHA_DESPACHO_CANDS);
-    if (specific) return { column: specific, source: 'especifica' };
+    const normed = headers.map(h => ({ header: h, norm: normalizeText(h) }));
 
+    // Pasos 1 y 2: "Fecha relación de despacho" / "Fecha relacion de despacho".
+    const exact = normed.find(h => h.norm === 'fecha relacion de despacho');
+    if (exact) return { column: exact.header, source: 'exacta' };
+
+    // Paso 3: header con "relacion" y "despacho", en cualquier orden.
+    const both = normed.find(h => h.norm.includes('relacion') && h.norm.includes('despacho'));
+    if (both) return { column: both.header, source: 'relacion+despacho' };
+
+    // Paso 4: fallback genérico, excluyendo las columnas ya identificadas
+    // como decoy (Vigencia, Fecha de creación/anulación transacción).
     const safeHeaders = headers.filter(h => !FECHA_BASE_DECOY_CANDS.some(cand => normalizeText(h).includes(cand)));
     const generic = detectColumn(safeHeaders, FECHA_GENERIC_CANDS);
     return { column: generic, source: generic ? 'generica' : 'ninguna' };
@@ -806,31 +825,18 @@ const PROVEEDOR_CANDS = ['proveedor dropshipping', 'proveedor', 'dropshipping'];
 // artículo simplemente bajo el encabezado "ID", sin calificarlo.
 const ID_CANDS = ['id articulo', 'id producto', 'codigo articulo', 'codigo producto', 'sku', 'id item', 'articulo', 'id', 'codigo'];
 const ID_MOV_CANDS = ID_CANDS.concat(['movimiento', 'id movimiento', 'no movimiento', 'numero movimiento']);
-// Bug real detectado: la hoja Base trae otras columnas de fecha con el
-// prefijo "de" ("Fecha DE creación transacción", "Fecha DE anulación
-// transacción"), y "Fecha relación de despacho" sigue el mismo patrón en
-// varios exports: "Fecha DE relación de despacho". La lista original solo
-// tenía variantes SIN ese "de" inicial, así que ninguna coincidía (ni exacta
-// ni por substring) con ese encabezado real, y la detección caía al
-// fallback genérico de FECHA_GENERIC_CANDS, que agarra la PRIMERA columna
-// que contenga "fecha" en toda la hoja — normalmente una completamente
-// distinta (ej. "Fecha de pedido"), muy anterior a la de despacho. Por eso
-// los totales mensuales podían verse razonables (ambas son fechas reales
-// del pedido) pero el cruce día a día fallaba. Se agregó cada variante con
-// su versión "de <candidato>" para cubrir ambos patrones de nombre.
-const FECHA_DESPACHO_CANDS = [
-    'fecha relacion de despacho', 'fecha de relacion de despacho',
-    'fecha relacion despacho', 'fecha de relacion despacho',
-    'fecha rel despacho', 'fecha de rel despacho',
-    'fecha despacho', 'fecha de despacho',
-    'fecha relacion', 'fecha de relacion'
-];
+// La fecha de despacho de Base ya NO se detecta con una lista de
+// candidatos genérica (ver detectBaseFechaColumn) — la hoja también trae
+// "Fecha de creación transacción" y "Fecha de anulación transacción", y
+// una detección laxa por substring "fecha" podía agarrar cualquiera de
+// esas por error. FECHA_GENERIC_CANDS se deja solo como último fallback
+// (paso 4 de detectBaseFechaColumn) y para Movimientos/Devoluciones, que
+// no tienen ese problema de columnas de fecha vecinas.
 const FECHA_GENERIC_CANDS = ['fecha movimiento', 'fecha mov', 'fecha'];
 // Columnas de fecha de Base que NO son la de despacho pero sí contienen
-// "fecha" (o se le parecen) — si algún encabezado nuevo/no previsto sigue
-// haciendo fallar FECHA_DESPACHO_CANDS, es preferible no detectar ninguna
-// columna (y avisar) a que el fallback genérico caiga en una de estas por
-// error. Ver uso en handleBaseFile().
+// "fecha" (o se le parecen) — si detectBaseFechaColumn tiene que caer al
+// fallback genérico (paso 4), es preferible no detectar ninguna columna
+// (y avisar) a que ese fallback caiga en una de estas por error.
 const FECHA_BASE_DECOY_CANDS = ['vigencia', 'fecha de creacion', 'fecha creacion', 'fecha de anulacion', 'fecha anulacion'];
 const CANTIDAD_CANDS = ['cantidad', 'cant', 'qty', 'unidades'];
 const ESTADO_CANDS = ['estado tipo', 'tipo movimiento', 'estado', 'tipo', 'movimiento'];
@@ -1117,16 +1123,15 @@ async function handleBaseFile(file) {
 
         addLog('ARCHIVO BASE CARGADO', `${file.name} · ${baseRows.length} filas (hoja "${sheetName}")`);
         addLog('COLUMNAS DETECTADAS — BASE', `Distribuidor: "${cols.baseDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.baseProveedor || '(no encontrada)'}" · ID: "${cols.baseId || '(no encontrada)'}" · Fecha: "${cols.baseFecha || '(no encontrada)'}" · Cantidad: "${cols.baseCantidad || '(no encontrada)'}"`);
-        // Log dedicado, explícito, de qué columna se usó para la fecha de
-        // despacho de Base y cómo se encontró — es la fecha que gobierna
-        // TODO el análisis Base vs Salidas, así que si algún día vuelve a
+        // Log dedicado y siempre visible de qué columna exacta se usó como
+        // fecha de despacho de Base — es la fecha que gobierna todo el
+        // análisis Base vs Salidas, así que si algún día vuelve a
         // detectarse mal, esto debe decirlo sin tener que adivinar.
-        if (fechaDetect.source === 'especifica') {
-            addLog('COLUMNA DE FECHA — BASE', `"${cols.baseFecha}" (coincidencia específica de "Fecha relación de despacho")`);
-        } else if (fechaDetect.source === 'generica') {
-            addLog('ADVERTENCIA: FECHA DE BASE POR FALLBACK GENÉRICO', `No se encontró "Fecha relación de despacho" con ningún patrón conocido; se usó "${cols.baseFecha}" (primera columna de fecha genérica, excluyendo Vigencia/Fecha de creación/anulación transacción). Verificar que sea la columna correcta.`);
+        addLog('FECHA BASE DETECTADA', cols.baseFecha ? `"${cols.baseFecha}" (${fechaDetect.source})` : '(no se encontró ninguna columna de fecha en Base)');
+        if (fechaDetect.source === 'generica') {
+            addLog('ADVERTENCIA: FECHA DE BASE POR FALLBACK GENÉRICO', `No se encontró "Fecha relación de despacho" (ni exacta ni por "relación"+"despacho"); se usó "${cols.baseFecha}" (primera columna de fecha genérica, excluyendo Vigencia/Fecha de creación/anulación transacción). Verificar que sea la columna correcta.`);
             notify(`No se detectó "Fecha relación de despacho" en Base; se usará "${cols.baseFecha}" como fecha de despacho. Verifica que sea la columna correcta.`, 'warn', 9000);
-        } else {
+        } else if (fechaDetect.source === 'ninguna') {
             addLog('ADVERTENCIA: SIN COLUMNA DE FECHA — BASE', 'No se encontró ninguna columna de fecha utilizable en Base.');
         }
         setFileLoaded('base', file, `${baseRows.length} filas (hoja "${sheetName}")`);
