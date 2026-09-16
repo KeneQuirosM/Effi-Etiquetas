@@ -766,6 +766,23 @@ function detectColumn(headers, candidates) {
     return null;
 }
 
+// Detección específica de la columna de fecha de despacho en Base. Intenta
+// primero FECHA_DESPACHO_CANDS (el nombre real de la columna, con o sin
+// "de"); si ninguna variante calza, cae al fallback genérico de "fecha"
+// pero DESCARTANDO antes las columnas ya identificadas como decoy
+// (Vigencia, Fecha de creación/anulación transacción) para no repetir el
+// bug de agarrar por error la primera columna con "fecha" en el nombre.
+// Devuelve { column, source } — source indica cómo se encontró, para que
+// el llamador pueda loguearlo/advertir cuando fue por el camino genérico.
+function detectBaseFechaColumn(headers) {
+    const specific = detectColumn(headers, FECHA_DESPACHO_CANDS);
+    if (specific) return { column: specific, source: 'especifica' };
+
+    const safeHeaders = headers.filter(h => !FECHA_BASE_DECOY_CANDS.some(cand => normalizeText(h).includes(cand)));
+    const generic = detectColumn(safeHeaders, FECHA_GENERIC_CANDS);
+    return { column: generic, source: generic ? 'generica' : 'ninguna' };
+}
+
 // El Excel trae la tienda repartida en DOS columnas posibles: "Distribuidor"
 // (bodega propia) y "Proveedor Dropshipping". Cuando ambas tienen valor en
 // la misma fila, la tienda real es la del proveedor (es la que de verdad
@@ -789,8 +806,32 @@ const PROVEEDOR_CANDS = ['proveedor dropshipping', 'proveedor', 'dropshipping'];
 // artículo simplemente bajo el encabezado "ID", sin calificarlo.
 const ID_CANDS = ['id articulo', 'id producto', 'codigo articulo', 'codigo producto', 'sku', 'id item', 'articulo', 'id', 'codigo'];
 const ID_MOV_CANDS = ID_CANDS.concat(['movimiento', 'id movimiento', 'no movimiento', 'numero movimiento']);
-const FECHA_DESPACHO_CANDS = ['fecha relacion de despacho', 'fecha relacion despacho', 'fecha rel despacho', 'fecha despacho', 'fecha de despacho', 'fecha relacion'];
+// Bug real detectado: la hoja Base trae otras columnas de fecha con el
+// prefijo "de" ("Fecha DE creación transacción", "Fecha DE anulación
+// transacción"), y "Fecha relación de despacho" sigue el mismo patrón en
+// varios exports: "Fecha DE relación de despacho". La lista original solo
+// tenía variantes SIN ese "de" inicial, así que ninguna coincidía (ni exacta
+// ni por substring) con ese encabezado real, y la detección caía al
+// fallback genérico de FECHA_GENERIC_CANDS, que agarra la PRIMERA columna
+// que contenga "fecha" en toda la hoja — normalmente una completamente
+// distinta (ej. "Fecha de pedido"), muy anterior a la de despacho. Por eso
+// los totales mensuales podían verse razonables (ambas son fechas reales
+// del pedido) pero el cruce día a día fallaba. Se agregó cada variante con
+// su versión "de <candidato>" para cubrir ambos patrones de nombre.
+const FECHA_DESPACHO_CANDS = [
+    'fecha relacion de despacho', 'fecha de relacion de despacho',
+    'fecha relacion despacho', 'fecha de relacion despacho',
+    'fecha rel despacho', 'fecha de rel despacho',
+    'fecha despacho', 'fecha de despacho',
+    'fecha relacion', 'fecha de relacion'
+];
 const FECHA_GENERIC_CANDS = ['fecha movimiento', 'fecha mov', 'fecha'];
+// Columnas de fecha de Base que NO son la de despacho pero sí contienen
+// "fecha" (o se le parecen) — si algún encabezado nuevo/no previsto sigue
+// haciendo fallar FECHA_DESPACHO_CANDS, es preferible no detectar ninguna
+// columna (y avisar) a que el fallback genérico caiga en una de estas por
+// error. Ver uso en handleBaseFile().
+const FECHA_BASE_DECOY_CANDS = ['vigencia', 'fecha de creacion', 'fecha creacion', 'fecha de anulacion', 'fecha anulacion'];
 const CANTIDAD_CANDS = ['cantidad', 'cant', 'qty', 'unidades'];
 const ESTADO_CANDS = ['estado tipo', 'tipo movimiento', 'estado', 'tipo', 'movimiento'];
 
@@ -1070,11 +1111,24 @@ async function handleBaseFile(file) {
         cols.baseDistribuidor = detectColumn(headers, DISTRIBUIDOR_CANDS);
         cols.baseProveedor = detectColumn(headers, PROVEEDOR_CANDS);
         cols.baseId = detectColumn(headers, ID_CANDS);
-        cols.baseFecha = detectColumn(headers, FECHA_DESPACHO_CANDS) || detectColumn(headers, FECHA_GENERIC_CANDS);
+        const fechaDetect = detectBaseFechaColumn(headers);
+        cols.baseFecha = fechaDetect.column;
         cols.baseCantidad = detectColumn(headers, CANTIDAD_CANDS);
 
         addLog('ARCHIVO BASE CARGADO', `${file.name} · ${baseRows.length} filas (hoja "${sheetName}")`);
         addLog('COLUMNAS DETECTADAS — BASE', `Distribuidor: "${cols.baseDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.baseProveedor || '(no encontrada)'}" · ID: "${cols.baseId || '(no encontrada)'}" · Fecha: "${cols.baseFecha || '(no encontrada)'}" · Cantidad: "${cols.baseCantidad || '(no encontrada)'}"`);
+        // Log dedicado, explícito, de qué columna se usó para la fecha de
+        // despacho de Base y cómo se encontró — es la fecha que gobierna
+        // TODO el análisis Base vs Salidas, así que si algún día vuelve a
+        // detectarse mal, esto debe decirlo sin tener que adivinar.
+        if (fechaDetect.source === 'especifica') {
+            addLog('COLUMNA DE FECHA — BASE', `"${cols.baseFecha}" (coincidencia específica de "Fecha relación de despacho")`);
+        } else if (fechaDetect.source === 'generica') {
+            addLog('ADVERTENCIA: FECHA DE BASE POR FALLBACK GENÉRICO', `No se encontró "Fecha relación de despacho" con ningún patrón conocido; se usó "${cols.baseFecha}" (primera columna de fecha genérica, excluyendo Vigencia/Fecha de creación/anulación transacción). Verificar que sea la columna correcta.`);
+            notify(`No se detectó "Fecha relación de despacho" en Base; se usará "${cols.baseFecha}" como fecha de despacho. Verifica que sea la columna correcta.`, 'warn', 9000);
+        } else {
+            addLog('ADVERTENCIA: SIN COLUMNA DE FECHA — BASE', 'No se encontró ninguna columna de fecha utilizable en Base.');
+        }
         setFileLoaded('base', file, `${baseRows.length} filas (hoja "${sheetName}")`);
         baseLoaded = true;
         notify(`Base cargada: ${baseRows.length} filas`, 'ok');
