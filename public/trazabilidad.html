@@ -1010,6 +1010,34 @@ function resolveTiendaLabel(rawTienda) {
     return null;
 }
 
+// Busca la tienda de la BD que corresponde a un valor crudo de tienda del
+// Excel (mismo criterio de match que resolveTiendaLabel, pero devolviendo
+// el objeto completo —con su .inventario— en vez de solo la etiqueta).
+function findDbTienda(rawTienda) {
+    if (!rawTienda || rawTienda === 'N/D') return null;
+    const candidates = [cleanCompareText(stripExcelIdPrefix(rawTienda)), cleanCompareText(rawTienda)];
+    for (const c of candidates) {
+        if (tiendaByClean.has(c)) return tiendaByClean.get(c);
+    }
+    const trimmed = String(rawTienda).trim();
+    if (/^\d+$/.test(trimmed) && tiendaById.has(trimmed)) return tiendaById.get(trimmed);
+    return null;
+}
+
+// Catálogo de IDs de artículo de una tienda, tomado DIRECTAMENTE de la BD
+// (misma carga de loadTiendaDatabase()/GET /api/tiendas, ya cacheada en
+// dbTiendas/tiendaByClean — no se vuelve a golpear el endpoint por cada
+// cambio de tienda). Devuelve null si la BD no está cargada o no tiene
+// esa tienda, para que el llamador caiga al respaldo del Excel.
+function getDbIdsForTienda(tiendaVal) {
+    if (!dbLoaded || !tiendaVal) return null;
+    const t = findDbTienda(tiendaVal);
+    if (!t) return null;
+    return (t.inventario || [])
+        .map(p => ({ id: String(p.id ?? '').trim(), nombre: p.producto || '' }))
+        .filter(p => p.id);
+}
+
 // Resuelve el producto (nombre real) para un ID de artículo, priorizando
 // el match dentro de la tienda conocida y cayendo al catálogo completo.
 function resolveProduct(id, rawTienda) {
@@ -1309,29 +1337,45 @@ function populateFilters() {
 }
 
 // Filtro en cascada: si hay una tienda seleccionada, el select de ID solo
-// muestra los códigos que REALMENTE aparecen en la hoja Base bajo esa
-// tienda en el archivo cargado — no el catálogo que la base de datos
-// tenga registrado para ella. Usar el catálogo de la BD podía mostrar
-// productos que en este archivo nunca salen bajo esa tienda (o que la BD
-// tiene mal asignados), que es justo lo que no tiene sentido para el
-// usuario. Sin tienda seleccionada, muestra todos los IDs del archivo.
+// se llena DINÁMICAMENTE desde el catálogo de esa tienda en la BD
+// (getDbIdsForTienda) — así se puede elegir cualquier producto que la
+// tienda tenga registrado, no solo los que salieron en este archivo en
+// particular. Si la BD no respondió o no tiene esa tienda, cae al
+// respaldo anterior: los códigos que REALMENTE aparecen en la hoja Base
+// bajo esa tienda en el archivo cargado. Sin tienda seleccionada, siempre
+// muestra todos los IDs del archivo (esto no cambia).
 function updateIdFilterOptions() {
     const idSelect = document.getElementById('filterId');
     const tiendaVal = document.getElementById('filterTienda').value;
     const keepId = idSelect.value;
 
-    let idsToShow = allDetectedIds;
-    if (tiendaVal) {
+    if (!tiendaVal) {
+        idSelect.innerHTML = '<option value="">-- Todos --</option>' + allDetectedIds.map(v => `<option value="${esc(v)}">${esc(idFilterLabel(v))}</option>`).join('');
+        idSelect.value = allDetectedIds.includes(keepId) ? keepId : '';
+        return;
+    }
+
+    let options; // [{ id, label }]
+    const dbProducts = getDbIdsForTienda(tiendaVal);
+    if (dbProducts && dbProducts.length) {
+        options = dbProducts
+            .sort((a, b) => {
+                const na = parseInt(a.id, 10), nb = parseInt(b.id, 10);
+                if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+                return a.id.localeCompare(b.id, 'es', { numeric: true });
+            })
+            .map(p => ({ id: p.id, label: p.nombre ? `${p.id} - ${p.nombre}` : p.id }));
+    } else {
         const idsInTienda = new Set();
         maybeScopeBaseRows(baseRows, tiendaVal).forEach(r => {
             const v = String(r[cols.baseId] ?? '').trim();
             if (v) idsInTienda.add(v);
         });
-        idsToShow = allDetectedIds.filter(id => idsInTienda.has(id));
+        options = allDetectedIds.filter(id => idsInTienda.has(id)).map(id => ({ id, label: idFilterLabel(id) }));
     }
 
-    idSelect.innerHTML = '<option value="">-- Todos --</option>' + idsToShow.map(v => `<option value="${esc(v)}">${esc(idFilterLabel(v))}</option>`).join('');
-    idSelect.value = idsToShow.includes(keepId) ? keepId : '';
+    idSelect.innerHTML = '<option value="">-- Todos --</option>' + options.map(o => `<option value="${esc(o.id)}">${esc(o.label)}</option>`).join('');
+    idSelect.value = options.some(o => o.id === keepId) ? keepId : '';
 }
 
 // Etiqueta de un ID en los selects de filtro: "ID - Nombre real" cuando la
