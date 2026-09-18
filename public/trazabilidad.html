@@ -1392,13 +1392,26 @@ function updateIdFilterOptions() {
     // se corta la cadena tienda→BD→dropdown cuando no calza como se
     // espera. Quitar estos console.log una vez confirmado que el match
     // funciona con datos reales.
-    const dbTiendaMatch = findDbTienda(tiendaVal);
+    // findDbTienda/getDbIdsForTienda van en un try/catch a propósito: son
+    // funciones globales (declaradas con "function" en este mismo bloque
+    // <script>, antes de este punto — se verificó que no hay problema de
+    // scope/hoisting), pero si alguna vez una caché vieja del navegador o
+    // un despliegue a medio propagar deja este archivo desincronizado, un
+    // error aislado aquí NO debe dejar el dropdown de ID "congelado"
+    // mostrando siempre lo mismo (que era justo el síntoma reportado) —
+    // debe caer al respaldo del Excel y decirlo en el log de auditoría.
+    let dbTiendaMatch = null, dbProducts = null;
+    try {
+        dbTiendaMatch = typeof findDbTienda === 'function' ? findDbTienda(tiendaVal) : null;
+        dbProducts = typeof getDbIdsForTienda === 'function' ? getDbIdsForTienda(tiendaVal) : null;
+    } catch (err) {
+        addLog('ADVERTENCIA: ERROR CONSULTANDO CATÁLOGO BD', `${err.message} — se usa el respaldo del Excel para "${tiendaVal}". Si esto persiste, recarga la página (Ctrl+Shift+R) para descartar una versión vieja en caché.`);
+    }
     console.log('[trazabilidad] tiendaVal =', tiendaVal);
     console.log('[trazabilidad] findDbTienda(tiendaVal) =', dbTiendaMatch);
 
     let options; // [{ id, label }]
     let fuente;
-    const dbProducts = getDbIdsForTienda(tiendaVal);
     console.log('[trazabilidad] getDbIdsForTienda(tiendaVal) =', dbProducts);
     if (dbProducts && dbProducts.length) {
         options = dbProducts
