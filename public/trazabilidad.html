@@ -954,6 +954,35 @@ function stripExcelIdPrefix(str) {
     return String(str ?? '').replace(/^\d+\s*[-–]\s*/, '').trim();
 }
 
+// Palabras que aparecen en muchos nombres de tienda por igual (forma
+// jurídica, país) y no ayudan a distinguir una de otra — se ignoran al
+// comparar por palabras clave para que "SAS"/"S.A."/"Costa Rica"/"CR" de
+// más (o de menos) en un lado no rompa el match.
+const TIENDA_STOPWORDS = new Set(['sa', 'sas', 'srl', 'ltda', 'cr', 'costa', 'rica', 'sociedad', 'anonima', 'de', 'store', 'stores', 'grupo']);
+
+function tiendaKeywords(text) {
+    return cleanCompareText(text).replace(/[^a-z0-9]+/g, ' ').split(' ').filter(w => w && !TIENDA_STOPWORDS.has(w));
+}
+
+// Match más robusto que la igualdad de texto exacta (usada por
+// tiendaByClean): el nombre del Excel y el de la BD se consideran la
+// misma tienda si el conjunto de palabras clave de uno (sin los rellenos
+// de TIENDA_STOPWORDS) es subconjunto del otro, en cualquier dirección.
+// Cubre diferencias reales de formato entre el Excel y la BD ("Grupo
+// Hoshi" en el Excel vs "HOSHI SAS" en la BD, mayúsculas, con/sin país).
+// Además, si eso no calza, compara las palabras "aplastadas" (sin
+// espacios): cubre el caso en que un lado escribe el nombre junto
+// ("ECOMFIVE") y el otro separado ("ECOM FIVE SAS").
+function tiendaNamesMatch(excelName, dbName) {
+    const a = tiendaKeywords(excelName), b = tiendaKeywords(dbName);
+    if (!a.length || !b.length) return false;
+    // Igualdad exacta "aplastada" (no substring, para no dar falsos
+    // positivos entre tiendas distintas cuyo nombre comparta un pedazo).
+    if (a.join('') === b.join('')) return true;
+    const setA = new Set(a), setB = new Set(b);
+    return a.every(w => setB.has(w)) || b.every(w => setA.has(w));
+}
+
 async function loadTiendaDatabase() {
     try {
         const resp = await fetch('/api/tiendas');
@@ -990,38 +1019,42 @@ async function loadTiendaDatabase() {
 
 // Traduce el valor crudo de tienda del Excel al nombre real de la BD
 // (formato "ID - Nombre", igual que en el resto de la suite). Devuelve
-// null si no hay match, para que el llamador decida el respaldo.
+// null si no hay match, para que el llamador decida el respaldo. Delega
+// en findDbTienda() (ver más abajo) para no duplicar el criterio de
+// match — igualdad exacta, luego ID numérico, luego palabras clave.
 function resolveTiendaLabel(rawTienda) {
-    if (!rawTienda || rawTienda === 'N/D') return null;
-    const candidates = [cleanCompareText(stripExcelIdPrefix(rawTienda)), cleanCompareText(rawTienda)];
-    for (const c of candidates) {
-        if (tiendaByClean.has(c)) {
-            const t = tiendaByClean.get(c);
-            return `${t.id} - ${t.nombre}`;
-        }
-    }
-    // El Excel a veces trae solo el código numérico sin nombre (ej. "10"
-    // en vez de "10 - Grupo Hoshi"); en ese caso buscar por ID de tienda.
-    const trimmed = String(rawTienda).trim();
-    if (/^\d+$/.test(trimmed) && tiendaById.has(trimmed)) {
-        const t = tiendaById.get(trimmed);
-        return `${t.id} - ${t.nombre}`;
-    }
-    return null;
+    const t = findDbTienda(rawTienda);
+    return t ? `${t.id} - ${t.nombre}` : null;
 }
 
 // Busca la tienda de la BD que corresponde a un valor crudo de tienda del
-// Excel (mismo criterio de match que resolveTiendaLabel, pero devolviendo
-// el objeto completo —con su .inventario— en vez de solo la etiqueta).
+// Excel, en tres pasos de menor a mayor tolerancia:
+//   1. Igualdad exacta de texto limpio (tiendaByClean) — el caso normal.
+//   2. ID numérico: si el Excel trae "55868 - ECOMFIVE", probar si la BD
+//      tiene una tienda cuyo id sea "55868". OJO: /api/tiendas (ver
+//      api/tiendas.js) devuelve el id INTERNO de la fila en la tabla
+//      "tiendas" (un serial propio de Supabase), no un código externo —
+//      no hay garantía de que coincida con el prefijo numérico del
+//      Excel. Se prueba de todos modos porque es gratis y, si algún día
+//      se sincronizan esos IDs, empieza a funcionar solo.
+//   3. Palabras clave (tiendaNamesMatch): cubre diferencias reales de
+//      formato entre el nombre del Excel y el de la BD (sufijos,
+//      mayúsculas, con/sin "Costa Rica") que la igualdad exacta no
+//      resuelve — es la causa más probable de que el match fallara.
 function findDbTienda(rawTienda) {
     if (!rawTienda || rawTienda === 'N/D') return null;
     const candidates = [cleanCompareText(stripExcelIdPrefix(rawTienda)), cleanCompareText(rawTienda)];
     for (const c of candidates) {
         if (tiendaByClean.has(c)) return tiendaByClean.get(c);
     }
+
     const trimmed = String(rawTienda).trim();
-    if (/^\d+$/.test(trimmed) && tiendaById.has(trimmed)) return tiendaById.get(trimmed);
-    return null;
+    const prefixMatch = trimmed.match(/^(\d+)\s*[-–]/);
+    const numericCandidate = prefixMatch ? prefixMatch[1] : (/^\d+$/.test(trimmed) ? trimmed : null);
+    if (numericCandidate && tiendaById.has(numericCandidate)) return tiendaById.get(numericCandidate);
+
+    const excelName = stripExcelIdPrefix(rawTienda);
+    return dbTiendas.find(t => tiendaNamesMatch(excelName, t.nombre)) || null;
 }
 
 // Catálogo de IDs de artículo de una tienda, tomado DIRECTAMENTE de la BD
@@ -1355,8 +1388,18 @@ function updateIdFilterOptions() {
         return;
     }
 
+    // DEBUG temporal — para diagnosticar en la consola del navegador dónde
+    // se corta la cadena tienda→BD→dropdown cuando no calza como se
+    // espera. Quitar estos console.log una vez confirmado que el match
+    // funciona con datos reales.
+    const dbTiendaMatch = findDbTienda(tiendaVal);
+    console.log('[trazabilidad] tiendaVal =', tiendaVal);
+    console.log('[trazabilidad] findDbTienda(tiendaVal) =', dbTiendaMatch);
+
     let options; // [{ id, label }]
+    let fuente;
     const dbProducts = getDbIdsForTienda(tiendaVal);
+    console.log('[trazabilidad] getDbIdsForTienda(tiendaVal) =', dbProducts);
     if (dbProducts && dbProducts.length) {
         options = dbProducts
             .sort((a, b) => {
@@ -1365,14 +1408,19 @@ function updateIdFilterOptions() {
                 return a.id.localeCompare(b.id, 'es', { numeric: true });
             })
             .map(p => ({ id: p.id, label: p.nombre ? `${p.id} - ${p.nombre}` : p.id }));
+        fuente = 'catálogo BD';
     } else {
         const idsInTienda = new Set();
         maybeScopeBaseRows(baseRows, tiendaVal).forEach(r => {
             const v = String(r[cols.baseId] ?? '').trim();
             if (v) idsInTienda.add(v);
         });
+        console.log('[trazabilidad] fallback Excel — filas de Base bajo esa tienda:', idsInTienda.size);
         options = allDetectedIds.filter(id => idsInTienda.has(id)).map(id => ({ id, label: idFilterLabel(id) }));
+        fuente = 'Excel de Base';
     }
+
+    addLog('TIENDA SELECCIONADA', `${tiendaVal} → BD match: ${dbTiendaMatch ? `${dbTiendaMatch.id} - ${dbTiendaMatch.nombre}` : 'NO ENCONTRADA'} → ${options.length} producto(s) en dropdown (fuente: ${fuente})`);
 
     idSelect.innerHTML = '<option value="">-- Todos --</option>' + options.map(o => `<option value="${esc(o.id)}">${esc(o.label)}</option>`).join('');
     idSelect.value = options.some(o => o.id === keepId) ? keepId : '';
