@@ -1274,11 +1274,11 @@ function resetAnalysisState() {
 /* ── FILTROS OPCIONALES (por ID artículo y por tienda/distribuidor) ── */
 let allDetectedIds = []; // todos los IDs vistos en el archivo, sin filtrar por tienda — base para el filtro en cascada
 
-// El dropdown de tienda se construye EXCLUSIVAMENTE desde los valores
-// únicos de "Proveedor Dropshipping" de Base (resolveBaseRowTienda) — no
-// se mezcla con Distribuidor ni con Movimientos, y el texto mostrado es
-// el crudo del Excel tal cual, nunca el nombre que tenga la BD (esa
-// canonicalización es solo para el match interno entre hojas).
+// El dropdown de tienda se construye EXCLUSIVAMENTE desde Base
+// (resolveBaseRowTienda: Proveedor Dropshipping, o Distribuidor cuando
+// Proveedor viene vacía) — no se mezcla con Movimientos, y el texto
+// mostrado es el crudo del Excel tal cual, nunca el nombre que tenga la
+// BD (esa canonicalización es solo para el match interno entre hojas).
 function populateFilters() {
     const ids = new Set(), tiendas = new Set();
     baseRows.forEach(r => {
@@ -1353,11 +1353,9 @@ function refreshFilterLabels() {
 // La tienda real de una fila: si "Proveedor Dropshipping" viene con valor,
 // esa es la tienda (Distribuidor ahí es solo el cliente/revendedor); si
 // Proveedor viene vacía, la tienda es la de "Distribuidor" (bodega propia).
-// OJO: esta función es para Movimientos/Devoluciones (que no tienen la
-// dualidad Distribuidor/Proveedor de Base) y para el mensaje de auditoría
-// de checkTiendaMismatches(). Para decidir a qué tienda pertenece una fila
-// de BASE en el análisis, usar SIEMPRE resolveBaseRowTienda() — ver abajo
-// por qué esta función NO sirve para eso.
+// Devuelve 'N/D' solo si AMBAS vienen vacías — nunca inventa una tienda
+// consultando la BD (eso es lo que hace resolveRowTienda(), y para BASE
+// esa consulta era el bug real: ver resolveBaseRowTienda() más abajo).
 function rawTiendaValue(row, colMap) {
     const proveedorVal = colMap.proveedor ? String(row[colMap.proveedor] ?? '').trim() : '';
     if (proveedorVal) return proveedorVal;
@@ -1365,19 +1363,19 @@ function rawTiendaValue(row, colMap) {
     return distribuidorVal || 'N/D';
 }
 
-// La tienda de una fila de BASE es EXCLUSIVAMENTE su valor crudo de
-// "Proveedor Dropshipping" — vacío/null significa "sin tienda" (N/D), sin
-// caer a Distribuidor ni al catálogo de la BD por código de producto. Bug
-// real detectado: al usar resolveRowTienda() (que sí cae a la BD) para
-// filas de Base con Proveedor Dropshipping vacío, esas filas terminaban
-// atribuidas a la tienda que la BD tuviera registrada para ese código de
-// producto — sumando unidades de pedidos que NO son de esa tienda al
-// total de una tienda real (ej. ECOMFIVE mostraba 41 en vez de 39 porque
-// 2 unidades de filas con Proveedor=null, de un producto que la BD
-// también tiene registrado bajo ECOMFIVE, se colaban en su total).
+// La tienda de una fila de BASE es su "Proveedor Dropshipping" si tiene
+// valor; si viene vacía, es su "Distribuidor" (regla original, sin
+// cambios — hay tiendas reales, ej. SICOMMER o Grupo Hoshi, que solo
+// aparecen en Distribuidor cuando esa fila no es dropshipping). Lo que
+// NUNCA debe pasar es caer al catálogo de la BD por código de producto
+// cuando AMBAS columnas del Excel vienen vacías: ese fallback (el que sí
+// tiene resolveRowTienda(), para hojas sin columna propia de tienda) es
+// el bug real detectado — atribuía filas de Base sin tienda declarada a
+// cualquier tienda que la BD tuviera registrada para ese código de
+// producto, inflando su total (ej. ECOMFIVE mostraba 41 en vez de 39 por
+// 2 unidades de filas sin Proveedor NI Distribuidor que se colaban así).
 function resolveBaseRowTienda(row) {
-    const proveedorVal = cols.baseProveedor ? String(row[cols.baseProveedor] ?? '').trim() : '';
-    return proveedorVal || 'N/D';
+    return rawTiendaValue(row, { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor });
 }
 
 // Compara dos valores de tienda tolerando que cada fuente los escriba
@@ -1556,12 +1554,13 @@ function maybeScopeRows(rows, colMap, tiendaScope) {
     });
 }
 
-// Filtra filas de BASE por tienda usando EXCLUSIVAMENTE el valor crudo de
-// "Proveedor Dropshipping" de esa misma fila — nunca Distribuidor, nunca
-// el catálogo de la BD por código de producto. Una fila con Proveedor
-// vacío/null NUNCA pertenece a ninguna tienda seleccionada (se excluye),
-// aunque su código de producto coincida con uno que la BD tenga
-// registrado para esa tienda. Sin tiendaScope, devuelve todas las filas.
+// Filtra filas de BASE por tienda usando resolveBaseRowTienda() (Proveedor
+// Dropshipping, o Distribuidor si Proveedor viene vacía) — nunca el
+// catálogo de la BD por código de producto. Una fila sin Proveedor NI
+// Distribuidor NUNCA pertenece a ninguna tienda seleccionada (se
+// excluye), aunque su código de producto coincida con uno que la BD
+// tenga registrado para esa tienda. Sin tiendaScope, devuelve todas las
+// filas.
 function maybeScopeBaseRows(rows, tiendaScope) {
     if (!tiendaScope) return rows;
     return rows.filter(r => sameTienda(resolveBaseRowTienda(r), tiendaScope));
