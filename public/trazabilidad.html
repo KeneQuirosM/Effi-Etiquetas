@@ -1280,12 +1280,13 @@ let allDetectedIds = []; // todos los IDs vistos en el archivo, sin filtrar por 
 // mostrado es el crudo del Excel tal cual, nunca el nombre que tenga la
 // BD (esa canonicalización es solo para el match interno entre hojas).
 function populateFilters() {
-    const ids = new Set(), tiendas = new Set();
+    const ids = new Set();
+    const tiendaCounts = new Map(); // tienda -> cuántas filas de Base cayeron ahí
     baseRows.forEach(r => {
         const id = cols.baseId ? String(r[cols.baseId] ?? '').trim() : '';
         if (id) ids.add(id);
         const t = resolveBaseRowTienda(r);
-        if (t !== 'N/D') tiendas.add(t);
+        if (t !== 'N/D') tiendaCounts.set(t, (tiendaCounts.get(t) || 0) + 1);
     });
     movRows.forEach(r => {
         const id = cols.movId ? String(r[cols.movId] ?? '').trim() : '';
@@ -1294,9 +1295,14 @@ function populateFilters() {
 
     const tiendaSelect = document.getElementById('filterTienda');
     allDetectedIds = [...ids].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
-    const sortedTiendas = [...tiendas].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+    const sortedTiendas = [...tiendaCounts.keys()].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
     tiendaSelect.innerHTML = '<option value="">-- Todas las tiendas --</option>' + sortedTiendas.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
-    addLog('TIENDAS DETECTADAS — BASE (Proveedor Dropshipping)', `${sortedTiendas.length} tienda(s): ${sortedTiendas.join(' · ') || '(ninguna)'}`);
+    // Conteo de filas por tienda, de mayor a menor — para cruzar contra un
+    // análisis externo (ej. una tabla dinámica de Excel) y confirmar que
+    // ninguna tienda (ni las que solo viven en Distribuidor) se está
+    // quedando fuera del dropdown.
+    const byCountDesc = [...tiendaCounts.entries()].sort((a, b) => b[1] - a[1]);
+    addLog('TIENDAS DETECTADAS — BASE', `${sortedTiendas.length} tienda(s) única(s) (Proveedor Dropshipping, o Distribuidor cuando Proveedor viene vacío): ${byCountDesc.map(([t, n]) => `${t} (${formatNumber(n)} fila${n === 1 ? '' : 's'})`).join(' · ')}`);
     updateIdFilterOptions();
     document.getElementById('filtersRow').classList.add('show');
     document.getElementById('filtersHint').classList.add('show');
