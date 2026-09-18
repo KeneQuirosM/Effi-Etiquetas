@@ -1027,8 +1027,13 @@ function resolveTiendaLabel(rawTienda) {
     return t ? `${t.id} - ${t.nombre}` : null;
 }
 
-// Busca la tienda de la BD que corresponde a un valor crudo de tienda del
-// Excel, en tres pasos de menor a mayor tolerancia:
+// Ya definida como "function" (hoisting garantizado, no const/let) y
+// declarada antes de updateIdFilterOptions() en este mismo <script> — ver
+// ahí el try/catch que además blinda su uso. Busca la tienda de la BD que
+// corresponde a un valor crudo de tienda del Excel, en tres pasos de
+// menor a mayor tolerancia (más completo que un simple match por
+// substring: ese approach por sí solo da falsos positivos entre tiendas
+// con nombres parecidos, ver tiendaNamesMatch):
 //   1. Igualdad exacta de texto limpio (tiendaByClean) — el caso normal.
 //   2. ID numérico: si el Excel trae "55868 - ECOMFIVE", probar si la BD
 //      tiene una tienda cuyo id sea "55868". OJO: /api/tiendas (ver
@@ -1410,17 +1415,28 @@ function updateIdFilterOptions() {
     console.log('[trazabilidad] tiendaVal =', tiendaVal);
     console.log('[trazabilidad] findDbTienda(tiendaVal) =', dbTiendaMatch);
 
+    // El label de cada ID SIEMPRE pasa tiendaVal a resolveProduct — en
+    // ambas ramas (catálogo BD y respaldo del Excel) — para que priorice
+    // el nombre registrado para ESA tienda (productByTiendaCode) sobre el
+    // catálogo global; un mismo código puede tener nombres distintos en
+    // catálogos de tiendas distintas.
+    const labelForTienda = (id) => {
+        const prod = resolveProduct(id, tiendaVal);
+        return prod && prod.nombre ? `${id} - ${prod.nombre}` : id;
+    };
+
     let options; // [{ id, label }]
     let fuente;
     console.log('[trazabilidad] getDbIdsForTienda(tiendaVal) =', dbProducts);
     if (dbProducts && dbProducts.length) {
         options = dbProducts
+            .map(p => p.id)
             .sort((a, b) => {
-                const na = parseInt(a.id, 10), nb = parseInt(b.id, 10);
+                const na = parseInt(a, 10), nb = parseInt(b, 10);
                 if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
-                return a.id.localeCompare(b.id, 'es', { numeric: true });
+                return a.localeCompare(b, 'es', { numeric: true });
             })
-            .map(p => ({ id: p.id, label: p.nombre ? `${p.id} - ${p.nombre}` : p.id }));
+            .map(id => ({ id, label: labelForTienda(id) }));
         fuente = 'catálogo BD';
     } else {
         const idsInTienda = new Set();
@@ -1429,7 +1445,7 @@ function updateIdFilterOptions() {
             if (v) idsInTienda.add(v);
         });
         console.log('[trazabilidad] fallback Excel — filas de Base bajo esa tienda:', idsInTienda.size);
-        options = allDetectedIds.filter(id => idsInTienda.has(id)).map(id => ({ id, label: idFilterLabel(id) }));
+        options = allDetectedIds.filter(id => idsInTienda.has(id)).map(id => ({ id, label: labelForTienda(id) }));
         fuente = 'Excel de Base';
     }
 
