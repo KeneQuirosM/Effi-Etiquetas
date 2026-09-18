@@ -1274,25 +1274,29 @@ function resetAnalysisState() {
 /* ── FILTROS OPCIONALES (por ID artículo y por tienda/distribuidor) ── */
 let allDetectedIds = []; // todos los IDs vistos en el archivo, sin filtrar por tienda — base para el filtro en cascada
 
+// El dropdown de tienda se construye EXCLUSIVAMENTE desde los valores
+// únicos de "Proveedor Dropshipping" de Base (resolveBaseRowTienda) — no
+// se mezcla con Distribuidor ni con Movimientos, y el texto mostrado es
+// el crudo del Excel tal cual, nunca el nombre que tenga la BD (esa
+// canonicalización es solo para el match interno entre hojas).
 function populateFilters() {
     const ids = new Set(), tiendas = new Set();
     baseRows.forEach(r => {
         const id = cols.baseId ? String(r[cols.baseId] ?? '').trim() : '';
         if (id) ids.add(id);
-        const t = resolveRowTienda(r, { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor }, id);
+        const t = resolveBaseRowTienda(r);
         if (t !== 'N/D') tiendas.add(t);
     });
     movRows.forEach(r => {
         const id = cols.movId ? String(r[cols.movId] ?? '').trim() : '';
         if (id) ids.add(id);
-        const t = resolveRowTienda(r, { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor }, id);
-        if (t !== 'N/D') tiendas.add(t);
     });
 
     const tiendaSelect = document.getElementById('filterTienda');
     allDetectedIds = [...ids].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
-    const sortedTiendas = [...tiendas].sort((a, b) => a.localeCompare(b, 'es'));
+    const sortedTiendas = [...tiendas].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
     tiendaSelect.innerHTML = '<option value="">-- Todas las tiendas --</option>' + sortedTiendas.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    addLog('TIENDAS DETECTADAS — BASE (Proveedor Dropshipping)', `${sortedTiendas.length} tienda(s): ${sortedTiendas.join(' · ') || '(ninguna)'}`);
     updateIdFilterOptions();
     document.getElementById('filtersRow').classList.add('show');
     document.getElementById('filtersHint').classList.add('show');
@@ -1312,9 +1316,8 @@ function updateIdFilterOptions() {
 
     let idsToShow = allDetectedIds;
     if (tiendaVal) {
-        const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId };
         const idsInTienda = new Set();
-        maybeScopeRows(baseRows, baseColMap, tiendaVal).forEach(r => {
+        maybeScopeBaseRows(baseRows, tiendaVal).forEach(r => {
             const v = String(r[cols.baseId] ?? '').trim();
             if (v) idsInTienda.add(v);
         });
@@ -1334,20 +1337,27 @@ function idFilterLabel(id) {
 
 // Se llama cuando la base de tiendas/productos llega DESPUÉS de haber
 // poblado los filtros con los valores crudos del Excel: reconstruye las
-// etiquetas sin perder la selección que el usuario ya haya hecho.
+// etiquetas de ID sin perder la selección que el usuario ya haya hecho.
+// El dropdown de tienda NO se retoca aquí: debe seguir mostrando el
+// nombre exacto del Excel (Proveedor Dropshipping de Base), nunca el
+// nombre que tenga la BD — esa canonicalización es solo para el match
+// interno entre hojas (sameTienda/tiendaJoinKey), no para mostrar.
 function refreshFilterLabels() {
     const idSelect = document.getElementById('filterId');
-    const tiendaSelect = document.getElementById('filterTienda');
-    if (!idSelect.options.length && !tiendaSelect.options.length) return;
-    const keepId = idSelect.value, keepTienda = tiendaSelect.value;
+    if (!idSelect.options.length) return;
+    const keepId = idSelect.value;
     [...idSelect.options].forEach(opt => { if (opt.value) opt.textContent = idFilterLabel(opt.value); });
-    [...tiendaSelect.options].forEach(opt => { if (opt.value) opt.textContent = resolveTiendaLabel(opt.value) || opt.value; });
-    idSelect.value = keepId; tiendaSelect.value = keepTienda;
+    idSelect.value = keepId;
 }
 
 // La tienda real de una fila: si "Proveedor Dropshipping" viene con valor,
 // esa es la tienda (Distribuidor ahí es solo el cliente/revendedor); si
 // Proveedor viene vacía, la tienda es la de "Distribuidor" (bodega propia).
+// OJO: esta función es para Movimientos/Devoluciones (que no tienen la
+// dualidad Distribuidor/Proveedor de Base) y para el mensaje de auditoría
+// de checkTiendaMismatches(). Para decidir a qué tienda pertenece una fila
+// de BASE en el análisis, usar SIEMPRE resolveBaseRowTienda() — ver abajo
+// por qué esta función NO sirve para eso.
 function rawTiendaValue(row, colMap) {
     const proveedorVal = colMap.proveedor ? String(row[colMap.proveedor] ?? '').trim() : '';
     if (proveedorVal) return proveedorVal;
@@ -1355,15 +1365,50 @@ function rawTiendaValue(row, colMap) {
     return distribuidorVal || 'N/D';
 }
 
-// Convierte el valor crudo de tienda a su forma canónica ("ID - Nombre" de
-// la BD) ANTES de usarlo como clave de cruce entre Base y Movimientos —no
-// solo al mostrarlo. Es clave: Base y Movimientos pueden escribir la misma
-// tienda con formato distinto (con/sin prefijo de ID, mayúsculas, etc.); si
-// se cruzara por el texto crudo tal cual, esas diferencias de formato harían
-// que NINGUNA fila coincida entre las dos hojas, mostrando cantidad de
-// movimientos en 0 para absolutamente todo (falso positivo masivo). Al
-// canonicalizar contra la BD antes de agrupar, ambas hojas caen en la misma
-// clave siempre que se refieran a la misma tienda real.
+// La tienda de una fila de BASE es EXCLUSIVAMENTE su valor crudo de
+// "Proveedor Dropshipping" — vacío/null significa "sin tienda" (N/D), sin
+// caer a Distribuidor ni al catálogo de la BD por código de producto. Bug
+// real detectado: al usar resolveRowTienda() (que sí cae a la BD) para
+// filas de Base con Proveedor Dropshipping vacío, esas filas terminaban
+// atribuidas a la tienda que la BD tuviera registrada para ese código de
+// producto — sumando unidades de pedidos que NO son de esa tienda al
+// total de una tienda real (ej. ECOMFIVE mostraba 41 en vez de 39 porque
+// 2 unidades de filas con Proveedor=null, de un producto que la BD
+// también tiene registrado bajo ECOMFIVE, se colaban en su total).
+function resolveBaseRowTienda(row) {
+    const proveedorVal = cols.baseProveedor ? String(row[cols.baseProveedor] ?? '').trim() : '';
+    return proveedorVal || 'N/D';
+}
+
+// Compara dos valores de tienda tolerando que cada fuente los escriba
+// distinto: Base trae el prefijo numérico de Proveedor Dropshipping ("55868
+// - ECOMFIVE"), Movimientos/Devoluciones normalmente no ("ECOMFIVE"), y la
+// BD tiene su propio ID ("181 - ECOMFIVE"). Las tres formas se reducen al
+// mismo nombre de tienda una vez se les quita el prefijo de ID y se
+// normalizan acentos/mayúsculas — así el cruce entre hojas funciona sin
+// importar en qué "espacio de nombres" esté cada una.
+function sameTienda(a, b) {
+    if (!a || !b || a === 'N/D' || b === 'N/D') return false;
+    return cleanCompareText(stripExcelIdPrefix(a)) === cleanCompareText(stripExcelIdPrefix(b));
+}
+
+// Convierte una tienda a la forma usada como CLAVE de agrupación (no de
+// visualización) en groupRows(): el mismo prefijo-stripping de sameTienda,
+// para que una fila de Base ("55868 - ECOMFIVE") y una de Movimientos
+// ("ECOMFIVE" o, vía BD, "181 - ECOMFIVE") caigan en la MISMA clave al
+// cruzar tienda+id+fecha, aunque cada hoja identifique la tienda con un
+// texto distinto.
+function tiendaJoinKey(tienda) {
+    if (!tienda || tienda === 'N/D') return 'N/D';
+    return cleanCompareText(stripExcelIdPrefix(tienda));
+}
+
+// Convierte el valor crudo de tienda de Movimientos/Devoluciones a su
+// forma canónica ("ID - Nombre" de la BD) cuando la BD lo reconoce, o lo
+// deja igual si no hay match/conexión. Usado para el nombre a mostrar y
+// para checkTiendaMismatches() — el cruce tienda+id+fecha entre hojas ya
+// no depende de esto: usa tiendaJoinKey(), que compara sin pasar por la
+// BD (ver ahí por qué).
 function canonicalTienda(rawTienda) {
     return resolveTiendaLabel(rawTienda) || rawTienda;
 }
@@ -1439,15 +1484,24 @@ function checkTiendaMismatches() {
 }
 
 /* ── AGRUPACIÓN GENÉRICA POR (TIENDA + ID + FECHA), SUMANDO CANTIDAD ── */
-function groupRows(rows, colMap) {
+// tiendaResolver es sustituible (por defecto resolveRowTienda) para que
+// Base pueda agrupar con resolveBaseRowTienda (estricta sobre Proveedor
+// Dropshipping) mientras Movimientos/Devoluciones siguen usando la
+// resolución con respaldo de BD. La CLAVE del mapa usa tiendaJoinKey(),
+// no el texto de "tienda" tal cual: Base y Movimientos pueden identificar
+// la misma tienda con formatos distintos ("55868 - ECOMFIVE" vs
+// "ECOMFIVE"), y sin normalizar eso NINGUNA fila cruzaría entre las dos
+// hojas al comparar tienda+id+fecha.
+function groupRows(rows, colMap, tiendaResolver) {
+    const resolver = tiendaResolver || resolveRowTienda;
     const map = new Map();
     rows.forEach(r => {
         const id = String(r[colMap.id] ?? '').trim();
         if (!id) return;
-        const tienda = resolveRowTienda(r, colMap, id);
+        const tienda = resolver(r, colMap, id);
         const { key: fechaKey, display: fechaDisplay } = parseDate(r[colMap.fecha]);
         const qty = parseQty(r[colMap.cantidad]);
-        const mapKey = `${tienda}||${id}||${fechaKey}`;
+        const mapKey = `${tiendaJoinKey(tienda)}||${id}||${fechaKey}`;
         if (!map.has(mapKey)) map.set(mapKey, { tienda, id, fechaKey, fechaDisplay, qty: 0 });
         map.get(mapKey).qty += qty;
     });
@@ -1482,30 +1536,46 @@ function checkDateCoverage() {
    contra la cantidad registrada como salida en Movimientos. Solo se
    reportan combinaciones donde Base > Movimientos (unidades que se
    suponía salieron pero no quedaron registradas como salida). */
-// Restringe las filas a una sola tienda cuando se seleccionó una para el
-// análisis ("trazabilidad detallada"). Resuelve la tienda de cada fila
-// vía resolveRowTienda (BD primero, por el ID del producto — así se
-// puede atribuir tienda incluso en hojas como Movimientos/Devoluciones
-// que no tienen columna de Distribuidor/Proveedor). Solo si ni la BD ni
-// el Excel dan una tienda para esa fila, se conserva sin filtrar (no hay
-// forma de saber a quién pertenece, así que no se descarta).
+// Uso: SOLO Movimientos/Devoluciones — las filas de BASE se filtran con
+// maybeScopeBaseRows() (ver más abajo), que es estricta sobre Proveedor
+// Dropshipping y nunca cae a la BD. Aquí sí se resuelve la tienda vía
+// resolveRowTienda (BD primero, por el ID del producto — necesario en
+// hojas que no tienen columna de tienda propia). tiendaScope puede venir
+// en cualquier formato (el crudo de Base, el de Movimientos, o el
+// canónico de la BD): sameTienda() compara ignorando el prefijo numérico
+// de ID, así que no importa cuál de esos formatos sea. Solo si ni la BD
+// ni el Excel dan una tienda para esa fila, se conserva sin filtrar (no
+// hay forma de saber a quién pertenece, así que no se descarta).
 function maybeScopeRows(rows, colMap, tiendaScope) {
     if (!tiendaScope) return rows;
     return rows.filter(r => {
         const id = String(r[colMap.id] ?? '').trim();
         const resolved = resolveRowTienda(r, colMap, id);
         if (resolved === 'N/D' && !colMap.distribuidor && !colMap.proveedor) return true;
-        return resolved === tiendaScope;
+        return sameTienda(resolved, tiendaScope);
     });
+}
+
+// Filtra filas de BASE por tienda usando EXCLUSIVAMENTE el valor crudo de
+// "Proveedor Dropshipping" de esa misma fila — nunca Distribuidor, nunca
+// el catálogo de la BD por código de producto. Una fila con Proveedor
+// vacío/null NUNCA pertenece a ninguna tienda seleccionada (se excluye),
+// aunque su código de producto coincida con uno que la BD tenga
+// registrado para esa tienda. Sin tiendaScope, devuelve todas las filas.
+function maybeScopeBaseRows(rows, tiendaScope) {
+    if (!tiendaScope) return rows;
+    return rows.filter(r => sameTienda(resolveBaseRowTienda(r), tiendaScope));
 }
 
 function computeAnalysisA(tiendaScope) {
     const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId };
     const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId };
-    const scopedBaseRows = maybeScopeRows(baseRows, baseColMap, tiendaScope);
+    const scopedBaseRows = maybeScopeBaseRows(baseRows, tiendaScope);
     const movSalidaRows = maybeScopeRows(movRows.filter(r => isSalida(r[cols.movEstado])), movColMap, tiendaScope);
 
-    const baseMap = groupRows(scopedBaseRows, { ...baseColMap, id: cols.baseId, fecha: cols.baseFecha, cantidad: cols.baseCantidad });
+    // baseMap agrupa con resolveBaseRowTienda (estricta sobre Proveedor
+    // Dropshipping, ver ahí) — no con resolveRowTienda/BD.
+    const baseMap = groupRows(scopedBaseRows, { ...baseColMap, id: cols.baseId, fecha: cols.baseFecha, cantidad: cols.baseCantidad }, resolveBaseRowTienda);
     const movMap = groupRows(movSalidaRows, { ...movColMap, id: cols.movId, fecha: cols.movFecha, cantidad: cols.movCantidad });
 
     const results = [];
@@ -1663,7 +1733,6 @@ function sumByDay(rows, colMap) {
 }
 
 function buildIdTraceDaily(id, tiendaScope) {
-    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId };
     const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId };
     const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor, id: cols.devId };
 
@@ -1671,7 +1740,7 @@ function buildIdTraceDaily(id, tiendaScope) {
     const movIdRows = movRows.filter(r => String(r[cols.movId] ?? '').trim() === id);
     const devIdRows = devRows.filter(r => String(r[cols.devId] ?? '').trim() === id);
 
-    const baseByDay = sumByDay(maybeScopeRows(baseIdRows, baseColMap, tiendaScope), { fecha: cols.baseFecha, cantidad: cols.baseCantidad });
+    const baseByDay = sumByDay(maybeScopeBaseRows(baseIdRows, tiendaScope), { fecha: cols.baseFecha, cantidad: cols.baseCantidad });
     const salidaByDay = sumByDay(maybeScopeRows(movIdRows.filter(r => isSalida(r[cols.movEstado])), movColMap, tiendaScope), { fecha: cols.movFecha, cantidad: cols.movCantidad });
     const devMovByDay = sumByDay(maybeScopeRows(movIdRows.filter(r => isDevolucion(r[cols.movEstado])), movColMap, tiendaScope), { fecha: cols.movFecha, cantidad: cols.movCantidad });
     const devHojaByDay = sumByDay(maybeScopeRows(devIdRows, devColMap, tiendaScope), { fecha: cols.devFecha, cantidad: cols.devCantidad });
@@ -1720,7 +1789,6 @@ function monthKeyLabel(monthKey) {
 // una fuente queda como null (se muestra "—", no "0": no es que haya
 // discrepancia, es que esa fuente no tiene datos ese mes).
 function buildIdTraceMonthly(id, tiendaScope) {
-    const baseColMap = { distribuidor: cols.baseDistribuidor, proveedor: cols.baseProveedor, id: cols.baseId };
     const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor, id: cols.movId };
     const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor, id: cols.devId };
 
@@ -1729,7 +1797,7 @@ function buildIdTraceMonthly(id, tiendaScope) {
     const devIdRows = devRows.filter(r => String(r[cols.devId] ?? '').trim() === id);
 
     // Base se suma completa, sin filtrar por Estado (regla que no cambia).
-    const baseByMonth = sumByMonth(maybeScopeRows(baseIdRows, baseColMap, tiendaScope), { fecha: cols.baseFecha, cantidad: cols.baseCantidad });
+    const baseByMonth = sumByMonth(maybeScopeBaseRows(baseIdRows, tiendaScope), { fecha: cols.baseFecha, cantidad: cols.baseCantidad });
     const salidaByMonth = sumByMonth(maybeScopeRows(movIdRows.filter(r => isSalida(r[cols.movEstado])), movColMap, tiendaScope), { fecha: cols.movFecha, cantidad: cols.movCantidad });
     const devMovByMonth = sumByMonth(maybeScopeRows(movIdRows.filter(r => isDevolucion(r[cols.movEstado])), movColMap, tiendaScope), { fecha: cols.movFecha, cantidad: cols.movCantidad });
     const devHojaByMonth = sumByMonth(maybeScopeRows(devIdRows, devColMap, tiendaScope), { fecha: cols.devFecha, cantidad: cols.devCantidad });
@@ -1903,7 +1971,11 @@ async function runAnalysis() {
 function applyFilters(rows) {
     const idVal = document.getElementById('filterId').value;
     const tiendaVal = document.getElementById('filterTienda').value;
-    return rows.filter(r => (!idVal || r.id === idVal) && (!tiendaVal || r.tienda === tiendaVal));
+    // sameTienda() en vez de "===": r.tienda puede venir en el formato
+    // crudo de Base ("55868 - ECOMFIVE") o en el de Movimientos/BD
+    // ("ECOMFIVE" / "181 - ECOMFIVE") según de qué análisis venga la fila,
+    // mientras que tiendaVal siempre es el texto crudo del dropdown (Base).
+    return rows.filter(r => (!idVal || r.id === idVal) && (!tiendaVal || sameTienda(r.tienda, tiendaVal)));
 }
 
 function sortRows(rows, state) {
