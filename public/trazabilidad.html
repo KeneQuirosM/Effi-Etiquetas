@@ -887,20 +887,57 @@ function findSheet(workbook, candidates) {
    de forma consistente, display es el texto que se muestra en tabla.
    cellDates:true en XLSX.read ya convierte la mayoría de celdas de
    fecha a objetos Date; el resto (texto o serial numérico) se cubre
-   con heurísticas de respaldo. */
+   con heurísticas de respaldo.
+
+   OJO con "usar getters locales en vez de UTC" como fix genérico para
+   desfases de un día — SE VERIFICÓ (con la versión real de la librería,
+   xlsx@0.18.5, generando y releyendo un .xlsx con cellDates:true) que
+   SheetJS construye el objeto Date representando la fecha/hora TAL CUAL
+   viene en el Excel en los campos UTC del objeto (getUTCFullYear/Month/
+   Date), sin importar la zona horaria del navegador — es una convención
+   documentada de la librería, no un accidente. Por eso value.toISOString()
+   en la rama "value instanceof Date" YA es correcto: para una celda de
+   fecha pura (medianoche) leída en un huso detrás de UTC (ej. Costa Rica,
+   UTC-6), cambiar a getFullYear()/getMonth()/getDate() (locales) la
+   desplazaría un día HACIA ATRÁS — se comprobó explícitamente y rompe el
+   caso más común (fechas sin hora), así que esa rama y la del serial
+   numérico (que ya arma el Date con Date.UTC) se dejan como están. */
 function parseDate(value) {
     if (value instanceof Date && !isNaN(value)) {
-        return { key: value.toISOString().slice(0, 10), display: value.toLocaleDateString('es-CR') };
+        // { timeZone: 'UTC' } en el display, no solo en la key: sin esto,
+        // toLocaleDateString() formatea en la zona LOCAL del navegador y
+        // una fecha pura (medianoche UTC) se muestra un día antes en
+        // cualquier huso detrás de UTC — la key ya salía bien, pero el
+        // texto en pantalla no coincidía con ella.
+        return { key: value.toISOString().slice(0, 10), display: value.toLocaleDateString('es-CR', { timeZone: 'UTC' }) };
     }
     if (typeof value === 'number' && XLSX.SSF && XLSX.SSF.parse_date_code) {
         const p = XLSX.SSF.parse_date_code(value);
         if (p) {
             const d = new Date(Date.UTC(p.y, p.m - 1, p.d));
-            return { key: d.toISOString().slice(0, 10), display: d.toLocaleDateString('es-CR') };
+            return { key: d.toISOString().slice(0, 10), display: d.toLocaleDateString('es-CR', { timeZone: 'UTC' }) };
         }
     }
     const str = String(value ?? '').trim();
     if (!str) return { key: '', display: '' };
+
+    // Este SÍ es un desfase real: cuando la celda no es un tipo de fecha
+    // de Excel (llega como texto plano, ej. un export de ERP con
+    // timestamps ISO en una columna de texto), new Date(str) interpreta
+    // "AAAA-MM-DD" (sin hora) como UTC pero "AAAA-MM-DDTHH:mm:ss" (con
+    // hora, SIN zona explícita) como HORA LOCAL — mezclar ambas
+    // interpretaciones con .toISOString() puede cruzar medianoche y
+    // desplazar la key un día hacia adelante (ej. "2026-07-21T22:30:04"
+    // en un huso detrás de UTC se convertía a "2026-07-22"). Si el texto
+    // ya trae el año-mes-día al inicio, se lee directo de los dígitos —
+    // sin pasar por ninguna interpretación de zona horaria.
+    const isoPrefix = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoPrefix) {
+        const key = `${isoPrefix[1]}-${isoPrefix[2]}-${isoPrefix[3]}`;
+        const displayDate = new Date(`${key}T12:00:00`); // mediodía: no cruza de día al formatear en local
+        return { key, display: !isNaN(displayDate) ? displayDate.toLocaleDateString('es-CR') : str };
+    }
+
     const parsed = new Date(str);
     if (!isNaN(parsed) && /\d/.test(str)) {
         return { key: parsed.toISOString().slice(0, 10), display: parsed.toLocaleDateString('es-CR') };
