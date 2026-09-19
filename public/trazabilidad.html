@@ -837,6 +837,33 @@ function auditBaseFechaChoice(headers) {
     });
 }
 
+// Diagnóstico con datos REALES en vez de ejemplos hipotéticos: si alguna
+// fila de Base trae la fecha de despacho como objeto Date con hora
+// distinta de medianoche UTC, lo deja explícito en el log de auditoría
+// con el valor crudo y la key que realmente se calculó — verificado
+// empíricamente (generando y releyendo un .xlsx real con xlsx@0.18.5,
+// probando horas de madrugada, tarde y medianoche) que SheetJS codifica
+// SIEMPRE el valor tal cual viene en Excel en los campos UTC del objeto
+// Date, sin importar la hora del día ni la zona horaria del navegador —
+// por eso toISOString() ya da la key correcta en todos los casos, y NO
+// se cambia a getFullYear()/getMonth()/getDate() (locales): eso desplaza
+// un día hacia atrás cualquier fecha de madrugada o sin hora en husos
+// detrás de UTC como Costa Rica, comprobado con una fecha real.
+function auditBaseFechaTimeComponents() {
+    if (!cols.baseFecha) return;
+    let withTime = 0, example = null;
+    baseRows.forEach(r => {
+        const v = r[cols.baseFecha];
+        if (v instanceof Date && !isNaN(v) && (v.getUTCHours() || v.getUTCMinutes() || v.getUTCSeconds())) {
+            withTime++;
+            if (!example) example = v;
+        }
+    });
+    if (withTime > 0) {
+        addLog('FECHA BASE CON HORA', `${formatNumber(withTime)} fila(s) de Base traen "${cols.baseFecha}" con hora distinta de medianoche. Ejemplo — valor crudo: ${example.toISOString()} (UTC) → día calculado: ${parseDate(example).key}. Esto es correcto: SheetJS codifica la fecha/hora real del Excel en los campos UTC del objeto, así que el día no cambia sin importar la zona horaria del navegador.`);
+    }
+}
+
 // El Excel trae la tienda repartida en DOS columnas posibles: "Distribuidor"
 // (bodega propia) y "Proveedor Dropshipping". Cuando ambas tienen valor en
 // la misma fila, la tienda real es la del proveedor (es la que de verdad
@@ -1273,6 +1300,7 @@ async function handleBaseFile(file) {
             addLog('ADVERTENCIA: SIN COLUMNA DE FECHA — BASE', 'No se encontró ninguna columna de fecha utilizable en Base.');
         }
         auditBaseFechaChoice(headers);
+        auditBaseFechaTimeComponents();
         setFileLoaded('base', file, `${baseRows.length} filas (hoja "${sheetName}")`);
         baseLoaded = true;
         notify(`Base cargada: ${baseRows.length} filas`, 'ok');
