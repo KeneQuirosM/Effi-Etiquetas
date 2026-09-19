@@ -718,6 +718,7 @@ let baseRows = [], movRows = [], devRows = [];
 let cols = {}; // columnas detectadas por hoja
 let analysisAFull = []; // Base vs Salidas (todas las discrepancias, sin filtrar)
 let analysisBFull = []; // Mov. Devoluciones vs Devoluciones (todas las filas, sin filtrar)
+let lastAnalysisTiendaScope = null; // tienda con la que se calculó analysisAFull/analysisBFull — ver renderTableA/B
 let sortStateA = { key: 'diferencia', dir: 'desc' };
 let sortStateB = { key: 'diferencia', dir: 'desc' };
 let auditLog = [];
@@ -2076,6 +2077,7 @@ async function runAnalysis() {
 
     try {
         const tiendaScope = document.getElementById('filterTienda').value || null;
+        lastAnalysisTiendaScope = tiendaScope;
         const filesLabel = [baseFile, movFile, devFile].filter(Boolean).map(f => f.name).join(' · ');
         addLog('ANÁLISIS INICIADO', tiendaScope ? `${filesLabel} — tienda: ${tiendaScope}` : filesLabel);
         checkDateCoverage();
@@ -2148,6 +2150,16 @@ function renderMetrics() {
     document.getElementById('metricUnidadesDev').textContent = formatNumber(unidadesDev);
 }
 
+// Texto fijo para dejar explícito con qué alcance de tienda se calculó el
+// análisis actualmente en pantalla (analysisAFull/analysisBFull) — no cuál
+// tienda está seleccionada AHORA en el dropdown (pueden diferir por un
+// instante mientras se recalcula), sino la que realmente se usó la última
+// vez que corrió runAnalysis(). Evita la ambigüedad de "¿esta tabla ya
+// está filtrada por la tienda que tengo seleccionada, o es la de antes?".
+function tiendaScopeLabel() {
+    return lastAnalysisTiendaScope ? `tienda: ${lastAnalysisTiendaScope}` : 'todas las tiendas';
+}
+
 /* ── RENDER: TABLA A (Base vs Salidas) ───────────────────────────
    Solo lista discrepancias (diferencia > 0); si no hay ninguna, se
    muestra el estado vacío positivo "Todo cuadra". */
@@ -2155,7 +2167,7 @@ function renderTableA() {
     const tbody = document.getElementById('tableABody');
     const enriched = analysisAFull.map(enrichRow);
     const filtered = sortRows(applyFilters(enriched), sortStateA);
-    document.getElementById('countA').textContent = `${filtered.length} discrepancia${filtered.length === 1 ? '' : 's'}`;
+    document.getElementById('countA').textContent = `${filtered.length} discrepancia${filtered.length === 1 ? '' : 's'} · análisis calculado con ${tiendaScopeLabel()}`;
     updateSortIcons('tableA', sortStateA);
 
     if (!analysisAFull.length) {
@@ -2196,7 +2208,7 @@ function renderTableB() {
     const enriched = analysisBFull.map(enrichRow);
     const filtered = sortRows(applyFilters(enriched), sortStateB);
     const diffCount = filtered.filter(r => r.diferencia !== 0).length;
-    document.getElementById('countB').textContent = `${diffCount} diferencia${diffCount === 1 ? '' : 's'}`;
+    document.getElementById('countB').textContent = `${diffCount} diferencia${diffCount === 1 ? '' : 's'} · análisis calculado con ${tiendaScopeLabel()}`;
     updateSortIcons('tableB', sortStateB);
 
     const totalDiff = analysisBFull.filter(r => r.diferencia !== 0).length;
