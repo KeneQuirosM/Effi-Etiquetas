@@ -198,6 +198,20 @@
             background: white; color: var(--neutral-600);
             border-color: var(--neutral-200);
         }
+        .bulk-result {
+            margin-top: 12px; padding: 12px 14px;
+            background: white; border: 1px solid var(--neutral-200); border-radius: 8px;
+            font-size: 13px; color: var(--neutral-700);
+        }
+        .bulk-result-stats { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .bulk-result-missing { margin-top: 10px; }
+        .bulk-result-missing summary { cursor: pointer; color: var(--danger-mid); font-weight: 500; }
+        .bulk-result-missing pre {
+            margin: 8px 0 0; max-height: 160px; overflow: auto;
+            font-family: var(--mono); font-size: 12px; white-space: pre-wrap;
+            background: var(--neutral-50); border: 1px solid var(--neutral-100); border-radius: 6px; padding: 8px 10px;
+        }
+        .badge-miss { background: var(--danger-bg); color: var(--danger-mid); border-color: var(--danger-border); }
         .btn-outline:hover { border-color: var(--brand-500); color: var(--brand-500); background: var(--brand-50); }
 
         /* ══ ÚLTIMO MARCAJE ══ */
