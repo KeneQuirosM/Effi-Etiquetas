@@ -1158,22 +1158,18 @@ function findDbTienda(rawTienda) {
     return dbTiendas.find(t => tiendaNamesMatch(excelName, t.nombre)) || null;
 }
 
-// Catálogo de IDs de artículo de una tienda, tomado DIRECTAMENTE de la BD
-// (misma carga de loadTiendaDatabase()/GET /api/tiendas, ya cacheada en
-// dbTiendas/tiendaByClean — no se vuelve a golpear el endpoint por cada
-// cambio de tienda). Devuelve null si la BD no está cargada o no tiene
-// esa tienda, para que el llamador caiga al respaldo del Excel.
-function getDbIdsForTienda(tiendaVal) {
-    if (!dbLoaded || !tiendaVal) return null;
-    const t = findDbTienda(tiendaVal);
-    if (!t) return null;
-    return (t.inventario || [])
-        .map(p => ({ id: String(p.id ?? '').trim(), nombre: p.producto || '' }))
-        .filter(p => p.id);
-}
 
-// Resuelve el producto (nombre real) para un ID de artículo, priorizando
-// el match dentro de la tienda conocida y cayendo al catálogo completo.
+// Resuelve el producto (nombre real) para un ID de artículo. Si se conoce
+// la tienda, el match SOLO se hace dentro del catálogo de esa tienda
+// (productByTiendaCode) — nunca cae al mapa global productByCode en ese
+// caso. Los códigos de producto se reutilizan de forma independiente entre
+// tiendas (confirmado con datos reales: el código 49 es "ZAPATOS COLOR
+// AZUL TALLA 37" para una tienda y un producto totalmente distinto para
+// otra), así que ese fallback global mostraba el nombre de OTRA tienda con
+// el mismo código en vez de decir simplemente que no hay nombre para esa
+// combinación tienda+código. El fallback global solo aplica cuando no hay
+// tienda de referencia (rawTienda null/'N/D'): ahí sí tiene sentido buscar
+// en todo el catálogo porque no hay con qué acotar.
 function resolveProduct(id, rawTienda) {
     const cleanId = cleanCompareText(id);
     if (!cleanId) return null;
@@ -1182,6 +1178,7 @@ function resolveProduct(id, rawTienda) {
             const hit = productByTiendaCode.get(`${c}||${cleanId}`);
             if (hit) return hit;
         }
+        return null;
     }
     return productByCode.get(cleanId) || null;
 }
@@ -1480,14 +1477,22 @@ function populateFilters() {
     document.getElementById('filtersHint').classList.add('show');
 }
 
-// Filtro en cascada: si hay una tienda seleccionada, el select de ID solo
-// se llena DINÁMICAMENTE desde el catálogo de esa tienda en la BD
-// (getDbIdsForTienda) — así se puede elegir cualquier producto que la
-// tienda tenga registrado, no solo los que salieron en este archivo en
-// particular. Si la BD no respondió o no tiene esa tienda, cae al
-// respaldo anterior: los códigos que REALMENTE aparecen en la hoja Base
-// bajo esa tienda en el archivo cargado. Sin tienda seleccionada, siempre
-// muestra todos los IDs del archivo (esto no cambia).
+// Filtro en cascada: si hay una tienda seleccionada, el select de ID
+// SIEMPRE se llena con los códigos que REALMENTE aparecen en la hoja Base
+// bajo esa tienda en el archivo cargado — nunca desde el catálogo completo
+// de la BD. Se probó lo contrario (getDbIdsForTienda) y con datos reales
+// mostró códigos de OTRA tienda como si fueran de la seleccionada: el
+// catálogo de productos de la BD (el del generador de etiquetas) no
+// necesariamente tiene registrado, para la tienda del Excel de logística,
+// el mismo código que trae la traza — cuando no lo tiene, un match
+// impreciso terminaba trayendo el producto de una tienda distinta con el
+// mismo código, y esa combinación (tienda real + ID de otra tienda) no
+// tiene datos que cruzar, por lo que la trazabilidad salía en 0. El Excel
+// de Base es la fuente de verdad de la trazabilidad, así que el dropdown
+// de ID se ancla a lo que ahí aparece; el nombre del producto (label) sí
+// se enriquece con la BD cuando hay un match dentro de esa misma tienda
+// (ver resolveProduct), pero nunca determina qué IDs se listan. Sin tienda
+// seleccionada, siempre muestra todos los IDs del archivo (esto no cambia).
 function updateIdFilterOptions() {
     const idSelect = document.getElementById('filterId');
     const tiendaVal = document.getElementById('filterTienda').value;
@@ -1499,59 +1504,26 @@ function updateIdFilterOptions() {
         return;
     }
 
-    // findDbTienda/getDbIdsForTienda van en un try/catch a propósito: son
-    // funciones globales (declaradas con "function" en este mismo bloque
-    // <script>, antes de este punto — se verificó que no hay problema de
-    // scope/hoisting), pero si alguna vez una caché vieja del navegador o
-    // un despliegue a medio propagar deja este archivo desincronizado, un
-    // error aislado aquí NO debe dejar el dropdown de ID "congelado"
-    // mostrando siempre lo mismo (que era justo el síntoma reportado) —
-    // debe caer al respaldo del Excel y decirlo en el log de auditoría.
-    // El diagnóstico "TIENDA SELECCIONADA" más abajo (siempre visible en
-    // el log de auditoría) reemplaza los console.log temporales que hubo
-    // aquí — ya no hace falta abrir la consola del navegador para ver
-    // dónde se corta la cadena tienda→BD→dropdown.
-    let dbTiendaMatch = null, dbProducts = null;
+    let dbTiendaMatch = null;
     try {
         dbTiendaMatch = typeof findDbTienda === 'function' ? findDbTienda(tiendaVal) : null;
-        dbProducts = typeof getDbIdsForTienda === 'function' ? getDbIdsForTienda(tiendaVal) : null;
     } catch (err) {
-        addLog('ADVERTENCIA: ERROR CONSULTANDO CATÁLOGO BD', `${err.message} — se usa el respaldo del Excel para "${tiendaVal}". Si esto persiste, recarga la página (Ctrl+Shift+R) para descartar una versión vieja en caché.`);
+        addLog('ADVERTENCIA: ERROR CONSULTANDO CATÁLOGO BD', `${err.message} — se sigue usando el Excel de Base para el dropdown de ID.`);
     }
 
-    // El label de cada ID SIEMPRE pasa tiendaVal a resolveProduct — en
-    // ambas ramas (catálogo BD y respaldo del Excel) — para que priorice
-    // el nombre registrado para ESA tienda (productByTiendaCode) sobre el
-    // catálogo global; un mismo código puede tener nombres distintos en
-    // catálogos de tiendas distintas.
-    const labelForTienda = (id) => {
-        const prod = resolveProduct(id, tiendaVal);
-        return prod && prod.nombre ? `${id} - ${prod.nombre}` : id;
-    };
-
-    let options; // [{ id, label }]
-    let fuente;
-    if (dbProducts && dbProducts.length) {
-        options = dbProducts
-            .map(p => p.id)
-            .sort((a, b) => {
-                const na = parseInt(a, 10), nb = parseInt(b, 10);
-                if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
-                return a.localeCompare(b, 'es', { numeric: true });
-            })
-            .map(id => ({ id, label: labelForTienda(id) }));
-        fuente = 'catálogo BD';
-    } else {
-        const idsInTienda = new Set();
-        maybeScopeBaseRows(baseRows, tiendaVal).forEach(r => {
-            const v = String(r[cols.baseId] ?? '').trim();
-            if (v) idsInTienda.add(v);
+    const idsInTienda = new Set();
+    maybeScopeBaseRows(baseRows, tiendaVal).forEach(r => {
+        const v = String(r[cols.baseId] ?? '').trim();
+        if (v) idsInTienda.add(v);
+    });
+    const options = allDetectedIds
+        .filter(id => idsInTienda.has(id))
+        .map(id => {
+            const prod = resolveProduct(id, tiendaVal);
+            return { id, label: prod && prod.nombre ? `${id} - ${prod.nombre}` : id };
         });
-        options = allDetectedIds.filter(id => idsInTienda.has(id)).map(id => ({ id, label: labelForTienda(id) }));
-        fuente = 'Excel de Base';
-    }
 
-    addLog('TIENDA SELECCIONADA', `${tiendaVal} → BD match: ${dbTiendaMatch ? `${dbTiendaMatch.id} - ${dbTiendaMatch.nombre}` : 'NO ENCONTRADA'} → ${options.length} producto(s) en dropdown (fuente: ${fuente})`);
+    addLog('TIENDA SELECCIONADA', `${tiendaVal} → BD match: ${dbTiendaMatch ? `${dbTiendaMatch.id} - ${dbTiendaMatch.nombre}` : 'NO ENCONTRADA'} → ${options.length} producto(s) en dropdown (fuente: Excel de Base)`);
 
     idSelect.innerHTML = '<option value="">-- Todos --</option>' + options.map(o => `<option value="${esc(o.id)}">${esc(o.label)}</option>`).join('');
     idSelect.value = options.some(o => o.id === keepId) ? keepId : '';
