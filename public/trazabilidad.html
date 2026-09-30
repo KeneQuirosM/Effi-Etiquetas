@@ -1467,10 +1467,6 @@ function updateIdFilterOptions() {
         return;
     }
 
-    // DEBUG temporal — para diagnosticar en la consola del navegador dónde
-    // se corta la cadena tienda→BD→dropdown cuando no calza como se
-    // espera. Quitar estos console.log una vez confirmado que el match
-    // funciona con datos reales.
     // findDbTienda/getDbIdsForTienda van en un try/catch a propósito: son
     // funciones globales (declaradas con "function" en este mismo bloque
     // <script>, antes de este punto — se verificó que no hay problema de
@@ -1479,6 +1475,10 @@ function updateIdFilterOptions() {
     // error aislado aquí NO debe dejar el dropdown de ID "congelado"
     // mostrando siempre lo mismo (que era justo el síntoma reportado) —
     // debe caer al respaldo del Excel y decirlo en el log de auditoría.
+    // El diagnóstico "TIENDA SELECCIONADA" más abajo (siempre visible en
+    // el log de auditoría) reemplaza los console.log temporales que hubo
+    // aquí — ya no hace falta abrir la consola del navegador para ver
+    // dónde se corta la cadena tienda→BD→dropdown.
     let dbTiendaMatch = null, dbProducts = null;
     try {
         dbTiendaMatch = typeof findDbTienda === 'function' ? findDbTienda(tiendaVal) : null;
@@ -1486,8 +1486,6 @@ function updateIdFilterOptions() {
     } catch (err) {
         addLog('ADVERTENCIA: ERROR CONSULTANDO CATÁLOGO BD', `${err.message} — se usa el respaldo del Excel para "${tiendaVal}". Si esto persiste, recarga la página (Ctrl+Shift+R) para descartar una versión vieja en caché.`);
     }
-    console.log('[trazabilidad] tiendaVal =', tiendaVal);
-    console.log('[trazabilidad] findDbTienda(tiendaVal) =', dbTiendaMatch);
 
     // El label de cada ID SIEMPRE pasa tiendaVal a resolveProduct — en
     // ambas ramas (catálogo BD y respaldo del Excel) — para que priorice
@@ -1501,7 +1499,6 @@ function updateIdFilterOptions() {
 
     let options; // [{ id, label }]
     let fuente;
-    console.log('[trazabilidad] getDbIdsForTienda(tiendaVal) =', dbProducts);
     if (dbProducts && dbProducts.length) {
         options = dbProducts
             .map(p => p.id)
@@ -1518,7 +1515,6 @@ function updateIdFilterOptions() {
             const v = String(r[cols.baseId] ?? '').trim();
             if (v) idsInTienda.add(v);
         });
-        console.log('[trazabilidad] fallback Excel — filas de Base bajo esa tienda:', idsInTienda.size);
         options = allDetectedIds.filter(id => idsInTienda.has(id)).map(id => ({ id, label: labelForTienda(id) }));
         fuente = 'Excel de Base';
     }
