@@ -925,6 +925,17 @@ const FECHA_GENERIC_CANDS = ['fecha movimiento', 'fecha mov', 'fecha'];
 const FECHA_BASE_DECOY_CANDS = ['vigencia', 'fecha de creacion', 'fecha creacion', 'fecha de anulacion', 'fecha anulacion'];
 const CANTIDAD_CANDS = ['cantidad', 'cant', 'qty', 'unidades'];
 const ESTADO_CANDS = ['estado tipo', 'tipo movimiento', 'estado', 'tipo', 'movimiento'];
+// Nombre del producto tal como viene en CADA hoja — es la fuente correcta
+// para mostrar el nombre de un ID: usa la MISMA numeración que la
+// trazabilidad (la del Excel), a diferencia del catálogo de la BD del
+// generador de etiquetas (ver resolveProduct), que es una numeración
+// interna independiente y puede no coincidir con el código de un mismo ID
+// en un mismo Excel (confirmado con datos reales del usuario: el ID 49 de
+// Base es "ZAPATOS COLOR AZUL TALLA 37", pero la BD lo mostraba como
+// "Depilador Sin Dolor" — un producto sin relación, de otro catálogo).
+// "descripcion original articulo" antes que "descripcion en la venta" en
+// Base: es el nombre canónico del producto, no un texto libre por pedido.
+const DESCRIPCION_CANDS = ['descripcion original articulo', 'producto', 'descripcion en la venta', 'descripcion'];
 
 /* ── DETECCIÓN DE HOJAS (nombres flexibles: Base/Movimientos/Devoluciones) ── */
 function findSheet(workbook, candidates) {
@@ -1183,6 +1194,66 @@ function resolveProduct(id, rawTienda) {
     return productByCode.get(cleanId) || null;
 }
 
+// Nombre del producto sacado DIRECTAMENTE de los Excel cargados (columna
+// de descripción de Base/Movimientos/Devoluciones — ver DESCRIPCION_CANDS),
+// no del catálogo de la BD del generador de etiquetas. Es la fuente
+// correcta para nombrar un ID en pantalla: usa la MISMA numeración que la
+// trazabilidad, así que nunca puede traer el producto de una tienda/código
+// no relacionado (a diferencia de resolveProduct, ver ahí el porqué).
+// Se prioriza tienda-scoped (mismo id + misma tienda) y, si esa
+// combinación no tiene descripción en ningún Excel, cae al nombre que
+// tenga ese id en CUALQUIER tienda (mejor una referencia aproximada que
+// ninguna) — nunca al revés.
+let excelProductByTiendaId = new Map(); // "tiendaJoinKey||idLimpio" -> nombre
+let excelProductById = new Map();       // idLimpio -> nombre (cualquier tienda, primera que se encontró)
+
+function indexExcelDescription(rawTienda, id, descripcion) {
+    const cleanId = cleanCompareText(id);
+    const desc = String(descripcion ?? '').trim();
+    if (!cleanId || !desc) return;
+    if (!excelProductById.has(cleanId)) excelProductById.set(cleanId, desc);
+    const key = tiendaJoinKey(rawTienda);
+    if (key === 'N/D') return;
+    const tkey = `${key}||${cleanId}`;
+    if (!excelProductByTiendaId.has(tkey)) excelProductByTiendaId.set(tkey, desc);
+}
+
+// Reconstruye los índices de nombre de producto desde los 3 Excel ya
+// cargados — se llama una sola vez por carga completa (ver populateFilters,
+// después de que los 3 archivos estén listos), no por cada fila mostrada.
+function buildExcelProductIndex() {
+    excelProductByTiendaId = new Map();
+    excelProductById = new Map();
+    if (cols.baseDescripcion && cols.baseId) {
+        baseRows.forEach(r => indexExcelDescription(resolveBaseRowTienda(r), r[cols.baseId], r[cols.baseDescripcion]));
+    }
+    if (cols.movDescripcion && cols.movId) {
+        const movColMap = { distribuidor: cols.movDistribuidor, proveedor: cols.movProveedor };
+        movRows.forEach(r => indexExcelDescription(rawTiendaValue(r, movColMap), r[cols.movId], r[cols.movDescripcion]));
+    }
+    if (cols.devDescripcion && cols.devId) {
+        const devColMap = { distribuidor: cols.devDistribuidor, proveedor: cols.devProveedor };
+        devRows.forEach(r => indexExcelDescription(rawTiendaValue(r, devColMap), r[cols.devId], r[cols.devDescripcion]));
+    }
+}
+
+// Nombre a mostrar para un ID: primero el propio Excel (fuente confiable,
+// misma numeración), y solo si ninguna fila trae descripción para ese
+// id+tienda se recurre al catálogo de la BD (resolveProduct) como último
+// adorno visual — nunca al revés, para no repetir el bug de nombres
+// cruzados entre tiendas/catálogos.
+function resolveProductName(id, rawTienda) {
+    const cleanId = cleanCompareText(id);
+    if (!cleanId) return null;
+    if (rawTienda && rawTienda !== 'N/D') {
+        const key = `${tiendaJoinKey(rawTienda)}||${cleanId}`;
+        if (excelProductByTiendaId.has(key)) return excelProductByTiendaId.get(key);
+    }
+    if (excelProductById.has(cleanId)) return excelProductById.get(cleanId);
+    const dbProd = resolveProduct(id, rawTienda);
+    return dbProd ? dbProd.nombre : null;
+}
+
 // Para las filas de Devoluciones donde el lado de Movimientos no tenía
 // tienda (r.tienda === 'N/D'), intenta inferirla a partir de a qué
 // tienda pertenece el producto en la base de datos.
@@ -1200,12 +1271,11 @@ function tiendaDisplay(rawTienda, id) {
         || rawTienda;
 }
 
-// Añade a cada fila de un análisis los campos de solo-lectura que
-// dependen de la base de datos (tiendaLabel, productName), sin tocar
-// tienda/id crudos — esos siguen siendo la clave que usan los filtros.
+// Añade a cada fila de un análisis los campos de solo-lectura que no son
+// la clave de filtros (tiendaLabel, productName) — productName sale del
+// propio Excel (resolveProductName), no del catálogo de la BD.
 function enrichRow(r) {
-    const prod = resolveProduct(r.id, r.tienda);
-    return { ...r, tiendaLabel: tiendaDisplay(r.tienda, r.id), productName: prod ? prod.nombre : '' };
+    return { ...r, tiendaLabel: tiendaDisplay(r.tienda, r.id), productName: resolveProductName(r.id, r.tienda) || '' };
 }
 
 /* ── ESTADO/TIPO DE MOVIMIENTO ────────────────────────────────── */
@@ -1308,6 +1378,7 @@ async function handleBaseFile(file) {
         const fechaDetect = detectBaseFechaColumn(headers);
         cols.baseFecha = fechaDetect.column;
         cols.baseCantidad = detectColumn(headers, CANTIDAD_CANDS);
+        cols.baseDescripcion = detectColumn(headers, DESCRIPCION_CANDS);
 
         addLog('ARCHIVO BASE CARGADO', `${file.name} · ${baseRows.length} filas (hoja "${sheetName}")`);
         addLog('COLUMNAS DETECTADAS — BASE', `Distribuidor: "${cols.baseDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.baseProveedor || '(no encontrada)'}" · ID: "${cols.baseId || '(no encontrada)'}" · Fecha: "${cols.baseFecha || '(no encontrada)'}" · Cantidad: "${cols.baseCantidad || '(no encontrada)'}"`);
@@ -1352,6 +1423,7 @@ async function handleMovFile(file) {
         cols.movFecha = detectColumn(headers, FECHA_GENERIC_CANDS);
         cols.movCantidad = detectColumn(headers, CANTIDAD_CANDS);
         cols.movEstado = detectColumn(headers, ESTADO_CANDS);
+        cols.movDescripcion = detectColumn(headers, DESCRIPCION_CANDS);
         if (!cols.movDistribuidor && !cols.movProveedor) {
             cols.movDistribuidor = detectTiendaColumnByValues(movRows, headers, [cols.movId, cols.movFecha, cols.movCantidad, cols.movEstado].filter(Boolean));
         }
@@ -1385,6 +1457,7 @@ async function handleDevFile(file) {
         cols.devId = detectColumn(headers, ID_MOV_CANDS);
         cols.devFecha = detectColumn(headers, FECHA_GENERIC_CANDS);
         cols.devCantidad = detectColumn(headers, CANTIDAD_CANDS);
+        cols.devDescripcion = detectColumn(headers, DESCRIPCION_CANDS);
         if (!cols.devDistribuidor && !cols.devProveedor) {
             cols.devDistribuidor = detectTiendaColumnByValues(devRows, headers, [cols.devId, cols.devFecha, cols.devCantidad].filter(Boolean));
         }
@@ -1472,6 +1545,7 @@ function populateFilters() {
     // quedando fuera del dropdown.
     const byCountDesc = [...tiendaCounts.entries()].sort((a, b) => b[1] - a[1]);
     addLog('TIENDAS DETECTADAS — BASE', `${sortedTiendas.length} tienda(s) única(s) (Proveedor Dropshipping, o Distribuidor cuando Proveedor viene vacío): ${byCountDesc.map(([t, n]) => `${t} (${formatNumber(n)} fila${n === 1 ? '' : 's'})`).join(' · ')}`);
+    buildExcelProductIndex();
     updateIdFilterOptions();
     document.getElementById('filtersRow').classList.add('show');
     document.getElementById('filtersHint').classList.add('show');
@@ -1519,8 +1593,8 @@ function updateIdFilterOptions() {
     const options = allDetectedIds
         .filter(id => idsInTienda.has(id))
         .map(id => {
-            const prod = resolveProduct(id, tiendaVal);
-            return { id, label: prod && prod.nombre ? `${id} - ${prod.nombre}` : id };
+            const nombre = resolveProductName(id, tiendaVal);
+            return { id, label: nombre ? `${id} - ${nombre}` : id };
         });
 
     addLog('TIENDA SELECCIONADA', `${tiendaVal} → BD match: ${dbTiendaMatch ? `${dbTiendaMatch.id} - ${dbTiendaMatch.nombre}` : 'NO ENCONTRADA'} → ${options.length} producto(s) en dropdown (fuente: Excel de Base)`);
@@ -1529,11 +1603,12 @@ function updateIdFilterOptions() {
     idSelect.value = options.some(o => o.id === keepId) ? keepId : '';
 }
 
-// Etiqueta de un ID en los selects de filtro: "ID - Nombre real" cuando la
-// base de datos lo resuelve, o solo el ID crudo si no hay match/conexión.
+// Etiqueta de un ID en los selects de filtro: "ID - Nombre real" cuando se
+// resuelve (Excel primero, BD como respaldo — ver resolveProductName), o
+// solo el ID crudo si no hay ningún nombre disponible.
 function idFilterLabel(id) {
-    const prod = resolveProduct(id, null);
-    return prod && prod.nombre ? `${id} - ${prod.nombre}` : id;
+    const nombre = resolveProductName(id, null);
+    return nombre ? `${id} - ${nombre}` : id;
 }
 
 // Se llama cuando la base de tiendas/productos llega DESPUÉS de haber
@@ -2114,10 +2189,10 @@ function renderIdTrace() {
 
     const monthly = buildIdTraceMonthly(idVal, tiendaScope);
     const { rows, totals } = buildIdTraceDaily(idVal, tiendaScope);
-    const prod = resolveProduct(idVal, tiendaScope);
+    const nombreProducto = resolveProductName(idVal, tiendaScope);
 
     document.getElementById('idTraceTitle').innerHTML =
-        `<i class="fas fa-magnifying-glass-chart"></i> Trazabilidad — ID ${esc(idVal)}${prod ? ' · ' + esc(prod.nombre) : ''}`;
+        `<i class="fas fa-magnifying-glass-chart"></i> Trazabilidad — ID ${esc(idVal)}${nombreProducto ? ' · ' + esc(nombreProducto) : ''}`;
 
     const scopeNote = tiendaScope
         ? `${esc(tiendaScope)}${inferred ? ' (inferida desde Movimientos)' : ''}`
