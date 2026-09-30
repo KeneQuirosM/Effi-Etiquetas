@@ -290,6 +290,107 @@
         inp.click();
     }
 
+    // Normaliza una guía para compararla entre archivos: quita espacios, el
+    // apóstrofo inicial que Excel usa para forzar texto y el ".0" que aparece
+    // cuando la celda viene como número formateado.
+    function normGuia(v){
+        return String(v??'').trim().replace(/^'/,'').replace(/\.0+$/,'').replace(/\s+/g,'');
+    }
+
+    // Extrae las guías de un archivo de lista: usa la columna cuyo encabezado
+    // contenga "guía"/"guia" (prioriza "Guía transportadora"); si no hay
+    // encabezado reconocible, usa la primera columna e incluye la fila 1.
+    function extraerGuiasDeHoja(ws){
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(!rows.length) return [];
+        const hrow=rows[0].map(h=>String(h).trim().toLowerCase());
+        let col=hrow.findIndex(h=>h==='guía transportadora'||h==='guia transportadora');
+        if(col<0) col=hrow.findIndex(h=>/gu[ií]a/.test(h));
+        let dataRows=rows.slice(1);
+        if(col<0){ col=0; dataRows=rows; }
+        const out=[];
+        dataRows.forEach(r=>{ const g=normGuia(r[col]); if(g) out.push(g); });
+        return out;
+    }
+
+    function renderBulkResult(nuevas,yaMarcadas,noEncontradas,nombre){
+        const box=document.getElementById('bulkResult');
+        const missing=noEncontradas.length
+            ?`<details class="bulk-result-missing"><summary>Ver ${noEncontradas.length} guía(s) no encontradas en la base</summary><pre>${esc(noEncontradas.join('\n'))}</pre></details>`
+            :'';
+        box.innerHTML=`<div class="bulk-result-stats">
+                <strong>${esc(nombre)}:</strong>
+                <span class="badge badge-ok"><i class="fas fa-check-circle"></i> ${nuevas} marcadas</span>
+                <span class="badge badge-pend"><i class="fas fa-clock"></i> ${yaMarcadas} ya estaban marcadas</span>
+                <span class="badge badge-miss"><i class="fas fa-times-circle"></i> ${noEncontradas.length} no encontradas</span>
+            </div>${missing}`;
+        box.style.display='block';
+    }
+
+    function marcarListaGuias(guias,nombre){
+        // Mapa guía normalizada -> guía tal como está en la base, para que la
+        // marca use exactamente la misma clave que el resto del módulo.
+        const baseMap=new Map(), rowByGuia=new Map();
+        originalRowsData.forEach(r=>{
+            const orig=String(r['Guía transportadora']??'');
+            const n=normGuia(orig);
+            if(n&&!baseMap.has(n)){ baseMap.set(n,orig); rowByGuia.set(orig,r); }
+        });
+        const unicas=[...new Set(guias)];
+        const nuevas=[], noEncontradas=[]; let yaMarcadas=0;
+        unicas.forEach(g=>{
+            const orig=baseMap.get(g);
+            if(orig===undefined){ noEncontradas.push(g); return; }
+            if(devolutionSet.has(orig)){ yaMarcadas++; return; }
+            devolutionSet.add(orig); nuevas.push(orig);
+        });
+
+        // Log en lote: un solo render/guardado en vez de uno por guía.
+        const ts=new Date().toLocaleString('es-CR');
+        nuevas.forEach(g=>{
+            const r=rowByGuia.get(g);
+            auditLog.unshift({ts,guia:g,dist:r?.['Distribuidor']||'',prov:r?.['Proveedor Dropshipping']||'',
+                cliente:r?.['Destinatario']||'Desconocido',prod:'',action:'MARCADA (lista Excel)'});
+        });
+        if(auditLog.length>300) auditLog.length=300;
+        if(nuevas.length){ renderLogs(); saveLogs(); }
+
+        // Pocas guías: mover filas en el DOM. Muchas: un solo re-render es más
+        // rápido que cientos de updateRowStatus() sobre una tabla grande.
+        if(nuevas.length>50) renderTable();
+        else nuevas.forEach(g=>updateRowStatus(g,true));
+        saveMarks(); updateStats();
+
+        renderBulkResult(nuevas.length,yaMarcadas,noEncontradas,nombre);
+        if(nuevas.length) notify(`${nuevas.length} guía(s) marcadas desde la lista`,'ok');
+        else if(!noEncontradas.length) notify('Todas las guías de la lista ya estaban marcadas','inf');
+        if(noEncontradas.length) notify(`${noEncontradas.length} guía(s) de la lista no existen en la base`,'warn');
+    }
+
+    function loadGuiasFile(){
+        if(!originalRowsData.length){ notify('Primero cargue el archivo de devoluciones (la base)','err'); return; }
+        const inp=document.createElement('input');
+        inp.type='file'; inp.accept='.xlsx,.xls,.csv';
+        inp.onchange=e=>{
+            const file=e.target.files[0]; if(!file) return;
+            document.getElementById('guiasFileLabel').textContent=file.name;
+            const reader=new FileReader();
+            reader.onload=evt=>{
+                try{
+                    const wb=XLSX.read(new Uint8Array(evt.target.result),{type:'array'});
+                    const guias=extraerGuiasDeHoja(wb.Sheets[wb.SheetNames[0]]);
+                    if(!guias.length){ notify('No se encontraron guías en el archivo','err'); return; }
+                    marcarListaGuias(guias,file.name);
+                }catch(err){
+                    notify(`Archivo corrupto o formato inválido: ${err.message}`,'err');
+                }
+            };
+            reader.onerror=()=>notify('Error leyendo el archivo','err');
+            reader.readAsArrayBuffer(file);
+        };
+        inp.click();
+    }
+
     function exportDevueltas(){
         if(!workbookOriginal){ notify('Primero cargue un archivo','err'); return; }
         if(!devolutionSet.size){ notify('No hay guías marcadas','err'); return; }
@@ -323,6 +424,7 @@
     guiaInput.addEventListener('keypress',e=>{ if(e.key==='Enter'){ e.preventDefault(); marcarGuia(guiaInput.value); } });
     limpiarBtn.addEventListener('click',()=>{ guiaInput.value=''; guiaInput.focus(); });
     loadFileBtn.addEventListener('click',loadExcelFile);
+    document.getElementById('loadGuiasBtn').addEventListener('click',loadGuiasFile);
     exportBtn.addEventListener('click',exportDevueltas);
     resetBtn.addEventListener('click',resetAll);
     document.addEventListener('keydown',e=>{

@@ -79,6 +79,20 @@
                     <span id="fileLabel" style="font-size:13px;color:var(--neutral-400);">Ningún archivo seleccionado</span>
                 </div>
             </div>
+            <div class="input-group">
+                <label>
+                    <i class="fas fa-list-check"></i>
+                    Marcar lista de guías desde Excel (.xlsx / .csv)
+                </label>
+                <div class="scan-row">
+                    <button id="loadGuiasBtn" class="btn btn-outline">
+                        <i class="fas fa-file-import"></i>
+                        Cargar lista de guías
+                    </button>
+                    <span id="guiasFileLabel" style="font-size:13px;color:var(--neutral-400);">Usa la columna de guía (o la primera columna) y marca todas las que existan en la base cargada</span>
+                </div>
+                <div id="bulkResult" class="bulk-result" style="display:none;"></div>
+            </div>
         </div>
 
         <!-- ÚLTIMO MARCAJE -->
