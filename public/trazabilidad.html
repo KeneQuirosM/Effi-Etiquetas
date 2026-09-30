@@ -734,6 +734,29 @@ function detectColumn(headers, candidates) {
     return null;
 }
 
+// Respaldo para cuando ninguna columna calza por NOMBRE (ej. un export deja
+// la columna de tienda con un encabezado genérico tipo "Columna1" en vez de
+// "Distribuidor"/"Tienda"): si la mayoría de los valores de una columna
+// siguen el formato "ID - Nombre" que usa toda la suite para tiendas
+// (ej. "41601 - COMPRONAT CR"), se asume que esa es la columna de tienda
+// aunque su encabezado no lo diga.
+function detectTiendaColumnByValues(rows, headers, excludeHeaders) {
+    const pattern = /^\d+\s*[-–]\s*\S.+/;
+    const sampleSize = Math.min(rows.length, 30);
+    for (const h of headers) {
+        if (excludeHeaders.includes(h)) continue;
+        let matches = 0, total = 0;
+        for (let i = 0; i < sampleSize; i++) {
+            const v = String(rows[i][h] ?? '').trim();
+            if (!v) continue;
+            total++;
+            if (pattern.test(v)) matches++;
+        }
+        if (total >= 5 && matches / total >= 0.8) return h;
+    }
+    return null;
+}
+
 // El Excel trae la tienda repartida en DOS columnas posibles: "Distribuidor"
 // (bodega propia) y "Proveedor Dropshipping". Cuando ambas tienen valor en
 // la misma fila, la tienda real es la del proveedor (es la que de verdad
@@ -1035,6 +1058,9 @@ async function handleBaseFile(file) {
         cols.baseId = detectColumn(headers, ID_CANDS);
         cols.baseFecha = detectColumn(headers, FECHA_DESPACHO_CANDS) || detectColumn(headers, FECHA_GENERIC_CANDS);
         cols.baseCantidad = detectColumn(headers, CANTIDAD_CANDS);
+        if (!cols.baseDistribuidor && !cols.baseProveedor) {
+            cols.baseDistribuidor = detectTiendaColumnByValues(baseRows, headers, [cols.baseId, cols.baseFecha, cols.baseCantidad].filter(Boolean));
+        }
 
         addLog('ARCHIVO BASE CARGADO', `${file.name} · ${baseRows.length} filas (hoja "${sheetName}")`);
         addLog('COLUMNAS DETECTADAS — BASE', `Distribuidor: "${cols.baseDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.baseProveedor || '(no encontrada)'}" · ID: "${cols.baseId || '(no encontrada)'}" · Fecha: "${cols.baseFecha || '(no encontrada)'}" · Cantidad: "${cols.baseCantidad || '(no encontrada)'}"`);
@@ -1066,6 +1092,9 @@ async function handleMovFile(file) {
         cols.movFecha = detectColumn(headers, FECHA_GENERIC_CANDS);
         cols.movCantidad = detectColumn(headers, CANTIDAD_CANDS);
         cols.movEstado = detectColumn(headers, ESTADO_CANDS);
+        if (!cols.movDistribuidor && !cols.movProveedor) {
+            cols.movDistribuidor = detectTiendaColumnByValues(movRows, headers, [cols.movId, cols.movFecha, cols.movCantidad, cols.movEstado].filter(Boolean));
+        }
 
         addLog('ARCHIVO MOVIMIENTOS CARGADO', `${file.name} · ${movRows.length} filas (hoja "${sheetName}")`);
         addLog('COLUMNAS DETECTADAS — MOVIMIENTOS', `Distribuidor: "${cols.movDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.movProveedor || '(no encontrada)'}" · ID: "${cols.movId || '(no encontrada)'}" · Fecha: "${cols.movFecha || '(no encontrada)'}" · Cantidad: "${cols.movCantidad || '(no encontrada)'}" · Estado: "${cols.movEstado || '(no encontrada)'}"`);
@@ -1096,6 +1125,9 @@ async function handleDevFile(file) {
         cols.devId = detectColumn(headers, ID_MOV_CANDS);
         cols.devFecha = detectColumn(headers, FECHA_GENERIC_CANDS);
         cols.devCantidad = detectColumn(headers, CANTIDAD_CANDS);
+        if (!cols.devDistribuidor && !cols.devProveedor) {
+            cols.devDistribuidor = detectTiendaColumnByValues(devRows, headers, [cols.devId, cols.devFecha, cols.devCantidad].filter(Boolean));
+        }
 
         addLog('ARCHIVO DEVOLUCIONES CARGADO', `${file.name} · ${devRows.length} filas (hoja "${sheetName}")`);
         addLog('COLUMNAS DETECTADAS — DEVOLUCIONES', `Distribuidor: "${cols.devDistribuidor || '(no encontrada)'}" · Proveedor: "${cols.devProveedor || '(no encontrada)'}" · ID: "${cols.devId || '(no encontrada)'}" · Fecha: "${cols.devFecha || '(no encontrada)'}" · Cantidad: "${cols.devCantidad || '(no encontrada)'}"`);
