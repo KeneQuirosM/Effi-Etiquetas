@@ -1687,34 +1687,33 @@ function canonicalTienda(rawTienda) {
     return resolveTiendaLabel(rawTienda) || rawTienda;
 }
 
-// Resuelve la tienda REAL de una fila: primero por el ID del producto
-// contra la base de datos (fuente confiable de "qué tienda tiene este
-// producto" — cada código está registrado bajo una sola tienda), y solo
-// si ese producto no está registrado en la BD, cae al valor de
-// Distribuidor/Proveedor que traiga el Excel. La columna del Excel puede
-// venir mal puesta (el mismo producto etiquetado con una tienda que no le
-// corresponde); la BD no tiene ese problema porque cada código de
-// producto pertenece a una sola tienda por diseño.
+// Resuelve la tienda de una fila de Movimientos/Devoluciones: SIEMPRE
+// prioriza la tienda que trae el propio Excel (Distribuidor/Proveedor/
+// Tienda/Columna1 — lo que haya detectado esa hoja) sobre cualquier
+// inferencia por catálogo de la BD. Antes era al revés (BD primero, por el
+// código de producto) pensando en hojas SIN columna de tienda propia —
+// pero se confirmó con datos reales que eso rompe hojas que SÍ la tienen:
+// un código de producto se reutiliza con numeración independiente por
+// tienda (ej. el código 49 es "ZAPATOS COLOR AZUL TALLA 37" para una
+// tienda y un producto sin relación para otra), así que el catálogo de la
+// BD podía "corregir" una fila que decía correctamente "COMPRONAT CR"
+// hacia una tienda totalmente distinta solo porque esa otra tienda
+// registró el mismo código en la BD — esas filas quedaban fuera del
+// alcance de la tienda real y Movimientos salía en 0 pese a tener los
+// datos (reproducido: con la BD conectada, salidas de Movimientos para un
+// ID+tienda real daban 0; con la BD desconectada, usando el mismo Excel,
+// daban el número correcto). Solo cuando el Excel NO trae ninguna pista de
+// tienda para esa fila (rawTienda === 'N/D': ni Distribuidor/Proveedor/
+// Tienda detectados, ni valor en esa fila) tiene sentido recurrir al
+// catálogo de la BD como último recurso.
 function resolveRowTienda(row, colMap, id) {
     const rawTienda = rawTiendaValue(row, colMap);
+    if (rawTienda !== 'N/D') return canonicalTienda(rawTienda);
     if (id) {
-        const cleanId = cleanCompareText(id);
-        // Un mismo código de producto puede repetirse en catálogos de
-        // distintas tiendas (numeración propia por tienda). Si el Excel
-        // ya trae una pista de tienda, buscar primero el código DENTRO de
-        // esa tienda (productByTiendaCode) evita que el mapa global
-        // productByCode (que solo recuerda la primera tienda que registró
-        // cada código) le robe filas a la tienda real.
-        if (rawTienda && rawTienda !== 'N/D') {
-            for (const c of [cleanCompareText(stripExcelIdPrefix(rawTienda)), cleanCompareText(rawTienda)]) {
-                const hit = productByTiendaCode.get(`${c}||${cleanId}`);
-                if (hit) return `${hit.tiendaId} - ${hit.tiendaNombre}`;
-            }
-        }
-        const dbInfo = productByCode.get(cleanId);
+        const dbInfo = productByCode.get(cleanCompareText(id));
         if (dbInfo && dbInfo.tiendaId != null) return `${dbInfo.tiendaId} - ${dbInfo.tiendaNombre}`;
     }
-    return canonicalTienda(rawTienda);
+    return rawTienda;
 }
 
 // Compara, fila por fila de Base, la tienda que declara el Excel
