@@ -1688,27 +1688,27 @@ function canonicalTienda(rawTienda) {
 }
 
 // Resuelve la tienda de una fila de Movimientos/Devoluciones: SIEMPRE
-// prioriza la tienda que trae el propio Excel (Distribuidor/Proveedor/
-// Tienda/Columna1 — lo que haya detectado esa hoja) sobre cualquier
-// inferencia por catálogo de la BD. Antes era al revés (BD primero, por el
-// código de producto) pensando en hojas SIN columna de tienda propia —
-// pero se confirmó con datos reales que eso rompe hojas que SÍ la tienen:
-// un código de producto se reutiliza con numeración independiente por
-// tienda (ej. el código 49 es "ZAPATOS COLOR AZUL TALLA 37" para una
-// tienda y un producto sin relación para otra), así que el catálogo de la
-// BD podía "corregir" una fila que decía correctamente "COMPRONAT CR"
-// hacia una tienda totalmente distinta solo porque esa otra tienda
-// registró el mismo código en la BD — esas filas quedaban fuera del
-// alcance de la tienda real y Movimientos salía en 0 pese a tener los
-// datos (reproducido: con la BD conectada, salidas de Movimientos para un
-// ID+tienda real daban 0; con la BD desconectada, usando el mismo Excel,
-// daban el número correcto). Solo cuando el Excel NO trae ninguna pista de
-// tienda para esa fila (rawTienda === 'N/D': ni Distribuidor/Proveedor/
-// Tienda detectados, ni valor en esa fila) tiene sentido recurrir al
-// catálogo de la BD como último recurso.
+// devuelve la tienda cruda que trae el propio Excel (Distribuidor/
+// Proveedor/Tienda/Columna1 — lo que haya detectado esa hoja), SIN pasarla
+// por canonicalTienda()/la BD — ni siquiera para "traducir" el nombre a su
+// forma de la BD. Antes sí se canonicalizaba, y eso reabría la misma
+// puerta que ya se había cerrado para el caso "BD primero": si
+// findDbTienda() hace un match de más (por el número de la BD coincidiendo
+// con el prefijo del Excel, o por palabras clave de más) a una tienda
+// DISTINTA, esa fila se renombra a la tienda equivocada y sameTienda()
+// contra el alcance seleccionado falla — aunque la columna del Excel
+// dijera correctamente la tienda real. sameTienda()/tiendaJoinKey() ya
+// normalizan (quitan el prefijo numérico, acentos/mayúsculas) para
+// cruzar Base ("55868 - ECOMFIVE") con Movimientos ("ECOMFIVE"), así que
+// no hace falta ninguna traducción vía BD para que el cruce funcione —
+// solo riesgo de corromper un valor que ya era correcto. Solo cuando el
+// Excel NO trae ninguna pista de tienda para esa fila (rawTienda === 'N/D':
+// ni Distribuidor/Proveedor/Tienda detectados, ni valor en esa fila) tiene
+// sentido recurrir al catálogo de la BD por código de producto, como
+// último recurso.
 function resolveRowTienda(row, colMap, id) {
     const rawTienda = rawTiendaValue(row, colMap);
-    if (rawTienda !== 'N/D') return canonicalTienda(rawTienda);
+    if (rawTienda !== 'N/D') return rawTienda;
     if (id) {
         const dbInfo = productByCode.get(cleanCompareText(id));
         if (dbInfo && dbInfo.tiendaId != null) return `${dbInfo.tiendaId} - ${dbInfo.tiendaNombre}`;
