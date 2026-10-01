@@ -1750,9 +1750,9 @@ function checkTiendaMismatches() {
         }
     });
     if (mismatches > 0) {
-        const msg = `${formatNumber(mismatches)} fila(s) de Base traen Distribuidor/Proveedor distinto al que la base de datos tiene registrado para ese producto — se usa la tienda de la BD en el análisis. Ejemplos: ${examples.join(' · ')}`;
+        const msg = `${formatNumber(mismatches)} fila(s) de Base traen Distribuidor/Proveedor distinto al que la base de datos tiene registrado para ese producto — el análisis SIEMPRE usa la tienda del Excel (Proveedor Dropshipping o Distribuidor), nunca la de la BD; esto es solo informativo, por si el código se reutilizó entre tiendas sin que sea un error. Ejemplos: ${examples.join(' · ')}`;
         addLog('ADVERTENCIA: TIENDA EN EXCEL NO COINCIDE CON BD', msg);
-        notify(`${formatNumber(mismatches)} fila(s) de Base traen una tienda distinta a la registrada en la BD para ese producto — se usa la de la BD.`, 'warn', 9000);
+        notify(`${formatNumber(mismatches)} fila(s) de Base traen una tienda distinta a la registrada en la BD para ese producto (el análisis usa la del Excel).`, 'warn', 9000);
     }
 }
 
