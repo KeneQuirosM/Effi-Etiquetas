@@ -858,6 +858,8 @@ function openMan()        { window.open('/manifiesto/manifiesto.html', '_blank')
 function openReporte()    { window.open('/reporte/reporte_distribuidor_proveedor.html', '_blank'); }
 
 /* ── GESTIÓN DE USUARIOS COORDINADORES ─────────────────── */
+const TRASH_ICON_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+
 async function loadUsers() {
   const container = document.getElementById('users-list');
   if (!container) return;
@@ -881,14 +883,59 @@ async function loadUsers() {
         <span style="font-size:11px;color:var(--muted);margin-left:8px">
           ${new Date(u.created_at).toLocaleDateString('es-CR')}
         </span>
-        <button onclick="deleteUser('${esc(String(u.id).replace(/'/g,"\\'"))}','${esc(u.email.replace(/'/g,"\\'"))}')"
-          title="Eliminar coordinador"
-          style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;padding:2px 6px">✕</button>
+        <button type="button" class="user-del-btn" onclick="askDeleteUser(this)"
+          data-id="${esc(String(u.id))}" data-email="${esc(u.email)}"
+          title="Eliminar coordinador" aria-label="Eliminar coordinador ${esc(u.email)}">${TRASH_ICON_SVG}</button>
       </div>
     `).join('');
   } catch {
     container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--danger)">Error al cargar usuarios</span></div>';
   }
+}
+
+// Confirmación inline antes de llamar a deleteUser(): la fila pasa a modo
+// confirmación y solo "Eliminar" dispara el borrado. Una sola fila a la vez.
+function cancelDeleteUser() {
+  const row = document.querySelector('#users-list .inv-item.user-confirm');
+  if (!row) return;
+  row.classList.remove('user-confirm');
+  row.innerHTML = row._originalHTML;
+  delete row._originalHTML;
+}
+
+function askDeleteUser(btn) {
+  const row = btn.closest('.inv-item');
+  if (!row) return;
+  const { id, email } = btn.dataset;
+  cancelDeleteUser();
+
+  row._originalHTML = row.innerHTML;
+  row.classList.add('user-confirm');
+  row.innerHTML = `
+    <span class="user-confirm-text">¿Eliminar a ${esc(email)}?</span>
+    <button type="button" class="user-confirm-cancel">Cancelar</button>
+    <button type="button" class="user-confirm-del">Eliminar</button>
+  `;
+  row.querySelector('.user-confirm-cancel').addEventListener('click', cancelDeleteUser);
+  const delBtn = row.querySelector('.user-confirm-del');
+  delBtn.addEventListener('click', async () => {
+    delBtn.disabled = true;
+    await deleteUser(id, email);
+    // Si falló, loadUsers() no reemplazó la lista: se restaura la fila.
+    if (row.isConnected) cancelDeleteUser();
+  });
+  delBtn.focus();
+}
+
+function togglePasswordVisibility(btn) {
+  const input = btn.parentElement.querySelector('input');
+  if (!input) return;
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.classList.toggle('is-visible', show);
+  const label = show ? 'Ocultar contraseña' : 'Mostrar contraseña';
+  btn.setAttribute('aria-label', label);
+  btn.title = label;
 }
 
 async function createUser() {
@@ -920,8 +967,6 @@ async function createUser() {
 }
 
 async function deleteUser(id, email) {
-  if (!confirm(`¿Eliminar el coordinador "${email}"? Esta acción no se puede deshacer.`)) return;
-
   try {
     const r = await fetch('/api/users', {
       method: 'DELETE',

@@ -147,6 +147,26 @@ select:focus {
 
 input[type="text"]::placeholder { color: var(--neutral-400); }
 
+/* Selects Empleado / Transportadora: apariencia unificada con chevron propio */
+.input-row-3 select {
+  height: 36px;
+  padding: 0 36px 0 12px;
+  border: 1px solid #cfd4e0;
+  border-radius: 8px;
+  font-size: 13px;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235a6482' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px 16px;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.input-row-3 select:focus { border-color: var(--brand-500); }
+.input-row-3 select:has(option[value=""]:checked) { color: var(--neutral-400); }
+.input-row-3 select option { color: var(--neutral-800); }
+
 /* ── FILE INPUT ── */
 .file-input-container {
   display: flex;
@@ -903,7 +923,7 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
     /* fila vacía */
     .tabla-vacia {
       text-align: center;
-      color: #aaa;
+      color: var(--neutral-400);
       padding: 32px !important;
       font-size: 14px;
     }

@@ -92,13 +92,13 @@
     </div>
 
     <button class="btn-print" id="btn-print">Imprimir Etiqueta</button>
-    <button class="btn-bulk" id="btn-bulk" onclick="openBulk()">Impresión Masiva</button>
-    <button class="btn-bulk" onclick="openStockforge()">Gestión de Almacén</button>
-    <button class="btn-bulk" onclick="openDev()">Gestión de Devoluciones</button>
-    <button class="btn-bulk" onclick="openMan()">Gestión de Manifiestos</button>
-    <button class="btn-bulk" onclick="window.open('/alistamiento/alistamiento.html', '_blank')">Alistamiento</button>
-    <button class="btn-bulk" onclick="window.open('/trazabilidad.html', '_blank')">Trazabilidad</button>
-    <button class="btn-bulk coord-only" onclick="openReporte()" style="display:none">Reporte Distribuidor</button>
+    <button class="btn-bulk" id="btn-bulk" onclick="openBulk()"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg><span>Impresión Masiva</span></button>
+    <button class="btn-bulk" onclick="openStockforge()"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V8l9-5 9 5v13"/><path d="M7 21v-8h10v8"/><path d="M7 17h10"/></svg><span>Gestión de Almacén</span></button>
+    <button class="btn-bulk" onclick="openDev()"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span>Gestión de Devoluciones</span></button>
+    <button class="btn-bulk" onclick="openMan()"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h6"/></svg><span>Gestión de Manifiestos</span></button>
+    <button class="btn-bulk" onclick="window.open('/alistamiento/alistamiento.html', '_blank')"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 1.5 1.5L8 5"/><path d="m4 12 1.5 1.5L8 11"/><path d="m4 18 1.5 1.5L8 17"/><path d="M11 6h9M11 12h9M11 18h9"/></svg><span>Alistamiento</span></button>
+    <button class="btn-bulk" onclick="window.open('/trazabilidad.html', '_blank')"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H16"/></svg><span>Trazabilidad</span></button>
+    <button class="btn-bulk coord-only" onclick="openReporte()" style="display:none"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M15 2v5h5"/><path d="M4 7v13a2 2 0 0 0 2 2h10"/></svg><span>Reporte Distribuidor</span></button>
   </div>
 
   <div class="sidebar-footer">
@@ -245,11 +245,17 @@
       <div class="form-row">
         <div class="form-group">
           <label>Contraseña Nueva</label>
-          <input type="password" id="c-pin-nuevo" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+          <div class="pw-field">
+            <input type="password" id="c-pin-nuevo" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+            <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+          </div>
         </div>
         <div class="form-group">
           <label>Confirmar Nueva</label>
-          <input type="password" id="c-pin-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+          <div class="pw-field">
+            <input type="password" id="c-pin-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+            <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+          </div>
         </div>
       </div>
       <button class="btn-action btn-primary" onclick="changePin()" style="margin-bottom:8px">Actualizar Contraseña</button>
@@ -270,8 +276,8 @@
       <!-- Log de importación -->
       <div style="margin-top:20px">
         <p class="section-label" style="margin-bottom:8px">Registro de importación</p>
-        <div id="import-log-container" style="background:#0d1b2e;border-radius:var(--radius-md);padding:12px;max-height:200px;overflow-y:auto;font-family:var(--mono);font-size:11px;line-height:1.5;border:1px solid var(--border);">
-          <div id="import-log" style="color:#7a9df3;white-space:pre-wrap;word-break:break-all;">— Esperando archivo —</div>
+        <div id="import-log-container" style="background:#0d1b2e;border-radius:var(--radius-md);padding:12px;max-height:200px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.5;border:1px solid var(--border);">
+          <div id="import-log" style="color:#b4c8fb;white-space:pre-wrap;word-break:break-all;">— Esperando archivo —</div>
         </div>
         <button class="btn-action btn-ghost" onclick="clearImportLog()" style="margin-top:8px;font-size:11px;padding:4px 12px">Limpiar registro</button>
       </div>
@@ -294,11 +300,17 @@
       <div class="form-row">
         <div class="form-group">
           <label>Contraseña</label>
-          <input type="password" id="u-password" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+          <div class="pw-field">
+            <input type="password" id="u-password" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+            <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+          </div>
         </div>
         <div class="form-group">
           <label>Confirmar</label>
-          <input type="password" id="u-password-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+          <div class="pw-field">
+            <input type="password" id="u-password-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+            <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+          </div>
         </div>
       </div>
       <button class="btn-action btn-primary" onclick="createUser()">＋ Crear Coordinador</button>

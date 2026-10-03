@@ -364,8 +364,8 @@ tbody tr:nth-child(even) td { background: var(--neutral-50); }
 tbody tr:nth-child(even):hover td { background: var(--brand-50); }
 
 .empty { text-align: center; padding: 40px 24px; }
-.empty-ico { font-size: 2rem; opacity: .2; margin-bottom: 10px; display: block; }
-.empty-t { font-size: .82rem; color: var(--neutral-400); font-weight: 500; }
+.empty-ico { font-size: 2.8rem; opacity: .4; margin-bottom: 10px; display: block; }
+.empty-t { font-size: .82rem; color: #3d4663; font-weight: 500; }
 
 .guide-id-pill {
     font-family: var(--mono); font-size: .82rem;
@@ -458,13 +458,13 @@ tbody tr:nth-child(even):hover td { background: var(--brand-50); }
 .log-body::-webkit-scrollbar { width: 3px; }
 .log-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 99px; }
 .log-row {
-    font-family: var(--mono); font-size: .64rem; line-height: 1.6;
-    color: rgba(255,255,255,.55);
+    font-family: var(--mono); font-size: 12px; line-height: 1.6;
+    color: rgba(255,255,255,.78);
     padding: 3px 0;
     border-bottom: 1px solid rgba(255,255,255,.03);
 }
 .log-row:last-child { border-bottom: none; }
-.log-ts  { color: rgba(255,255,255,.48); }
+.log-ts  { color: rgba(255,255,255,.62); }
 .log-ok  { color: #4caf50; }
 .log-er  { color: #ef5350; }
 .log-gu  { color: var(--brand-300); }

@@ -822,7 +822,7 @@ function renderTablaGuias() {
 
   if (filas.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" class="tabla-vacia">
-      <i class="fas fa-barcode" style="font-size:24px;display:block;margin-bottom:8px;opacity:.3"></i>
+      <i class="fas fa-barcode" style="font-size:34px;display:block;margin-bottom:10px;opacity:.45"></i>
       Cargue un manifiesto y escanee guías para verlas aquí
     </td></tr>`;
     return;

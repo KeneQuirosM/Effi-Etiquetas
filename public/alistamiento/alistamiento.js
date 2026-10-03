@@ -48,7 +48,7 @@ function addLog(action, detail) {
 }
 function renderLogs() {
     const logEntriesDiv = document.getElementById('logEntries');
-    if (!auditLog.length) { logEntriesDiv.innerHTML = '<span style="color:rgba(255,255,255,.15)">Sin registros</span>'; return; }
+    if (!auditLog.length) { logEntriesDiv.innerHTML = '<span style="color:rgba(255,255,255,.5)">Sin registros</span>'; return; }
     logEntriesDiv.innerHTML = auditLog.slice(0, 60).map(l => {
         const cls = /error|no encontrada/i.test(l.action) ? 'log-er' : 'log-ok';
         return `<div class="log-row"><span class="log-ts">[${esc(l.ts)}]</span> <span class="${cls}">${esc(l.action)}</span>${l.detail ? ` — <span class="log-gu">${esc(l.detail)}</span>` : ''}</div>`;

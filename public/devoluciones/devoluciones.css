@@ -428,9 +428,9 @@
 
         /* empty state */
         .empty { text-align: center; padding: 56px 24px; }
-        .empty-ico { font-size: 2.2rem; opacity: .2; margin-bottom: 12px; display: block; }
-        .empty-t { font-size: .85rem; color: var(--neutral-400); margin-bottom: 4px; font-weight: 500; }
-        .empty-s { font-family: var(--mono); font-size: .68rem; color: var(--neutral-400); opacity: .6; }
+        .empty-ico { font-size: 3rem; opacity: .4; margin-bottom: 12px; display: block; }
+        .empty-t { font-size: .85rem; color: #3d4663; margin-bottom: 4px; font-weight: 500; }
+        .empty-s { font-family: var(--mono); font-size: .68rem; color: var(--neutral-400); }
 
         /* ══ LOG DE AUDITORÍA ══ */
         .log-wrap {
@@ -453,13 +453,13 @@
         .log-body::-webkit-scrollbar { width: 3px; }
         .log-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 99px; }
         .log-row {
-            font-family: var(--mono); font-size: .64rem; line-height: 1.6;
-            color: rgba(255,255,255,.55); /* antes .2 (contraste 1.88:1) -> ahora 5.98:1, pasa AA */
+            font-family: var(--mono); font-size: 12px; line-height: 1.6;
+            color: rgba(255,255,255,.78); /* antes .55 a ~8.3px; ahora 12px y mayor contraste */
             padding: 3px 0;
             border-bottom: 1px solid rgba(255,255,255,.03);
         }
         .log-row:last-child { border-bottom: none; }
-        .log-ts  { color: rgba(255,255,255,.48); } /* antes .15 (contraste 1.4:1 aprox.) -> ahora 4.86:1, pasa AA */
+        .log-ts  { color: rgba(255,255,255,.62); } /* antes .15 (contraste 1.4:1 aprox.) -> ahora 4.86:1, pasa AA */
         .log-ok  { color: #4caf50; }
         .log-er  { color: #ef5350; }
         .log-gu  { color: var(--brand-300); }
