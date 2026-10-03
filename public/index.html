@@ -455,9 +455,13 @@
       <select class="bulk-tienda-select" id="bulk-select-tienda" onchange="renderBulkList()">
         <option value="">-- Selecciona una tienda --</option>
       </select>
+      <div class="bulk-search">
+        <svg class="bulk-search-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" id="bulk-search" placeholder="Buscar por nombre o ID" autocomplete="off" aria-label="Buscar producto por nombre o ID" oninput="filterBulkList()" disabled>
+      </div>
       <div class="bulk-actions-bar">
-        <span id="bulk-selected-count">0 seleccionados</span>
-        <button class="btn-action btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkSelectAll()">Seleccionar todo</button>
+        <span id="bulk-selected-count">0 productos · 0 etiquetas</span>
+        <button class="btn-action btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkSelectAll()">Todos ×1</button>
         <button class="btn-action btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkSelectNone()">Limpiar</button>
       </div>
       <div class="bulk-list" id="bulk-list">
@@ -467,7 +471,7 @@
     <div class="bulk-modal-footer">
       <span class="bulk-count" id="bulk-footer-count">Selecciona productos para imprimir</span>
       <button class="btn-action btn-ghost" onclick="closeBulk()">Cancelar</button>
-      <button class="btn-action btn-primary" onclick="printBulk()">Imprimir</button>
+      <button class="btn-action btn-primary" id="bulk-print-btn" onclick="printBulk()" disabled>Imprimir</button>
     </div>
   </div>
 </div>

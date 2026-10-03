@@ -787,69 +787,165 @@ async function handleJSONImport(input) {
 
 
 /* ── BULK PRINT ─────────────────────────────────────── */
+// Cantidades del lote actual: id de producto -> copias (0-99). Un lote es de
+// una sola tienda; al cambiar de tienda, cerrar el modal o imprimir se reinicia.
+const bulkQty = new Map();
+let bulkTiendaIdx = '';
+const BULK_QTY_MAX = 99;
+
+function resetBulkState() {
+  bulkQty.clear();
+  bulkTiendaIdx = '';
+  const search = document.getElementById('bulk-search');
+  if (search) { search.value = ''; search.disabled = true; }
+}
+
 function openBulk() {
   // Populate tienda select
   const sel = document.getElementById('bulk-select-tienda');
   sel.innerHTML = '<option value="">-- Selecciona una tienda --</option>';
   appData.tiendas.forEach(t => sel.add(new Option(t.nombre, t.id)));
+  resetBulkState();
   document.getElementById('bulk-list').innerHTML =
-    '<div class="bulk-item"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>';
+    '<div class="bulk-item bulk-empty"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>';
   updateBulkCount();
   document.getElementById('bulk-overlay').classList.add('show');
 }
 
 function closeBulk() {
   document.getElementById('bulk-overlay').classList.remove('show');
+  resetBulkState();
+  document.querySelectorAll('#bulk-list .bulk-item[data-id]').forEach(row => setBulkRowQty(row, 0));
+  updateBulkCount();
 }
 
 function renderBulkList() {
   const idx = document.getElementById('bulk-select-tienda').value;
   const container = document.getElementById('bulk-list');
+  const search = document.getElementById('bulk-search');
   const tiendaB = getTienda(idx);
+  if (idx !== bulkTiendaIdx) {
+    // Cambio de tienda: el lote empieza de cero
+    bulkQty.clear();
+    bulkTiendaIdx = idx;
+    if (search) search.value = '';
+  }
   if (idx === '' || !tiendaB) {
-    container.innerHTML = '<div class="bulk-item"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>';
+    if (search) search.disabled = true;
+    container.innerHTML = '<div class="bulk-item bulk-empty"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>';
     updateBulkCount();
     return;
   }
+  if (search) search.disabled = false;
   const inv = [...tiendaB.inventario].sort((a,b) => parseInt(a.id) - parseInt(b.id));
   if (!inv.length) {
-    container.innerHTML = '<div class="bulk-item"><span style="color:var(--muted)">Sin productos</span></div>';
+    container.innerHTML = '<div class="bulk-item bulk-empty"><span style="color:var(--muted)">Sin productos</span></div>';
+    updateBulkCount();
     return;
   }
+  // El selector de cantidad va primero en el DOM (se muestra a la derecha con
+  // CSS order) para que el nombre siga siendo el último <span> de la fila.
   container.innerHTML = inv.map(item => `
-    <div class="bulk-item" onclick="toggleBulkItem(this)">
-      <input type="checkbox" onclick="event.stopPropagation();toggleBulkItem(this.closest('.bulk-item'))">
+    <div class="bulk-item" data-id="${esc(String(item.id))}">
+      <div class="bulk-qty">
+        <button type="button" class="bulk-qty-btn" data-step="-1" aria-label="Quitar una copia de ${esc(item.producto)}">&minus;</button>
+        <input type="text" class="bulk-qty-input" inputmode="numeric" value="0" autocomplete="off" aria-label="Copias de ${esc(item.producto)}">
+        <button type="button" class="bulk-qty-btn" data-step="1" aria-label="Agregar una copia de ${esc(item.producto)}">+</button>
+      </div>
       <span class="b-id">#${esc(item.id)}</span>
       <span>${esc(item.producto)}</span>
     </div>
-  `).join('');
-  updateBulkCount();
+  `).join('') + '<div class="bulk-item bulk-empty bulk-no-match" hidden><span style="color:var(--muted)">Sin coincidencias</span></div>';
+  container.querySelectorAll('.bulk-item[data-id]').forEach(row => setBulkRowQty(row, bulkQty.get(row.dataset.id) || 0));
+  filterBulkList();
 }
 
-function toggleBulkItem(row) {
-  row.classList.toggle('selected');
-  const cb = row.querySelector('input[type="checkbox"]');
-  cb.checked = row.classList.contains('selected');
+// Entero 0-99; vacío o cualquier otro valor cuenta como 0
+function parseBulkQty(raw) {
+  const str = String(raw).trim();
+  if (!/^\d+$/.test(str)) return 0;
+  const n = parseInt(str, 10);
+  return n <= BULK_QTY_MAX ? n : 0;
+}
+
+function setBulkRowQty(row, qty, { syncInput = true } = {}) {
+  const id = row.dataset.id;
+  if (qty > 0) bulkQty.set(id, qty); else bulkQty.delete(id);
+  row.classList.toggle('has-qty', qty > 0);
+  const input = row.querySelector('.bulk-qty-input');
+  if (input && syncInput) input.value = String(qty);
+  const minus = row.querySelector('.bulk-qty-btn[data-step="-1"]');
+  if (minus) minus.disabled = qty <= 0;
+  const plus = row.querySelector('.bulk-qty-btn[data-step="1"]');
+  if (plus) plus.disabled = qty >= BULK_QTY_MAX;
+}
+
+function normalizeBulkText(str) {
+  return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function filterBulkList() {
+  const q = normalizeBulkText(document.getElementById('bulk-search')?.value || '');
+  let visible = 0;
+  document.querySelectorAll('#bulk-list .bulk-item[data-id]').forEach(row => {
+    const id = row.dataset.id;
+    const name = row.querySelector('span:last-child').textContent;
+    const match = !q || normalizeBulkText(id).includes(q) || normalizeBulkText(name).includes(q);
+    row.hidden = !match;
+    if (match) visible++;
+  });
+  const noMatch = document.querySelector('#bulk-list .bulk-no-match');
+  if (noMatch) noMatch.hidden = visible > 0;
   updateBulkCount();
 }
 
 function bulkSelectAll() {
-  document.querySelectorAll('.bulk-item').forEach(row => {
-    row.classList.add('selected');
-    const cb = row.querySelector('input[type="checkbox"]');
-    if (cb) cb.checked = true;
+  // "Todos ×1": pone 1 solo en los productos visibles que están en 0
+  document.querySelectorAll('#bulk-list .bulk-item[data-id]:not([hidden])').forEach(row => {
+    if (!bulkQty.get(row.dataset.id)) setBulkRowQty(row, 1);
   });
   updateBulkCount();
 }
 
 function bulkSelectNone() {
-  document.querySelectorAll('.bulk-item').forEach(row => {
-    row.classList.remove('selected');
-    const cb = row.querySelector('input[type="checkbox"]');
-    if (cb) cb.checked = false;
-  });
+  document.querySelectorAll('#bulk-list .bulk-item[data-id]').forEach(row => setBulkRowQty(row, 0));
+  bulkQty.clear();
   updateBulkCount();
 }
+
+(function initBulkQtyControls() {
+  const list = document.getElementById('bulk-list');
+  if (!list) return;
+  list.addEventListener('click', e => {
+    const btn = e.target.closest('.bulk-qty-btn');
+    if (!btn) return;
+    const row = btn.closest('.bulk-item[data-id]');
+    const cur = bulkQty.get(row.dataset.id) || 0;
+    const next = Math.min(BULK_QTY_MAX, Math.max(0, cur + Number(btn.dataset.step)));
+    setBulkRowQty(row, next);
+    updateBulkCount();
+  });
+  // Mientras se escribe, el total se actualiza en vivo; al salir del campo
+  // (o con Enter) el número se normaliza: vacío o inválido vuelve a 0.
+  list.addEventListener('input', e => {
+    if (!e.target.classList.contains('bulk-qty-input')) return;
+    const row = e.target.closest('.bulk-item[data-id]');
+    setBulkRowQty(row, parseBulkQty(e.target.value), { syncInput: false });
+    updateBulkCount();
+  });
+  list.addEventListener('change', e => {
+    if (!e.target.classList.contains('bulk-qty-input')) return;
+    const row = e.target.closest('.bulk-item[data-id]');
+    setBulkRowQty(row, parseBulkQty(e.target.value));
+    updateBulkCount();
+  });
+  list.addEventListener('focusin', e => {
+    if (e.target.classList.contains('bulk-qty-input')) e.target.select();
+  });
+  list.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.classList.contains('bulk-qty-input')) e.target.blur();
+  });
+})();
 
 
 function openStockforge() { window.open('/stockforge/almacen4.html', '_blank'); }
@@ -984,15 +1080,25 @@ async function deleteUser(id, email) {
 }
 
 function updateBulkCount() {
-  const n = document.querySelectorAll('.bulk-item.selected').length;
-  document.getElementById('bulk-selected-count').textContent = `${n} seleccionado${n !== 1 ? 's' : ''}`;
+  // Cuenta todos los productos de la tienda, también los ocultos por el filtro
+  let n = 0, m = 0;
+  bulkQty.forEach(q => { if (q > 0) { n++; m += q; } });
+  document.getElementById('bulk-selected-count').textContent =
+    `${n} producto${n !== 1 ? 's' : ''} · ${m} etiqueta${m !== 1 ? 's' : ''}`;
   document.getElementById('bulk-footer-count').textContent =
-    n > 0 ? `${n} etiqueta${n !== 1 ? 's' : ''} para imprimir` : 'Selecciona productos para imprimir';
+    m > 0 ? `${m} etiqueta${m !== 1 ? 's' : ''} en total` : 'Selecciona productos para imprimir';
+  const printBtn = document.getElementById('bulk-print-btn');
+  if (printBtn) {
+    printBtn.disabled = m === 0;
+    printBtn.textContent = m > 0 ? `Imprimir ${m}` : 'Imprimir';
+  }
 }
 
 function printBulk() {
   const tiendaIdx = document.getElementById('bulk-select-tienda').value;
-  const selected = [...document.querySelectorAll('.bulk-item.selected')];
+  // Cada fila se repite tantas veces como su cantidad, en el orden de la lista (por ID)
+  const selected = [...document.querySelectorAll('#bulk-list .bulk-item[data-id]')]
+    .flatMap(row => Array(bulkQty.get(row.dataset.id) || 0).fill(row));
   if (!selected.length) return notify('Selecciona al menos un producto', 'danger');
 
   const tiendaNombre = (getTienda(tiendaIdx)?.nombre || '').toUpperCase();
