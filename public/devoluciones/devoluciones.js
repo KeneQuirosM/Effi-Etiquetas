@@ -53,6 +53,14 @@
         pendientesCountSpan.innerText=pend;
         progressBar.style.width=pct+'%';
         progressPct.innerText=pct+'%';
+        // Visual: azul por debajo de 100%, verde y título "completo" al terminar.
+        const progressContainer=progressBar.closest('.progress-container');
+        if(progressContainer){
+            const completo=total>0&&dev>=total;
+            progressContainer.classList.toggle('is-complete',completo);
+            const title=progressContainer.querySelector('.progress-title');
+            if(title) title.innerHTML=completo?'<svg class="progress-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Devoluciones completas':'Progreso de devoluciones';
+        }
         const pl=document.getElementById('progressLeft');
         const pr=document.getElementById('progressRight');
         if(pl) pl.innerText=`${dev} devueltas`;

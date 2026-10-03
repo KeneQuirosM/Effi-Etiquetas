@@ -117,6 +117,20 @@ function showRestrictedAccessMessage() {
 // restringido 2s antes de redirigir a "/" — lanza para frenar el resto del
 // script del caller (los <script> de estas páginas van al final de <body>,
 // sin wrapper propio).
+/* ── VOLVER ─────────────────────────────────────────────
+ * Los módulos se abren en pestaña nueva desde index.html (window.open).
+ * Si la pestaña la abrió la app, se cierra; si no (link directo) o el
+ * navegador no permite cerrarla, se navega a "/" como respaldo.
+ */
+function goBackToApp() {
+  if (window.opener) {
+    window.close();
+    setTimeout(() => { if (!window.closed) window.location.href = '/'; }, 200);
+  } else {
+    window.location.href = '/';
+  }
+}
+
 function guardProtectedPage() {
   document.body.style.display = 'none';
   if (!hasActiveSession()) {

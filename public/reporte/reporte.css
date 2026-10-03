@@ -81,10 +81,18 @@
   }
 
   .header-titles p {
-    color: rgba(255, 255, 255, 0.55);
-    font-size: 0.8rem;
+    color: #c7cdf5;
+    font-size: 12px;
     margin-top: 2px;
   }
+  .header-back {
+      width: 34px; height: 34px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; color: #fff;
+      border: 1px solid rgba(255,255,255,.35); border-radius: 8px;
+      cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
 
   /* a11y: estas clases pasaron de <div onclick> a <button> — se neutraliza el
      "chrome" nativo del navegador (algunos motores, sobre todo Safari, pintan

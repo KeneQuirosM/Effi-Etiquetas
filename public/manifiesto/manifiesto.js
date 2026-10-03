@@ -54,10 +54,13 @@ function updateProgressBar() {
   if (progressFill) progressFill.style.width = `${porcentaje}%`;
   if (progressScanned) progressScanned.textContent = `${escaneadas} escaneadas`;
   if (progressTotal) progressTotal.textContent = `de ${total} totales`;
-  if (progressFill) {
-    if (porcentaje < 50) progressFill.style.background = 'linear-gradient(90deg, #e74c3c, #f39c12)';
-    else if (porcentaje < 100) progressFill.style.background = 'linear-gradient(90deg, #f39c12, #3498db)';
-    else progressFill.style.background = 'linear-gradient(90deg, #2ecc71, #27ae60)';
+  // Visual: azul por debajo de 100%, verde y título "completo" al terminar.
+  const progressContainer = progressFill ? progressFill.closest('.progress-container') : null;
+  if (progressContainer) {
+    const completo = total > 0 && escaneadas >= total;
+    progressContainer.classList.toggle('is-complete', completo);
+    const title = progressContainer.querySelector('.progress-title');
+    if (title) title.innerHTML = completo ? '<svg class="progress-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Manifiesto completo' : 'Progreso de Escaneo';
   }
 }
 
