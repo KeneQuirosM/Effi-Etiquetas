@@ -47,7 +47,7 @@
 
     function updateStats(){
         const total=originalRowsData.length, dev=devolutionSet.size, pend=total-dev;
-        const pct=total>0?Math.round(dev/total*100):0;
+        const pct=total>0?Math.floor(dev/total*100):0;
         totalCountSpan.innerText=total;
         devueltasCountSpan.innerText=dev;
         pendientesCountSpan.innerText=pend;

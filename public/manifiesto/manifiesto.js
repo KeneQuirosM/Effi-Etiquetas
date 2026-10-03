@@ -45,7 +45,7 @@ function updateStats() {
 function updateProgressBar() {
   const total = manifiesto.length;
   const escaneadas = correctasSet.size;
-  const porcentaje = total > 0 ? Math.round((escaneadas / total) * 100) : 0;
+  const porcentaje = total > 0 ? Math.floor((escaneadas / total) * 100) : 0;
   const progressPercentage = document.getElementById('progressPercentage');
   const progressFill = document.getElementById('progressFill');
   const progressScanned = document.getElementById('progressScanned');
