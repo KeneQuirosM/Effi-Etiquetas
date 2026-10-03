@@ -843,8 +843,10 @@ function renderBulkList() {
     updateBulkCount();
     return;
   }
-  // El selector de cantidad va primero en el DOM (se muestra a la derecha con
-  // CSS order) para que el nombre siga siendo el último <span> de la fila.
+  // IMPORTANTE: el nombre debe seguir siendo el último <span> de la fila,
+  // porque printBulk() lo lee con row.querySelector('span:last-child') (y el
+  // ID con '.b-id'). Por eso el selector de cantidad va primero en el HTML a
+  // propósito; el CSS (order: 3 en .bulk-qty) lo muestra a la derecha.
   container.innerHTML = inv.map(item => `
     <div class="bulk-item" data-id="${esc(String(item.id))}">
       <div class="bulk-qty">
