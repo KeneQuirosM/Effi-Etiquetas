@@ -164,6 +164,14 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   cursor: pointer;
 }
 .input-row-3 select:focus { border-color: var(--brand-500); }
+/* Mensajero: misma altura y borde que los selects de la fila */
+.input-row-3 input[type="text"] {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #cfd4e0;
+  border-radius: 8px;
+  font-size: 13px;
+}
 .input-row-3 select:has(option[value=""]:checked) { color: var(--neutral-400); }
 .input-row-3 select option { color: var(--neutral-800); }
 
