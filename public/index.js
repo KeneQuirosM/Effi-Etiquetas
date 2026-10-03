@@ -1172,7 +1172,7 @@ function updateRotuloPrevLogo() {
   const logo = localStorage.getItem(ROTULO_LOGO_KEY) || localStorage.getItem(LOGO_KEY);
   const logoDiv = document.getElementById('rotulo-prev-logo');
   if (logo) {
-    logoDiv.innerHTML = `<img src="${logo}" style="height:100%;object-fit:contain">`;
+    logoDiv.innerHTML = `<img src="${esc(logo)}" style="height:100%;object-fit:contain">`;
   } else {
     logoDiv.innerHTML = '<div class="brand-text">Effi<span>commerce</span></div>';
   }
@@ -1185,7 +1185,7 @@ function printRotulo() {
 
   const logo = localStorage.getItem(ROTULO_LOGO_KEY) || localStorage.getItem(LOGO_KEY);
   const logoHTML = logo
-    ? `<img src="${logo}" style="height:100%;max-width:100%;object-fit:contain;display:block">`
+    ? `<img src="${esc(logo)}" style="height:100%;max-width:100%;object-fit:contain;display:block">`
     : `<span style="font-family:monospace;font-size:22pt;font-weight:700;color:#1a2a6c">Effi<span style="color:#f2a900">commerce</span></span>`;
 
   // All measurements at 96dpi (1in = 96px)
@@ -1202,7 +1202,7 @@ function printRotulo() {
   //   bottom-right corner: right=0.246in from right edge, bottom=0.538in from bottom
 
   const idHTML = id
-    ? `<div style="position:absolute;right:24px;bottom:52px;font-family:Arial,sans-serif;font-size:27px;font-weight:700;color:#000;text-align:right">${id}</div>`
+    ? `<div style="position:absolute;right:24px;bottom:52px;font-family:Arial,sans-serif;font-size:27px;font-weight:700;color:#000;text-align:right">${esc(id)}</div>`
     : '';
 
   const html = `<!DOCTYPE html>
@@ -1248,7 +1248,7 @@ function printRotulo() {
 <div class="page">
   <div class="borde"></div>
   <div class="logo">${logoHTML}</div>
-  <div class="nombre">${nombre}</div>
+  <div class="nombre">${esc(nombre)}</div>
   ${idHTML}
 </div>
 <script>
