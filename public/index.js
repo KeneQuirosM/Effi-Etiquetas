@@ -1106,7 +1106,7 @@ function printBulk() {
 
   // Build one label per selected item
   const logoHTML = logoSrc
-    ? `<img src="${logoSrc}" style="max-width:80%;max-height:1in;display:block;margin:0 auto">`
+    ? `<img src="${esc(logoSrc)}" style="max-width:80%;max-height:1in;display:block;margin:0 auto">`
     : `<div style="font-family:'Space Mono',monospace;font-size:22pt;font-weight:700;color:#1a2a6c;letter-spacing:-1px;padding:14px 0 4px">Effi<span style="color:#f2a900">commerce</span></div>
        <div style="font-size:9pt;letter-spacing:2px;color:#7a80a0;text-transform:uppercase;margin-bottom:4px">Logística Interna</div>`;
 
@@ -1119,11 +1119,11 @@ function printBulk() {
       <div class="bulk-label">
         <div style="text-align:center;margin-bottom:10px">${logoHTML}</div>
         <div style="flex-grow:1;display:flex;align-items:center;justify-content:center;text-align:center">
-          <h1 style="font-size:${size};margin:0;font-family:'Inter',sans-serif;line-height:1.1">${nombre}</h1>
+          <h1 style="font-size:${size};margin:0;font-family:'Inter',sans-serif;line-height:1.1">${esc(nombre)}</h1>
         </div>
         <div style="border-top:4px solid #000;position:relative;text-align:center">
-          <span style="position:absolute;top:85px;right:0;font-size:12pt;font-family:'Inter',sans-serif">${tiendaNombre}</span>
-          <p style="font-size:50pt;font-weight:bold;margin:0;font-family:'Inter',sans-serif">ID: <span>${id}</span></p>
+          <span style="position:absolute;top:85px;right:0;font-size:12pt;font-family:'Inter',sans-serif">${esc(tiendaNombre)}</span>
+          <p style="font-size:50pt;font-weight:bold;margin:0;font-family:'Inter',sans-serif">ID: <span>${esc(id)}</span></p>
         </div>
       </div>`;
   }).join('');
