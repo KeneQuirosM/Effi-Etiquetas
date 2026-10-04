@@ -1114,3 +1114,68 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   .scan-field.is-idle .scan-idle-hint { font-size: 12px; }
 }
 .scan-field.is-idle #scanInput:not(:placeholder-shown) ~ .scan-idle-hint { display: none; }
+
+/* ── AVISO GRANDE TRAS CADA LECTURA ── */
+.scan-tools { display: flex; justify-content: flex-end; margin-top: 8px; }
+.scan-sound {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 500; color: var(--neutral-600);
+  cursor: pointer; user-select: none;
+}
+.scan-sound input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.scan-sound-track {
+  position: relative; width: 34px; height: 20px; border-radius: 20px;
+  background: var(--neutral-200); transition: background .2s;
+}
+.scan-sound-track::before {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .2s;
+}
+.scan-sound input:checked + .scan-sound-track { background: #2a47d4; }
+.scan-sound input:checked + .scan-sound-track::before { transform: translateX(14px); }
+.scan-sound input:focus-visible + .scan-sound-track { outline: 2px solid #2a9fd6; outline-offset: 2px; }
+
+/* Contenedor que se pliega: entra y sale con altura + opacidad */
+.scan-banner-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows .2s ease, opacity .2s ease;
+}
+.scan-banner-wrap.is-visible { grid-template-rows: 1fr; opacity: 1; }
+.scan-banner { overflow: hidden; min-height: 0; }
+.scan-banner-inner {
+  display: flex; align-items: center; gap: 16px;
+  margin-top: 10px; padding: 14px 18px;
+  border: 1px solid transparent; border-left-width: 6px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+.scan-banner-wrap.is-visible .scan-banner-inner { animation: scan-banner-pop .18s ease-out; }
+@keyframes scan-banner-pop { from { transform: translateY(-4px) scale(.99); } to { transform: none; } }
+.scan-banner-ico { flex-shrink: 0; width: 36px; height: 36px; display: flex; }
+.scan-banner-ico svg { width: 36px; height: 36px; }
+.scan-banner-body { flex: 1; min-width: 0; }
+.scan-banner-guia {
+  font-family: monospace; font-size: 26px; font-weight: 600;
+  letter-spacing: .5px; line-height: 1.15; word-break: break-all;
+}
+.scan-banner-msg { font-size: 14px; font-weight: 500; margin-top: 2px; }
+.scan-banner-count { flex-shrink: 0; text-align: right; font-size: 13px; font-weight: 500; line-height: 1.35; }
+.scan-banner-count strong { display: block; font-size: 20px; font-weight: 600; }
+
+.scan-banner.is-ok   .scan-banner-inner { background: #e8f5e9; border-color: #c8e6c9; border-left-color: #2e7d32; color: #1b5e20; }
+.scan-banner.is-rep  .scan-banner-inner { background: #fff3e0; border-color: #ffe0b2; border-left-color: #e67e00; color: #8a4500; }
+.scan-banner.is-err  .scan-banner-inner { background: #fdecea; border-color: #f8c9c4; border-left-color: #c62828; color: #8e1c1c; }
+
+@media (max-width: 480px) {
+  .scan-banner-inner { flex-wrap: wrap; gap: 10px; }
+  .scan-banner-guia { font-size: 20px; }
+  .scan-banner-count { width: 100%; text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-banner-wrap { transition: none; }
+  .scan-banner-wrap.is-visible .scan-banner-inner { animation: none; }
+  .scan-sound-track, .scan-sound-track::before { transition: none; }
+}

@@ -257,6 +257,26 @@
               <span class="scan-idle-hint" aria-hidden="true">Haz clic aquí para volver a escanear</span>
               <span class="scan-status" aria-hidden="true"><span class="scan-status-dot"></span><span class="scan-status-text">Listo para escanear</span></span>
             </div>
+            <div class="scan-tools">
+              <label class="scan-sound" title="Pitido distinto según el resultado de cada lectura">
+                <input type="checkbox" id="scanSoundToggle">
+                <span class="scan-sound-track" aria-hidden="true"></span>
+                Sonido
+              </label>
+            </div>
+            <!-- Aviso tras cada lectura (lo llena manifiesto-scan-ui.js) -->
+            <div class="scan-banner-wrap" id="scanBannerWrap">
+              <div class="scan-banner" id="scanBanner" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true">
+                <div class="scan-banner-inner">
+                  <span class="scan-banner-ico" aria-hidden="true"></span>
+                  <div class="scan-banner-body">
+                    <div class="scan-banner-guia"></div>
+                    <div class="scan-banner-msg"></div>
+                  </div>
+                  <div class="scan-banner-count"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
