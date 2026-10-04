@@ -908,18 +908,42 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
     .guias-table tbody tr:nth-child(even) { background: #fafbff; }
     .guias-table tbody tr:nth-child(even):hover { background: #f0f2ff; }
 
-    /* badges de estado */
+    /* badges de estado: píldora con ícono + texto (mismos tonos que las tarjetas) */
     .badge-estado {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       padding: 3px 10px;
+      border: 1px solid transparent;
       border-radius: 20px;
-      font-size: 11.5px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.4;
       white-space: nowrap;
+      vertical-align: middle;
     }
-    .badge-correcta  { background: #e8f5e9; color: #2e7d32; }
-    .badge-faltante  { background: #fff8e1; color: #f57f17; }
-    .badge-nomanif   { background: #fce4ec; color: #c62828; }
+    .badge-estado .badge-ico { flex-shrink: 0; }
+    .badge-correcta  { background: #e8f5e9; border-color: #c8e6c9; color: #1b5e20; }
+    .badge-repetida  { background: #fff3e0; border-color: #ffe0b2; color: #8a4500; margin-left: 4px; }
+    .badge-nomanif   { background: #fdecea; border-color: #f8c9c4; color: #8e1c1c; }
+    .badge-faltante  { background: var(--neutral-50); border-color: var(--neutral-200); color: var(--neutral-600); }
+
+    /* Tabla con scroll propio y cabecera fija: la página no se mueve al escanear */
+    .guias-section .guias-table-wrapper {
+      max-height: 420px;
+      overflow: auto;
+    }
+    .guias-section .guias-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    /* Última guía escaneada: fondo azul suave + franja de 4px a la izquierda */
+    .guias-table tbody tr.fila-ultima,
+    .guias-table tbody tr.fila-ultima:nth-child(even),
+    .guias-table tbody tr.fila-ultima:hover { background: #e8edfd; }
+    .guias-table tbody tr.fila-ultima td:first-child { box-shadow: inset 4px 0 0 #2a47d4; }
 
     /* dropdown de observaciones (estado del paquete) */
     .obs-select {

@@ -776,6 +776,25 @@ function limpiarBusqueda() {
 // Estado de observaciones (condición del paquete): guia -> estado ('', 'Alterado', 'Buen estado', 'Incompleto', 'Mal estado')
 const observacionesGuias = {};
 
+// Íconos de las insignias de estado (solo presentación)
+const ICONO_INSIGNIA = (() => {
+  const svg = d => `<svg class="badge-ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  return {
+    correcta: svg('<path d="M20 6 9 17l-5-5"/>'),
+    nomanif:  svg('<path d="M18 6 6 18M6 6l12 12"/>'),
+    faltante: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    repetida: svg('<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>'),
+  };
+})();
+
+// Insignia extra "Repetida ×N" para guías escaneadas más de una vez. Solo lee
+// guiasEscaneadas (mismo criterio veces > 1 que la tarjeta de Repetidas).
+function insigniaRepetidaHTML(guia) {
+  const datos = guiasEscaneadas.get(guia) || guiasEscaneadas.get(normalizarGuia(guia));
+  if (!datos || datos.veces <= 1) return '';
+  return ` <span class="badge-estado badge-repetida">${ICONO_INSIGNIA.repetida}Repetida ×${datos.veces}</span>`;
+}
+
 function renderTablaGuias() {
   const tbody = document.getElementById('guiasTableBody');
   const contador = document.getElementById('tablaContador');
@@ -834,8 +853,8 @@ function renderTablaGuias() {
   tbody.innerHTML = filas.map((f, i) => {
     const badgeClass = f.estado === 'correcta' ? 'badge-correcta' :
                        f.estado === 'nomanif'  ? 'badge-nomanif'  : 'badge-faltante';
-    const badgeText  = f.estado === 'correcta' ? 'En manifiesto' :
-                       f.estado === 'nomanif'  ? 'No manifestada' : 'En manifiesto pero no recibida en físico';
+    const badgeText  = f.estado === 'correcta' ? `${ICONO_INSIGNIA.correcta}Correcta` :
+                       f.estado === 'nomanif'  ? `${ICONO_INSIGNIA.nomanif}No manifestada` : `${ICONO_INSIGNIA.faltante}Faltante`;
     const obsActual = observacionesGuias[f.guia] || 'Buen estado';
     const opciones = OBSERVACION_ESTADOS.map(o =>
       `<option value="${o.value}" ${obsActual === o.value ? 'selected' : ''}>${o.value}</option>`
@@ -843,7 +862,7 @@ function renderTablaGuias() {
     return `<tr>
       <td style="color:#999;font-size:12px;">${i + 1}</td>
       <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${esc(f.guia)}</td>
-      <td><span class="badge-estado ${badgeClass}">${badgeText}</span></td>
+      <td><span class="badge-estado ${badgeClass}">${badgeText}</span>${insigniaRepetidaHTML(f.guia)}</td>
       <td style="color:#888;font-size:12px;">${esc(f.hora)}</td>
       <td style="text-align:center;">
         <select class="obs-select ${claseObservacion(obsActual)}"
