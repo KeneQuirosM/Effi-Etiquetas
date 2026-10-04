@@ -784,6 +784,11 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   /* La tabla de guías tiene scroll propio en pantalla; al imprimir sale completa.
      !important porque la regla de pantalla está más abajo con la misma especificidad. */
   .guias-section .guias-table-wrapper { max-height: none !important; overflow: visible !important; }
+  /* Elementos de escaneo en vivo (ronda 4): no tienen sentido en papel */
+  .scan-field .scan-status,
+  .scan-field .scan-idle-hint,
+  .scan-tools,
+  #scanBanner { display: none !important; }
 }
 
 /* ============================================================
