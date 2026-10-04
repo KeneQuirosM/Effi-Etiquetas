@@ -1376,6 +1376,21 @@ function updatePreview() {
   }
 } // ← CIERRE CORRECTO DE LA FUNCIÓN
 
+/* ── CONFIGURACIÓN: ACORDEÓN ────────────────────────── */
+// Solo una sección abierta a la vez. Los botones son <button> nativos, así
+// que Enter y Espacio ya los activan.
+function toggleConfigSection(btn) {
+  const open = btn.getAttribute('aria-expanded') !== 'true';
+  document.querySelectorAll('#tab-config .cfg-head-btn').forEach(b => {
+    const isTarget = b === btn && open;
+    b.setAttribute('aria-expanded', String(isTarget));
+    const panel = document.getElementById(b.getAttribute('aria-controls'));
+    if (panel) panel.hidden = !isTarget;
+  });
+}
+document.querySelectorAll('#tab-config .cfg-head-btn').forEach(btn =>
+  btn.addEventListener('click', () => toggleConfigSection(btn)));
+
 /* ── TOGGLE UBICACIÓN QR ────────────────────────────── */
 const UBICACION_KEY = 'mostrar_ubicacion';
 

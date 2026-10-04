@@ -191,95 +191,134 @@
 
     <!-- TAB: Configuración -->
     <div id="tab-config" class="tab-content">
-
-      <!-- Logo etiqueta -->
-      <p class="section-label" style="margin-bottom:10px">Logo de la Etiqueta</p>
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
-        <div id="logo-preview-box" style="width:90px;height:60px;border:1px dashed var(--border);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);flex-shrink:0">
-          <span id="logo-preview-placeholder" style="font-size:11px;color:var(--muted);text-align:center;padding:4px">Sin logo</span>
-          <img id="logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
-            Subir imagen
-            <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
-          </label>
-          <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeLogo()">✕ Quitar logo</button>
-        </div>
-      </div>
-      <p style="font-size:11px;color:var(--muted);margin-bottom:22px">PNG, JPG o SVG. Se guarda en el navegador automáticamente.</p>
-      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
-
-      <!-- Logo rótulo -->
-      <p class="section-label" style="margin-bottom:10px">Logo del Rótulo A4</p>
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
-        <div id="rotulo-logo-preview-box" style="width:90px;height:60px;border:1px dashed var(--border);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);flex-shrink:0">
-          <span id="rotulo-logo-preview-placeholder" style="font-size:11px;color:var(--muted);text-align:center;padding:4px">Sin logo</span>
-          <img id="rotulo-logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
-            Subir imagen
-            <input type="file" id="rotulo-logo-file-input" accept="image/*" style="display:none" onchange="handleRotuloLogoUpload(this)">
-          </label>
-          <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeRotuloLogo()">✕ Quitar logo</button>
-        </div>
-      </div>
-      <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Logo independiente del rótulo. Si no se sube, usa el mismo que la etiqueta.</p>
-      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
-
-      <!-- QR de Ubicación -->
-      <p class="section-label" style="margin-bottom:10px">QR de Ubicación en Etiquetas</p>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-        <label class="switch-toggle">
-          <input type="checkbox" id="toggle-ubicacion" onchange="saveUbicacionToggle(this.checked)">
-          <span class="switch-track"></span>
-        </label>
-        <span id="toggle-ubicacion-label" style="font-size:13px;font-weight:500;color:var(--muted)">Desactivado</span>
-      </div>
-      <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Muestra el código QR con la ubicación física del producto en la etiqueta. Activar cuando tengas ubicaciones asignadas en STOCKFORGE.</p>
-      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
-
-      <!-- Contraseña -->
-      <p class="section-label" style="margin-bottom:10px">Cambiar Contraseña</p>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Contraseña Nueva</label>
-          <div class="pw-field">
-            <input type="password" id="c-pin-nuevo" maxlength="32" placeholder="••••••••" autocomplete="new-password">
-            <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+      <!-- Acordeón de configuración: solo una sección abierta a la vez (toggleConfigSection en index.js).
+           Los controles conservan sus id, name y eventos originales. -->
+      <div class="cfg-acc">
+        <section class="cfg-sec">
+          <div class="cfg-head">
+            <button type="button" class="cfg-head-btn" aria-expanded="true" aria-controls="cfg-panel-logos">
+              <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg>
+              <span class="cfg-title">Logos</span>
+              <span class="cfg-summary">Etiqueta y rótulo A4</span>
+              <svg class="cfg-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
           </div>
-        </div>
-        <div class="form-group">
-          <label>Confirmar Nueva</label>
-          <div class="pw-field">
-            <input type="password" id="c-pin-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
-            <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+          <div class="cfg-panel" id="cfg-panel-logos">
+            <!-- Logo etiqueta -->
+            <p class="section-label" style="margin-bottom:10px">Logo de la Etiqueta</p>
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+              <div id="logo-preview-box" style="width:90px;height:60px;border:1px dashed var(--border);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);flex-shrink:0">
+                <span id="logo-preview-placeholder" style="font-size:11px;color:var(--muted);text-align:center;padding:4px">Sin logo</span>
+                <img id="logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
+                  Subir imagen
+                  <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
+                </label>
+                <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeLogo()">✕ Quitar logo</button>
+              </div>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:22px">PNG, JPG o SVG. Se guarda en el navegador automáticamente.</p>
+            <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
+
+            <!-- Logo rótulo -->
+            <p class="section-label" style="margin-bottom:10px">Logo del Rótulo A4</p>
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+              <div id="rotulo-logo-preview-box" style="width:90px;height:60px;border:1px dashed var(--border);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);flex-shrink:0">
+                <span id="rotulo-logo-preview-placeholder" style="font-size:11px;color:var(--muted);text-align:center;padding:4px">Sin logo</span>
+                <img id="rotulo-logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
+                  Subir imagen
+                  <input type="file" id="rotulo-logo-file-input" accept="image/*" style="display:none" onchange="handleRotuloLogoUpload(this)">
+                </label>
+                <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeRotuloLogo()">✕ Quitar logo</button>
+              </div>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Logo independiente del rótulo. Si no se sube, usa el mismo que la etiqueta.</p>
           </div>
-        </div>
-      </div>
-      <button class="btn-action btn-primary" onclick="changePin()" style="margin-bottom:8px">Actualizar Contraseña</button>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">La contraseña debe tener al menos 6 caracteres.</p>
-      <hr style="border:none;border-top:1px solid var(--border);margin-bottom:18px">
+        </section>
+        <section class="cfg-sec">
+          <div class="cfg-head">
+            <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-qr">
+              <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>
+              <span class="cfg-title">QR de ubicación</span>
+              <span id="toggle-ubicacion-label" style="font-size:13px;font-weight:500;color:var(--muted)">Desactivado</span>
+              <svg class="cfg-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <!-- El interruptor va junto al botón (no dentro): funciona sin abrir la sección -->
+            <label class="switch-toggle">
+              <input type="checkbox" id="toggle-ubicacion" onchange="saveUbicacionToggle(this.checked)">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <div class="cfg-panel" id="cfg-panel-qr" hidden>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Muestra el código QR con la ubicación física del producto en la etiqueta. Activar cuando tengas ubicaciones asignadas en STOCKFORGE.</p>
+          </div>
+        </section>
+        <section class="cfg-sec">
+          <div class="cfg-head">
+            <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-pw">
+              <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <span class="cfg-title">Cambiar contraseña</span>
+              <span class="cfg-summary">Mínimo 6 caracteres</span>
+              <svg class="cfg-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="cfg-panel" id="cfg-panel-pw" hidden>
+            <!-- Contraseña -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Contraseña Nueva</label>
+                <div class="pw-field">
+                  <input type="password" id="c-pin-nuevo" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+                  <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Confirmar Nueva</label>
+                <div class="pw-field">
+                  <input type="password" id="c-pin-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
+                  <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+                </div>
+              </div>
+            </div>
+            <button class="btn-action btn-primary" onclick="changePin()" style="margin-bottom:8px">Actualizar Contraseña</button>
+            <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">La contraseña debe tener al menos 6 caracteres.</p>
+          </div>
+        </section>
+        <section class="cfg-sec">
+          <div class="cfg-head">
+            <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-json">
+              <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+              <span class="cfg-title">Datos de inventario (JSON)</span>
+              <span class="cfg-summary">Exportar · importar</span>
+              <svg class="cfg-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="cfg-panel" id="cfg-panel-json" hidden>
+            <!-- JSON -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button class="btn-action btn-primary" onclick="exportJSON()" style="font-size:12px">⬇ Exportar JSON</button>
+              <label class="btn-action btn-ghost" style="cursor:pointer;font-size:12px">
+                ⬆ Importar JSON
+                <input type="file" id="json-file-input" accept=".json" style="display:none" onchange="handleJSONImport(this)">
+              </label>
+            </div>
+            <p style="font-size:11px;color:var(--muted)">Exporta para editar en Excel/Notepad. Importa para aplicar cambios masivos.</p>
 
-      <!-- JSON -->
-      <p class="section-label" style="margin-bottom:10px">Datos de Inventario (JSON)</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <button class="btn-action btn-primary" onclick="exportJSON()" style="font-size:12px">⬇ Exportar JSON</button>
-        <label class="btn-action btn-ghost" style="cursor:pointer;font-size:12px">
-          ⬆ Importar JSON
-          <input type="file" id="json-file-input" accept=".json" style="display:none" onchange="handleJSONImport(this)">
-        </label>
-      </div>
-      <p style="font-size:11px;color:var(--muted)">Exporta para editar en Excel/Notepad. Importa para aplicar cambios masivos.</p>
-
-      <!-- Log de importación -->
-      <div style="margin-top:20px">
-        <p class="section-label" style="margin-bottom:8px">Registro de importación</p>
-        <div id="import-log-container" style="background:#0d1b2e;border-radius:var(--radius-md);padding:12px;max-height:200px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.5;border:1px solid var(--border);">
-          <div id="import-log" style="color:#b4c8fb;white-space:pre-wrap;word-break:break-all;">— Esperando archivo —</div>
-        </div>
-        <button class="btn-action btn-ghost" onclick="clearImportLog()" style="margin-top:8px;font-size:11px;padding:4px 12px">Limpiar registro</button>
+            <!-- Log de importación -->
+            <div style="margin-top:20px">
+              <p class="section-label" style="margin-bottom:8px">Registro de importación</p>
+              <div id="import-log-container" style="background:#0d1b2e;border-radius:var(--radius-md);padding:12px;max-height:200px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.5;border:1px solid var(--border);">
+                <div id="import-log" style="color:#b4c8fb;white-space:pre-wrap;word-break:break-all;">— Esperando archivo —</div>
+              </div>
+              <button class="btn-action btn-ghost" onclick="clearImportLog()" style="margin-top:8px;font-size:11px;padding:4px 12px">Limpiar registro</button>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
 
