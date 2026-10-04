@@ -12,7 +12,8 @@
   const renderTablaGuiasOriginal = window.renderTablaGuias;
   if (typeof onScanEnterOriginal !== 'function' || typeof renderTablaGuiasOriginal !== 'function') return;
 
-  // Guía normalizada de la última lectura (para resaltar su fila)
+  // Última lectura (para resaltar su fila): texto exacto y guía normalizada
+  let ultimaGuiaTexto = null;
   let ultimaGuiaNorm = null;
 
   window.onScanEnter = function (e) {
@@ -21,6 +22,7 @@
     const esLectura = guia !== '';
     let antes = null;
     if (esLectura) {
+      ultimaGuiaTexto = guia;
       ultimaGuiaNorm = normalizarGuia(guia);
       prepararAudio(); // la lectura es una interacción del usuario
       antes = { correctas: correctasSet.size };
@@ -183,7 +185,7 @@
   window.renderTablaGuias = function () {
     renderTablaGuiasOriginal.apply(this, arguments); // pintado original, sin cambios
     // Manifiesto nuevo o reiniciado: no queda nada que resaltar
-    if (guiasEscaneadas.size === 0) ultimaGuiaNorm = null;
+    if (guiasEscaneadas.size === 0) { ultimaGuiaTexto = null; ultimaGuiaNorm = null; }
     resaltarUltimaFila();
   };
 
@@ -239,12 +241,12 @@
   // solo dentro de la tabla (la página no se mueve).
   function resaltarUltimaFila() {
     if (!ultimaGuiaNorm) return;
-    const filas = document.querySelectorAll('#guiasTableBody tr');
-    let fila = null;
-    for (const tr of filas) {
-      const celda = tr.querySelector('td:nth-child(2)');
-      if (celda && normalizarGuia(celda.textContent.trim()) === ultimaGuiaNorm) { fila = tr; break; }
-    }
+    const filas = [...document.querySelectorAll('#guiasTableBody tr')];
+    const textoGuia = tr => { const celda = tr.querySelector('td:nth-child(2)'); return celda ? celda.textContent.trim() : null; };
+    // 1) la fila con el texto exacto escaneado (una no manifestada leída en otro
+    //    formato tiene su propia fila); 2) si no hay, la de la misma guía normalizada
+    const fila = filas.find(tr => textoGuia(tr) === ultimaGuiaTexto) ||
+                 filas.find(tr => { const t = textoGuia(tr); return t !== null && normalizarGuia(t) === ultimaGuiaNorm; });
     if (!fila) return;
     fila.classList.add('fila-ultima');
 
