@@ -601,6 +601,32 @@ body {
 }
 .inv-item button:hover { opacity: 1; }
 
+/* ══ ESQUELETO DE CARGA (reutilizable) ══ */
+.skeleton {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #eceff5 0%, #eceff5 35%, #f7f8fb 50%, #eceff5 65%, #eceff5 100%);
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  from { background-position: 100% 0; }
+  to   { background-position: 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; background: #eceff5; }
+}
+/* Texto solo para lectores de pantalla mientras se muestran esqueletos */
+.skeleton-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+#users-list .skeleton-row { gap: 12px; }
+
 /* ══ USUARIOS: borrar con confirmación inline ══ */
 #users-list .inv-item .user-del-btn {
   margin-left: auto;

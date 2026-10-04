@@ -961,7 +961,12 @@ const TRASH_ICON_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="no
 async function loadUsers() {
   const container = document.getElementById('users-list');
   if (!container) return;
-  container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>';
+  // Mientras llega la respuesta: 3 filas de esqueleto (se reemplazan igual que antes)
+  const skeletonRow = '<div class="inv-item skeleton-row" aria-hidden="true">' +
+    '<span class="skeleton" style="flex-grow:1;max-width:240px"></span>' +
+    '<span class="skeleton" style="width:64px;margin-left:auto"></span>' +
+    '<span class="skeleton" style="width:17px;height:17px;border-radius:4px"></span></div>';
+  container.innerHTML = '<span class="skeleton-sr" role="status">Cargando usuarios...</span>' + skeletonRow.repeat(3);
 
   try {
     const r = await fetch('/api/users', {
