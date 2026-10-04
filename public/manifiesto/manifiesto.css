@@ -1060,3 +1060,57 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
     .guias-table tbody tr.fila-highlight td {
       background: #fffde7 !important;
     }
+
+/* ── CAMPO DE ESCANEO SIEMPRE LISTO ── */
+.scan-field { position: relative; }
+.scan-field #scanInput {
+  height: 46px;
+  font-size: 14px;
+  padding-right: 200px;
+}
+.scan-status {
+  position: absolute;
+  right: 14px; top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1b5e20;
+  pointer-events: none;
+}
+.scan-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #2e7d32;
+  box-shadow: 0 0 0 3px rgba(46,125,50,.18);
+}
+.scan-idle-hint {
+  display: none;
+  position: absolute;
+  left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  font-weight: 500;
+  color: #8a4500;
+  pointer-events: none; /* el clic llega al input y lo enfoca */
+}
+
+/* Sin foco: naranja, borde punteado y aviso para volver a escanear */
+.scan-field.is-idle #scanInput {
+  border: 1.5px dashed #e67e00;
+  background: #fff8ee;
+  cursor: pointer;
+}
+.scan-field.is-idle #scanInput::placeholder { color: transparent; }
+.scan-field.is-idle .scan-idle-hint { display: block; }
+.scan-field.is-idle .scan-status { color: #8a4500; }
+.scan-field.is-idle .scan-status-dot { background: #e67e00; box-shadow: 0 0 0 3px rgba(230,126,0,.18); }
+
+@media (max-width: 480px) {
+  .scan-field #scanInput { padding-right: 110px; }
+  .scan-field .scan-status-text { display: none; }
+  .scan-field.is-idle .scan-idle-hint { font-size: 12px; }
+}
+.scan-field.is-idle #scanInput:not(:placeholder-shown) ~ .scan-idle-hint { display: none; }

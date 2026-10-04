@@ -252,7 +252,11 @@
               <i class="fas fa-barcode"></i>
               Escanear Guía
             </label>
-            <input type="text" id="scanInput" placeholder="Escanee aquí..." autofocus onkeydown="onScanEnter(event)" />
+            <div class="scan-field" id="scanField">
+              <input type="text" id="scanInput" placeholder="Escanee aquí..." autofocus onkeydown="onScanEnter(event)" />
+              <span class="scan-idle-hint" aria-hidden="true">Haz clic aquí para volver a escanear</span>
+              <span class="scan-status" aria-hidden="true"><span class="scan-status-dot"></span><span class="scan-status-text">Listo para escanear</span></span>
+            </div>
           </div>
         </div>
 
