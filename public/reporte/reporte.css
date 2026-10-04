@@ -94,6 +94,14 @@
   }
   .header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
 
+  /* Ancho máximo en pantalla (1440px, centrado como los demás módulos).
+     Solo @media screen: al imprimir/guardar PDF el contenido sigue
+     ocupando el ancho completo de la hoja. Por debajo de 1440px no cambia. */
+  @media screen {
+    .report-shell { max-width: 1440px; margin: 0 auto; }
+    header .header-container { max-width: calc(1440px - 64px); margin: 0 auto; }
+  }
+
   /* a11y: estas clases pasaron de <div onclick> a <button> — se neutraliza el
      "chrome" nativo del navegador (algunos motores, sobre todo Safari, pintan
      una apariencia de botón nativo por encima del fondo/borde ya definidos). */

@@ -33,7 +33,7 @@ body {
 
 /* ══ APP CONTAINER — idéntico a devoluciones ══ */
 .app-container {
-    max-width: 1240px;
+    max-width: 1440px;
     margin: 0 auto;
     background: white;
     border-radius: var(--radius-xl);
