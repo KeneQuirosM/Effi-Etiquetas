@@ -781,6 +781,9 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 @media print {
   body { background: white; padding: 0; }
   .app-container { box-shadow: none; border: none; border-radius: 0; }
+  /* La tabla de guías tiene scroll propio en pantalla; al imprimir sale completa.
+     !important porque la regla de pantalla está más abajo con la misma especificidad. */
+  .guias-section .guias-table-wrapper { max-height: none !important; overflow: visible !important; }
 }
 
 /* ============================================================
