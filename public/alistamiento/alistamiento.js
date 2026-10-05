@@ -506,21 +506,28 @@ function renderGuidesTable(guideList, notFoundGuides) {
  * del PDF original — ninguna página se modifica, regenera ni se
  * reescribe su contenido, fuentes o imágenes.
  */
+// Agrupa las guías encontradas por producto: [{ name, guias: [guiaId, ...] }],
+// grupos en orden alfabético y guías de cada grupo en su orden del PDF
+// original. Lo usan el PDF completo agrupado y la impresión por grupo.
+function getProductGroups() {
+    const groups = new Map(); // nombre de producto -> [guiaId, ...]
+    [...guidePagesMap.keys()].forEach(gid => {
+        const prod = excelGuideProductMap.get(gid) || 'Sin producto identificado';
+        if (!groups.has(prod)) groups.set(prod, []);
+        groups.get(prod).push(gid);
+    });
+    groups.forEach(list => list.sort((a, b) => guidePagesMap.get(a)[0] - guidePagesMap.get(b)[0]));
+    return [...groups.keys()]
+        .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+        .map(name => ({ name, guias: groups.get(name) }));
+}
+
 function computePageOrder() {
-    const guideIds = [...guidePagesMap.keys()];
     if (sortMode === 'byProduct') {
-        const groups = new Map(); // nombre de producto -> [guiaId, ...]
-        guideIds.forEach(gid => {
-            const prod = excelGuideProductMap.get(gid) || 'Sin producto identificado';
-            if (!groups.has(prod)) groups.set(prod, []);
-            groups.get(prod).push(gid);
-        });
-        groups.forEach(list => list.sort((a, b) => guidePagesMap.get(a)[0] - guidePagesMap.get(b)[0]));
-        const sortedProductNames = [...groups.keys()].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-        return sortedProductNames.flatMap(p => groups.get(p)).flatMap(gid => guidePagesMap.get(gid));
+        return getProductGroups().flatMap(g => g.guias).flatMap(gid => guidePagesMap.get(gid));
     }
     // Orden original: unión de todas las páginas encontradas, ascendente.
-    return guideIds.flatMap(gid => guidePagesMap.get(gid)).sort((a, b) => a - b);
+    return [...guidePagesMap.keys()].flatMap(gid => guidePagesMap.get(gid)).sort((a, b) => a - b);
 }
 
 async function buildOutputPdf(pageOrder) {
@@ -540,21 +547,22 @@ async function rebuildFilteredPdf() {
     document.getElementById('printBtn').disabled = false;
 }
 
+// Grupos mostrados en pantalla — el botón de cada fila guarda su índice
+// acá (data-group), así no hace falta meter el nombre del producto en un
+// atributo y volver a buscarlo.
+let productGroups = [];
+
 function renderProductGroupsSummary() {
     const container = document.getElementById('productGroupsSummary');
-    if (sortMode !== 'byProduct' || !guidePagesMap.size) { container.innerHTML = ''; return; }
+    if (sortMode !== 'byProduct' || !guidePagesMap.size) { productGroups = []; container.innerHTML = ''; return; }
 
-    const counts = new Map(); // nombre de producto -> cantidad de guías
-    [...guidePagesMap.keys()].forEach(gid => {
-        const prod = excelGuideProductMap.get(gid) || 'Sin producto identificado';
-        counts.set(prod, (counts.get(prod) || 0) + 1);
-    });
-    const sortedNames = [...counts.keys()].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-    container.innerHTML = sortedNames.map(name => `
+    productGroups = getProductGroups();
+    container.innerHTML = productGroups.map((g, i) => `
         <div class="product-group-row">
             <i class="fas fa-box"></i>
-            <span class="product-group-name">${esc(name)}</span>
-            <span class="product-group-count">${counts.get(name)} guías</span>
+            <span class="product-group-name">${esc(g.name)}</span>
+            <span class="product-group-count">${g.guias.length} ${g.guias.length === 1 ? 'guía' : 'guías'}</span>
+            <button type="button" class="print-guide-btn print-group-btn" data-group="${i}"><i class="fas fa-print"></i> Imprimir</button>
         </div>`).join('');
 }
 
@@ -582,6 +590,22 @@ async function printSingleGuide(guideId) {
     }
 }
 
+// Imprime solo las guías de un grupo de producto, en el mismo orden que
+// tienen dentro del PDF agrupado.
+async function printProductGroup(idx) {
+    const group = productGroups[idx];
+    if (!group || !srcPdfLibDoc) { notify('No hay páginas para ese grupo', 'err'); return; }
+    const pages = group.guias.flatMap(gid => guidePagesMap.get(gid) || []);
+    if (!pages.length) { notify('No hay páginas para ese grupo', 'err'); return; }
+    try {
+        const blob = await buildOutputPdf(pages);
+        window.open(URL.createObjectURL(blob), '_blank');
+        addLog('IMPRESIÓN POR PRODUCTO', `${group.name} · ${group.guias.length} guía(s) · ${pages.length} página(s)`);
+    } catch (err) {
+        notify(`Error al preparar la impresión: ${err.message}`, 'err');
+    }
+}
+
 /* ── INIT ─────────────────────────────────────────────── */
 wireDropzone('excelDropzone', 'excelInput', 'excelBrowseBtn', '.xlsx', handleExcelFile);
 wireDropzone('pdfDropzone', 'pdfInput', 'pdfBrowseBtn', '.pdf', handlePdfFile);
@@ -597,6 +621,12 @@ document.getElementById('guidesTableBody').addEventListener('click', (e) => {
     const btn = e.target.closest('.print-guide-btn');
     if (!btn) return;
     printSingleGuide(btn.getAttribute('data-guia'));
+});
+
+document.getElementById('productGroupsSummary').addEventListener('click', (e) => {
+    const btn = e.target.closest('.print-group-btn');
+    if (!btn) return;
+    printProductGroup(Number(btn.getAttribute('data-group')));
 });
 
 document.getElementById('sortModeSelect').addEventListener('change', async (e) => {

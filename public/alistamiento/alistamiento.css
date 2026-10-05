@@ -423,7 +423,6 @@ tbody tr:nth-child(even):hover td { background: var(--brand-50); }
 .product-groups-summary {
     display: flex; flex-direction: column; gap: 6px;
     margin-top: 14px;
-    max-height: 220px; overflow-y: auto;
 }
 .product-group-row {
     display: flex; align-items: center; gap: 10px;
@@ -434,7 +433,8 @@ tbody tr:nth-child(even):hover td { background: var(--brand-50); }
     font-size: .78rem;
 }
 .product-group-row i { color: var(--brand-500); flex-shrink: 0; }
-.product-group-name { flex: 1; color: var(--neutral-800); font-weight: 500; }
+.product-group-name { flex: 1; min-width: 0; color: var(--neutral-800); font-weight: 500; }
+.product-group-count, .print-group-btn { flex-shrink: 0; }
 .product-group-count {
     font-family: var(--mono); font-size: .72rem;
     color: var(--neutral-600);
