@@ -415,6 +415,22 @@
         const wb2=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb2,ws,sheetName);
         XLSX.writeFile(wb2,`devoluciones_${new Date().toISOString().slice(0,10)}.xlsx`);
         notify(`${devolutionSet.size} filas exportadas`,'ok');
+        registrarDevolucionesDelDia([...devolutionSet]);
+    }
+
+    // Guarda en BD las guías exportadas con la fecha de hoy, para el reporte
+    // diario/semanal/mensual del panel de coordinador. Las que ya estaban
+    // registradas de un día anterior conservan su fecha, así exportar varias
+    // veces no duplica el conteo. El Excel se descarga igual aunque esto falle.
+    async function registrarDevolucionesDelDia(guias){
+        try{
+            const r=await apiRequestJSON('/api/devoluciones',{method:'POST',body:{guias}});
+            notify(r.nuevas
+                ?`${r.nuevas} devolución(es) registradas hoy en la base de datos`
+                :'Todas las guías ya estaban registradas en la base de datos','ok');
+        }catch(err){
+            notify(`No se pudo registrar en la base de datos: ${err.message}. Vuelva a exportar para reintentar.`,'warn');
+        }
     }
 
     function resetAll(){

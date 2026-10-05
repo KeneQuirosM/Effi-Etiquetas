@@ -248,3 +248,10 @@ ALTER TABLE audits             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE changelog          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE movimientos        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bodega_config      ENABLE ROW LEVEL SECURITY;
+
+
+-- =============================================
+-- DEVOLUCIONES — registro diario de guías devueltas
+-- Definición completa en supabase/devoluciones_registro.sql
+-- (tabla devoluciones_registro + RLS + función devoluciones_por_dia).
+-- =============================================

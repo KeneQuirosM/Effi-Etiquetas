@@ -1350,3 +1350,44 @@ body {
 @media (prefers-reduced-motion: reduce) {
   #tab-config .cfg-chevron { transition: none; }
 }
+
+/* ══ REPORTE DE DEVOLUCIONES (panel coordinador) ══ */
+.devol-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.devol-presets .btn-action { padding: 6px 12px; font-size: 12px; }
+.devol-presets .btn-action.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.devol-filtros {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+.devol-filtros .btn-action { height: 38px; }
+@media (max-width: 640px) {
+  .devol-filtros { grid-template-columns: 1fr 1fr; }
+}
+
+.devol-resumen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.devol-resumen:empty { display: none; }
+.devol-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+.devol-stat-val { font-size: 20px; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
+.devol-stat-lbl { font-size: 11px; color: var(--muted); }
+
+.devol-list { max-height: 320px; }
+.devol-row { gap: 12px; }
+.devol-label { flex: 0 0 210px; }
+.devol-bar { flex: 1; height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; }
+.devol-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.devol-count { flex: 0 0 56px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .devol-label { flex-basis: 130px; font-size: 12px; }
+}

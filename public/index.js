@@ -335,11 +335,12 @@ function switchTab(id) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config','tab-users'];
+  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config','tab-users','tab-devol'];
   const idx = tabs.indexOf(id);
   if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (id === 'tab-add-tienda') populateTiendas();
   if (id === 'tab-users') loadUsers();
+  if (id === 'tab-devol' && !devolDias) devolPreset('semana');
 }
 
 /* ── COORD ACTIONS ─────────────────────────────────── */
@@ -496,6 +497,7 @@ function lockCoord() {
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(REFRESH_KEY);
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
+  devolDias = null;
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
   document.getElementById('coord-icon').textContent = '';
@@ -954,6 +956,113 @@ function openStockforge() { window.open('/stockforge/almacen4.html', '_blank'); 
 function openDev()        { window.open('/devoluciones/devoluciones.html', '_blank'); }
 function openMan()        { window.open('/manifiesto/manifiesto.html', '_blank'); }
 function openReporte()    { window.open('/reporte/reporte_distribuidor_proveedor.html', '_blank'); }
+
+/* ── REPORTE DE DEVOLUCIONES ──────────────────────────────
+ * Conteo de guías registradas al pulsar "Exportar devueltas" en
+ * devoluciones.html (tabla devoluciones_registro). La API devuelve totales
+ * por día; la agrupación por semana/mes se hace acá. Las fechas se manejan
+ * como strings AAAA-MM-DD en hora local para evitar corrimientos de zona.
+ */
+let devolDias = null;      // [{fecha:'AAAA-MM-DD', total}] del último rango consultado
+let devolRango = null;     // {desde, hasta} de esa consulta
+
+function fechaISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function parseFecha(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function sumarDias(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function devolPreset(preset) {
+  const hoy = new Date();
+  let desde = hoy, hasta = hoy;
+  if (preset === 'semana') desde = sumarDias(hoy, -6);
+  else if (preset === 'mes') desde = sumarDias(hoy, -29);
+  else if (preset === 'mes-actual') desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  else if (preset === 'mes-anterior') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+    hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+  }
+  document.getElementById('dv-desde').value = fechaISO(desde);
+  document.getElementById('dv-hasta').value = fechaISO(hasta);
+  document.getElementById('dv-grupo').value = (preset === 'mes' || preset === 'mes-actual' || preset === 'mes-anterior') ? 'semana' : 'dia';
+  document.querySelectorAll('.devol-presets [data-preset]').forEach(b =>
+    b.classList.toggle('active', b.dataset.preset === preset));
+  loadDevolReport();
+}
+
+async function loadDevolReport() {
+  const desde = document.getElementById('dv-desde').value;
+  const hasta = document.getElementById('dv-hasta').value;
+  if (!desde || !hasta) return notify('Selecciona las fechas desde y hasta', 'warn');
+  if (desde > hasta) return notify('La fecha "desde" es posterior a "hasta"', 'warn');
+
+  const list = document.getElementById('devol-list');
+  list.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>';
+  try {
+    const data = await apiFetch('GET', `/api/devoluciones?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`);
+    devolDias = data.dias || [];
+    devolRango = { desde, hasta };
+    renderDevolReport();
+  } catch (e) {
+    devolDias = null;
+    document.getElementById('devol-resumen').innerHTML = '';
+    list.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--danger)">${esc(e.message || 'Error al cargar devoluciones')}</span></div>`;
+  }
+}
+
+function renderDevolReport() {
+  if (!devolDias || !devolRango) return;
+  const grupo = document.getElementById('dv-grupo').value;
+  const porDia = new Map(devolDias.map(d => [d.fecha, d.total]));
+  const fmtCorto = { day: '2-digit', month: '2-digit' };
+
+  // Recorre cada día del rango (incluye días sin devoluciones) y lo suma a su grupo
+  const grupos = new Map();
+  let total = 0, dias = 0, mejor = null;
+  for (let d = parseFecha(devolRango.desde); fechaISO(d) <= devolRango.hasta; d = sumarDias(d, 1)) {
+    const f = fechaISO(d);
+    const n = porDia.get(f) || 0;
+    total += n; dias++;
+    if (n > 0 && (!mejor || n > mejor.n)) mejor = { f, n };
+
+    let key, label;
+    if (grupo === 'semana') {
+      const lunes = sumarDias(d, -((d.getDay() + 6) % 7));
+      key = fechaISO(lunes);
+      label = `Semana del ${lunes.toLocaleDateString('es-CR', fmtCorto)} al ${sumarDias(lunes, 6).toLocaleDateString('es-CR', fmtCorto)}`;
+    } else if (grupo === 'mes') {
+      key = f.slice(0, 7);
+      label = d.toLocaleDateString('es-CR', { month: 'long', year: 'numeric' });
+    } else {
+      key = f;
+      label = d.toLocaleDateString('es-CR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+    if (!grupos.has(key)) grupos.set(key, { label: label.charAt(0).toUpperCase() + label.slice(1), total: 0 });
+    grupos.get(key).total += n;
+  }
+
+  const promedio = dias ? (total / dias) : 0;
+  document.getElementById('devol-resumen').innerHTML = `
+    <div class="devol-stat"><span class="devol-stat-val">${total.toLocaleString('es-CR')}</span><span class="devol-stat-lbl">Total en el rango</span></div>
+    <div class="devol-stat"><span class="devol-stat-val">${promedio.toLocaleString('es-CR', { maximumFractionDigits: 1 })}</span><span class="devol-stat-lbl">Promedio por día</span></div>
+    <div class="devol-stat"><span class="devol-stat-val">${mejor ? mejor.n.toLocaleString('es-CR') : '—'}</span><span class="devol-stat-lbl">${mejor ? 'Día con más (' + esc(parseFecha(mejor.f).toLocaleDateString('es-CR', fmtCorto)) + ')' : 'Día con más'}</span></div>`;
+
+  const filas = [...grupos.values()].reverse();  // más reciente primero
+  const max = Math.max(1, ...filas.map(g => g.total));
+  document.getElementById('devol-list').innerHTML = filas.map(g => `
+    <div class="inv-item devol-row">
+      <span class="devol-label">${esc(g.label)}</span>
+      <span class="devol-bar" aria-hidden="true"><span style="width:${(g.total / max * 100).toFixed(1)}%"></span></span>
+      <span class="devol-count">${g.total.toLocaleString('es-CR')}</span>
+    </div>`).join('');
+}
 
 /* ── GESTIÓN DE USUARIOS COORDINADORES ─────────────────── */
 const TRASH_ICON_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';

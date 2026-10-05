@@ -38,6 +38,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 
 ### 4. Devoluciones (`/devoluciones/devoluciones.html`)
 - Gestión de devoluciones y generación de guías de courier
+- Al pulsar "Exportar devueltas", las guías marcadas se registran en la tabla `devoluciones_registro` con la fecha del día. El conteo por día/semana/mes se consulta en el Panel de Coordinador, pestaña "Devoluciones"
 
 ### 5. Reporte Distribuidor / Proveedor (`/reporte/reporte_distribuidor_proveedor.html`)
 - Reporte de salidas por tienda/distribuidor, cruzado contra el catálogo de productos
@@ -61,6 +62,9 @@ La BD tiene 16 tablas en Supabase PostgreSQL divididas en dos grupos:
 - `audits`, `changelog` — trazabilidad
 - `movimientos` — historial de traslados
 - `bodega_config` — configuración global del almacén
+
+**Devoluciones:**
+- `devoluciones_registro` — una fila por guía devuelta (guia, fecha). Se crea con `supabase/devoluciones_registro.sql` (ejecutar manualmente en el SQL Editor), que también define la función `devoluciones_por_dia`
 
 El campo `skus.producto_id` vincula STOCKFORGE con el catálogo de etiquetas. Cuando un SKU tiene `producto_id`, al guardar el almacén se actualiza automáticamente `productos.ubicacion` con la posición física.
 

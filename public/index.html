@@ -125,6 +125,7 @@
       <button class="tab-btn" onclick="switchTab('tab-manage')">Gestionar Inventario</button>
       <button class="tab-btn" onclick="switchTab('tab-config')">Configuración</button>
       <button class="tab-btn" onclick="switchTab('tab-users')">Usuarios</button>
+      <button class="tab-btn" onclick="switchTab('tab-devol')">Devoluciones</button>
     </div>
 
     <!-- TAB: Agregar Producto -->
@@ -354,6 +355,42 @@
       </div>
       <button class="btn-action btn-primary" onclick="createUser()">＋ Crear Coordinador</button>
       <p style="font-size:11px;color:var(--muted);margin-top:8px">El coordinador podrá iniciar sesión inmediatamente con estas credenciales.</p>
+    </div>
+
+    <!-- TAB: Reporte de devoluciones (registradas al exportar en devoluciones.html) -->
+    <div id="tab-devol" class="tab-content">
+      <p class="section-label" style="margin-bottom:10px">Devoluciones registradas por fecha</p>
+      <div class="devol-presets" role="group" aria-label="Rangos rápidos">
+        <button type="button" class="btn-action btn-ghost" data-preset="hoy" onclick="devolPreset('hoy')">Hoy</button>
+        <button type="button" class="btn-action btn-ghost" data-preset="semana" onclick="devolPreset('semana')">Última semana</button>
+        <button type="button" class="btn-action btn-ghost" data-preset="mes" onclick="devolPreset('mes')">Último mes</button>
+        <button type="button" class="btn-action btn-ghost" data-preset="mes-actual" onclick="devolPreset('mes-actual')">Este mes</button>
+        <button type="button" class="btn-action btn-ghost" data-preset="mes-anterior" onclick="devolPreset('mes-anterior')">Mes anterior</button>
+      </div>
+      <div class="devol-filtros">
+        <div class="form-group">
+          <label for="dv-desde">Desde</label>
+          <input type="date" id="dv-desde">
+        </div>
+        <div class="form-group">
+          <label for="dv-hasta">Hasta</label>
+          <input type="date" id="dv-hasta">
+        </div>
+        <div class="form-group">
+          <label for="dv-grupo">Agrupar por</label>
+          <select id="dv-grupo" onchange="renderDevolReport()">
+            <option value="dia">Día</option>
+            <option value="semana">Semana</option>
+            <option value="mes">Mes</option>
+          </select>
+        </div>
+        <button type="button" class="btn-action btn-primary" onclick="loadDevolReport()">Consultar</button>
+      </div>
+      <div class="devol-resumen" id="devol-resumen"></div>
+      <div class="inv-list devol-list" id="devol-list">
+        <div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona un rango</span></div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">Se registran las guías cada vez que se pulsa "Exportar devueltas" en Gestión de Devoluciones. Cada guía cuenta una sola vez, en el día en que se exportó por primera vez.</p>
     </div>
   </div>
 
