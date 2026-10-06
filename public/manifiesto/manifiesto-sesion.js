@@ -17,7 +17,8 @@
  *
  * Cargar otro manifiesto (distinto nombre, cantidad de guías, primera o última
  * guía) con un avance guardado pide confirmación antes de reemplazarlo. Si se
- * mantiene el anterior, se repone el estado previo a la carga.
+ * mantiene el anterior, se repone el estado previo a la carga. Recargar el
+ * mismo manifiesto con lecturas en curso también pide confirmación.
  *
  * Exportar el Excel no borra el avance: queda marcado como exportado (solo si
  * XLSX.writeFile terminó sin error) y se conserva hasta las 24 h.
@@ -50,7 +51,7 @@
   let avisoPendiente = false;    // aviso "Continuar / Descartar" sin decidir: no guardar
   let avisoOtraPestanaVisto = false;
   let estadoPrevioCarga = null;  // estado y etiqueta justo antes de cargar un archivo
-  let confirmandoReemplazo = false; // confirmación "otro manifiesto" abierta: no guardar
+  let confirmandoReemplazo = false; // confirmación de carga abierta (otro manifiesto o reinicio): no guardar
 
   const aviso = document.getElementById('sesionAviso');
   const avisoTexto = document.getElementById('sesionAvisoTexto');
@@ -195,13 +196,19 @@
       return;
     }
     if (mismoManifiesto(referencia, archivoActual, manifiesto)) {
+      // Mismo manifiesto recargado con lecturas en curso: handleFile las
+      // reinició; se pide confirmación y "Cancelar" las repone.
+      if (!avisoPendiente && previo && previo.guiasEscaneadas.length > 0) {
+        pedirConfirmacionReinicio(previo);
+        return;
+      }
       if (confirmandoReemplazo) {
         // Volvió a elegir el manifiesto del avance: no hay nada que confirmar
         confirmandoReemplazo = false;
         if (avisoPendiente) ofrecerAvance(referencia); else ocultarAviso();
       }
       // Con el aviso pendiente no se guarda: "Continuar" sigue disponible.
-      // Si no, es el mismo manifiesto recargado: empieza de cero, como siempre.
+      // Si no, es el mismo manifiesto sin lecturas: empieza de cero, como siempre.
       if (!avisoPendiente) programarGuardado();
       return;
     }
@@ -223,6 +230,18 @@
     if (primero) primero.focus();
   }
 
+  function pedirConfirmacionReinicio(previo) {
+    confirmandoReemplazo = true;
+    pintarAviso('confirmar', [
+      `Ya tienes ${previo.guiasEscaneadas.length} guías escaneadas. Cargar el mismo archivo las reinicia.`,
+    ], [
+      boton('Cancelar', '', () => mantenerAnterior('Se mantuvieron las lecturas')),
+      boton('Reiniciar', 'is-peligro', reemplazarAvance),
+    ]);
+    const primero = avisoAcciones.querySelector('button');
+    if (primero) primero.focus();
+  }
+
   function reemplazarAvance() {
     confirmandoReemplazo = false;
     avisoPendiente = false;
@@ -234,7 +253,7 @@
 
   // Repone el estado de antes de la carga y la pantalla del archivo anterior.
   // Los campos Empleado / Mensajero / Transportadora se dejan como estén.
-  function mantenerAnterior() {
+  function mantenerAnterior(mensaje) {
     const previo = estadoPrevioCarga;
     confirmandoReemplazo = false;
     estadoPrevioCarga = null;
@@ -248,7 +267,7 @@
     if (guardado) ofrecerAvance(guardado);
     else { avisoPendiente = false; ocultarAviso(); }
     enfocarEscaneo();
-    notify('Se mantuvo el manifiesto anterior', 'info');
+    notify(typeof mensaje === 'string' ? mensaje : 'Se mantuvo el manifiesto anterior', 'info');
   }
 
   /* ── Exportación ─────────────────────────────────────── */
