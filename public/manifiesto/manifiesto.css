@@ -1187,3 +1187,52 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   .scan-banner-wrap.is-visible .scan-banner-inner { animation: none; }
   .scan-sound-track, .scan-sound-track::before { transition: none; }
 }
+
+/* ── AVANCE GUARDADO (manifiesto-sesion.js) ─────────────── */
+.sesion-aviso {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 16px 22px 0;
+  padding: 12px 16px;
+  background: var(--brand-50);
+  border: 1px solid var(--brand-100);
+  border-left: 4px solid var(--brand-500);
+  border-radius: var(--radius-md);
+  color: var(--neutral-800);
+  font-size: 14px;
+}
+.sesion-aviso[hidden] { display: none; }
+.sesion-aviso.is-confirmar { background: var(--warning-bg); border-color: var(--warning-border); border-left-color: var(--warning-mid); }
+.sesion-aviso.is-otra-pestana { background: var(--neutral-50); border-color: var(--neutral-200); border-left-color: var(--neutral-600); }
+.sesion-aviso-ico { flex: none; color: var(--brand-500); }
+.sesion-aviso.is-confirmar .sesion-aviso-ico { color: var(--warning-text); }
+.sesion-aviso.is-otra-pestana .sesion-aviso-ico { color: var(--neutral-600); }
+.sesion-aviso-texto { flex: 1 1 260px; margin: 0; line-height: 1.4; overflow-wrap: anywhere; }
+.sesion-aviso-texto strong { font-weight: 600; }
+.sesion-aviso-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.sesion-aviso-acciones button {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--neutral-200);
+  background: white;
+  color: var(--neutral-800);
+  font: 600 13px var(--font);
+  cursor: pointer;
+}
+.sesion-aviso-acciones button:hover { background: var(--neutral-100); }
+.sesion-aviso-acciones button.is-primario { background: var(--brand-800); border-color: var(--brand-800); color: white; }
+.sesion-aviso-acciones button.is-primario:hover { background: var(--brand-700); }
+.sesion-aviso-acciones button.is-peligro { background: var(--danger-mid); border-color: var(--danger-mid); color: white; }
+.sesion-aviso-acciones button.is-peligro:hover { background: var(--danger-text); }
+@media (max-width: 600px) {
+  .sesion-aviso { margin: 12px 16px 0; }
+  .sesion-aviso-acciones { width: 100%; }
+  .sesion-aviso-acciones button { flex: 1; }
+}
+
+/* El aviso de avance guardado no sale en papel (bloque aparte del @media print principal) */
+@media print {
+  #sesionAviso { display: none !important; }
+}
