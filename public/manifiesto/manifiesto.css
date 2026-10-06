@@ -1236,3 +1236,18 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 @media print {
   #sesionAviso { display: none !important; }
 }
+
+/* Lecturas ignoradas mientras el aviso de avance guardado pide una decisión */
+.sesion-aviso:focus { outline: 2px solid var(--warning-mid); outline-offset: 2px; }
+.sesion-aviso-ignoradas {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.sesion-aviso-ignoradas[hidden] { display: none; }

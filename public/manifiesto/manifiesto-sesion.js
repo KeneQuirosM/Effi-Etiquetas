@@ -20,6 +20,11 @@
  * mantiene el anterior, se repone el estado previo a la carga. Recargar el
  * mismo manifiesto con lecturas en curso también pide confirmación.
  *
+ * Mientras hay una confirmación abierta (otro archivo, reinicio, descartar):
+ * el aviso toma el foco (role="alertdialog"), las lecturas de la pistola se
+ * ignoran y se listan en el aviso, y los botones destructivos solo responden a
+ * un clic real (event.detail > 0), nunca al Enter de la pistola.
+ *
  * Exportar el Excel no borra el avance: queda marcado como exportado (solo si
  * XLSX.writeFile terminó sin error) y se conserva hasta las 24 h.
  *
@@ -56,6 +61,18 @@
   const aviso = document.getElementById('sesionAviso');
   const avisoTexto = document.getElementById('sesionAvisoTexto');
   const avisoAcciones = document.getElementById('sesionAvisoAcciones');
+  const campoEscaneo = document.getElementById('scanInput');
+  const interruptorSonido = document.getElementById('scanSoundToggle');
+
+  // Lecturas recibidas con una confirmación abierta (no se aplican)
+  let lecturasIgnoradas = [];
+  let bufferTeclas = '';         // teclas de pistola con el foco en el aviso
+  let audioCtx = null;
+  const avisoIgnoradas = document.createElement('p');
+  avisoIgnoradas.className = 'sesion-aviso-ignoradas';
+  avisoIgnoradas.setAttribute('aria-live', 'assertive');
+  avisoIgnoradas.hidden = true;
+  if (aviso) aviso.appendChild(avisoIgnoradas);
 
   // Copia del estado actual en un objeto apto para JSON (Set y Map como arrays,
   // conservando el orden de inserción; horaLlegada como ISO).
@@ -223,11 +240,10 @@
       { fuerte: referencia.archivo || 'archivo sin nombre' },
       ` · ${referencia.correctas.length} de ${referencia.manifiesto.length} guías. ¿Reemplazarlo? Se perderá ese avance.`,
     ], [
-      boton('Reemplazar', 'is-peligro', reemplazarAvance),
-      boton('Mantener el anterior', '', mantenerAnterior),
+      boton('Reemplazar', 'is-peligro', decidir(reemplazarAvance), { destructivo: true }),
+      boton('Mantener el anterior', '', decidir(mantenerAnterior)),
     ]);
-    const primero = avisoAcciones.querySelector('button');
-    if (primero) primero.focus();
+    abrirConfirmacion();
   }
 
   function pedirConfirmacionReinicio(previo) {
@@ -235,11 +251,10 @@
     pintarAviso('confirmar', [
       `Ya tienes ${previo.guiasEscaneadas.length} guías escaneadas. Cargar el mismo archivo las reinicia.`,
     ], [
-      boton('Cancelar', '', () => mantenerAnterior('Se mantuvieron las lecturas')),
-      boton('Reiniciar', 'is-peligro', reemplazarAvance),
+      boton('Cancelar', '', decidir(() => mantenerAnterior('Se mantuvieron las lecturas'))),
+      boton('Reiniciar', 'is-peligro', decidir(reemplazarAvance), { destructivo: true }),
     ]);
-    const primero = avisoAcciones.querySelector('button');
-    if (primero) primero.focus();
+    abrirConfirmacion();
   }
 
   function reemplazarAvance() {
@@ -343,19 +358,131 @@
     return `hace ${h} h`;
   }
 
-  function boton(texto, clase, accion) {
+  // Un botón destructivo ignora la activación sin puntero (event.detail === 0:
+  // Enter, espacio, click() programático): solo responde a un clic real.
+  function boton(texto, clase, accion, { destructivo = false } = {}) {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = texto;
     if (clase) b.className = clase;
-    b.addEventListener('click', accion);
+    b.addEventListener('click', ev => {
+      if (destructivo && ev.detail === 0) return;
+      accion(ev);
+    });
     return b;
+  }
+
+  /* ── Confirmaciones: foco, lecturas ignoradas ────────── */
+
+  function hayConfirmacion() {
+    return !!(aviso && !aviso.hidden && aviso.classList.contains('is-confirmar'));
+  }
+
+  // El foco va al contenedor del aviso, no a un botón: un Enter perdido no
+  // activa nada. handleFile enfoca el campo de escaneo al terminar la carga,
+  // por eso se repite en la siguiente vuelta del bucle de eventos.
+  function abrirConfirmacion() {
+    bufferTeclas = '';
+    const enfocar = () => { if (hayConfirmacion()) aviso.focus(); };
+    enfocar();
+    setTimeout(enfocar, 0);
+  }
+
+  // Envuelve la acción de un botón de confirmación: tras decidir, avisa de las
+  // lecturas ignoradas y devuelve el foco al campo de escaneo.
+  function decidir(accion) {
+    return ev => {
+      accion(ev);
+      if (lecturasIgnoradas.length) {
+        notify(`Vuelve a escanear las guías ignoradas (${lecturasIgnoradas.length})`, 'warn', 6000);
+      }
+      lecturasIgnoradas = [];
+      bufferTeclas = '';
+      pintarIgnoradas();
+      enfocarEscaneo();
+    };
+  }
+
+  function pintarIgnoradas() {
+    const n = lecturasIgnoradas.length;
+    avisoIgnoradas.hidden = n === 0;
+    avisoIgnoradas.textContent = n === 0 ? '' :
+      `${n} ${n === 1 ? 'lectura ignorada' : 'lecturas ignoradas'}: ${lecturasIgnoradas.slice(-3).join(', ')}`;
+  }
+
+  function registrarLecturaIgnorada(guia) {
+    lecturasIgnoradas.push(guia);
+    pintarIgnoradas();
+    tonoRechazo();
+  }
+
+  // Tono breve de rechazo, solo si el interruptor de sonido está activado
+  function tonoRechazo() {
+    if (!interruptorSonido || !interruptorSonido.checked) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+      const osc = audioCtx.createOscillator();
+      const gan = audioCtx.createGain();
+      const t0 = audioCtx.currentTime;
+      osc.type = 'square';
+      osc.frequency.value = 180;
+      gan.gain.setValueAtTime(0.0001, t0);
+      gan.gain.exponentialRampToValueAtTime(0.15, t0 + 0.01);
+      gan.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
+      osc.connect(gan).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.27);
+    } catch (_) { /* el navegador lo bloqueó: silencio */ }
+  }
+
+  // Lectura en el campo de escaneo con una confirmación abierta: no se llama
+  // a la lógica original ni al aviso grande; se vacía el campo y se registra.
+  const onScanEnterAnterior = window.onScanEnter;
+  if (typeof onScanEnterAnterior === 'function') {
+    window.onScanEnter = function (e) {
+      if (hayConfirmacion() && e && e.key === 'Enter' && e.target) {
+        const guia = e.target.value.trim();
+        e.target.value = '';
+        if (guia) registrarLecturaIgnorada(guia);
+        return;
+      }
+      return onScanEnterAnterior.apply(this, arguments);
+    };
+  }
+
+  // Lectura con el foco en el aviso (o en uno de sus botones): las teclas de
+  // la pistola se juntan y el Enter final se registra como lectura ignorada
+  // sin activar ningún botón.
+  if (aviso) {
+    aviso.addEventListener('keydown', ev => {
+      if (!hayConfirmacion() || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.key === 'Enter') {
+        if (!bufferTeclas) return;
+        ev.preventDefault();
+        registrarLecturaIgnorada(bufferTeclas.trim());
+        bufferTeclas = '';
+      } else if (ev.key.length === 1 && ev.key !== ' ') {
+        bufferTeclas += ev.key;
+      }
+    });
   }
 
   // Pinta el aviso: texto (nodos de texto, sin innerHTML) y botones
   function pintarAviso(modo, partes, botones) {
     if (!aviso) return;
-    aviso.classList.toggle('is-confirmar', modo === 'confirmar');
+    const confirmar = modo === 'confirmar';
+    aviso.setAttribute('role', confirmar ? 'alertdialog' : 'region');
+    if (confirmar) {
+      aviso.setAttribute('tabindex', '-1');
+      aviso.setAttribute('aria-describedby', avisoTexto.id);
+    } else {
+      aviso.removeAttribute('tabindex');
+      aviso.removeAttribute('aria-describedby');
+    }
+    aviso.classList.toggle('is-confirmar', confirmar);
     aviso.classList.toggle('is-otra-pestana', modo === 'otra-pestana');
     avisoTexto.replaceChildren(...partes.map(p => {
       if (typeof p === 'string') return document.createTextNode(p);
@@ -372,8 +499,7 @@
   }
 
   function enfocarEscaneo() {
-    const campo = document.getElementById('scanInput');
-    if (campo) campo.focus();
+    if (campoEscaneo) campoEscaneo.focus();
   }
 
   // Texto del aviso según el estado del avance guardado
@@ -398,20 +524,19 @@
     avisoPendiente = true;
     pintarAviso('ofrecer', textoAvance(s), [
       boton('Continuar', 'is-primario', continuar),
-      boton('Descartar', '', pedirConfirmacionDescartar),
+      boton('Descartar', '', pedirConfirmacionDescartar, { destructivo: true }),
     ]);
   }
 
   function pedirConfirmacionDescartar() {
     pintarAviso('confirmar', ['Se perderá el avance guardado. ¿Descartarlo?'], [
-      boton('Descartar', 'is-peligro', descartar),
-      boton('Cancelar', '', () => {
+      boton('Descartar', 'is-peligro', decidir(descartar), { destructivo: true }),
+      boton('Cancelar', '', decidir(() => {
         const s = leerAvance();
         if (s) ofrecerAvance(s); else terminarAviso();
-      }),
+      })),
     ]);
-    const primero = avisoAcciones.querySelector('button');
-    if (primero) primero.focus();
+    abrirConfirmacion();
   }
 
   function terminarAviso() {
