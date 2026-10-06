@@ -7,13 +7,20 @@
  * recarga o se cierra a mitad de un manifiesto.
  *
  * Un solo avance a la vez, bajo CLAVE_SESION. Formato versionado:
- * { version, guardadoEn, archivo, exportado, ...estado }.
+ * { version, guardadoEn, archivo, exportado, exportadoEn, ...estado }.
  *
  * Al abrir la página, si hay un avance válido (misma versión, menos de 24 h)
  * se ofrece en #sesionAviso. Nada se repone hasta pulsar "Continuar": entonces
  * se vacían y rellenan las mismas estructuras (sin reasignarlas) y se llama al
  * pintado existente (updateStats). Mientras el aviso espera decisión, el
  * avance guardado no se toca.
+ *
+ * Cargar otro manifiesto (distinto nombre, cantidad de guías, primera o última
+ * guía) con un avance guardado pide confirmación antes de reemplazarlo. Si se
+ * mantiene el anterior, se repone el estado previo a la carga.
+ *
+ * Exportar el Excel no borra el avance: queda marcado como exportado (solo si
+ * XLSX.writeFile terminó sin error) y se conserva hasta las 24 h.
  *
  * Dos pestañas: la última en guardar gana. La otra recibe el evento storage
  * y muestra un aviso (o actualiza el suyo si aún no decidió).
@@ -23,8 +30,10 @@
   const VERSION_SESION = 1;
   const RETARDO_GUARDADO = 300; // ms: un solo temporizador, no frena el escaneo
   const VIGENCIA_MS = 24 * 60 * 60 * 1000;
+  const ETIQUETA_SIN_ARCHIVO = 'Seleccionar archivo...';
 
   const campoArchivo = document.getElementById('fileInput');
+  const etiquetaArchivo = document.getElementById('fileInputLabel');
   const campoEmpleado = document.getElementById('empleadoSelect');
   const campoMensajero = document.getElementById('mensajeroInput');
   const campoTransportadora = document.getElementById('transportadoraSelect');
@@ -35,10 +44,13 @@
   let archivoEnCarga = '';       // nombre elegido mientras handleFile lo procesa
   let cargandoArchivo = false;   // entre el cambio de archivo y su carga: no guardar
   let manifiestoRef = manifiesto; // handleFile asigna un array nuevo al cargar
-  let exportado = false;         // se conserva del avance restaurado
+  let exportado = false;         // el Excel de este estado ya se escribió
+  let exportadoEn = null;
   let restaurando = false;       // mientras se repone el estado: no programar guardados
   let avisoPendiente = false;    // aviso "Continuar / Descartar" sin decidir: no guardar
   let avisoOtraPestanaVisto = false;
+  let estadoPrevioCarga = null;  // estado y etiqueta justo antes de cargar un archivo
+  let confirmandoReemplazo = false; // confirmación "otro manifiesto" abierta: no guardar
 
   const aviso = document.getElementById('sesionAviso');
   const avisoTexto = document.getElementById('sesionAvisoTexto');
@@ -52,6 +64,7 @@
       guardadoEn: Date.now(),
       archivo: archivoActual,
       exportado: exportado,
+      exportadoEn: exportadoEn,
       manifiesto: manifiesto.slice(),
       faltantes: Array.from(faltantesSet),
       correctas: Array.from(correctasSet),
@@ -72,7 +85,7 @@
   function guardarAhora() {
     clearTimeout(temporizadorGuardado);
     temporizadorGuardado = null;
-    if (avisoPendiente || cargandoArchivo || manifiesto.length === 0) return; // nada que guardar
+    if (avisoPendiente || confirmandoReemplazo || cargandoArchivo || manifiesto.length === 0) return;
     try {
       localStorage.setItem(CLAVE_SESION, JSON.stringify(construirSesion()));
       avisoOtraPestanaVisto = false; // si otra pestaña guarda después, se vuelve a avisar
@@ -91,20 +104,23 @@
     temporizadorGuardado = setTimeout(guardarAhora, RETARDO_GUARDADO);
   }
 
+  // Un cambio del usuario (lectura, marca, observación, campos) deja el
+  // Excel exportado desactualizado: hay que volver a exportar.
+  function registrarCambio() {
+    exportado = false;
+    exportadoEn = null;
+    programarGuardado();
+  }
+
   // updateStats() se llama tras cada lectura, al marcar a mano y al terminar
   // de cargar un manifiesto: después del pintado original se programa el guardado.
   const updateStatsOriginal = window.updateStats;
   if (typeof updateStatsOriginal === 'function') {
     window.updateStats = function () {
       const resultado = updateStatsOriginal.apply(this, arguments);
-      if (manifiesto !== manifiestoRef) {
-        // handleFile terminó de cargar un manifiesto nuevo
-        manifiestoRef = manifiesto;
-        archivoActual = archivoEnCarga;
-        cargandoArchivo = false;
-        exportado = false;
-      }
-      if (!restaurando) programarGuardado();
+      if (restaurando) return resultado;
+      if (manifiesto !== manifiestoRef) manifiestoCargado(); // handleFile terminó una carga
+      else registrarCambio();
       return resultado;
     };
   }
@@ -114,30 +130,156 @@
   if (typeof setObservacionOriginal === 'function') {
     window.setObservacion = function () {
       const resultado = setObservacionOriginal.apply(this, arguments);
-      programarGuardado();
+      registrarCambio();
       return resultado;
     };
   }
 
-  [campoEmpleado, campoTransportadora].forEach(c => c && c.addEventListener('change', programarGuardado));
-  if (campoMensajero) campoMensajero.addEventListener('input', programarGuardado);
+  [campoEmpleado, campoTransportadora].forEach(c => c && c.addEventListener('change', registrarCambio));
+  if (campoMensajero) campoMensajero.addEventListener('input', registrarCambio);
 
-  // handleFile (onchange en línea, corre antes que este listener) ya vació
-  // guiasEscaneadas y observaciones, pero el manifiesto nuevo llega después
-  // (FileReader / OCR). Mientras tanto no se guarda, para no pisar el avance
-  // anterior con un estado a medias. Si la carga falla, el avance anterior
+  /* ── Carga de otro manifiesto ────────────────────────── */
+
+  // handleFile vacía guiasEscaneadas y observaciones al instante, pero el
+  // manifiesto nuevo llega después (FileReader / OCR). Antes de dejarla correr
+  // se guarda una copia del estado en memoria (para "Mantener el anterior") y
+  // se deja de guardar hasta que termine. Si la carga falla, el avance guardado
   // queda intacto hasta que se cargue otro manifiesto con éxito.
-  if (campoArchivo) {
-    campoArchivo.addEventListener('change', () => {
-      const archivo = campoArchivo.files && campoArchivo.files[0];
-      if (!archivo) return;
-      const ext = archivo.name.split('.').pop().toLowerCase();
-      if (!['xls', 'xlsx', 'pdf'].includes(ext)) return; // handleFile lo rechaza sin tocar el estado
-      clearTimeout(temporizadorGuardado);
-      temporizadorGuardado = null;
-      archivoEnCarga = archivo.name;
-      cargandoArchivo = true;
-    });
+  const handleFileOriginal = window.handleFile;
+  if (typeof handleFileOriginal === 'function') {
+    window.handleFile = function (event) {
+      const archivo = event && event.target && event.target.files && event.target.files[0];
+      const ext = archivo ? archivo.name.split('.').pop().toLowerCase() : '';
+      if (archivo && ['xls', 'xlsx', 'pdf'].includes(ext)) { // si no, handleFile lo rechaza sin tocar el estado
+        clearTimeout(temporizadorGuardado);
+        temporizadorGuardado = null;
+        // Con una confirmación abierta, el "anterior" sigue siendo el de antes de la primera carga
+        if (!confirmandoReemplazo) {
+          estadoPrevioCarga = {
+            sesion: construirSesion(),
+            etiqueta: etiquetaArchivo ? etiquetaArchivo.textContent : ETIQUETA_SIN_ARCHIVO,
+          };
+        }
+        archivoEnCarga = archivo.name;
+        cargandoArchivo = true;
+      }
+      return handleFileOriginal.apply(this, arguments);
+    };
+  }
+
+  // Mismo manifiesto: mismo nombre, misma cantidad de guías y misma primera y
+  // última guía.
+  function mismoManifiesto(a, nombre, guias) {
+    return a.archivo === nombre &&
+      a.manifiesto.length === guias.length &&
+      a.manifiesto[0] === guias[0] &&
+      a.manifiesto[a.manifiesto.length - 1] === guias[guias.length - 1];
+  }
+
+  function manifiestoCargado() {
+    manifiestoRef = manifiesto;
+    cargandoArchivo = false;
+    archivoActual = archivoEnCarga;
+    exportado = false;
+    exportadoEn = null;
+    if (manifiesto.length === 0) return; // sin guías: no hay nada que guardar
+
+    // Avance de referencia: el que espera decisión en el aviso, o el que se
+    // estaba trabajando en esta pestaña (que es el guardado).
+    const previo = estadoPrevioCarga && estadoPrevioCarga.sesion;
+    const referencia = avisoPendiente ? leerAvance()
+      : (previo && previo.manifiesto.length > 0 ? previo : null);
+
+    if (!referencia) {
+      if (!confirmandoReemplazo) programarGuardado();
+      return;
+    }
+    if (mismoManifiesto(referencia, archivoActual, manifiesto)) {
+      if (confirmandoReemplazo) {
+        // Volvió a elegir el manifiesto del avance: no hay nada que confirmar
+        confirmandoReemplazo = false;
+        if (avisoPendiente) ofrecerAvance(referencia); else ocultarAviso();
+      }
+      // Con el aviso pendiente no se guarda: "Continuar" sigue disponible.
+      // Si no, es el mismo manifiesto recargado: empieza de cero, como siempre.
+      if (!avisoPendiente) programarGuardado();
+      return;
+    }
+    pedirConfirmacionReemplazo(referencia);
+  }
+
+  function pedirConfirmacionReemplazo(referencia) {
+    confirmandoReemplazo = true;
+    pintarAviso('confirmar', [
+      'Cargaste ', { fuerte: archivoActual || 'archivo sin nombre' },
+      ` (${manifiesto.length} guías), pero hay un avance guardado de `,
+      { fuerte: referencia.archivo || 'archivo sin nombre' },
+      ` · ${referencia.correctas.length} de ${referencia.manifiesto.length} guías. ¿Reemplazarlo? Se perderá ese avance.`,
+    ], [
+      boton('Reemplazar', 'is-peligro', reemplazarAvance),
+      boton('Mantener el anterior', '', mantenerAnterior),
+    ]);
+    const primero = avisoAcciones.querySelector('button');
+    if (primero) primero.focus();
+  }
+
+  function reemplazarAvance() {
+    confirmandoReemplazo = false;
+    avisoPendiente = false;
+    estadoPrevioCarga = null;
+    ocultarAviso();
+    guardarAhora(); // el manifiesto nuevo pasa a ser el avance guardado
+    enfocarEscaneo();
+  }
+
+  // Repone el estado de antes de la carga y la pantalla del archivo anterior.
+  // Los campos Empleado / Mensajero / Transportadora se dejan como estén.
+  function mantenerAnterior() {
+    const previo = estadoPrevioCarga;
+    confirmandoReemplazo = false;
+    estadoPrevioCarga = null;
+    if (previo) {
+      restaurarEstado(previo.sesion, { campos: false });
+      if (etiquetaArchivo) etiquetaArchivo.textContent = previo.etiqueta;
+    }
+    if (campoArchivo) campoArchivo.value = '';
+    if (typeof cerrarModalCruces === 'function') cerrarModalCruces();
+    const guardado = avisoPendiente ? leerAvance() : null;
+    if (guardado) ofrecerAvance(guardado);
+    else { avisoPendiente = false; ocultarAviso(); }
+    enfocarEscaneo();
+    notify('Se mantuvo el manifiesto anterior', 'info');
+  }
+
+  /* ── Exportación ─────────────────────────────────────── */
+
+  // Se marca exportado solo si XLSX.writeFile terminó sin error dentro de esta
+  // llamada. Cancelar la ventana no pasa por aquí, y si generar el Excel falla
+  // el error sigue su curso sin marcar nada.
+  const confirmarGenerarReporteOriginal = window.confirmarGenerarReporte;
+  if (typeof confirmarGenerarReporteOriginal === 'function') {
+    window.confirmarGenerarReporte = function () {
+      const xlsx = window.XLSX;
+      const writeFileOriginal = xlsx && xlsx.writeFile;
+      let escrito = false;
+      if (typeof writeFileOriginal === 'function') {
+        xlsx.writeFile = function () {
+          const r = writeFileOriginal.apply(this, arguments);
+          escrito = true;
+          return r;
+        };
+      }
+      try {
+        return confirmarGenerarReporteOriginal.apply(this, arguments);
+      } finally {
+        if (typeof writeFileOriginal === 'function') xlsx.writeFile = writeFileOriginal;
+        if (escrito) {
+          exportado = true;
+          exportadoEn = Date.now();
+          guardarAhora();
+        }
+      }
+    };
   }
 
   // Al salir o recargar, guardar lo pendiente sin esperar al temporizador.
@@ -215,13 +357,27 @@
     if (campo) campo.focus();
   }
 
+  // Texto del aviso según el estado del avance guardado
+  function textoAvance(s) {
+    const archivo = { fuerte: s.archivo || 'archivo sin nombre' };
+    const conteo = `${s.correctas.length} de ${s.manifiesto.length} guías`;
+    const terminado = s.faltantes.length === 0;
+    const exportadoHace = typeof s.exportadoEn === 'number' ? haceCuanto(Date.now() - s.exportadoEn) : '';
+    if (s.exportado && terminado) {
+      return [`Manifiesto terminado y exportado ${exportadoHace}: `, archivo, ` · ${conteo}`];
+    }
+    if (s.exportado) {
+      return [`Manifiesto exportado ${exportadoHace}, sin terminar: `, archivo, ` · ${conteo}`];
+    }
+    if (terminado) {
+      return ['Manifiesto terminado, falta exportar: ', archivo, ` · ${conteo} · guardado ${haceCuanto(Date.now() - s.guardadoEn)}`];
+    }
+    return ['Hay un manifiesto sin terminar: ', archivo, ` · ${conteo} · guardado ${haceCuanto(Date.now() - s.guardadoEn)}`];
+  }
+
   function ofrecerAvance(s) {
     avisoPendiente = true;
-    pintarAviso('ofrecer', [
-      'Hay un manifiesto sin terminar: ',
-      { fuerte: s.archivo || 'archivo sin nombre' },
-      ` · ${s.correctas.length} de ${s.manifiesto.length} guías · guardado ${haceCuanto(Date.now() - s.guardadoEn)}`,
-    ], [
+    pintarAviso('ofrecer', textoAvance(s), [
       boton('Continuar', 'is-primario', continuar),
       boton('Descartar', '', pedirConfirmacionDescartar),
     ]);
@@ -264,7 +420,7 @@
 
   // Vacía y vuelve a llenar las estructuras existentes (sin reasignarlas) y
   // repinta con las funciones de siempre. No recalcula nada.
-  function restaurarEstado(s) {
+  function restaurarEstado(s, { campos = true } = {}) {
     restaurando = true;
     try {
       manifiesto.length = 0;
@@ -293,16 +449,18 @@
       (Array.isArray(s.crucesActivos) ? s.crucesActivos : []).forEach(c => crucesActivos.push(c));
       if (crucesActivos.length) mostrarIconoNotificacion(crucesActivos); else ocultarIconoNotificacion();
 
-      if (campoEmpleado) campoEmpleado.value = s.empleado || '';
-      if (campoMensajero) campoMensajero.value = s.mensajero || '';
-      if (campoTransportadora) campoTransportadora.value = s.transportadora || '';
+      if (campos) {
+        if (campoEmpleado) campoEmpleado.value = s.empleado || '';
+        if (campoMensajero) campoMensajero.value = s.mensajero || '';
+        if (campoTransportadora) campoTransportadora.value = s.transportadora || '';
+      }
 
       archivoActual = s.archivo || '';
       exportado = !!s.exportado;
+      exportadoEn = typeof s.exportadoEn === 'number' ? s.exportadoEn : null;
       manifiestoRef = manifiesto;
       cargandoArchivo = false;
-      const etiqueta = document.getElementById('fileInputLabel');
-      if (etiqueta) etiqueta.textContent = archivoActual || 'Seleccionar archivo...';
+      if (etiquetaArchivo) etiquetaArchivo.textContent = archivoActual || ETIQUETA_SIN_ARCHIVO;
 
       updateStats(); // tarjetas, progreso y tabla con el pintado existente
     } finally {
@@ -315,6 +473,7 @@
   // Dos pestañas: la última en guardar gana. Esta pestaña se entera por storage.
   window.addEventListener('storage', ev => {
     if (ev.key !== CLAVE_SESION && ev.key !== null) return;
+    if (confirmandoReemplazo) return; // la confirmación abierta tiene prioridad
     if (avisoPendiente) {
       // Aún no decidió: el aviso refleja lo que hay guardado ahora
       if (aviso && aviso.classList.contains('is-confirmar')) return;
