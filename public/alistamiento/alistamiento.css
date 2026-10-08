@@ -406,6 +406,12 @@ tbody tr:nth-child(even):hover td { background: var(--brand-50); }
 }
 .print-guide-btn:hover { background: var(--brand-500); color: white; }
 .print-guide-btn:active { transform: scale(.96); }
+.print-guide-btn:disabled,
+.print-guide-btn:disabled:hover {
+    border-color: var(--neutral-200);
+    background: var(--neutral-50); color: var(--neutral-400);
+    cursor: not-allowed; transform: none;
+}
 
 /* ══ ORDEN DE IMPRESIÓN ══ */
 .sort-order-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

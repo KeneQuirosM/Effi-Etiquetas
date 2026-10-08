@@ -564,6 +564,19 @@ function renderProductGroupsSummary() {
             <span class="product-group-count">${g.guias.length} ${g.guias.length === 1 ? 'guía' : 'guías'}</span>
             <button type="button" class="print-guide-btn print-group-btn" data-group="${i}"><i class="fas fa-print"></i> Imprimir</button>
         </div>`).join('');
+    updateGroupPrintAccess();
+}
+
+// La impresión por grupo solo está habilitada en modo coordinador (sesión
+// activa del generador de etiquetas, ver hasActiveSession en dom-utils.js).
+// Se reevalúa al renderizar, al volver a la pestaña y cuando otra pestaña
+// inicia o cierra sesión.
+function updateGroupPrintAccess() {
+    const enabled = hasActiveSession();
+    document.querySelectorAll('#productGroupsSummary .print-group-btn').forEach(btn => {
+        btn.disabled = !enabled;
+        btn.title = enabled ? '' : 'Disponible solo en modo coordinador';
+    });
 }
 
 /* ── IMPRESIÓN ────────────────────────────────────────── */
@@ -593,6 +606,7 @@ async function printSingleGuide(guideId) {
 // Imprime solo las guías de un grupo de producto, en el mismo orden que
 // tienen dentro del PDF agrupado.
 async function printProductGroup(idx) {
+    if (!hasActiveSession()) { notify('La impresión por grupo requiere modo coordinador', 'warn'); updateGroupPrintAccess(); return; }
     const group = productGroups[idx];
     if (!group || !srcPdfLibDoc) { notify('No hay páginas para ese grupo', 'err'); return; }
     const pages = group.guias.flatMap(gid => guidePagesMap.get(gid) || []);
@@ -640,5 +654,11 @@ document.getElementById('sortModeSelect').addEventListener('change', async (e) =
         addLog('ORDEN DE IMPRESIÓN CAMBIADO', sortMode === 'byProduct' ? 'Agrupado por producto' : 'Orden original');
     }
 });
+
+window.addEventListener('storage', (e) => {
+    if (e.key === null || e.key === STORAGE_KEYS.COORD_SESSION) updateGroupPrintAccess();
+});
+window.addEventListener('focus', updateGroupPrintAccess);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateGroupPrintAccess(); });
 
 loadLogs();
