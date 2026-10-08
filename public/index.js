@@ -1535,6 +1535,46 @@ async function saveUbicacionToggle(value) {
   }
 }
 
+/* ── TOGGLE IMPRESIÓN POR GRUPO (ALISTAMIENTO) ─────── */
+// Lo lee alistamiento.js desde /api/config; si la clave no existe la
+// impresión por grupo queda habilitada.
+const GROUP_PRINT_KEY = 'alistamiento_imprimir_grupo';
+let imprimirGrupoAlistamiento = true;
+
+async function loadGroupPrintToggle() {
+  try {
+    const config = await apiGet('/api/config');
+    imprimirGrupoAlistamiento = config[GROUP_PRINT_KEY] !== 'false';
+  } catch {
+    imprimirGrupoAlistamiento = true;
+  }
+  applyGroupPrintToggle();
+}
+
+function applyGroupPrintToggle() {
+  const toggle = document.getElementById('toggle-imprimir-grupo');
+  const label  = document.getElementById('toggle-imprimir-grupo-label');
+  if (toggle) toggle.checked = imprimirGrupoAlistamiento;
+  if (label) {
+    label.textContent = imprimirGrupoAlistamiento ? 'Activado' : 'Desactivado';
+    label.style.color = imprimirGrupoAlistamiento ? 'var(--accent)' : 'var(--muted)';
+  }
+}
+
+async function saveGroupPrintToggle(value) {
+  const previous = imprimirGrupoAlistamiento;
+  imprimirGrupoAlistamiento = value;
+  applyGroupPrintToggle();
+  try {
+    await apiPost('/api/config', { clave: GROUP_PRINT_KEY, valor: String(value) });
+    notify(value ? 'Impresión por grupo activada' : 'Impresión por grupo desactivada', value ? 'success' : '');
+  } catch {
+    imprimirGrupoAlistamiento = previous;
+    applyGroupPrintToggle();
+    notify('Error al guardar configuración', 'danger');
+  }
+}
+
 /* ── INIT ──────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   // Cargar datos iniciales
@@ -1542,6 +1582,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadLogo();
   await loadRotuloLogo();
   await loadUbicacionToggle();
+  await loadGroupPrintToggle();
 
   // Referencias a elementos del DOM
   const selTienda = document.getElementById('select-tienda');

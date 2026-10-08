@@ -567,15 +567,30 @@ function renderProductGroupsSummary() {
     updateGroupPrintAccess();
 }
 
-// La impresión por grupo solo está habilitada en modo coordinador (sesión
-// activa del generador de etiquetas, ver hasActiveSession en dom-utils.js).
-// Se reevalúa al renderizar, al volver a la pestaña y cuando otra pestaña
-// inicia o cierra sesión.
+// La impresión por grupo se habilita o deshabilita desde el panel de
+// coordinador (Configuración en index.html), guardado en la tabla
+// `configuracion` bajo GROUP_PRINT_KEY. Si la clave no existe queda
+// habilitada. Se vuelve a leer al volver a la pestaña para que el cambio
+// aplique sin recargar.
+const GROUP_PRINT_KEY = 'alistamiento_imprimir_grupo';
+let groupPrintEnabled = true;
+
+async function loadGroupPrintSetting() {
+    try {
+        const res = await fetch('/api/config');
+        if (!res.ok) return;
+        const config = await res.json();
+        groupPrintEnabled = config[GROUP_PRINT_KEY] !== 'false';
+    } catch (e) {
+        // Sin conexión: se conserva el último valor conocido
+    }
+    updateGroupPrintAccess();
+}
+
 function updateGroupPrintAccess() {
-    const enabled = hasActiveSession();
     document.querySelectorAll('#productGroupsSummary .print-group-btn').forEach(btn => {
-        btn.disabled = !enabled;
-        btn.title = enabled ? '' : 'Disponible solo en modo coordinador';
+        btn.disabled = !groupPrintEnabled;
+        btn.title = groupPrintEnabled ? '' : 'Impresión por grupo deshabilitada por el coordinador';
     });
 }
 
@@ -606,7 +621,7 @@ async function printSingleGuide(guideId) {
 // Imprime solo las guías de un grupo de producto, en el mismo orden que
 // tienen dentro del PDF agrupado.
 async function printProductGroup(idx) {
-    if (!hasActiveSession()) { notify('La impresión por grupo requiere modo coordinador', 'warn'); updateGroupPrintAccess(); return; }
+    if (!groupPrintEnabled) { notify('La impresión por grupo está deshabilitada por el coordinador', 'warn'); return; }
     const group = productGroups[idx];
     if (!group || !srcPdfLibDoc) { notify('No hay páginas para ese grupo', 'err'); return; }
     const pages = group.guias.flatMap(gid => guidePagesMap.get(gid) || []);
@@ -655,10 +670,8 @@ document.getElementById('sortModeSelect').addEventListener('change', async (e) =
     }
 });
 
-window.addEventListener('storage', (e) => {
-    if (e.key === null || e.key === STORAGE_KEYS.COORD_SESSION) updateGroupPrintAccess();
-});
-window.addEventListener('focus', updateGroupPrintAccess);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) updateGroupPrintAccess(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) loadGroupPrintSetting(); });
+
+loadGroupPrintSetting();
 
 loadLogs();
