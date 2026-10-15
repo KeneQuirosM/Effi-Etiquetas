@@ -436,9 +436,14 @@
     function resetAll(){
         if(!originalRowsData.length) return;
         if(!confirm('¿Reiniciar todas las marcas?')) return;
-        const previamenteMarcadas=[...devolutionSet];
         devolutionSet.clear(); addLog('SISTEMA','','','Admin','Todas','REINICIO');
-        previamenteMarcadas.forEach(g=>updateRowStatus(g,false));
+        // Un solo re-render en vez de updateRowStatus() por guía: desmarcar
+        // una guía recorre toda la tabla para reubicar la fila, así que con
+        // miles de marcas eso era O(n²) y congelaba la pestaña (30k+ filas).
+        // Sin marcas, renderTable() deja las filas en su orden original.
+        renderTable();
+        const buscador=document.querySelector('.tabla-search');
+        if(buscador&&buscador.value.trim()) filtrarTabla(buscador.value);
         lastScanCard.style.display='none';
         saveMarks(); updateStats(); guiaInput.focus();
         notify('Marcas reiniciadas','inf');
