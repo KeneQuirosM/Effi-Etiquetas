@@ -335,12 +335,13 @@ function switchTab(id) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config','tab-users','tab-devol'];
+  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config','tab-users','tab-devol','tab-conteos'];
   const idx = tabs.indexOf(id);
   if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (id === 'tab-add-tienda') populateTiendas();
   if (id === 'tab-users') loadUsers();
   if (id === 'tab-devol' && !devolDias) devolPreset('semana');
+  if (id === 'tab-conteos') { populateConteoTiendas(); if (!conteos) conteoPreset('semana'); }
 }
 
 /* ── COORD ACTIONS ─────────────────────────────────── */
@@ -498,6 +499,9 @@ function lockCoord() {
   localStorage.removeItem(REFRESH_KEY);
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
   devolDias = null;
+  conteos = null;
+  document.getElementById('conteo-list').innerHTML = '';
+  document.getElementById('conteo-resumen').innerHTML = '';
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
   document.getElementById('coord-icon').textContent = '';
@@ -1062,6 +1066,167 @@ function renderDevolReport() {
       <span class="devol-bar" aria-hidden="true"><span style="width:${(g.total / max * 100).toFixed(1)}%"></span></span>
       <span class="devol-count">${g.total.toLocaleString('es-CR')}</span>
     </div>`).join('');
+}
+
+/* ── CONTEOS DE MERCANCÍA ─────────────────────────────────
+ * Vista del coordinador de lo registrado en conteos.html (pantalla
+ * pública para el celular). GET /api/conteos devuelve las filas del rango
+ * con una URL firmada temporal para cada foto (bucket privado).
+ */
+let conteos = null;        // filas del último rango consultado
+
+function populateConteoTiendas() {
+  const sel = document.getElementById('ct-tienda');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todas</option>';
+  appData.tiendas.forEach(t => sel.add(new Option(t.nombre, t.id)));
+  if (cur !== '') sel.value = cur;
+}
+
+function conteoPreset(preset) {
+  const hoy = new Date();
+  const desde = preset === 'semana' ? sumarDias(hoy, -6) : preset === 'mes' ? sumarDias(hoy, -29) : hoy;
+  document.getElementById('ct-desde').value = fechaISO(desde);
+  document.getElementById('ct-hasta').value = fechaISO(hoy);
+  document.querySelectorAll('.conteo-presets [data-preset]').forEach(b =>
+    b.classList.toggle('active', b.dataset.preset === preset));
+  loadConteos();
+}
+
+async function loadConteos() {
+  const desde = document.getElementById('ct-desde').value;
+  const hasta = document.getElementById('ct-hasta').value;
+  const tienda = document.getElementById('ct-tienda').value;
+  if (!desde || !hasta) return notify('Selecciona las fechas desde y hasta', 'warn');
+  if (desde > hasta) return notify('La fecha "desde" es posterior a "hasta"', 'warn');
+
+  const list = document.getElementById('conteo-list');
+  list.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>';
+  try {
+    let url = `/api/conteos?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`;
+    if (tienda) url += `&tienda_id=${encodeURIComponent(tienda)}`;
+    const data = await apiFetch('GET', url);
+    conteos = data.conteos || [];
+    if (data.truncado) notify('Se muestran solo los 1000 conteos más recientes del rango', 'warn');
+    renderConteos();
+  } catch (e) {
+    conteos = null;
+    document.getElementById('conteo-resumen').innerHTML = '';
+    list.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--danger)">${esc(e.message || 'Error al cargar conteos')}</span></div>`;
+  }
+}
+
+function conteosFiltrados() {
+  const q = document.getElementById('ct-buscar').value.trim().toLowerCase();
+  if (!q) return conteos || [];
+  return (conteos || []).filter(c =>
+    [c.producto_codigo, c.producto_nombre, c.lote, c.contado_por, c.tienda_nombre]
+      .some(v => v && String(v).toLowerCase().includes(q)));
+}
+
+function fmtMedidas(c) {
+  if (c.ancho_cm == null && c.largo_cm == null && c.alto_cm == null) return 'N/A';
+  const v = n => n == null ? '-' : Number(n).toLocaleString('es-CR');
+  return `${v(c.ancho_cm)} x ${v(c.largo_cm)} x ${v(c.alto_cm)} cm`;
+}
+
+function fmtFechaDMY(iso) {
+  if (!iso) return 'N/A';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function renderConteos() {
+  if (!conteos) return;
+  const filas = conteosFiltrados();
+  const unidades = filas.reduce((s, c) => s + (Number(c.cantidad) || 0), 0);
+  const personas = new Set(filas.map(c => c.contado_por.toLowerCase())).size;
+  document.getElementById('conteo-resumen').innerHTML = `
+    <div class="devol-stat"><span class="devol-stat-val">${filas.length.toLocaleString('es-CR')}</span><span class="devol-stat-lbl">Conteos</span></div>
+    <div class="devol-stat"><span class="devol-stat-val">${unidades.toLocaleString('es-CR')}</span><span class="devol-stat-lbl">Unidades contadas</span></div>
+    <div class="devol-stat"><span class="devol-stat-val">${personas.toLocaleString('es-CR')}</span><span class="devol-stat-lbl">Personas</span></div>`;
+
+  const list = document.getElementById('conteo-list');
+  if (!filas.length) {
+    list.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Sin conteos en este rango</span></div>';
+    return;
+  }
+  list.innerHTML = filas.map(c => {
+    const cuando = new Date(c.creado_en).toLocaleString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const foto = c.foto_url
+      ? `<a class="conteo-foto" href="${esc(c.foto_url)}" target="_blank" rel="noopener" title="Ver foto"><img src="${esc(c.foto_url)}" alt="Foto del conteo ${esc(c.producto_codigo)}" loading="lazy"></a>`
+      : '<span class="conteo-foto conteo-foto-vacia">Sin foto</span>';
+    return `
+    <div class="conteo-card" data-id="${esc(c.id)}">
+      ${foto}
+      <div class="conteo-body">
+        <div class="conteo-top">
+          <span class="conteo-id">ID ${esc(c.producto_codigo)}</span>
+          <span class="conteo-qty">${Number(c.cantidad).toLocaleString('es-CR')} u.</span>
+        </div>
+        <div class="conteo-nombre">${esc(c.producto_nombre || 'Producto no encontrado en el catálogo')}</div>
+        <dl class="conteo-datos">
+          <div><dt>Tienda</dt><dd>${esc(c.tienda_nombre)}</dd></div>
+          <div><dt>Contado por</dt><dd>${esc(c.contado_por)}</dd></div>
+          <div><dt>Cajas</dt><dd>${c.cajas == null ? 'N/A' : esc(c.cajas)}</dd></div>
+          <div><dt>Medidas</dt><dd>${esc(fmtMedidas(c))}</dd></div>
+          <div><dt>Lote</dt><dd>${esc(c.lote || 'N/A')}</dd></div>
+          <div><dt>Vencimiento</dt><dd>${esc(fmtFechaDMY(c.vencimiento))}</dd></div>
+        </dl>
+        <div class="conteo-pie">
+          <span>${esc(cuando)}</span>
+          <button type="button" class="conteo-del" onclick="deleteConteo(${Number(c.id)})" title="Eliminar conteo" aria-label="Eliminar conteo ${esc(c.producto_codigo)}">${TRASH_ICON_SVG}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteConteo(id) {
+  const c = (conteos || []).find(x => x.id === id);
+  if (!c) return;
+  if (!confirm(`¿Eliminar el conteo de ID ${c.producto_codigo} (${c.cantidad} u.) de ${c.contado_por}?`)) return;
+  try {
+    await apiDelete('/api/conteos', { id });
+    conteos = conteos.filter(x => x.id !== id);
+    renderConteos();
+    notify('Conteo eliminado', 'success');
+  } catch (e) {
+    notify(e.message || 'No se pudo eliminar el conteo', 'danger');
+  }
+}
+
+function exportConteosCSV() {
+  const filas = conteosFiltrados();
+  if (!filas.length) return notify('No hay conteos para exportar', 'warn');
+  const cols = [
+    ['Fecha', c => new Date(c.creado_en).toLocaleString('es-CR')],
+    ['Tienda', c => c.tienda_nombre],
+    ['Contado por', c => c.contado_por],
+    ['ID', c => c.producto_codigo],
+    ['Producto', c => c.producto_nombre || ''],
+    ['Cantidad', c => c.cantidad],
+    ['Cajas', c => c.cajas ?? ''],
+    ['Ancho (cm)', c => c.ancho_cm ?? ''],
+    ['Largo (cm)', c => c.largo_cm ?? ''],
+    ['Alto (cm)', c => c.alto_cm ?? ''],
+    ['Lote', c => c.lote || ''],
+    ['Vencimiento', c => c.vencimiento ? fmtFechaDMY(c.vencimiento) : '']
+  ];
+  // Prefijo ' en celdas que Excel interpretaría como fórmula
+  const celda = v => {
+    let s = String(v ?? '');
+    if (/^[=+\-@]/.test(s) && isNaN(Number(s))) s = "'" + s;
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const csv = [cols.map(([h]) => celda(h)).join(';'),
+    ...filas.map(c => cols.map(([, f]) => celda(f(c))).join(';'))].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `conteos_${document.getElementById('ct-desde').value}_${document.getElementById('ct-hasta').value}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 /* ── GESTIÓN DE USUARIOS COORDINADORES ─────────────────── */

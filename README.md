@@ -40,6 +40,12 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 - Gestión de devoluciones y generación de guías de courier
 - Al pulsar "Exportar devueltas", las guías marcadas se registran en la tabla `devoluciones_registro` con la fecha del día. El conteo por día/semana/mes se consulta en el Panel de Coordinador, pestaña "Devoluciones"
 
+### 6. Conteos (`/conteos/conteos.html`)
+- Pantalla para celular, abierta para todos (sin login), para registrar cada conteo de mercancía: tienda, quién contó, ID, cantidad, cajas, medidas (ancho/largo/alto), lote, vencimiento y foto
+- Se guarda en la tabla `conteos`; la foto se comprime en el navegador y se sube al bucket privado `conteos` de Supabase Storage
+- Tras guardar, "Compartir en WhatsApp" abre el menú de compartir del celular con la foto y el mensaje (se envía desde el WhatsApp de la persona, sin envío automático)
+- El coordinador consulta los conteos en el Panel de Coordinador, pestaña "Conteos" (filtros por fecha/tienda, fotos, exportar CSV, eliminar)
+
 ### 5. Reporte Distribuidor / Proveedor (`/reporte/reporte_distribuidor_proveedor.html`)
 - Reporte de salidas por tienda/distribuidor, cruzado contra el catálogo de productos
 
@@ -65,6 +71,9 @@ La BD tiene 16 tablas en Supabase PostgreSQL divididas en dos grupos:
 
 **Devoluciones:**
 - `devoluciones_registro` — una fila por guía devuelta (guia, fecha). Se crea con `supabase/devoluciones_registro.sql` (ejecutar manualmente en el SQL Editor), que también define la función `devoluciones_por_dia`
+
+**Conteos:**
+- `conteos` — un registro por conteo de mercancía. Se crea con `supabase/conteos.sql` (ejecutar manualmente en el SQL Editor), que también crea el bucket privado `conteos` para las fotos
 
 El campo `skus.producto_id` vincula STOCKFORGE con el catálogo de etiquetas. Cuando un SKU tiene `producto_id`, al guardar el almacén se actualiza automáticamente `productos.ubicacion` con la posición física.
 

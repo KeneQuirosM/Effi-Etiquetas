@@ -10,7 +10,8 @@ const STORAGE_KEYS = {
   LOGO: 'sf_logo',
   ROTULO_LOGO: 'effi_rotulo_logo_v1',
   INVENTARIO_CACHE: 'effi_inventario_cache_v1',
-  COORD_SESSION: 'effi_coord_session_v1'
+  COORD_SESSION: 'effi_coord_session_v1',
+  CONTEOS_PREFS: 'effi_conteos_prefs_v1'
 };
 
 // Escapa caracteres HTML para prevenir XSS en innerHTML

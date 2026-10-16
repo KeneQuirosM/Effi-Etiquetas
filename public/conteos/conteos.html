@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0d1b6e">
+    <title>Efficommerce | Conteos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/shared/tokens.css">
+    <link rel="stylesheet" href="conteos.css">
+</head>
+<body>
+
+<header class="app-header">
+    <button type="button" class="header-back" onclick="goBackToApp()" aria-label="Volver" title="Volver"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>
+    <div class="header-titles">
+        <h1>Registro de Conteos</h1>
+        <span class="header-sub">Ingreso de mercancía</span>
+    </div>
+</header>
+
+<main class="page">
+
+    <!-- FORMULARIO -->
+    <form id="form-conteo" novalidate autocomplete="off">
+
+        <section class="card">
+            <div class="field">
+                <label for="f-tienda">Tienda <span class="req">*</span></label>
+                <select id="f-tienda" required>
+                    <option value="">Cargando tiendas...</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="f-contado">Contado por <span class="req">*</span></label>
+                <input type="text" id="f-contado" maxlength="80" placeholder="Nombre de quien contó" autocomplete="name" required>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="field">
+                <label for="f-codigo">ID del artículo <span class="req">*</span></label>
+                <input type="text" id="f-codigo" maxlength="64" list="dl-productos" placeholder="Ej: 110" required>
+                <datalist id="dl-productos"></datalist>
+                <p class="hint" id="f-codigo-nombre" aria-live="polite"></p>
+            </div>
+            <div class="row-2">
+                <div class="field">
+                    <label for="f-cantidad">Cantidad <span class="req">*</span></label>
+                    <input type="number" id="f-cantidad" inputmode="numeric" min="0" step="1" placeholder="0" required>
+                </div>
+                <div class="field">
+                    <label for="f-cajas">Cajas</label>
+                    <input type="number" id="f-cajas" inputmode="numeric" min="0" step="1" placeholder="0">
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <p class="card-title">Medidas (cm)</p>
+            <div class="row-3">
+                <div class="field">
+                    <label for="f-ancho">Ancho</label>
+                    <input type="number" id="f-ancho" inputmode="decimal" min="0" step="0.1" placeholder="0">
+                </div>
+                <div class="field">
+                    <label for="f-largo">Largo</label>
+                    <input type="number" id="f-largo" inputmode="decimal" min="0" step="0.1" placeholder="0">
+                </div>
+                <div class="field">
+                    <label for="f-alto">Alto</label>
+                    <input type="number" id="f-alto" inputmode="decimal" min="0" step="0.1" placeholder="0">
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="field">
+                <label for="f-lote">Número de lote</label>
+                <input type="text" id="f-lote" maxlength="64" placeholder="Opcional" autocapitalize="characters">
+            </div>
+            <div class="field">
+                <label for="f-venc">Fecha de vencimiento</label>
+                <input type="date" id="f-venc">
+            </div>
+        </section>
+
+        <section class="card">
+            <p class="card-title">Foto</p>
+            <input type="file" id="f-foto" accept="image/*" capture="environment" hidden>
+            <div id="foto-vacia">
+                <button type="button" class="btn btn-ghost btn-block" onclick="document.getElementById('f-foto').click()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                    <span>Tomar foto</span>
+                </button>
+            </div>
+            <div id="foto-lista" class="foto-preview" hidden>
+                <img id="foto-img" alt="Foto del conteo">
+                <div class="foto-actions">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('f-foto').click()">Cambiar</button>
+                    <button type="button" class="btn btn-ghost btn-danger" onclick="quitarFoto()">Quitar</button>
+                </div>
+            </div>
+        </section>
+
+        <div class="bottom-bar">
+            <button type="submit" class="btn btn-primary btn-block" id="btn-guardar">Guardar conteo</button>
+        </div>
+    </form>
+
+    <!-- CONFIRMACIÓN -->
+    <section id="vista-ok" class="card ok-card" hidden>
+        <div class="ok-head">
+            <span class="ok-check" aria-hidden="true">✓</span>
+            <div>
+                <h2>Conteo guardado</h2>
+                <p class="hint" id="ok-sub"></p>
+            </div>
+        </div>
+        <pre class="ok-msg" id="ok-msg"></pre>
+        <button type="button" class="btn btn-wa btn-block" onclick="compartirWhatsApp()">Compartir en WhatsApp</button>
+        <button type="button" class="btn btn-ghost btn-block" onclick="copiarMensaje()">Copiar mensaje</button>
+        <button type="button" class="btn btn-primary btn-block" onclick="nuevoConteo()">Nuevo conteo</button>
+        <p class="hint">El mensaje se envía desde tu propio WhatsApp: tú eliges el chat o grupo y lo mandas. El conteo ya quedó guardado aunque no lo compartas.</p>
+    </section>
+
+</main>
+
+<script src="/shared/dom-utils.js"></script>
+<script src="/shared/api.js"></script>
+<script src="conteos.js"></script>
+</body>
+</html>

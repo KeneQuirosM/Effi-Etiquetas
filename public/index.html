@@ -97,6 +97,7 @@
     <button class="btn-bulk" onclick="openDev()"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span>Gestión de Devoluciones</span></button>
     <button class="btn-bulk" onclick="openMan()"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h6"/></svg><span>Gestión de Manifiestos</span></button>
     <button class="btn-bulk" onclick="window.open('/alistamiento/alistamiento.html', '_blank')"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 1.5 1.5L8 5"/><path d="m4 12 1.5 1.5L8 11"/><path d="m4 18 1.5 1.5L8 17"/><path d="M11 6h9M11 12h9M11 18h9"/></svg><span>Alistamiento</span></button>
+    <button class="btn-bulk" onclick="window.open('/conteos/conteos.html', '_blank')"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3"/><path d="M9 12h6M9 16h4"/></svg><span>Conteos</span></button>
     <button class="btn-bulk" onclick="window.open('/trazabilidad.html', '_blank')"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H16"/></svg><span>Trazabilidad</span></button>
     <button class="btn-bulk coord-only" onclick="openReporte()" style="display:none"><svg class="nav-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M15 2v5h5"/><path d="M4 7v13a2 2 0 0 0 2 2h10"/></svg><span>Reporte Distribuidor</span></button>
   </div>
@@ -126,6 +127,7 @@
       <button class="tab-btn" onclick="switchTab('tab-config')">Configuración</button>
       <button class="tab-btn" onclick="switchTab('tab-users')">Usuarios</button>
       <button class="tab-btn" onclick="switchTab('tab-devol')">Devoluciones</button>
+      <button class="tab-btn" onclick="switchTab('tab-conteos')">Conteos</button>
     </div>
 
     <!-- TAB: Agregar Producto -->
@@ -408,6 +410,39 @@
         <div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona un rango</span></div>
       </div>
       <p style="font-size:11px;color:var(--muted);margin-top:8px">Se registran las guías cada vez que se pulsa "Exportar devueltas" en Gestión de Devoluciones. Cada guía cuenta una sola vez, en el día en que se exportó por primera vez.</p>
+    </div>
+    <!-- TAB: Conteos registrados desde conteos.html (pantalla móvil pública) -->
+    <div id="tab-conteos" class="tab-content">
+      <p class="section-label" style="margin-bottom:10px">Conteos de mercancía registrados</p>
+      <div class="devol-presets conteo-presets" role="group" aria-label="Rangos rápidos">
+        <button type="button" class="btn-action btn-ghost" data-preset="hoy" onclick="conteoPreset('hoy')">Hoy</button>
+        <button type="button" class="btn-action btn-ghost" data-preset="semana" onclick="conteoPreset('semana')">Última semana</button>
+        <button type="button" class="btn-action btn-ghost" data-preset="mes" onclick="conteoPreset('mes')">Último mes</button>
+      </div>
+      <div class="devol-filtros">
+        <div class="form-group">
+          <label for="ct-desde">Desde</label>
+          <input type="date" id="ct-desde">
+        </div>
+        <div class="form-group">
+          <label for="ct-hasta">Hasta</label>
+          <input type="date" id="ct-hasta">
+        </div>
+        <div class="form-group">
+          <label for="ct-tienda">Tienda</label>
+          <select id="ct-tienda"><option value="">Todas</option></select>
+        </div>
+        <button type="button" class="btn-action btn-primary" onclick="loadConteos()">Consultar</button>
+      </div>
+      <div class="conteo-toolbar">
+        <input type="search" id="ct-buscar" placeholder="Filtrar por ID, producto, lote o persona..." oninput="renderConteos()" aria-label="Filtrar conteos">
+        <button type="button" class="btn-action btn-ghost" onclick="exportConteosCSV()">Exportar CSV</button>
+      </div>
+      <div class="devol-resumen" id="conteo-resumen"></div>
+      <div class="conteo-list" id="conteo-list">
+        <div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona un rango</span></div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">Los conteos se registran desde la pantalla "Conteos" (abierta para todos, pensada para el celular). Las fotos se abren con un enlace temporal de 1 hora; vuelve a consultar si expiró.</p>
     </div>
   </div>
 

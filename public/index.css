@@ -1391,3 +1391,61 @@ body {
 @media (max-width: 640px) {
   .devol-label { flex-basis: 130px; font-size: 12px; }
 }
+
+/* ══ CONTEOS (panel coordinador) ══ */
+.conteo-toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+.conteo-toolbar input {
+  flex: 1; min-width: 0;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font: inherit; font-size: 13px;
+}
+.conteo-list {
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: 560px; overflow-y: auto;
+  padding-right: 2px;
+}
+.conteo-list > .inv-item { border: 1px solid var(--border); border-radius: var(--radius-md); }
+.conteo-card {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+.conteo-foto {
+  width: 110px; height: 110px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+}
+.conteo-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.conteo-foto-vacia { font-size: 11px; color: var(--muted); }
+.conteo-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.conteo-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.conteo-id { font-family: var(--mono); font-weight: 700; color: var(--primary); }
+.conteo-qty { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.conteo-nombre { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conteo-datos {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 12px; margin: 4px 0 0;
+}
+.conteo-datos dt { font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+.conteo-datos dd { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
+.conteo-pie { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.conteo-del {
+  background: none; border: none; cursor: pointer;
+  color: var(--danger); opacity: .55; padding: 4px;
+  display: inline-flex;
+}
+.conteo-del:hover { opacity: 1; }
+@media (max-width: 640px) {
+  .conteo-card { grid-template-columns: 80px 1fr; }
+  .conteo-foto { width: 80px; height: 80px; }
+  .conteo-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .conteo-toolbar { flex-direction: column; }
+}
