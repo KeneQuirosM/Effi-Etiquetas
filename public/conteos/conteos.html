@@ -36,6 +36,23 @@
                 <label for="f-contado">Contado por <span class="req">*</span></label>
                 <input type="text" id="f-contado" maxlength="80" placeholder="Nombre de quien contó" autocomplete="name" required>
             </div>
+            <div class="row-2">
+                <div class="field">
+                    <div class="label-row">
+                        <label for="f-inicio">Hora de inicio</label>
+                        <button type="button" class="link-btn" onclick="ponerHoraActual('f-inicio')">Ahora</button>
+                    </div>
+                    <input type="time" id="f-inicio">
+                </div>
+                <div class="field">
+                    <div class="label-row">
+                        <label for="f-cierre">Hora de cierre</label>
+                        <button type="button" class="link-btn" onclick="ponerHoraActual('f-cierre')">Ahora</button>
+                    </div>
+                    <input type="time" id="f-cierre">
+                </div>
+            </div>
+            <p class="hint">El inicio se llena solo al empezar a llenar el formulario y el cierre al guardar, si los dejas vacíos. Puedes corregirlos.</p>
         </section>
 
         <section class="card">

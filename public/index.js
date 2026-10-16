@@ -1138,6 +1138,20 @@ function fmtFechaDMY(iso) {
   return `${d}/${m}/${y}`;
 }
 
+// "08:15:00" -> "08:15"; duración en minutos (cruce de medianoche incluido)
+function fmtHora(h) { return h ? String(h).slice(0, 5) : ''; }
+function duracionConteo(c) {
+  if (!c.hora_inicio || !c.hora_cierre) return null;
+  const min = h => { const [a, b] = String(h).split(':').map(Number); return a * 60 + b; };
+  return (min(c.hora_cierre) - min(c.hora_inicio) + 1440) % 1440;
+}
+function fmtHorario(c) {
+  if (!c.hora_inicio && !c.hora_cierre) return 'N/A';
+  const d = duracionConteo(c);
+  const dur = d === null ? '' : d < 60 ? ` (${d} min)` : ` (${Math.floor(d / 60)} h ${String(d % 60).padStart(2, '0')} min)`;
+  return `${fmtHora(c.hora_inicio) || '-'} a ${fmtHora(c.hora_cierre) || '-'}${dur}`;
+}
+
 function renderConteos() {
   if (!conteos) return;
   const filas = conteosFiltrados();
@@ -1174,6 +1188,7 @@ function renderConteos() {
           <div><dt>Medidas</dt><dd>${esc(fmtMedidas(c))}</dd></div>
           <div><dt>Lote</dt><dd>${esc(c.lote || 'N/A')}</dd></div>
           <div><dt>Vencimiento</dt><dd>${esc(fmtFechaDMY(c.vencimiento))}</dd></div>
+          <div><dt>Horario</dt><dd>${esc(fmtHorario(c))}</dd></div>
         </dl>
         <div class="conteo-pie">
           <span>${esc(cuando)}</span>
@@ -1288,7 +1303,10 @@ async function exportConteosExcel() {
       { header: 'Largo (cm)',  key: 'largo',  width: 11 },
       { header: 'Alto (cm)',   key: 'alto',   width: 11 },
       { header: 'Lote',        key: 'lote',   width: 16 },
-      { header: 'Vencimiento', key: 'venc',   width: 13, style: { numFmt: 'dd/mm/yyyy' } }
+      { header: 'Vencimiento', key: 'venc',   width: 13, style: { numFmt: 'dd/mm/yyyy' } },
+      { header: 'Hora inicio', key: 'hini',   width: 11 },
+      { header: 'Hora cierre', key: 'hfin',   width: 11 },
+      { header: 'Duración (min)', key: 'dur', width: 14 }
     ];
     const head = ws.getRow(1);
     head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -1311,7 +1329,10 @@ async function exportConteosExcel() {
         largo: num(c.largo_cm),
         alto: num(c.alto_cm),
         lote: c.lote || '',
-        venc: c.vencimiento ? new Date(c.vencimiento + 'T00:00:00Z') : null
+        venc: c.vencimiento ? new Date(c.vencimiento + 'T00:00:00Z') : null,
+        hini: fmtHora(c.hora_inicio),
+        hfin: fmtHora(c.hora_cierre),
+        dur: duracionConteo(c)
       });
       row.alignment = { vertical: 'middle', wrapText: true };
       const f = fotos[i];

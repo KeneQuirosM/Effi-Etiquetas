@@ -139,6 +139,29 @@ function quitarFoto() {
   $('foto-vacia').hidden = false;
 }
 
+/* ── HORAS DE INICIO Y CIERRE ── */
+function horaActual() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function ponerHoraActual(id) {
+  $(id).value = horaActual();
+  $(id).closest('.field').classList.remove('invalid');
+}
+
+// Minutos entre inicio y cierre; si el cierre es menor, cruzó la medianoche
+function duracionMin(inicio, cierre) {
+  if (!inicio || !cierre) return null;
+  const min = h => { const [a, b] = h.split(':').map(Number); return a * 60 + b; };
+  return (min(cierre) - min(inicio) + 1440) % 1440;
+}
+
+function fmtDuracion(m) {
+  if (m === null) return '';
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`;
+}
+
 /* ── VALIDACIÓN ── */
 function marcar(id, invalido) {
   $(id).closest('.field').classList.toggle('invalid', invalido);
@@ -157,7 +180,9 @@ function leerFormulario() {
     largo_cm: num('f-largo'),
     alto_cm: num('f-alto'),
     lote: $('f-lote').value.trim(),
-    vencimiento: $('f-venc').value
+    vencimiento: $('f-venc').value,
+    hora_inicio: $('f-inicio').value,
+    hora_cierre: $('f-cierre').value
   };
 
   const esEntero = v => v !== '' && Number.isInteger(Number(v)) && Number(v) >= 0;
@@ -187,9 +212,14 @@ function armarMensaje(d, tiendaNombre, productoNombre) {
   const medidas = [d.ancho_cm, d.largo_cm, d.alto_cm].some(v => v !== '')
     ? `${d.ancho_cm || '-'} x ${d.largo_cm || '-'} x ${d.alto_cm || '-'} cm (ancho x largo x alto)`
     : 'N/A';
+  const dur = duracionMin(d.hora_inicio, d.hora_cierre);
+  const horario = d.hora_inicio || d.hora_cierre
+    ? `${d.hora_inicio || '-'} a ${d.hora_cierre || '-'}${dur !== null ? ` (${fmtDuracion(dur)})` : ''}`
+    : 'N/A';
   return [
     `*Ingresa mercancía de:* ${tiendaNombre}`,
     `*Contado por:* ${d.contado_por}`,
+    `*Horario del conteo:* ${horario}`,
     `*Artículo:* ID ${d.producto_codigo}${productoNombre ? ' - ' + productoNombre : ''}`,
     `*Unidades contadas:* ${Number(d.cantidad).toLocaleString('es-CR')}`,
     `*Cajas:* ${d.cajas !== '' ? d.cajas : 'N/A'}`,
@@ -210,6 +240,10 @@ async function guardarConteo(e) {
     const primero = document.querySelector('.field.invalid input, .field.invalid select');
     if (primero) primero.focus();
     return;
+  }
+  if (!datos.hora_cierre) {
+    datos.hora_cierre = horaActual();
+    $('f-cierre').value = datos.hora_cierre;
   }
 
   const btn = $('btn-guardar');
@@ -281,7 +315,7 @@ async function compartirWhatsApp() {
 // Conserva tienda y "contado por" (lo normal es contar varios artículos
 // seguidos de la misma tienda); limpia todo lo demás.
 function nuevoConteo() {
-  ['f-codigo', 'f-cantidad', 'f-cajas', 'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc']
+  ['f-codigo', 'f-cantidad', 'f-cajas', 'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc', 'f-inicio', 'f-cierre']
     .forEach(id => { $(id).value = ''; });
   document.querySelectorAll('.field.invalid').forEach(f => f.classList.remove('invalid'));
   quitarFoto();
@@ -305,6 +339,10 @@ function nuevoConteo() {
   $('form-conteo').addEventListener('input', e => {
     const f = e.target.closest('.field.invalid');
     if (f) f.classList.remove('invalid');
+    // El inicio se marca con lo primero que se escribe del artículo
+    if (!$('f-inicio').value && !['f-inicio', 'f-cierre', 'f-tienda', 'f-contado'].includes(e.target.id)) {
+      $('f-inicio').value = horaActual();
+    }
   });
 
   cargarTiendas();

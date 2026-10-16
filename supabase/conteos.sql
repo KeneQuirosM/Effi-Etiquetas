@@ -24,9 +24,16 @@ CREATE TABLE IF NOT EXISTS conteos (
   lote             TEXT,
   vencimiento      DATE,
   foto_path        TEXT,                   -- ruta dentro del bucket "conteos"
+  hora_inicio      TIME,                   -- hora local en que empezó el conteo
+  hora_cierre      TIME,                   -- hora local en que terminó
   fecha            DATE NOT NULL DEFAULT ((NOW() AT TIME ZONE 'America/Costa_Rica')::date),
   creado_en        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Agregadas después de la primera versión: si la tabla ya existía,
+-- este archivo completo se puede volver a ejecutar sin perder datos.
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS hora_inicio TIME;
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS hora_cierre TIME;
 
 CREATE INDEX IF NOT EXISTS idx_conteos_fecha  ON conteos(fecha);
 CREATE INDEX IF NOT EXISTS idx_conteos_tienda ON conteos(tienda_id);

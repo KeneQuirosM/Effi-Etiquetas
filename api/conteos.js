@@ -10,6 +10,7 @@ const MAX_RANGO_DIAS = 400;
 const MAX_FILAS = 1000;
 const URL_FIRMADA_SEG = 60 * 60;
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const FOTO_RE = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
 const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
@@ -60,6 +61,8 @@ export default async function handler(req, res) {
       const alto = medida(b.alto_cm);
       const lote = b.lote ? texto(b.lote, 64) : null;
       const vencimiento = b.vencimiento ? b.vencimiento : null;
+      const horaInicio = b.hora_inicio ? b.hora_inicio : null;
+      const horaCierre = b.hora_cierre ? b.hora_cierre : null;
 
       if (!Number.isInteger(tiendaId) || tiendaId <= 0) return res.status(400).json({ error: 'Tienda requerida' });
       if (!contadoPor) return res.status(400).json({ error: '"Contado por" es requerido (máx. 80 caracteres)' });
@@ -72,6 +75,10 @@ export default async function handler(req, res) {
       if (b.lote && !lote) return res.status(400).json({ error: 'Número de lote inválido (máx. 64 caracteres)' });
       if (vencimiento !== null && !esFechaValida(vencimiento)) {
         return res.status(400).json({ error: 'Fecha de vencimiento inválida' });
+      }
+
+      if ((horaInicio !== null && !HORA_RE.test(horaInicio)) || (horaCierre !== null && !HORA_RE.test(horaCierre))) {
+        return res.status(400).json({ error: 'Hora inválida (formato HH:MM)' });
       }
 
       let foto = null;
@@ -120,6 +127,7 @@ export default async function handler(req, res) {
           cantidad, cajas,
           ancho_cm: ancho, largo_cm: largo, alto_cm: alto,
           lote, vencimiento,
+          hora_inicio: horaInicio, hora_cierre: horaCierre,
           foto_path: fotoPath
         })
         .select('id, fecha, creado_en, producto_nombre')

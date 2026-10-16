@@ -75,6 +75,13 @@ body {
 .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .field label { font-size: 13px; font-weight: 600; color: var(--neutral-800); }
 .req { color: var(--danger-mid); }
+.label-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.link-btn {
+    background: none; border: none; padding: 4px 2px;
+    font: inherit; font-size: 13px; font-weight: 600;
+    color: var(--brand-500); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
 
 .field input,
 .field select {
@@ -99,8 +106,10 @@ body {
     padding-right: 36px;
 }
 /* iOS pinta el input date sin altura ni alineación propia */
-.field input[type="date"] { display: flex; align-items: center; line-height: 48px; }
-.field input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+.field input[type="date"],
+.field input[type="time"] { display: flex; align-items: center; line-height: 48px; }
+.field input[type="date"]::-webkit-date-and-time-value,
+.field input[type="time"]::-webkit-date-and-time-value { text-align: left; }
 
 .field input:focus,
 .field select:focus { border-color: var(--brand-500); background: #fff; }
