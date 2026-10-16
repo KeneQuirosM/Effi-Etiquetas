@@ -1109,12 +1109,48 @@ async function loadConteos() {
     const data = await apiFetch('GET', url);
     conteos = data.conteos || [];
     conteosCargadosEn = Date.now();
+    renderSheetsEstado(data.sheets);
     if (data.truncado) notify('Se muestran solo los 1000 conteos más recientes del rango', 'warn');
     renderConteos();
   } catch (e) {
     conteos = null;
     document.getElementById('conteo-resumen').innerHTML = '';
     list.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--danger)">${esc(e.message || 'Error al cargar conteos')}</span></div>`;
+  }
+}
+
+// Estado de la copia en Google Sheets (solo si la API la tiene configurada)
+function renderSheetsEstado(sheets) {
+  const box = document.getElementById('conteo-sheets');
+  if (!sheets || !sheets.habilitado) { box.hidden = true; return; }
+  box.hidden = false;
+  const n = sheets.pendientes || 0;
+  box.classList.toggle('pendiente', n > 0);
+  document.getElementById('conteo-sheets-txt').textContent = n
+    ? `Google Sheets: ${n.toLocaleString('es-CR')} conteo(s) sin copiar a la hoja`
+    : 'Google Sheets: todos los conteos están copiados en la hoja';
+  document.getElementById('conteo-sheets-btn').hidden = n === 0;
+}
+
+async function sincronizarSheets() {
+  const btn = document.getElementById('conteo-sheets-btn');
+  btn.disabled = true;
+  let total = 0;
+  try {
+    // La API procesa un lote por llamada; se repite hasta vaciar la cola
+    for (;;) {
+      btn.textContent = `Enviando... (${total})`;
+      const r = await apiFetch('POST', '/api/conteos?accion=sincronizar');
+      total += r.enviados;
+      renderSheetsEstado({ habilitado: true, pendientes: r.pendientes });
+      if (!r.pendientes || !r.enviados) break;
+    }
+    notify(`${total} conteo(s) copiados a Google Sheets`, 'success');
+  } catch (e) {
+    notify(e.message || 'No se pudo enviar a Google Sheets', 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Enviar pendientes';
   }
 }
 

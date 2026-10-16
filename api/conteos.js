@@ -3,12 +3,14 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requireUser } from './_auth.js';
 import { rateLimit } from './_rateLimit.js';
+import { sheetsHabilitado, enviarConteoASheets, eliminarConteoDeSheets } from './_sheets.js';
 
 const BUCKET = 'conteos';
 const MAX_FOTO_BYTES = 3 * 1024 * 1024;   // ya llega comprimida desde el navegador
 const MAX_RANGO_DIAS = 400;
 const MAX_FILAS = 1000;
 const URL_FIRMADA_SEG = 60 * 60;
+const SYNC_LOTE = 5;              // conteos enviados a Sheets por llamada de "Enviar pendientes"
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const FOTO_RE = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
@@ -43,6 +45,37 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+
+    // ── POST ?accion=sincronizar: reenviar a Google Sheets los conteos que
+    // no llegaron (Google caído, o anteriores a configurar la hoja). Solo
+    // coordinador; procesa un lote por llamada y el panel repite hasta 0.
+    if (req.method === 'POST' && req.query?.accion === 'sincronizar') {
+      const user = await requireUser(req, res);
+      if (!user) return;
+      if (!sheetsHabilitado()) return res.status(400).json({ error: 'Google Sheets no está configurado' });
+
+      const { data: lote, error } = await supabaseAdmin
+        .from('conteos').select('*').eq('en_sheets', false)
+        .order('id', { ascending: true }).limit(SYNC_LOTE);
+      if (error) {
+        console.error('Error leyendo conteos pendientes:', error);
+        return res.status(500).json({ error: 'No se pudieron leer los pendientes' });
+      }
+
+      let enviados = 0;
+      for (const c of lote) {
+        if (!(await enviarConteoASheets(c))) break;   // Google falla: no seguir insistiendo
+        await supabaseAdmin.from('conteos').update({ en_sheets: true }).eq('id', c.id);
+        enviados++;
+      }
+
+      const { count } = await supabaseAdmin
+        .from('conteos').select('id', { count: 'exact', head: true }).eq('en_sheets', false);
+      if (lote.length && !enviados) {
+        return res.status(502).json({ error: 'Google Sheets no respondió. Intenta más tarde.', pendientes: count ?? null });
+      }
+      return res.status(200).json({ enviados, pendientes: count ?? 0 });
+    }
 
     // ── POST: registrar un conteo ──
     // Público (conteos.html se usa desde el celular sin sesión de
@@ -130,7 +163,7 @@ export default async function handler(req, res) {
           hora_inicio: horaInicio, hora_cierre: horaCierre,
           foto_path: fotoPath
         })
-        .select('id, fecha, creado_en, producto_nombre')
+        .select('*')
         .single();
 
       if (error) {
@@ -139,7 +172,13 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'No se pudo registrar el conteo' });
       }
 
-      return res.status(201).json({ conteo: data });
+      // Copia en Google Sheets; si falla queda pendiente para reintentar
+      if (await enviarConteoASheets(data)) {
+        await supabaseAdmin.from('conteos').update({ en_sheets: true }).eq('id', data.id);
+      }
+
+      const { id, fecha, creado_en, producto_nombre } = data;
+      return res.status(201).json({ conteo: { id, fecha, creado_en, producto_nombre } });
     }
 
     // ── GET: conteos en un rango (solo coordinador) ──
@@ -186,9 +225,17 @@ export default async function handler(req, res) {
         (firmadas || []).forEach(f => { if (f.signedUrl) urls.set(f.path, f.signedUrl); });
       }
 
+      let sheets = { habilitado: sheetsHabilitado(), pendientes: 0 };
+      if (sheets.habilitado) {
+        const { count } = await supabaseAdmin
+          .from('conteos').select('id', { count: 'exact', head: true }).eq('en_sheets', false);
+        sheets.pendientes = count ?? 0;
+      }
+
       return res.status(200).json({
         conteos: data.map(({ foto_path, ...r }) => ({ ...r, foto_url: urls.get(foto_path) || null })),
-        truncado: data.length === MAX_FILAS
+        truncado: data.length === MAX_FILAS,
+        sheets
       });
     }
 
@@ -212,6 +259,8 @@ export default async function handler(req, res) {
         const { error: rmErr } = await supabaseAdmin.storage.from(BUCKET).remove([data.foto_path]);
         if (rmErr) console.error('Error borrando foto de conteo:', rmErr);
       }
+
+      await eliminarConteoDeSheets(id);
 
       return res.status(200).json({ ok: true });
     }

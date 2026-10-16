@@ -438,6 +438,10 @@
         <input type="search" id="ct-buscar" placeholder="Filtrar por ID, producto, lote o persona..." oninput="renderConteos()" aria-label="Filtrar conteos">
         <button type="button" class="btn-action btn-ghost" onclick="exportConteosExcel()">Exportar Excel</button>
       </div>
+      <div class="conteo-sheets" id="conteo-sheets" hidden>
+        <span id="conteo-sheets-txt"></span>
+        <button type="button" class="btn-action btn-ghost" id="conteo-sheets-btn" onclick="sincronizarSheets()">Enviar pendientes</button>
+      </div>
       <div class="devol-resumen" id="conteo-resumen"></div>
       <div class="conteo-list" id="conteo-list">
         <div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona un rango</span></div>
