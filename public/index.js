@@ -1074,6 +1074,7 @@ function renderDevolReport() {
  * con una URL firmada temporal para cada foto (bucket privado).
  */
 let conteos = null;        // filas del último rango consultado
+let conteosCargadosEn = 0; // Date.now() de esa consulta (las URLs de fotos vencen a la hora)
 
 function populateConteoTiendas() {
   const sel = document.getElementById('ct-tienda');
@@ -1107,6 +1108,7 @@ async function loadConteos() {
     if (tienda) url += `&tienda_id=${encodeURIComponent(tienda)}`;
     const data = await apiFetch('GET', url);
     conteos = data.conteos || [];
+    conteosCargadosEn = Date.now();
     if (data.truncado) notify('Se muestran solo los 1000 conteos más recientes del rango', 'warn');
     renderConteos();
   } catch (e) {
@@ -1196,37 +1198,151 @@ async function deleteConteo(id) {
   }
 }
 
-function exportConteosCSV() {
-  const filas = conteosFiltrados();
-  if (!filas.length) return notify('No hay conteos para exportar', 'warn');
-  const cols = [
-    ['Fecha', c => new Date(c.creado_en).toLocaleString('es-CR')],
-    ['Tienda', c => c.tienda_nombre],
-    ['Contado por', c => c.contado_por],
-    ['ID', c => c.producto_codigo],
-    ['Producto', c => c.producto_nombre || ''],
-    ['Cantidad', c => c.cantidad],
-    ['Cajas', c => c.cajas ?? ''],
-    ['Ancho (cm)', c => c.ancho_cm ?? ''],
-    ['Largo (cm)', c => c.largo_cm ?? ''],
-    ['Alto (cm)', c => c.alto_cm ?? ''],
-    ['Lote', c => c.lote || ''],
-    ['Vencimiento', c => c.vencimiento ? fmtFechaDMY(c.vencimiento) : '']
-  ];
-  // Prefijo ' en celdas que Excel interpretaría como fórmula
-  const celda = v => {
-    let s = String(v ?? '');
-    if (/^[=+\-@]/.test(s) && isNaN(Number(s))) s = "'" + s;
-    return `"${s.replace(/"/g, '""')}"`;
-  };
-  const csv = [cols.map(([h]) => celda(h)).join(';'),
-    ...filas.map(c => cols.map(([, f]) => celda(f(c))).join(';'))].join('\r\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `conteos_${document.getElementById('ct-desde').value}_${document.getElementById('ct-hasta').value}.csv`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+/* Exporta a .xlsx con la foto incrustada en cada fila. Usa ExcelJS (la
+ * edición gratuita de SheetJS no escribe imágenes), cargado solo al
+ * exportar. Las fotos se bajan de las URLs firmadas y se reducen a 320px
+ * para que el archivo no pese decenas de MB.
+ */
+const EXCELJS_SRC = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+const EXCELJS_SRI = 'sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz';
+const XLSX_FOTO_PX = 120;        // lado mayor de la foto dentro de la celda
+let excelJSPromise = null;
+let exportandoConteos = false;
+
+function cargarExcelJS() {
+  if (window.ExcelJS) return Promise.resolve();
+  if (!excelJSPromise) {
+    excelJSPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = EXCELJS_SRC;
+      s.integrity = EXCELJS_SRI;
+      s.crossOrigin = 'anonymous';
+      s.onload = resolve;
+      s.onerror = () => { excelJSPromise = null; reject(new Error('No se pudo cargar el generador de Excel')); };
+      document.head.appendChild(s);
+    });
+  }
+  return excelJSPromise;
+}
+
+// Baja la foto y la reduce a JPEG chico. Devuelve {base64, w, h} o null.
+async function fotoParaExcel(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const bmp = await createImageBitmap(await r.blob());
+    const escala = Math.min(1, 320 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bmp.width * escala);
+    canvas.height = Math.round(bmp.height * escala);
+    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    bmp.close();
+    return { base64: canvas.toDataURL('image/jpeg', 0.8), w: canvas.width, h: canvas.height };
+  } catch (_) {
+    return null;
+  }
+}
+
+// Fecha/hora local como si fuera UTC: ExcelJS escribe las fechas en UTC
+// y Excel no tiene zona horaria, así se ve la hora local correcta.
+function fechaLocalParaExcel(iso) {
+  const d = new Date(iso);
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()));
+}
+
+async function exportConteosExcel() {
+  if (exportandoConteos) return;
+  if (!conteosFiltrados().length) return notify('No hay conteos para exportar', 'warn');
+  exportandoConteos = true;
+  try {
+    // Las URLs de las fotos vencen a la hora: si la consulta es vieja, se renueva
+    if (Date.now() - conteosCargadosEn > 50 * 60 * 1000) await loadConteos();
+    const filas = conteosFiltrados();
+    if (!filas.length) return;
+
+    notify('Generando Excel con fotos...', 'info');
+    await cargarExcelJS();
+
+    // Fotos en paralelo, de a 6 para no saturar la conexión
+    const fotos = new Array(filas.length).fill(null);
+    let sig = 0;
+    await Promise.all(Array.from({ length: 6 }, async () => {
+      while (sig < filas.length) {
+        const i = sig++;
+        if (filas[i].foto_url) fotos[i] = await fotoParaExcel(filas[i].foto_url);
+      }
+    }));
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Conteos', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws.columns = [
+      { header: 'Foto',        key: 'foto',   width: 18 },
+      { header: 'Fecha',       key: 'fecha',  width: 18, style: { numFmt: 'dd/mm/yyyy hh:mm' } },
+      { header: 'Tienda',      key: 'tienda', width: 18 },
+      { header: 'Contado por', key: 'por',    width: 20 },
+      { header: 'ID',          key: 'id',     width: 10 },
+      { header: 'Producto',    key: 'prod',   width: 30 },
+      { header: 'Cantidad',    key: 'cant',   width: 11 },
+      { header: 'Cajas',       key: 'cajas',  width: 8 },
+      { header: 'Ancho (cm)',  key: 'ancho',  width: 11 },
+      { header: 'Largo (cm)',  key: 'largo',  width: 11 },
+      { header: 'Alto (cm)',   key: 'alto',   width: 11 },
+      { header: 'Lote',        key: 'lote',   width: 16 },
+      { header: 'Vencimiento', key: 'venc',   width: 13, style: { numFmt: 'dd/mm/yyyy' } }
+    ];
+    const head = ws.getRow(1);
+    head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D1B6E' } };
+    head.alignment = { vertical: 'middle' };
+    head.height = 20;
+
+    const num = v => v == null ? null : Number(v);
+    filas.forEach((c, i) => {
+      const row = ws.addRow({
+        foto: fotos[i] ? '' : (c.foto_url ? 'No disponible' : 'Sin foto'),
+        fecha: fechaLocalParaExcel(c.creado_en),
+        tienda: c.tienda_nombre,
+        por: c.contado_por,
+        id: c.producto_codigo,
+        prod: c.producto_nombre || '',
+        cant: num(c.cantidad),
+        cajas: num(c.cajas),
+        ancho: num(c.ancho_cm),
+        largo: num(c.largo_cm),
+        alto: num(c.alto_cm),
+        lote: c.lote || '',
+        venc: c.vencimiento ? new Date(c.vencimiento + 'T00:00:00Z') : null
+      });
+      row.alignment = { vertical: 'middle', wrapText: true };
+      const f = fotos[i];
+      if (f) {
+        row.height = XLSX_FOTO_PX * 0.75 + 8;      // px -> puntos, con margen
+        const k = XLSX_FOTO_PX / Math.max(f.w, f.h);
+        const imgId = wb.addImage({ base64: f.base64, extension: 'jpeg' });
+        ws.addImage(imgId, {
+          tl: { col: 0.05, row: row.number - 1 + 0.05 },
+          ext: { width: Math.round(f.w * k), height: Math.round(f.h * k) },
+          editAs: 'oneCell'
+        });
+      }
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `conteos_${document.getElementById('ct-desde').value}_${document.getElementById('ct-hasta').value}.xlsx`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+
+    const faltan = filas.filter((c, i) => c.foto_url && !fotos[i]).length;
+    if (faltan) notify(`Excel generado, pero ${faltan} foto(s) no se pudieron descargar`, 'warn');
+    else notify('Excel generado', 'success');
+  } catch (e) {
+    notify(e.message || 'No se pudo generar el Excel', 'danger');
+  } finally {
+    exportandoConteos = false;
+  }
 }
 
 /* ── GESTIÓN DE USUARIOS COORDINADORES ─────────────────── */

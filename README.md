@@ -44,7 +44,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 - Pantalla para celular, abierta para todos (sin login), para registrar cada conteo de mercancía: tienda, quién contó, ID, cantidad, cajas, medidas (ancho/largo/alto), lote, vencimiento y foto
 - Se guarda en la tabla `conteos`; la foto se comprime en el navegador y se sube al bucket privado `conteos` de Supabase Storage
 - Tras guardar, "Compartir en WhatsApp" abre el menú de compartir del celular con la foto y el mensaje (se envía desde el WhatsApp de la persona, sin envío automático)
-- El coordinador consulta los conteos en el Panel de Coordinador, pestaña "Conteos" (filtros por fecha/tienda, fotos, exportar CSV, eliminar)
+- El coordinador consulta los conteos en el Panel de Coordinador, pestaña "Conteos" (filtros por fecha/tienda, fotos, exportar a Excel con las fotos incrustadas, eliminar)
 
 ### 5. Reporte Distribuidor / Proveedor (`/reporte/reporte_distribuidor_proveedor.html`)
 - Reporte de salidas por tienda/distribuidor, cruzado contra el catálogo de productos
