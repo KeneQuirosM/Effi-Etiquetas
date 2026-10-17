@@ -33,6 +33,37 @@ function guardarPrefs(p) {
   try { localStorage.setItem(STORAGE_KEYS.CONTEOS_PREFS, JSON.stringify(p)); } catch (_) {}
 }
 
+/* ── BORRADOR ──
+ * En celulares con poca memoria, Android cierra el navegador al abrir la
+ * cámara y al volver la página se recarga vacía. El formulario se guarda
+ * en cada cambio y se restaura al cargar; se borra al guardar el conteo.
+ * La foto no se puede recuperar (el archivo se pierde con la pestaña).
+ */
+const CAMPOS_BORRADOR = ['f-tienda', 'f-contado', 'f-inicio', 'f-cierre', 'f-codigo', 'f-cantidad', 'f-cajas',
+  'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc'];
+
+function guardarBorrador() {
+  const b = {};
+  CAMPOS_BORRADOR.forEach(id => { if ($(id).value) b[id] = $(id).value; });
+  try { localStorage.setItem(STORAGE_KEYS.CONTEOS_BORRADOR, JSON.stringify(b)); } catch (_) {}
+}
+
+function leerBorrador() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTEOS_BORRADOR)) || {}; }
+  catch (_) { return {}; }
+}
+
+function borrarBorrador() {
+  try { localStorage.removeItem(STORAGE_KEYS.CONTEOS_BORRADOR); } catch (_) {}
+}
+
+// true si había algo del artículo (no solo tienda/nombre, que se recuerdan siempre)
+function restaurarBorrador() {
+  const b = leerBorrador();
+  CAMPOS_BORRADOR.forEach(id => { if (b[id] && id !== 'f-tienda') $(id).value = b[id]; });
+  return ['f-codigo', 'f-cantidad', 'f-cajas', 'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc'].some(id => b[id]);
+}
+
 /* ── TIENDAS Y PRODUCTOS ── */
 async function cargarTiendas() {
   const sel = $('f-tienda');
@@ -41,9 +72,9 @@ async function cargarTiendas() {
     tiendas = data.tiendas || [];
     sel.innerHTML = '<option value="">-- Seleccione --</option>' +
       tiendas.map(t => `<option value="${esc(t.id)}">${esc(t.nombre)}</option>`).join('');
-    const prefs = leerPrefs();
-    if (prefs.tiendaId && tiendas.some(t => String(t.id) === String(prefs.tiendaId))) {
-      sel.value = String(prefs.tiendaId);
+    const tiendaId = leerBorrador()['f-tienda'] || leerPrefs().tiendaId;
+    if (tiendaId && tiendas.some(t => String(t.id) === String(tiendaId))) {
+      sel.value = String(tiendaId);
     }
     actualizarProductos();
   } catch (e) {
@@ -148,6 +179,7 @@ function horaActual() {
 function ponerHoraActual(id) {
   $(id).value = horaActual();
   $(id).closest('.field').classList.remove('invalid');
+  guardarBorrador();
 }
 
 // Minutos entre inicio y cierre; si el cierre es menor, cruzó la medianoche
@@ -258,6 +290,7 @@ async function guardarConteo(e) {
     const res = await apiRequestJSON('/api/conteos', { method: 'POST', body });
 
     guardarPrefs({ tiendaId: datos.tienda_id, contadoPor: datos.contado_por });
+    borrarBorrador();
 
     const tienda = tiendaActual();
     const nombreProd = res.conteo?.producto_nombre || productoPorCodigo(datos.producto_codigo)?.producto || '';
@@ -321,6 +354,7 @@ function nuevoConteo() {
   quitarFoto();
   actualizarNombreProducto();
   ultimaFoto = null;
+  guardarBorrador();
   $('vista-ok').hidden = true;
   $('form-conteo').hidden = false;
   window.scrollTo(0, 0);
@@ -335,6 +369,7 @@ function nuevoConteo() {
   $('f-tienda').addEventListener('change', actualizarProductos);
   $('f-codigo').addEventListener('input', actualizarNombreProducto);
   $('f-foto').addEventListener('change', onFotoSeleccionada);
+  $('f-foto-galeria').addEventListener('change', onFotoSeleccionada);
   $('form-conteo').addEventListener('submit', guardarConteo);
   $('form-conteo').addEventListener('input', e => {
     const f = e.target.closest('.field.invalid');
@@ -343,7 +378,15 @@ function nuevoConteo() {
     if (!$('f-inicio').value && !['f-inicio', 'f-cierre', 'f-tienda', 'f-contado'].includes(e.target.id)) {
       $('f-inicio').value = horaActual();
     }
+    guardarBorrador();
   });
+  // select y date disparan "change" (no siempre "input")
+  $('form-conteo').addEventListener('change', guardarBorrador);
+
+  if (restaurarBorrador()) {
+    notify('Se recuperó el conteo que estabas llenando. Si habías tomado una foto, vuelve a agregarla.', 'info', 7000);
+  }
+  actualizarNombreProducto();
 
   cargarTiendas();
 })();

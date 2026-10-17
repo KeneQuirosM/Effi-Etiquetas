@@ -106,12 +106,18 @@
         <section class="card">
             <p class="card-title">Foto</p>
             <input type="file" id="f-foto" accept="image/*" capture="environment" hidden>
-            <div id="foto-vacia">
-                <button type="button" class="btn btn-ghost btn-block" onclick="document.getElementById('f-foto').click()">
+            <input type="file" id="f-foto-galeria" accept="image/*" hidden>
+            <div id="foto-vacia" class="foto-botones">
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('f-foto').click()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
                     <span>Tomar foto</span>
                 </button>
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('f-foto-galeria').click()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
+                    <span>Galería</span>
+                </button>
             </div>
+            <p class="hint">Si el celular se sale de la página al abrir la cámara, toma la foto con la app de cámara y luego elígela con "Galería". Lo que ya escribiste no se pierde.</p>
             <div id="foto-lista" class="foto-preview" hidden>
                 <img id="foto-img" alt="Foto del conteo">
                 <div class="foto-actions">
