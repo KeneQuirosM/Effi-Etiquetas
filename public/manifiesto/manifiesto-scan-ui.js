@@ -78,7 +78,7 @@
       conteoHTML = `<strong>${r.conteo.correctas} de ${r.conteo.total}</strong>quedan ${r.conteo.quedan}`;
     } else if (r.tipo === 'repetida') {
       clase = 'is-rep'; icono = ICONOS_AVISO.rep;
-      msg = `Repetida: ya se escaneó a las ${r.primeraVez}` + (r.enManifiesto ? '' : ' · no está en el manifiesto');
+      msg = `Repetida: ya se escaneó a las ${r.primeraVez}` + (r.enManifiesto ? '' : '; no está en el manifiesto');
       conteoHTML = 'no se suma<br>al conteo';
     } else {
       clase = 'is-err'; icono = ICONOS_AVISO.err;

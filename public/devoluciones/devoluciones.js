@@ -36,7 +36,7 @@
         if(!auditLog.length){ logEntriesDiv.innerHTML='<span style="color:rgba(255,255,255,.5)">Sin registros</span>'; return; }
         logEntriesDiv.innerHTML=auditLog.slice(0,60).map(l=>{
             const cls=l.action.includes('MARCADA')?'log-ok':'log-er';
-            return `<div class="log-row"><span class="log-ts">[${esc(l.ts)}]</span> <span class="${cls}">${esc(l.action)}</span> — <span class="log-gu">Guía: ${esc(l.guia)}</span> | ${esc(l.cliente)}</div>`;
+            return `<div class="log-row"><span class="log-ts">[${esc(l.ts)}]</span> <span class="${cls}">${esc(l.action)}</span>: <span class="log-gu">Guía: ${esc(l.guia)}</span> | ${esc(l.cliente)}</div>`;
         }).join('');
     }
 

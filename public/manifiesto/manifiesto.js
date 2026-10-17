@@ -467,7 +467,7 @@ function buildComparativoCss() {
       display:flex; flex-direction:column; gap:2px;
     }
     .info-bar-item:last-child { border-right:none; }
-    .info-bar-item .label { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; }
+    .info-bar-item .label { font-size: 12px; color:#888;}
     .info-bar-item .value { font-size:14px; font-weight:600; color:#333; }
 
     /* TARJETAS MÉTRICAS */
@@ -477,7 +477,7 @@ function buildComparativoCss() {
     }
     .metric:last-child { border-right:none; }
     .metric .num { font-size:36px; font-weight:800; line-height:1; }
-    .metric .lbl { font-size:12px; margin-top:6px; opacity:0.8; font-weight:500; text-transform:uppercase; letter-spacing:.5px; }
+    .metric .lbl { font-size:12px; margin-top:6px; opacity:0.8; font-weight:500;}
     .metric.total  { background:#eef2ff; color:#0e15d3; }
     .metric.ok     { background:#f0fdf4; color:#198754; }
     .metric.warn   { background:#fffbeb; color:#d97706; }
@@ -500,7 +500,7 @@ function buildComparativoCss() {
     table { width:100%; border-collapse:collapse; font-size:13px; }
     thead th {
       background:#f1f3f9; padding:10px 14px; text-align:left;
-      font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+      font-size: 12px;
       color:#666; border-bottom:2px solid #e0e4ef;
     }
     tbody tr:nth-child(even) { background:#fafbfc; }
@@ -587,7 +587,7 @@ function openComparativoWindow() {
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Reporte Comparativo — ${esc(window.nombreRuta)}</title>
+  <title>Reporte comparativo: ${esc(window.nombreRuta)}</title>
   <style>${buildComparativoCss()}</style>
 </head>
 <body>
@@ -603,7 +603,7 @@ function openComparativoWindow() {
   <div class="report-header">
     <div>
       <h1>Reporte Comparativo de Manifiesto</h1>
-      <div class="sub">Efficommerce — Transportadora</div>
+      <div class="sub">Efficommerce, transportadora</div>
       <div class="fecha">${fecha} &nbsp;|&nbsp; ${hora}</div>
     </div>
     <div class="badge-ruta">Ruta: ${esc(window.nombreRuta)}</div>
@@ -699,7 +699,7 @@ function openComparativoWindow() {
   </div>
 
   <div class="report-footer">
-    Generado por Sistema de Gestión de Manifiestos — Efficommerce Transportadora
+    Generado por el sistema de manifiestos de Efficommerce
   </div>
 
 </div>
@@ -861,7 +861,7 @@ function renderTablaGuias() {
     ).join('');
     return `<tr>
       <td style="color:#999;font-size:12px;">${i + 1}</td>
-      <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${esc(f.guia)}</td>
+      <td style="font-family:var(--num);font-weight:600;">${esc(f.guia)}</td>
       <td><span class="badge-estado ${badgeClass}">${badgeText}</span>${insigniaRepetidaHTML(f.guia)}</td>
       <td style="color:#888;font-size:12px;">${esc(f.hora)}</td>
       <td style="text-align:center;">

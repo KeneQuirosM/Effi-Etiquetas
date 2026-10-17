@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>STOCKFORGE — Warehouse / Gestión de Almacén</title>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<title>StockForge | Gestión de almacén</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&family=Archivo+Narrow:wght@400..700&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous">
 </script>
 <link rel="stylesheet" href="/shared/tokens.css">
@@ -30,13 +30,13 @@
       <button type="button" id="logo-name-display"
         onclick="startEditName()"
         title="Clic para editar nombre"
-        style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.35rem;letter-spacing:3px;color:var(--bright);background:none;border:none;padding:0;text-align:left;cursor:pointer;white-space:nowrap;appearance:none;-webkit-appearance:none;">
+        style="font-family:var(--f-ui);font-weight:700;font-size:1.35rem;letter-spacing:3px;color:var(--bright);background:none;border:none;padding:0;text-align:left;cursor:pointer;white-space:nowrap;appearance:none;-webkit-appearance:none;">
         BODEGA <em style="color:var(--accent);font-style:normal;" id="logo-name-em">EFFICOMMERCE CR</em>
       </button>
       <input id="logo-name-input"
-        style="display:none;background:none;border:none;border-bottom:1px solid var(--cyan);outline:none;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.1rem;letter-spacing:3px;color:var(--bright);width:220px;"
+        style="display:none;background:none;border:none;border-bottom:1px solid var(--cyan);outline:none;font-family:var(--f-ui);font-weight:700;font-size:1.1rem;letter-spacing:3px;color:var(--bright);width:220px;"
         onblur="finishEditName()" onkeydown="if(event.key==='Enter')finishEditName()">
-      <div style="font-size:1rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-top:1px" data-i18n="sys_management">Sistema de Gestión</div>
+      <div style="font-size:1rem;color:var(--dim);margin-top:1px;letter-spacing:0" data-i18n="sys_management">Sistema de Gestión</div>
     </div>
   </div>
   <div class="ntab on" data-i18n="nav_warehouse">Almacén</div>
@@ -49,9 +49,8 @@
     <div class="srch-results" id="srch-results-hdr"></div>
   </div>
   <div class="hbar">
-    <div class="hstat"><div class="dot g"></div><span data-i18n="sys_ok">SISTEMA OK</span></div>
-    <div class="hstat" id="hclock"><div class="dot y"></div>--:--:--</div>
-    <div class="save-ind" id="save-ind"><div class="dot g"></div><span data-i18n="saved">GUARDADO</span></div>
+    <div class="hstat" id="hclock">--:--:--</div>
+    <div class="save-ind" id="save-ind"><div class="dot g"></div><span data-i18n="saved">Guardado</span></div>
     <button class="hbtn cyan guard-btn" onclick="guardEdit(()=>openO('o-transfer'))" data-i18n="btn_transfer">⇄ Trasladar</button>
     <button class="hbtn" onclick="openBulkPrint()" style="border-color:var(--yellow);color:var(--yellow)" data-i18n="btn_labels">Etiquetas</button>
     <button class="hbtn ac guard-btn" onclick="guardEdit(openAddRack)" data-i18n="btn_rack">＋ Rack</button>
@@ -82,7 +81,7 @@
 <button type="button" class="mob-backdrop" id="mob-backdrop" onclick="closeMobileMenu()" aria-label="Cerrar menú"></button>
 <div class="mob-drawer" id="mob-drawer">
   <div class="mob-drawer-hd">
-    <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.2rem;letter-spacing:3px;color:var(--bright)">MENÚ</span>
+    <span style="font-family:var(--f-ui);font-weight:700;font-size:1.2rem;color:var(--bright)">Menú</span>
     <button onclick="closeMobileMenu()" style="background:none;border:none;color:var(--dim);font-size:1.4rem;cursor:pointer;padding:4px 8px">✕</button>
   </div>
   <div class="mob-drawer-body">
@@ -125,11 +124,11 @@
     
   </div>
   <div class="lsec" id="expiry-panel" style="display:none">
-    <div class="shd" style="color:var(--red)"><span data-i18n="expiry_title">Vencimientos</span> <span id="expiry-count" style="font-family:'Share Tech Mono',monospace;font-size:1rem;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;margin-left:4px">0</span><button onclick="openReportExpiry()" style="margin-left:auto;background:none;border:none;color:var(--dim);font-size:.95rem;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px" data-i18n="expiry_see">Ver todos →</button></div>
+    <div class="shd" style="color:var(--red)"><span data-i18n="expiry_title">Vencimientos</span> <span id="expiry-count" style="font-family:var(--f-num);font-size:1rem;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;margin-left:4px">0</span><button onclick="openReportExpiry()" style="margin-left:auto;background:none;border:none;color:var(--dim);font-size:.95rem;cursor:pointer;font-family:var(--f-ui);font-weight:700;letter-spacing:1px" data-i18n="expiry_see">Ver todos</button></div>
     <div id="expiry-list" style="display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto"></div>
   </div>
   <div class="lsec" id="lowstock-panel" style="display:none">
-    <div class="shd" style="color:var(--yellow)"><span data-i18n="lowstock_title">Stock bajo</span> <span id="lowstock-count" style="font-family:'Share Tech Mono',monospace;font-size:1rem;background:var(--yellow);color:#000;border-radius:10px;padding:1px 7px;margin-left:4px">0</span></div>
+    <div class="shd" style="color:var(--yellow)"><span data-i18n="lowstock_title">Stock bajo</span> <span id="lowstock-count" style="font-family:var(--f-num);font-size:1rem;background:var(--yellow);color:#000;border-radius:10px;padding:1px 7px;margin-left:4px">0</span></div>
     <div id="lowstock-list" style="display:flex;flex-direction:column;gap:3px;max-height:150px;overflow-y:auto"></div>
   </div>
   <div class="lsec">
@@ -157,13 +156,13 @@
   <div class="lscroll">
     
     <div class="shd" style="margin-bottom:2px" data-i18n="legend_title">Leyenda</div>
-    <div class="leg"><div class="lb" style="background:rgba(0,255,136,.15);border-color:rgba(0,255,136,.5)"></div><span data-i18n="leg_full">Ocupado</span></div>
+    <div class="leg"><div class="lb" style="background:rgba(79,196,138,.15);border-color:rgba(79,196,138,.5)"></div><span data-i18n="leg_full">Ocupado</span></div>
     <div class="leg"><div class="lb" style="background:rgba(255,208,0,.15);border-color:rgba(255,208,0,.5)"></div><span data-i18n="leg_partial">Parcial</span></div>
-    <div class="leg"><div class="lb" style="background:rgba(0,212,255,.15);border-color:rgba(0,212,255,.5)"></div><span data-i18n="leg_reserved">Reservado</span></div>
+    <div class="leg"><div class="lb" style="background:rgba(141,180,220,.15);border-color:rgba(141,180,220,.5)"></div><span data-i18n="leg_reserved">Reservado</span></div>
     <div class="leg"><div class="lb" style="background:rgba(255,59,92,.15);border-color:rgba(255,59,92,.5)"></div><span data-i18n="leg_blocked">Bloqueado</span></div>
     <div class="leg"><div class="lb" style="background:var(--steel);border-color:var(--beam)"></div><span data-i18n="leg_empty">Vacío</span></div>
     <div style="margin-top:8px;font-size:1.14rem;color:var(--dim);line-height:1.6">
-      <div style="font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;font-size:1.08rem" data-i18n="controls_title">Controles</div>
+      <div style="font-weight:700;margin-bottom:2px;font-size:1.08rem" data-i18n="controls_title">Controles</div>
       <div data-i18n="ctrl_drag">Arrastrar → mover rack</div>
       <div data-i18n="ctrl_click">Clic celda → ver / editar</div>
       <div data-i18n="ctrl_search">Buscador → ubicar SKU</div>
@@ -197,8 +196,8 @@
   <div class="vp" id="vp">
     <div class="floor" id="floor">
     <!-- floating search HUD -->
-    <div id="spot-hud" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:120;background:var(--panel);border:1px solid var(--cyan);border-radius:30px;padding:6px 14px;display:none;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(0,212,255,.25);backdrop-filter:blur(8px)">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--cyan)" id="spot-hud-count"></span>
+    <div id="spot-hud" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:120;background:var(--panel);border:1px solid var(--cyan);border-radius:30px;padding:6px 14px;display:none;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(141,180,220,.25);backdrop-filter:blur(8px)">
+      <span style="font-family:var(--f-num);font-size:.95rem;color:var(--cyan)" id="spot-hud-count"></span>
       <button onclick="spotNav(-1)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center">▲</button>
       <button onclick="spotNav(1)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center">▼</button>
       <button onclick="clearSearch()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:1.1rem;padding:0 2px" title="Limpiar">✕</button>
@@ -231,7 +230,7 @@
           </svg>
           <div class="ring-in"><div class="rpct" id="rpct">0%</div><div class="rsub">LLENO</div></div>
         </div>
-        <div style="margin-top:5px;font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--dim)" id="rdet">0 / 0 celdas</div>
+        <div style="margin-top:5px;font-family:var(--f-num);font-size:1.1rem;color:var(--dim)" id="rdet">0 / 0 celdas</div>
       </div>
     </div>
   </div>
@@ -272,7 +271,7 @@
     <div class="mbdy" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <!-- EMPLEADOS -->
       <div>
-        <div style="font-size:1.1rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:8px">Empleados</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--cyan);margin-bottom:8px">Empleados</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <input class="fi" id="cat-person-name" placeholder="Nombre completo" data-i18n="catalog_name_ph" data-i18n-target="placeholder" style="flex:1" onkeydown="if(event.key==='Enter')addCatalogPerson()">
           <input class="fi" id="cat-person-role" placeholder="Cargo (opcional)" data-i18n="catalog_role_ph" data-i18n-target="placeholder" style="width:130px" onkeydown="if(event.key==='Enter')addCatalogPerson()">
@@ -282,7 +281,7 @@
       </div>
       <!-- TIENDAS -->
       <div>
-        <div style="font-size:1.1rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px" data-i18n="catalog_shops">Tiendas</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:8px" data-i18n="catalog_shops">Tiendas</div>
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <input class="fi" id="cat-shop-name" placeholder="Nombre de la tienda" data-i18n="catalog_shop_name_ph" data-i18n-target="placeholder" style="flex:1" onkeydown="if(event.key==='Enter')addCatalogShop()">
           <input class="fi" id="cat-shop-code" placeholder="Código (opcional)" data-i18n="catalog_shop_code_ph" data-i18n-target="placeholder" style="width:100px" onkeydown="if(event.key==='Enter')addCatalogShop()">
@@ -374,8 +373,8 @@
   </div>
 </div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:9px">
-        <div style="font-size:1.08rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:5px">Celdas — clic para asignar productos</div>
-        <div style="font-size:1.08rem;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:4px">BAHÍAS → / NIVELES ↓</div>
+        <div style="font-size:1.08rem;font-weight:700;color:var(--dim);margin-bottom:5px">Celdas: haz clic en una para asignar productos</div>
+        <div style="font-size:1.08rem;color:var(--dim);font-family:var(--f-num);margin-bottom:4px">Bahías en horizontal, niveles en vertical</div>
         <div class="cgrid" id="cgrid"></div>
       </div>
     </div>
@@ -479,10 +478,10 @@
         <div id="t-summary" style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:12px;font-size:1rem;line-height:1.8"></div>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:12px">
-        <button class="btn bo" id="t-back" onclick="transferBack()" style="display:none">← Atrás</button>
+        <button class="btn bo" id="t-back" onclick="transferBack()" style="display:none">Atrás</button>
         <div style="margin-left:auto;display:flex;gap:6px">
           <button class="btn bo" onclick="closeO('o-transfer');resetTransfer()" data-i18n="btn_close">Cancelar</button>
-          <button class="btn bp" id="t-next" onclick="transferNext()">Siguiente →</button>
+          <button class="btn bp" id="t-next" onclick="transferNext()">Siguiente</button>
         </div>
       </div>
     </div>
@@ -710,9 +709,9 @@
         </div>
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:12px;margin-bottom:14px">
-        <div data-i18n="bulk_preview_title" style="font-size:1.08rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Vista previa de selección</div>
+        <div data-i18n="bulk_preview_title" style="font-size:1.08rem;color:var(--dim);margin-bottom:6px">Vista previa de selección</div>
         <div id="bp-preview" style="display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow-y:auto"></div>
-        <div id="bp-count" style="margin-top:8px;font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--cyan)">${t('rep_labels_selected').replace(/^\d+ /,'0 ')}</div>
+        <div id="bp-count" style="margin-top:8px;font-family:var(--f-num);font-size:1.1rem;color:var(--cyan)">${t('rep_labels_selected').replace(/^\d+ /,'0 ')}</div>
       </div>
     </div>
     <div class="mft">

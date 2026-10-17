@@ -8,7 +8,7 @@ const TRANSLATIONS={
   es:{
     // Header
     nav_warehouse:'Almacén', nav_report:'Reporte',
-    sys_ok:'SISTEMA OK', saved:'GUARDADO',
+    saved:'Guardado',
     btn_transfer:'⇄ Trasladar SKU', btn_labels:'Etiquetas', btn_report:'Reporte',
     btn_json:'⬇ JSON', btn_snapshots:'Snapshots', btn_import:'⬆ Importar',
     btn_zone:'＋ Zona', btn_catalogs:'Catálogos', btn_rack:'＋ Rack',
@@ -18,7 +18,7 @@ const TRANSLATIONS={
     // Sidebar
     stat_racks:'Racks', stat_skus:'SKUs únicos', stat_occupied:'Ocupado', stat_free:'Libre',
     top_skus:'Top SKUs por cantidad',
-    expiry_title:'Vencimientos', expiry_see:'Ver todos →',
+    expiry_title:'Vencimientos', expiry_see:'Ver todos',
     lowstock_title:'Stock bajo',
     zones_title:'Zonas',
     legend_title:'Leyenda', leg_full:'Ocupado', leg_partial:'Parcial',
@@ -65,7 +65,7 @@ const TRANSLATIONS={
     transfer_s3:'3. Rack destino', transfer_s4:'4. Confirmar traslado',
     transfer_sel_rack:'Seleccionar rack de origen...',
     transfer_sel_dest:'Seleccionar rack de destino...',
-    transfer_next:'Siguiente →', transfer_confirm:'✓ Confirmar traslado',
+    transfer_next:'Siguiente', transfer_confirm:'✓ Confirmar traslado',
     transfer_qty_lbl:'Cantidad a trasladar:',
     // Report modal
     report_title:'Reportes del Almacén',
@@ -157,7 +157,7 @@ const TRANSLATIONS={
     mov_no_movements:'Sin movimientos registrados para estos SKUs',
     // Report labels
     rep_no_results:'Sin resultados', rep_results:'resultado', rep_results_pl:'resultados',
-    rep_showing:'Mostrando 30 de', rep_refine:'— afina la búsqueda',
+    rep_showing:'Mostrando 30 de', rep_refine:'. Afina la búsqueda',
     rep_cells_total:'celdas', rep_skus_of:'SKUs',
     // Rack context menu
     rack_menu_edit:'✎ Editar rack', rack_menu_sign:'Letrero', rack_menu_report:'Ver celdas',
@@ -212,14 +212,14 @@ const TRANSLATIONS={
     // Report
     rep_generated:'Generado:',
     rep_records:'registros',
-    rep_cells_skus_summary:'{occ} / {total} celdas · {skus} SKUs',
+    rep_cells_skus_summary:'{occ} / {total} celdas, {skus} SKUs',
     rep_labels_selected:'etiquetas seleccionadas',
     // Zone list
     zone_desc_lbl:'Descripción', zone_desc_ph:'Opcional',
     catalog_no_people_short:'Sin empleados en catálogo',
     catalog_no_shops_short:'Sin tiendas en catálogo',
     rack_detail_title:'Detalle Rack',
-    det_no_selection:'— Sin selección —',
+    det_no_selection:'Sin selección',
     bulk_preview_title:'Vista previa de selección',
     zone_go:'IR',
     zones_empty:'Sin zonas aún',
@@ -255,7 +255,7 @@ const TRANSLATIONS={
   en:{
     // Header
     nav_warehouse:'Warehouse', nav_report:'Report',
-    sys_ok:'SYSTEM OK', saved:'SAVED',
+    saved:'Saved',
     btn_transfer:'⇄ Transfer SKU', btn_labels:'Labels', btn_report:'Report',
     btn_json:'⬇ JSON', btn_snapshots:'Snapshots', btn_import:'⬆ Import',
     btn_zone:'＋ Zone', btn_catalogs:'Catalogs', btn_rack:'＋ Rack',
@@ -265,7 +265,7 @@ const TRANSLATIONS={
     // Sidebar
     stat_racks:'Racks', stat_skus:'Unique SKUs', stat_occupied:'Occupied', stat_free:'Free',
     top_skus:'Top SKUs by quantity',
-    expiry_title:'Expiring', expiry_see:'View all →',
+    expiry_title:'Expiring', expiry_see:'View all',
     lowstock_title:'Low stock',
     zones_title:'Zones',
     legend_title:'Legend', leg_full:'Occupied', leg_partial:'Partial',
@@ -312,7 +312,7 @@ const TRANSLATIONS={
     transfer_s3:'3. Destination rack', transfer_s4:'4. Confirm transfer',
     transfer_sel_rack:'Select origin rack...',
     transfer_sel_dest:'Select destination rack...',
-    transfer_next:'Next →', transfer_confirm:'✓ Confirm transfer',
+    transfer_next:'Next', transfer_confirm:'✓ Confirm transfer',
     transfer_qty_lbl:'Quantity to transfer:',
     // Report modal
     report_title:'Warehouse Reports',
@@ -404,7 +404,7 @@ const TRANSLATIONS={
     mov_no_movements:'No movements recorded for these SKUs',
     // Report labels
     rep_no_results:'No results', rep_results:'result', rep_results_pl:'results',
-    rep_showing:'Showing 30 of', rep_refine:'— refine your search',
+    rep_showing:'Showing 30 of', rep_refine:'. Refine your search',
     rep_cells_total:'cells', rep_skus_of:'SKUs',
     // Rack context menu
     rack_menu_edit:'✎ Edit rack', rack_menu_sign:'Sign', rack_menu_report:'View cells',
@@ -459,14 +459,14 @@ const TRANSLATIONS={
     // Report
     rep_generated:'Generated:',
     rep_records:'records',
-    rep_cells_skus_summary:'{occ} / {total} cells · {skus} SKUs',
+    rep_cells_skus_summary:'{occ} / {total} cells, {skus} SKUs',
     rep_labels_selected:'labels selected',
     // Zone list
     zone_desc_lbl:'Description', zone_desc_ph:'Optional',
     catalog_no_people_short:'No employees in catalog',
     catalog_no_shops_short:'No shops in catalog',
     rack_detail_title:'Rack Detail',
-    det_no_selection:'— No selection —',
+    det_no_selection:'No selection',
     bulk_preview_title:'Selection preview',
     zone_go:'GO',
     zones_empty:'No zones yet',
@@ -547,7 +547,7 @@ function applyI18n(){
   if(bpc&&/^\d+/.test(bpc.textContent)){const n=bpc.textContent.match(/^\d+/)[0];bpc.textContent=n+' '+t('rep_labels_selected');}
   // bulk print rack selector
   const bpRack=document.getElementById('bp-rack');
-  if(bpRack&&bpRack.options[0])bpRack.options[0].textContent='— '+t('rep_mov_all')+' racks —';
+  if(bpRack&&bpRack.options[0])bpRack.options[0].textContent=t('bulk_filter_rack');
   // bulk print state selector
   const bpState=document.getElementById('bp-state');
   if(bpState){
@@ -567,13 +567,13 @@ function applyI18n(){
 // ═══════════════ THEMES ═══════════════
 const THEMES={
   dark:{
-    '--bg':'#0a0c0f','--bg2':'#0d1017','--bg3':'#111520','--panel':'#0f1318',
-    '--border':'#1a2030','--border2':'#243048',
-    '--accent':'#f0a500','--cyan':'#00d4ff','--green':'#00ff88',
-    '--red':'#ff3b5c','--yellow':'#ffd000',
-    '--text':'#b8c8e0','--dim':'#4a5a78','--bright':'#e0ecff',
-    '--steel':'#141c2a','--beam':'#1e2d45',
-    '--body-bg':'#0a0c0f','--scanline':'rgba(0,0,0,.05)',
+    '--bg':'#11151b','--bg2':'#151a21','--bg3':'#1a2029','--panel':'#161b22',
+    '--border':'#252e3b','--border2':'#313c4d',
+    '--accent':'#f2a900','--cyan':'#8db4dc','--green':'#4fc48a',
+    '--red':'#f0596b','--yellow':'#e8c547',
+    '--text':'#c3cedd','--dim':'#7a89a3','--bright':'#eef2f8',
+    '--steel':'#1b222c','--beam':'#2a3546',
+    '--body-bg':'#11151b',
   },
   effi: {
     '--bg': '#0b0e11',
@@ -627,7 +627,7 @@ function applyTheme(theme){
   const styleTag=document.getElementById('sf-scanline-style')||document.createElement('style');
   styleTag.id='sf-scanline-style';
   if(theme==='light'){
-    styleTag.textContent='body::before{background-image:linear-gradient(rgba(0,100,200,.012) 1px,transparent 1px),linear-gradient(90deg,rgba(0,100,200,.012) 1px,transparent 1px)!important;}body::after{display:none!important;}';
+    styleTag.textContent='body::before{background-image:linear-gradient(rgba(0,100,200,.012) 1px,transparent 1px),linear-gradient(90deg,rgba(0,100,200,.012) 1px,transparent 1px)!important;}';
   } else if(theme==='dalton'){
     styleTag.textContent=`.s-full{background:rgba(77,184,255,.15)!important;border-color:rgba(77,184,255,.5)!important}.s-partial{background:rgba(245,200,66,.15)!important;border-color:rgba(245,200,66,.5)!important}.s-reserved{background:rgba(200,160,255,.15)!important;border-color:rgba(200,160,255,.5)!important}.s-blocked{background:repeating-linear-gradient(45deg,rgba(245,200,66,.1),rgba(245,200,66,.1) 4px,transparent 4px,transparent 8px)!important;border-color:rgba(245,200,66,.5)!important}`;
   } else {
@@ -790,8 +790,8 @@ async function cargarCatalogo() {
     console.warn('[SF] No se pudo cargar catálogo:', e);
   }
 }
-let pickedColor='#00ff88';
-const COLORS=['#00ff88','#f0a500','#00d4ff','#ff6b35','#ff3b5c','#ffd000','#a78bfa','#34d399','#f472b6','#60a5fa','#fb923c','#22d3ee'];
+let pickedColor='#4fc48a';
+const COLORS=['#4fc48a','#f0a500','#8db4dc','#ff6b35','#ff3b5c','#ffd000','#a78bfa','#34d399','#f472b6','#60a5fa','#fb923c','#22d3ee'];
 // Definición canónica única — antes redefinida también en el preview del bulk-print (stateColors)
 // y en la función stateCol(); ambas eliminadas para usar esta.
 const STATE_COLORS={full:'var(--green)',partial:'var(--yellow)',reserved:'var(--cyan)',blocked:'var(--red)',empty:'var(--dim)'};
@@ -802,7 +802,7 @@ let lastAutoSnap=0;
   if (document.getElementById('offline-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'offline-banner';
-  banner.innerHTML = 'Sin conexión — usando datos en caché';
+  banner.innerHTML = 'Sin conexión. Se muestran los datos en caché.';
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c98e00;color:#fff;text-align:center;padding:4px;z-index:9999;';
   document.body.prepend(banner);
 }
@@ -821,7 +821,7 @@ function showToast(msg, type) {
   
 async function save() {
   if (isOffline) {
-    showToast('Sin conexión — no se pueden guardar cambios', 'danger');
+    showToast('Sin conexión. Los cambios no se pueden guardar hasta que vuelva la red.', 'danger');
     return;
   }
   try {
@@ -1124,18 +1124,18 @@ function showExcelImportResultModal(tienda, updated, notFound, notFoundSkus){
     <div class="mhd"><span class="mttl">Resultado — ${esc(tienda.name)}</span><button class="cls" onclick="closeO('o-import-result')">✕</button></div>
     <div class="mbdy" style="padding:16px;display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;gap:10px">
-        <div style="flex:1;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:6px;padding:12px;text-align:center">
-          <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--green);font-weight:900">${updated}</div>
-          <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Actualizados</div>
+        <div style="flex:1;background:rgba(79,196,138,.08);border:1px solid rgba(79,196,138,.2);border-radius:6px;padding:12px;text-align:center">
+          <div style="font-family:var(--f-num);font-size:1.6rem;color:var(--green);font-weight:900">${updated}</div>
+          <div style="font-size:.8rem;color:var(--dim);margin-top:3px">Actualizados</div>
         </div>
         <div style="flex:1;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:6px;padding:12px;text-align:center">
-          <div style="font-family:'Share Tech Mono',monospace;font-size:1.6rem;color:var(--accent);font-weight:900">${notFound}</div>
-          <div style="font-size:.8rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Sin ubicar</div>
+          <div style="font-family:var(--f-num);font-size:1.6rem;color:var(--accent);font-weight:900">${notFound}</div>
+          <div style="font-size:.8rem;color:var(--dim);margin-top:3px">Sin ubicar</div>
         </div>
       </div>
       ${notFoundSkus.length?`<div>
-        <div style="font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">IDs sin celda asignada en ${esc(tienda.name)}</div>
-        <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--dim);max-height:160px;overflow-y:auto;line-height:1.8">${notFoundSkus.map(esc).join('<br>')}</div>
+        <div style="font-size:.82rem;color:var(--dim);margin-bottom:6px">IDs sin celda asignada en ${esc(tienda.name)}</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:var(--f-num);font-size:.88rem;color:var(--dim);max-height:160px;overflow-y:auto;line-height:1.8">${notFoundSkus.map(esc).join('<br>')}</div>
       </div>`:''}
       <button class="btn bp" onclick="closeO('o-import-result')" style="width:100%">OK</button>
     </div>
@@ -1173,7 +1173,7 @@ function _doExcelImport(tiendaId, ext, file){
       rack:'',rackId:'',bay:0,level:0,note:file.name});
     if(state.movements.length>1000)state.movements=state.movements.slice(-1000);
     save();
-    addAct(`Stock <strong>${esc(tienda.name)}</strong> importado — ${updated} actualizado${updated!==1?'s':''}${notFound?' · '+notFound+' no encontrados':''}`, 'var(--green)');
+    addAct(`Stock <strong>${esc(tienda.name)}</strong> importado: ${updated} actualizado${updated!==1?'s':''}${notFound?', '+notFound+' no encontrados':''}`, 'var(--green)');
 
     showExcelImportResultModal(tienda, updated, notFound, notFoundSkus);
   };
@@ -1224,7 +1224,7 @@ function saveSnapshot(auto=false){
     let snaps=[];
     try{snaps=JSON.parse(localStorage.getItem(SNAP_KEY))||[];}catch{}
     const now=new Date();
-    const label=(auto?'Auto · ':'')+now.toLocaleDateString('es-CR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+now.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'});
+    const label=(auto?'Auto: ':'')+now.toLocaleDateString('es-CR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+now.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'});
     const snap={ts:Date.now(),label,auto:!!auto,data:JSON.stringify(state)};
     snaps.unshift(snap);
     if(snaps.length>SNAP_MAX)snaps=snaps.slice(0,SNAP_MAX);
@@ -1319,8 +1319,8 @@ function renderSnapshots(){
     const skuCount=Object.values(d.cells||{}).reduce((acc,cells)=>acc+cells.reduce((a,c)=>a+(c.skus||[]).length,0),0);
     return `<div style="background:var(--bg3);border:1px solid var(--border${i===0?'':' var(--border2)'});border-radius:4px;padding:10px 14px;margin-bottom:8px;display:flex;gap:10px;align-items:center">
       <div style="flex:1">
-        <div style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--bright)">${s.label}</div>
-        <div style="font-size:.88rem;color:var(--dim);margin-top:3px">${rackCount} ${t('snap_racks')} · ${skuCount} ${t('snap_skus_label')}</div>
+        <div style="font-family:var(--f-num);font-size:1rem;color:var(--bright)">${s.label}</div>
+        <div style="font-size:.88rem;color:var(--dim);margin-top:3px">${rackCount} ${t('snap_racks')}, ${skuCount} ${t('snap_skus_label')}</div>
         ${i===0?`<div style="font-size:.8rem;color:var(--green);margin-top:2px">${t('snap_latest')}</div>`:''}
       </div>
       <button onclick="downloadSnapshot(${s.ts})" style="background:none;border:1px solid var(--border2);color:var(--dim);border-radius:3px;padding:5px 10px;cursor:pointer;font-size:.9rem">${t('snap_download')}</button>
@@ -1646,9 +1646,9 @@ function openCellEdit(bay,level,rackId){
       const on=(selectedIds||[]).includes(item.id);
       const chip=document.createElement('button');
       chip.type='button';
-      chip.style.cssText='display:flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;cursor:pointer;font-size:1rem;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;border:1px solid;transition:all .18s;user-select:none;appearance:none;-webkit-appearance:none;';
+      chip.style.cssText='display:flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;cursor:pointer;font-size:1rem;font-family:var(--f-ui);font-weight:700;border:1px solid;transition:all .18s;user-select:none;appearance:none;-webkit-appearance:none;';
       const applyStyle=isOn=>{
-        if(isOn){chip.style.background=isCyan?'rgba(0,212,255,.1)':'rgba(240,165,0,.15)';chip.style.borderColor=isCyan?'var(--cyan)':'var(--accent)';chip.style.color=isCyan?'var(--cyan)':'var(--accent)';}
+        if(isOn){chip.style.background=isCyan?'rgba(141,180,220,.1)':'rgba(240,165,0,.15)';chip.style.borderColor=isCyan?'var(--cyan)':'var(--accent)';chip.style.color=isCyan?'var(--cyan)':'var(--accent)';}
         else{chip.style.background='var(--bg3)';chip.style.borderColor='var(--border2)';chip.style.color='var(--dim)';}
       };
       applyStyle(on);
@@ -1711,7 +1711,7 @@ function renderSkuList(skus){
         <input placeholder="Descripción" data-i18n="edit_desc_ph" data-i18n-target="placeholder" value="${esc(s.desc||'')}" data-f="desc" data-i="${i}" style="flex:1">
         <div class="sku-sep"></div>
         <input placeholder="Cant." data-i18n="edit_qty_ph" data-i18n-target="placeholder" value="${esc(s.qty||'')}" data-f="qty" data-i="${i}" style="width:40px${lowStock?';color:var(--red)':''}">
-        <select data-f="unit" data-i="${i}" style="background:none;border:none;outline:none;color:var(--dim);font-family:'Barlow Condensed',sans-serif;font-size:1rem;cursor:pointer;width:50px">
+        <select data-f="unit" data-i="${i}" style="background:none;border:none;outline:none;color:var(--dim);font-family:var(--f-ui);font-size:1rem;cursor:pointer;width:50px">
           ${['pcs','cajas','kg','pallets','L','sacos','rollos','sets'].map(u=>`<option ${s.unit===u?'selected':''}>${u}</option>`).join('')}
         </select>
         <button class="sku-del" onclick="removeSkuRow(${i})">✕</button>
@@ -1723,11 +1723,11 @@ function renderSkuList(skus){
         <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
           <span style="display:flex;align-items:center;gap:4px" title="${currentLang==='en'?'Unit cost (for inventory value report)':'Costo unitario (para reporte de valor de inventario)'}">
             <span style="font-size:.9rem;color:var(--dim)">$</span>
-            <input type="number" placeholder="0.00" value="${esc(s.cost||'')}" data-f="cost" data-i="${i}" min="0" step="0.01" style="width:64px;background:none;border:none;border-bottom:1px solid var(--border2);outline:none;color:var(--cyan);font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:right">
+            <input type="number" placeholder="0.00" value="${esc(s.cost||'')}" data-f="cost" data-i="${i}" min="0" step="0.01" style="width:64px;background:none;border:none;border-bottom:1px solid var(--border2);outline:none;color:var(--cyan);font-family:var(--f-ui);font-size:1rem;text-align:right">
           </span>
           <span style="display:flex;align-items:center;gap:4px">
             <span style="font-size:.9rem;color:var(--dim)">Mín:</span>
-            <input type="number" placeholder="0" value="${esc(s.minStock||'')}" data-f="minStock" data-i="${i}" min="0" style="width:48px;background:none;border:none;border-bottom:1px solid ${lowStock?'var(--red)':'var(--border2)'};outline:none;color:${lowStock?'var(--red)':'var(--dim)'};font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:center" title="Stock mínimo — alerta cuando la cantidad esté en o por debajo de este valor">
+            <input type="number" placeholder="0" value="${esc(s.minStock||'')}" data-f="minStock" data-i="${i}" min="0" style="width:48px;background:none;border:none;border-bottom:1px solid ${lowStock?'var(--red)':'var(--border2)'};outline:none;color:${lowStock?'var(--red)':'var(--dim)'};font-family:var(--f-ui);font-size:1rem;text-align:center" title="Stock mínimo — alerta cuando la cantidad esté en o por debajo de este valor">
           </span>
         </span>
       </div>`;
@@ -1931,7 +1931,7 @@ function openViewCell(rackId,bay,level){
       const el=daysS===null?'':(daysS<0?t('exp_expired')+' '+Math.abs(daysS)+t('exp_ago_suffix'):(daysS===0?t('exp_today'):t('exp_days')+' '+daysS+t('exp_days_suffix')));
       return `<div style="background:var(--bg);border:1px solid ${daysS!==null&&daysS<=30?ec:'var(--border2)'};border-radius:3px;padding:7px 10px;margin-bottom:4px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${esc(s.sku)||'—'}</span>
+          <span style="font-family:var(--f-num);font-size:1.1rem;color:var(--accent)">${esc(s.sku)||'—'}</span>
           <span style="font-size:1.02rem;color:var(--dim)">${s.qty?esc(s.qty)+' '+esc(s.unit):''}</span>
         </div>
         ${s.desc?`<div style="font-size:1.05rem;color:var(--dim);margin-top:2px">${esc(s.desc)}</div>`:''}
@@ -1941,23 +1941,23 @@ function openViewCell(rackId,bay,level){
   document.getElementById('view-body').innerHTML=`
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin-bottom:12px">
       <div class="drow"><span class="dk">${t('view_state')}</span><span class="dv" style="color:${sc}">${sl[cell.state]||t('state_empty')}</span></div>
-      <div class="drow"><span class="dk">${t('view_loc')}</span><span class="dv" style="font-family:'Share Tech Mono',monospace">${esc(rack.name)} · ${t('bay_short')}${bay+1} · ${t('level_short')}${level+1}</span></div>
+      <div class="drow"><span class="dk">${t('view_loc')}</span><span class="dv" style="font-family:var(--f-num)">${esc(rack.name)}, ${t('bay_short')}${bay+1}, ${t('level_short')}${level+1}</span></div>
       ${zone?`<div class="drow"><span class="dk">${t('view_zone')}</span><span class="dv" style="color:${zone.color}">${esc(zone.name)}</span></div>`:''}
       ${cell.notes?`<div class="drow"><span class="dk">${t('view_notes')}</span><span class="dv" style="font-size:1.02rem">${esc(cell.notes)}</span></div>`:''}
-      ${(cell.audits&&cell.audits.length)?`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--green);font-size:.98rem">${esc(cell.audits[cell.audits.length-1].date)} — ${esc(cell.audits[cell.audits.length-1].who)}${cell.audits[cell.audits.length-1].notes?' · '+esc(cell.audits[cell.audits.length-1].notes):''} <span style="color:var(--dim)">(${cell.audits.length} ${t('view_count_total')})</span></span></div>`:`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--dim);font-size:.98rem">${t('view_no_count')}</span></div>`}
+      ${(cell.audits&&cell.audits.length)?`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--green);font-size:.98rem">${esc(cell.audits[cell.audits.length-1].date)} — ${esc(cell.audits[cell.audits.length-1].who)}${cell.audits[cell.audits.length-1].notes?', '+esc(cell.audits[cell.audits.length-1].notes):''} <span style="color:var(--dim)">(${cell.audits.length} ${t('view_count_total')})</span></span></div>`:`<div class="drow"><span class="dk">${t('view_last_count')}</span><span class="dv" style="color:var(--dim);font-size:.98rem">${t('view_no_count')}</span></div>`}
     </div>
     ${cellResps.length||cellShops.length?`<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      ${cellResps.length?`<div style="flex:1;min-width:120px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.18);border-radius:4px;padding:8px 10px">
-        <div style="font-size:1rem;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('view_resp_cell')}</div>
+      ${cellResps.length?`<div style="flex:1;min-width:120px;background:rgba(141,180,220,.06);border:1px solid rgba(141,180,220,.18);border-radius:4px;padding:8px 10px">
+        <div style="font-size:1rem;color:var(--cyan);margin-bottom:5px">${t('view_resp_cell')}</div>
         ${cellResps.map(r=>`<div style="font-size:1.08rem;color:var(--bright);padding:2px 0">${esc(r)}</div>`).join('')}
       </div>`:''}
       ${cellShops.length?`<div style="flex:1;min-width:120px;background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.18);border-radius:4px;padding:8px 10px">
-        <div style="font-size:1rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('view_shops')}</div>
+        <div style="font-size:1rem;color:var(--accent);margin-bottom:5px">${t('view_shops')}</div>
         ${cellShops.map(s=>`<div style="font-size:1.08rem;color:var(--bright);padding:2px 0">${esc(s)}</div>`).join('')}
       </div>`:''}
     </div>`:''}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-      <div style="font-size:.94rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim)">${t('view_products')} (${(cell.skus||[]).length})</div>
+      <div style="font-size:.94rem;font-weight:700;color:var(--dim)">${t('view_products')} (${(cell.skus||[]).length})</div>
       ${(cell.skus||[]).length>=2?`<div style="display:flex;gap:4px">
         <button class="btn bo bsm" style="padding:2px 8px;font-size:.82rem" onclick="sortViewSkus('num')" title="Ordenar por SKU numérico"># ↑</button>
         <button class="btn bo bsm" style="padding:2px 8px;font-size:.82rem" onclick="sortViewSkus('az')" title="A→Z por descripción">A→Z</button>
@@ -1967,12 +1967,12 @@ function openViewCell(rackId,bay,level){
     <div id="view-sku-list">${skuHtml}</div>
     ${(cell.changelog&&cell.changelog.length)?`
     <details style="margin-top:12px">
-      <summary style="cursor:pointer;font-size:.9rem;letter-spacing:2px;text-transform:uppercase;color:var(--dim);user-select:none;padding:4px 0">${t('view_history')} (${cell.changelog.length})</summary>
+      <summary style="cursor:pointer;font-size:.9rem;color:var(--dim);user-select:none;padding:4px 0">${t('view_history')} (${cell.changelog.length})</summary>
       <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px;max-height:140px;overflow-y:auto">
         ${[...cell.changelog].reverse().map(e=>`
           <div style="display:flex;gap:8px;align-items:flex-start;padding:5px 8px;background:var(--bg3);border-radius:3px;border:1px solid var(--border)">
-            <span style="font-family:'Share Tech Mono',monospace;font-size:.85rem;color:var(--dim);white-space:nowrap;flex-shrink:0">${esc(e.date)}</span>
-            <span style="font-size:.95rem;color:var(--text)">${e.changes.map(esc).join(' · ')}</span>
+            <span style="font-family:var(--f-num);font-size:.85rem;color:var(--dim);white-space:nowrap;flex-shrink:0">${esc(e.date)}</span>
+            <span style="font-size:.95rem;color:var(--text)">${e.changes.map(esc).join(', ')}</span>
           </div>`).join('')}
       </div>
     </details>`:''}`;
@@ -2006,7 +2006,7 @@ function sortViewSkus(mode){
     const expiryLabel=daysS===null?'':(daysS<0?t('exp_expired')+' '+Math.abs(daysS)+t('exp_ago_suffix'):(daysS===0?t('exp_today'):t('exp_days')+' '+daysS+t('exp_days_suffix')));
     return `<div style="background:var(--bg);border:1px solid ${daysS!==null&&daysS<=30?ec:'var(--border2)'};border-radius:3px;padding:7px 10px;margin-bottom:4px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${esc(s.sku)||'—'}</span>
+        <span style="font-family:var(--f-num);font-size:1.1rem;color:var(--accent)">${esc(s.sku)||'—'}</span>
         <span style="font-size:1.02rem;color:var(--dim)">${s.qty?esc(s.qty)+' '+esc(s.unit):''}</span>
       </div>
       ${s.desc?`<div style="font-size:1.05rem;color:var(--dim);margin-top:2px">${esc(s.desc)}</div>`:''}
@@ -2028,27 +2028,27 @@ function openSkuHistory(){
   const typeLabel={entrada:t('mov_entrada'),salida:t('mov_salida'),traslado:t('mov_traslado'),ajuste:t('mov_ajuste')};
   const html=`<div style="padding:16px 18px">
     <div style="margin-bottom:14px">
-      <div style="font-size:.88rem;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px">${t('sku_hist_skus_lbl')}</div>
+      <div style="font-size:.88rem;color:var(--dim);margin-bottom:8px">${t('sku_hist_skus_lbl')}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${skus.map(s=>`<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:6px 12px">
-          <span style="font-family:'Share Tech Mono',monospace;color:var(--accent)">${esc(s.sku||'—')}</span>
+          <span style="font-family:var(--f-num);color:var(--accent)">${esc(s.sku||'—')}</span>
           <span style="color:var(--dim);font-size:.95rem;margin-left:8px">${esc(s.qty)} ${esc(s.unit||'')}</span>
           ${s.desc?`<div style="font-size:.9rem;color:var(--dim)">${esc(s.desc)}</div>`:''}
         </div>`).join('')}
       </div>
     </div>
-    <div style="font-size:.88rem;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px">
+    <div style="font-size:.88rem;color:var(--dim);margin-bottom:8px">
       ${t('sku_hist_mov_lbl')} (${movs.length})
     </div>
     ${movs.length?`<div style="display:flex;flex-direction:column;gap:4px;max-height:340px;overflow-y:auto;padding-right:4px">
       ${movs.map(m=>`<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:7px 10px;display:flex;gap:10px;align-items:flex-start">
-        <div style="flex-shrink:0;min-width:80px;font-family:'Share Tech Mono',monospace;font-size:.85rem;color:var(--dim)">${esc(m.date||'')}</div>
+        <div style="flex-shrink:0;min-width:80px;font-family:var(--f-num);font-size:.85rem;color:var(--dim)">${esc(m.date||'')}</div>
         <div style="flex-shrink:0;min-width:90px;font-size:.88rem;font-weight:700;color:${typeColor[m.type]||'var(--text)'}">${esc(typeLabel[m.type]||m.type)}</div>
         <div style="flex:1">
-          <span style="font-family:'Share Tech Mono',monospace;color:var(--accent)">${esc(m.sku)}</span>
+          <span style="font-family:var(--f-num);color:var(--accent)">${esc(m.sku)}</span>
           <span style="color:var(--dim);font-size:.9rem;margin-left:6px">${esc(m.desc||'')}</span>
         </div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--bright);flex-shrink:0">${m.qty>0?'+':''}${esc(m.qty)} ${esc(m.unit||'')}</div>
+        <div style="font-family:var(--f-num);font-size:.95rem;color:var(--bright);flex-shrink:0">${m.qty>0?'+':''}${esc(m.qty)} ${esc(m.unit||'')}</div>
         ${m.type==='traslado'?`<div style="font-size:.82rem;color:var(--dim);flex-shrink:0">→ ${esc(m.destRack||'')} ${t('bay_short')}${(m.destBay||0)+1}${t('level_short')}${(m.destLevel||0)+1}</div>`:''}
       </div>`).join('')}
     </div>`:`<div style="color:var(--dim);text-align:center;padding:20px 0;font-size:1.05rem">${t('sku_hist_no_mov')}</div>`}
@@ -2359,7 +2359,7 @@ function buildShelfNode(rack,rCells,b,l){
   if(cell.audits&&cell.audits.length){
     const last=cell.audits[cell.audits.length-1];
     const auditDot=document.createElement('div');
-    auditDot.style.cssText='position:absolute;bottom:2px;left:3px;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green)';
+    auditDot.style.cssText='position:absolute;bottom:2px;left:3px;width:5px;height:5px;border-radius:50%;background:var(--green);';
     auditDot.title=(currentLang==='en'?'Verified: ':'Verificado: ')+last.date+' — '+last.who;
     sh.appendChild(auditDot);
   }
@@ -2506,10 +2506,10 @@ function showDetail(id){
     <div class="drow"><span class="dk">${t('rack_info_occupied')}</span><span class="dv g">${occ}</span></div>
     <div class="drow"><span class="dk">SKUs</span><span class="dv b">${totalSkus}</span></div>
     <div class="drow"><span class="dk">${t('state_blocked')}</span><span class="dv ${cnt.blocked?'r':''}">${cnt.blocked||0}</span></div>
-    ${resps.length?`<div class="drow" style="flex-direction:column;align-items:flex-start;gap:3px"><span class="dk">${t('rack_resp_lbl')}</span><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">${resps.map(r=>`<span style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);border-radius:20px;padding:2px 9px;font-size:1rem;color:var(--cyan)">${r}</span>`).join('')}</div></div>`:''}
+    ${resps.length?`<div class="drow" style="flex-direction:column;align-items:flex-start;gap:3px"><span class="dk">${t('rack_resp_lbl')}</span><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">${resps.map(r=>`<span style="background:rgba(141,180,220,.1);border:1px solid rgba(141,180,220,.25);border-radius:20px;padding:2px 9px;font-size:1rem;color:var(--cyan)">${r}</span>`).join('')}</div></div>`:''}
     ${shops.length?`<div class="drow" style="flex-direction:column;align-items:flex-start;gap:3px">${t('catalog_shops')}<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">${shops.map(s=>`<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:2px 9px;font-size:1rem;color:var(--accent)">${s}</span>`).join('')}</div></div>`:''}
     <div class="pbar"><div class="pfill" style="width:${pct}%;background:${bc}"></div></div>
-    <div style="font-family:'Share Tech Mono',monospace;font-size:1.14rem;color:var(--dim);text-align:right;margin-top:2px">${pct}% ${t('rack_info_pct_occupied')}</div>
+    <div style="font-family:var(--f-num);font-size:1.14rem;color:var(--dim);text-align:right;margin-top:2px">${pct}% ${t('rack_info_pct_occupied')}</div>
     <div style="display:flex;gap:4px;margin-top:8px">
       <button class="btn bo bsm" style="flex:1" onclick="openEditRack('${id}')">✎ ${t('btn_edit').replace('✎ ','')}</button>
       <button class="btn bo bsm" style="border-color:var(--green);color:var(--green)" onclick="duplicateRack('${id}')" title="${t('rack_menu_dup')}">⧉</button>
@@ -2523,7 +2523,7 @@ function deleteRack(id){
   const r=state.racks.find(r=>r.id===id);
   state.racks=state.racks.filter(r=>r.id!==id);delete state.cells[id];
   state.movements=(state.movements||[]).filter(m=>m.rackId!==id&&m.destRackId!==id);
-  if(selRack===id){selRack=null;document.getElementById('tinfo').textContent=t('sel_rack');document.getElementById('det-name').textContent='— '+t('sel_rack')+' —';document.getElementById('det-body').innerHTML=`<div style="color:var(--dim);font-size:.94rem;text-align:center;padding:8px 0">${t('sel_rack')}</div>`;}
+  if(selRack===id){selRack=null;document.getElementById('tinfo').textContent=t('sel_rack');document.getElementById('det-name').textContent=t('sel_rack');document.getElementById('det-body').innerHTML=`<div style="color:var(--dim);font-size:.94rem;text-align:center;padding:8px 0">${t('sel_rack')}</div>`;}
   save();renderFloor();updateStats();updateExpiryPanel();updateLowStockPanel();notif(`Rack "${r?.name}" ${t('notif_rack_deleted')}`,'warn');addAct(`Rack <strong>${esc(r?.name)}</strong> ${t('notif_rack_deleted')}`,'var(--red)');
 }
 function duplicateRack(id){
@@ -2565,14 +2565,14 @@ function openAudit(){
   if(!audits.length){
     hist.innerHTML=`<div style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;font-size:1rem;color:var(--dim)">${t('audit_no_prev')}</div>`;
   } else {
-    hist.innerHTML=`<div style="font-size:.9rem;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-bottom:3px">${t('view_history')} (${audits.length})</div>`
+    hist.innerHTML=`<div style="font-size:.9rem;color:var(--dim);margin-bottom:3px">${t('view_history')} (${audits.length})</div>`
       +[...audits].reverse().map((a,i)=>`
-        <div style="padding:7px 12px;background:${i===0?'rgba(0,255,136,.06)':'var(--bg3)'};border:1px solid ${i===0?'rgba(0,255,136,.2)':'var(--border)'};border-radius:4px;display:flex;align-items:center;gap:10px">
+        <div style="padding:7px 12px;background:${i===0?'rgba(79,196,138,.06)':'var(--bg3)'};border:1px solid ${i===0?'rgba(79,196,138,.2)':'var(--border)'};border-radius:4px;display:flex;align-items:center;gap:10px">
           <div style="flex:1;min-width:0">
             <span style="font-weight:700;color:${i===0?'var(--green)':'var(--bright)'}">${esc(a.who)}</span>
             ${a.notes?`<span style="color:var(--dim);font-size:.97rem"> — ${esc(a.notes)}</span>`:''}
           </div>
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;color:var(--dim);white-space:nowrap">${a.date}</span>
+          <span style="font-family:var(--f-num);font-size:.9rem;color:var(--dim);white-space:nowrap">${a.date}</span>
           ${i===0?`<span style="font-size:.8rem;color:var(--green);font-weight:700">${currentLang==='en'?'LATEST':'ÚLTIMO'}</span>`:''}
         </div>`).join('');
   }
@@ -2661,8 +2661,8 @@ function renderSearchResults(hits){
     r.innerHTML=`<div style="padding:10px;font-size:.94rem;color:var(--dim);text-align:center">${t('rep_no_results')}</div>`;
     r.classList.add('open');return;
   }
-  const navBar=`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(0,212,255,.07);border-bottom:1px solid var(--border2);position:sticky;top:0">
-    <span style="font-family:'Share Tech Mono',monospace;font-size:.92rem;color:var(--cyan)" id="spot-counter">${hits.length} resultado${hits.length!==1?'s':''}</span>
+  const navBar=`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(141,180,220,.07);border-bottom:1px solid var(--border2);position:sticky;top:0">
+    <span style="font-family:var(--f-num);font-size:.92rem;color:var(--cyan)" id="spot-counter">${hits.length} resultado${hits.length!==1?'s':''}</span>
     <div style="display:flex;gap:4px">
       <button onclick="spotNav(-1)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:3px;padding:3px 9px;cursor:pointer;font-size:1rem" title="Anterior">▲</button>
       <button onclick="spotNav(1)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:3px;padding:3px 9px;cursor:pointer;font-size:1rem" title="Siguiente">▼</button>
@@ -2672,10 +2672,10 @@ function renderSearchResults(hits){
     <button type="button" class="sres-item${i===spotIdx?' sres-active':''}" id="sres-${i}" onclick="spotJump(${i})" onmouseenter="spotIdx=${i};updateSpotActive()">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div class="sres-sku">${esc(h.sku||'—')}</div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--accent)">${h.qty?esc(h.qty)+' '+esc(h.unit||''):'—'}</div>
+        <div style="font-family:var(--f-num);font-size:.88rem;color:var(--accent)">${h.qty?esc(h.qty)+' '+esc(h.unit||''):'—'}</div>
       </div>
       <div class="sres-desc">${esc(h.desc||'Sin descripción')}</div>
-      <div class="sres-loc">${esc(h.rack)} · B${h.bay+1}·N${h.level+1}</div>
+      <div class="sres-loc">${esc(h.rack)}, B${h.bay+1}·N${h.level+1}</div>
     </button>`).join('')
     +(hits.length>30?`<div class="sres-nav">Mostrando 30 de ${hits.length} — afina la búsqueda</div>`:'');
   r.classList.add('open');
@@ -2834,7 +2834,7 @@ function buildTransferOriginPicker(filter){
     const rDiv=document.createElement('div');rDiv.className='cpick-rack';
     const hd=document.createElement('button');hd.type='button';hd.className='cpick-rack-hd';
     const zone=state.zones.find(z=>z.id===rack.zone);
-    hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?esc(zone.color):'var(--dim)'}"></div><span style="font-family:'Share Tech Mono',monospace;font-size:1.16rem">${esc(rack.name)}</span><span style="font-size:1.1rem;color:var(--dim);margin-left:auto">${rCells.length} ${t('transfer_cells_with')}</span>`;
+    hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?esc(zone.color):'var(--dim)'}"></div><span style="font-family:var(--f-num);font-size:1.16rem">${esc(rack.name)}</span><span style="font-size:1.1rem;color:var(--dim);margin-left:auto">${rCells.length} ${t('transfer_cells_with')}</span>`;
     const cells=document.createElement('div');cells.className='cpick-cells open';cells.style.gridTemplateColumns='repeat(auto-fill,minmax(120px,1fr))';
     rCells.forEach(cell=>{
       const skus=cell.skus||[];
@@ -2853,7 +2853,7 @@ function buildSkuChecks(){
   if(!tOrigin)return;
   const cell=(state.cells[tOrigin.rackId]||[]).find(c=>c.bay===tOrigin.bay&&c.level===tOrigin.level);
   const rack=state.racks.find(r=>r.id===tOrigin.rackId);
-  document.getElementById('t-origin-label').textContent=`Origen: ${rack?.name} · B${tOrigin.bay+1}·N${tOrigin.level+1}`;
+  document.getElementById('t-origin-label').textContent=`Origen: ${rack?.name}, B${tOrigin.bay+1}·N${tOrigin.level+1}`;
   const c=document.getElementById('t-sku-checks');c.innerHTML='';
   (cell?.skus||[]).forEach(s=>{
     const row=document.createElement('div');row.className='sku-chk';
@@ -2873,7 +2873,7 @@ function buildTransferDestPicker(){
     const rDiv=document.createElement('div');rDiv.className='cpick-rack';
     const hd=document.createElement('button');hd.type='button';hd.className='cpick-rack-hd';
     const zone=state.zones.find(z=>z.id===rack.zone);
-    hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?esc(zone.color):'var(--dim)'}"></div><span style="font-family:'Share Tech Mono',monospace;font-size:1.16rem">${esc(rack.name)}</span>`;
+    hd.innerHTML=`<div style="width:7px;height:7px;border-radius:1px;background:${zone?esc(zone.color):'var(--dim)'}"></div><span style="font-family:var(--f-num);font-size:1.16rem">${esc(rack.name)}</span>`;
     const cells=document.createElement('div');cells.className='cpick-cells open';cells.style.gridTemplateColumns='repeat(auto-fill,minmax(120px,1fr))';
     const rCells=state.cells[rack.id]||[];
     for(let b=0;b<rack.bays;b++) for(let l=0;l<rack.levels;l++){
@@ -2903,19 +2903,19 @@ function buildTransferSummary(){
   document.getElementById('t-summary').innerHTML=`
     <div style="display:flex;gap:16px;align-items:center">
       <div style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:3px;padding:9px">
-        <div style="font-size:1.08rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Origen</div>
-        <div style="font-family:'Share Tech Mono',monospace;color:var(--accent);font-size:1.05rem">${esc(oRack?.name)}</div>
-        <div style="font-size:.94rem;color:var(--dim)">Bahía ${tOrigin.bay+1} · Nivel ${tOrigin.level+1}</div>
+        <div style="font-size:1.08rem;color:var(--dim);margin-bottom:4px">Origen</div>
+        <div style="font-family:var(--f-num);color:var(--accent);font-size:1.05rem">${esc(oRack?.name)}</div>
+        <div style="font-size:.94rem;color:var(--dim)">Bahía ${tOrigin.bay+1}, Nivel ${tOrigin.level+1}</div>
       </div>
       <div style="font-size:1.4rem;color:var(--cyan)">→</div>
       <div style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:3px;padding:9px">
-        <div style="font-size:1.08rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Destino</div>
-        <div style="font-family:'Share Tech Mono',monospace;color:var(--green);font-size:1.05rem">${esc(dRack?.name)}</div>
-        <div style="font-size:.94rem;color:var(--dim)">Bahía ${tDest.bay+1} · Nivel ${tDest.level+1}</div>
+        <div style="font-size:1.08rem;color:var(--dim);margin-bottom:4px">Destino</div>
+        <div style="font-family:var(--f-num);color:var(--green);font-size:1.05rem">${esc(dRack?.name)}</div>
+        <div style="font-size:.94rem;color:var(--dim)">Bahía ${tDest.bay+1}, Nivel ${tDest.level+1}</div>
       </div>
     </div>
-    <div style="margin-top:10px;font-size:1.08rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">Productos a mover</div>
-    ${movingSkus.map(s=>`<div style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--bright);margin-bottom:2px">· ${esc(s.sku||'—')} ${s.desc?'— '+esc(s.desc):''} ${partialQty?'('+esc(partialQty)+' '+esc(s.unit)+')':s.qty?'('+esc(s.qty)+' '+esc(s.unit)+')':''}</div>`).join('')}`;
+    <div style="margin-top:10px;font-size:1.08rem;color:var(--dim);margin-bottom:5px">Productos a mover</div>
+    ${movingSkus.map(s=>`<div style="font-family:var(--f-num);font-size:1rem;color:var(--bright);margin-bottom:2px">· ${esc(s.sku||'—')} ${s.desc?'— '+esc(s.desc):''} ${partialQty?'('+esc(partialQty)+' '+esc(s.unit)+')':s.qty?'('+esc(s.qty)+' '+esc(s.unit)+')':''}</div>`).join('')}`;
 }
 
 function doTransfer(){
@@ -3048,9 +3048,9 @@ function _buildSkuCard(sku,desc,locs){
       <div style="width:4px;background:${sc};flex-shrink:0;border-radius:5px 0 0 5px"></div>
       <div style="flex:1;padding:10px 14px;min-width:0">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:1.18rem;color:var(--accent);font-weight:700">${sku}</span>
+          <span style="font-family:var(--f-num);font-size:1.18rem;color:var(--accent);font-weight:700">${sku}</span>
           <span style="font-size:1rem;color:var(--dim);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${desc||t('no_desc')}</span>
-          ${totalQty?`<span style="font-family:'Share Tech Mono',monospace;font-size:1.14rem;color:var(--bright);flex-shrink:0">${totalQty} ${locs[0]?.unit||''}</span>`:''}
+          ${totalQty?`<span style="font-family:var(--f-num);font-size:1.14rem;color:var(--bright);flex-shrink:0">${totalQty} ${locs[0]?.unit||''}</span>`:''}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
           ${locs.map(l=>{
@@ -3062,9 +3062,9 @@ function _buildSkuCard(sku,desc,locs){
             return `<button type="button" style="display:flex;align-items:center;gap:5px;background:var(--bg);border:1px solid ${expD!==null&&expD<=30?expColor:'var(--border)'};border-radius:3px;padding:3px 9px;font:inherit;cursor:pointer;appearance:none;-webkit-appearance:none"
               onclick="event.stopPropagation();closeO('o-report');jumpToCell('${l.rackId}',${l.bay},${l.level})">
               ${zn?`<span style="width:6px;height:6px;border-radius:1px;background:${zn.color};display:inline-block;flex-shrink:0"></span>`:''}
-              <span style="font-family:'Share Tech Mono',monospace;font-size:1.02rem;color:var(--cyan)">${l.rack} ${t('bay_short')}${l.bay+1}${t('level_short')}${l.level+1}</span>
+              <span style="font-family:var(--f-num);font-size:1.02rem;color:var(--cyan)">${l.rack} ${t('bay_short')}${l.bay+1}${t('level_short')}${l.level+1}</span>
               <span style="font-size:.94rem;color:${STATE_COLORS[l.state]}">${getStateLabels()[l.state]||l.state}</span>
-              ${expD!==null?`<span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;font-weight:700;color:${expColor};margin-left:2px">${expLabel}</span>`:''}
+              ${expD!==null?`<span style="font-family:var(--f-num);font-size:.9rem;font-weight:700;color:${expColor};margin-left:2px">${expLabel}</span>`:''}
             </button>`;
           }).join('')}
         </div>
@@ -3095,7 +3095,7 @@ function _appendSkuPage(c){
   if(remaining>0){
     const btn=document.createElement('button');
     btn.className='sku-load-more';
-    btn.style.cssText='width:100%;padding:12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:5px;color:var(--dim);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:1rem;letter-spacing:1.5px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:4px';
+    btn.style.cssText='width:100%;padding:12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:5px;color:var(--dim);font-family:var(--f-ui);font-weight:700;font-size:1rem;cursor:pointer;transition:all .2s;margin-top:4px';
     btn.textContent=`Cargar ${Math.min(remaining,SKU_PAGE_SIZE)} más (${remaining} restantes)`;
     btn.onmouseover=()=>{btn.style.borderColor='var(--cyan)';btn.style.color='var(--cyan)';};
     btn.onmouseleave=()=>{btn.style.borderColor='var(--border2)';btn.style.color='var(--dim)';};
@@ -3127,7 +3127,7 @@ function buildRackCellsTable(rack, rCells){
   const thead = document.createElement('thead');
   let thHtml = `<th style="width:36px;padding:0"></th>`;
   for(let b=0;b<rack.bays;b++){
-    thHtml += `<th style="width:${COL_W}px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;padding:3px 0;border-bottom:2px solid var(--border);font-weight:700">B${b+1}</th>`;
+    thHtml += `<th style="width:${COL_W}px;text-align:center;font-family:var(--f-num);font-size:.72rem;color:var(--dim);letter-spacing:1px;padding:3px 0;border-bottom:2px solid var(--border);font-weight:700">B${b+1}</th>`;
   }
   thead.innerHTML = `<tr>${thHtml}</tr>`;
   tbl.appendChild(thead);
@@ -3139,7 +3139,7 @@ function buildRackCellsTable(rack, rCells){
 
     // Level label cell
     const tdLbl = document.createElement('td');
-    tdLbl.style.cssText = `text-align:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:var(--dim);letter-spacing:1px;border-right:2px solid var(--border);padding-right:4px;vertical-align:middle;white-space:nowrap`;
+    tdLbl.style.cssText = `text-align:center;font-family:var(--f-num);font-size:.72rem;color:var(--dim);letter-spacing:1px;border-right:2px solid var(--border);padding-right:4px;vertical-align:middle;white-space:nowrap`;
     tdLbl.textContent = `N${l+1}`;
     tr.appendChild(tdLbl);
 
@@ -3162,7 +3162,7 @@ function buildRackCellsTable(rack, rCells){
       let html=`<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${sc2};border-radius:4px 0 0 4px"></div>`;
       // Coord + expiry badge
       html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--dim);font-weight:700">B${b+1}·N${l+1}</span>
+        <span style="font-family:var(--f-num);font-size:.7rem;color:var(--dim);font-weight:700">B${b+1}·N${l+1}</span>
         ${expiryAlert?`<span style="font-size:.65rem;color:${expiryDaysMin<0?'var(--red)':'var(--yellow)'}">!</span>`:''}
       </div>`;
 
@@ -3171,9 +3171,9 @@ function buildRackCellsTable(rack, rCells){
       } else {
         skus.forEach(s=>{
           html+=`<div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;min-width:0">`;
-          if(s.sku) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--accent);font-weight:700;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.sku)}</span>`;
+          if(s.sku) html+=`<span style="font-family:var(--f-num);font-size:.75rem;color:var(--accent);font-weight:700;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.sku)}</span>`;
           if(s.desc) html+=`<span style="font-size:.7rem;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0" title="${esc(s.desc)}">${esc(s.desc)}</span>`;
-          if(s.qty) html+=`<span style="font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--text);flex-shrink:0">${esc(s.qty)}</span>`;
+          if(s.qty) html+=`<span style="font-family:var(--f-num);font-size:.68rem;color:var(--text);flex-shrink:0">${esc(s.qty)}</span>`;
           html+=`</div>`;
         });
       }
@@ -3214,22 +3214,22 @@ function buildRackReportGroup(rack){
     <div style="width:4px;align-self:stretch;border-radius:4px;background:${zoneColor};flex-shrink:0;min-height:36px"></div>
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:1.18rem;color:var(--bright);font-weight:700;letter-spacing:1px">${esc(rack.name)}</span>
-        ${zone?`<span style="font-size:.82rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${zoneColor};background:${zoneColor}18;border:1px solid ${zoneColor}33;border-radius:20px;padding:1px 9px">${esc(zone.name)}</span>`:''}
-        ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;padding:1px 9px">${resps.slice(0,2).map(esc).join(' · ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
-        ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">${shops.slice(0,2).map(esc).join(' · ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
+        <span style="font-family:var(--f-num);font-size:1.18rem;color:var(--bright);font-weight:700;letter-spacing:1px">${esc(rack.name)}</span>
+        ${zone?`<span style="font-size:.82rem;font-weight:700;color:${zoneColor};background:${zoneColor}18;border:1px solid ${zoneColor}33;border-radius:20px;padding:1px 9px">${esc(zone.name)}</span>`:''}
+        ${resps.length?`<span style="font-size:.82rem;color:var(--cyan);background:rgba(141,180,220,.08);border:1px solid rgba(141,180,220,.2);border-radius:20px;padding:1px 9px">${resps.slice(0,2).map(esc).join(', ')}${resps.length>2?` +${resps.length-2}`:''}</span>`:''}
+        ${shops.length?`<span style="font-size:.82rem;color:var(--accent);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:20px;padding:1px 9px">${shops.slice(0,2).map(esc).join(', ')}${shops.length>2?` +${shops.length-2}`:''}</span>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:7px">
         <div style="flex:1;max-width:160px;height:4px;background:var(--border);border-radius:4px;overflow:hidden">
           <div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .6s"></div>
         </div>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.9rem;color:${bc};font-weight:700">${pct}%</span>
+        <span style="font-family:var(--f-num);font-size:.9rem;color:${bc};font-weight:700">${pct}%</span>
         <span style="font-size:.82rem;color:var(--dim)">${occ}/${total} celdas</span>
         ${blocked?`<span style="font-size:.8rem;color:var(--red);background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.25);border-radius:20px;padding:1px 8px">⊘ ${blocked} bloq.</span>`:''}
       </div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:1.4rem;color:var(--bright);line-height:1">${rack.bays}×${rack.levels}</span>
+      <span style="font-family:var(--f-num);font-size:1.4rem;color:var(--bright);line-height:1">${rack.bays}×${rack.levels}</span>
       <span style="font-size:.75rem;color:var(--dim);letter-spacing:1px">BAH×NIV</span>
     </div>
     <div id="caret-${rack.id}" style="color:var(--dim);font-size:1.1rem;flex-shrink:0;transition:transform .2s">▼</div>`;
@@ -3301,7 +3301,7 @@ function _appendCellsPage(c){
   if(remaining>0){
     const btn=document.createElement('button');
     btn.className='cells-load-more';
-    btn.style.cssText='width:100%;padding:12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:5px;color:var(--dim);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:1rem;letter-spacing:1.5px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:4px';
+    btn.style.cssText='width:100%;padding:12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:5px;color:var(--dim);font-family:var(--f-ui);font-weight:700;font-size:1rem;cursor:pointer;transition:all .2s;margin-top:4px';
     btn.textContent=`Cargar ${Math.min(remaining,CELLS_PAGE_SIZE)} más (${remaining} restantes)`;
     btn.onmouseover=()=>{btn.style.borderColor='var(--cyan)';btn.style.color='var(--cyan)';};
     btn.onmouseleave=()=>{btn.style.borderColor='var(--border2)';btn.style.color='var(--dim)';};
@@ -3342,37 +3342,37 @@ function renderReportZones(filter){
         <div style="flex:1;padding:14px 16px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
             <span style="font-size:1.05rem;font-weight:700;color:${zone.color==='var(--dim)'?'var(--dim)':zone.color};letter-spacing:1px">${esc(zone.name)}</span>
-            <span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--dim)">${zRacks.length} rack${zRacks.length!==1?'s':''}</span>
+            <span style="font-family:var(--f-num);font-size:1rem;color:var(--dim)">${zRacks.length} rack${zRacks.length!==1?'s':''}</span>
             <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
               <div style="width:120px;height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .8s"></div></div>
-              <span style="font-family:'Share Tech Mono',monospace;font-size:1.14rem;color:${bc};font-weight:700">${pct}%</span>
+              <span style="font-family:var(--f-num);font-size:1.14rem;color:${bc};font-weight:700">${pct}%</span>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px">
             <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;text-align:center">
-              <div style="font-size:1.16rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Total</div>
-              <div style="font-family:'Share Tech Mono',monospace;font-size:1.2rem;color:var(--bright)">${total}</div>
+              <div style="font-size:1.16rem;color:var(--dim);margin-bottom:3px">Total</div>
+              <div style="font-family:var(--f-num);font-size:1.2rem;color:var(--bright)">${total}</div>
             </div>
-            <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:4px;padding:8px 10px;text-align:center">
-              <div style="font-size:1.16rem;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Ocupadas</div>
-              <div style="font-family:'Share Tech Mono',monospace;font-size:1.2rem;color:var(--green)">${occ}</div>
+            <div style="background:rgba(79,196,138,.06);border:1px solid rgba(79,196,138,.2);border-radius:4px;padding:8px 10px;text-align:center">
+              <div style="font-size:1.16rem;color:var(--green);margin-bottom:3px">Ocupadas</div>
+              <div style="font-family:var(--f-num);font-size:1.2rem;color:var(--green)">${occ}</div>
             </div>
             <div style="background:rgba(255,208,0,.06);border:1px solid rgba(255,208,0,.2);border-radius:4px;padding:8px 10px;text-align:center">
-              <div style="font-size:1.16rem;color:var(--yellow);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Libres</div>
-              <div style="font-family:'Share Tech Mono',monospace;font-size:1.2rem;color:var(--yellow)">${free}</div>
+              <div style="font-size:1.16rem;color:var(--yellow);margin-bottom:3px">Libres</div>
+              <div style="font-family:var(--f-num);font-size:1.2rem;color:var(--yellow)">${free}</div>
             </div>
-            <div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:4px;padding:8px 10px;text-align:center">
-              <div style="font-size:1.16rem;color:var(--cyan);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">SKUs</div>
-              <div style="font-family:'Share Tech Mono',monospace;font-size:1.2rem;color:var(--cyan)">${skusSet.size}</div>
+            <div style="background:rgba(141,180,220,.06);border:1px solid rgba(141,180,220,.2);border-radius:4px;padding:8px 10px;text-align:center">
+              <div style="font-size:1.16rem;color:var(--cyan);margin-bottom:3px">SKUs</div>
+              <div style="font-family:var(--f-num);font-size:1.2rem;color:var(--cyan)">${skusSet.size}</div>
             </div>
           </div>
           ${[...respSet].length||[...shopSet].length?`<div style="display:flex;gap:10px;flex-wrap:wrap">
             ${[...respSet].length?`<div style="flex:1;min-width:160px">
-              <div style="font-size:1.16rem;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('rack_resp_lbl')}</div>
-              <div style="display:flex;flex-wrap:wrap;gap:4px">${resolvePeople([...respSet]).map(p=>`<span style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);border-radius:20px;padding:2px 10px;font-size:1rem;color:var(--cyan)">${esc(p)}</span>`).join('')}</div>
+              <div style="font-size:1.16rem;color:var(--cyan);margin-bottom:5px">${t('rack_resp_lbl')}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">${resolvePeople([...respSet]).map(p=>`<span style="background:rgba(141,180,220,.1);border:1px solid rgba(141,180,220,.25);border-radius:20px;padding:2px 10px;font-size:1rem;color:var(--cyan)">${esc(p)}</span>`).join('')}</div>
             </div>`:''}
             ${[...shopSet].length?`<div style="flex:1;min-width:160px">
-              <div style="font-size:1.16rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('catalog_shops')}</div>
+              <div style="font-size:1.16rem;color:var(--accent);margin-bottom:5px">${t('catalog_shops')}</div>
               <div style="display:flex;flex-wrap:wrap;gap:4px">${resolveTiendas([...shopSet]).map(s=>`<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:2px 10px;font-size:1rem;color:var(--accent)">${esc(s)}</span>`).join('')}</div>
             </div>`:''}
           </div>`:''}
@@ -3410,7 +3410,7 @@ function renderReportExpiry(){
   }
   items.forEach(({rack,cell,s,days})=>{
     const color=days<0?'var(--red)':days<=7?'var(--red)':days<=30?'var(--yellow)':'var(--green)';
-    const bgColor=days<0?'rgba(255,59,92,.06)':days<=7?'rgba(255,59,92,.04)':days<=30?'rgba(255,208,0,.04)':'rgba(0,255,136,.03)';
+    const bgColor=days<0?'rgba(255,59,92,.06)':days<=7?'rgba(255,59,92,.04)':days<=30?'rgba(255,208,0,.04)':'rgba(79,196,138,.03)';
     const label=days<0?'VENCIDO hace '+Math.abs(days)+'d':(days===0?'Vence HOY':'Vence en '+days+'d');
     const zone=state.zones.find(z=>z.id===rack.zone);
     const row=document.createElement('button');
@@ -3422,17 +3422,17 @@ function renderReportExpiry(){
     row.innerHTML=`
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent);font-weight:700">${s.sku||'—'}</span>
+          <span style="font-family:var(--f-num);font-size:1.1rem;color:var(--accent);font-weight:700">${s.sku||'—'}</span>
           <span style="font-size:1rem;color:var(--dim)">${s.desc||''}</span>
-          ${s.qty?`<span style="font-family:'Share Tech Mono',monospace;font-size:.98rem;color:var(--dim)">${s.qty} ${s.unit||''}</span>`:''}
+          ${s.qty?`<span style="font-family:var(--f-num);font-size:.98rem;color:var(--dim)">${s.qty} ${s.unit||''}</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           ${zone?`<span style="font-size:.95rem;color:${zone.color};font-weight:700">${zone.name}</span>`:''}
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--cyan)">${rack.name} B${cell.bay+1}·N${cell.level+1}</span>
+          <span style="font-family:var(--f-num);font-size:.95rem;color:var(--cyan)">${rack.name} B${cell.bay+1}·N${cell.level+1}</span>
           <span style="font-size:.95rem;color:var(--dim)">Vence: ${s.expiry}</span>
         </div>
       </div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:1.08rem;font-weight:900;color:${color};white-space:nowrap;text-align:right">${label}</div>`;
+      <div style="font-family:var(--f-num);font-size:1.08rem;font-weight:900;color:${color};white-space:nowrap;text-align:right">${label}</div>`;
     row.onclick=()=>{closeO('o-report');jumpToCell(rack.id,cell.bay,cell.level);};
     c.appendChild(row);
   });
@@ -3497,12 +3497,12 @@ function renderReportAudit(){
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             ${zone?`<span style="font-size:.93rem;color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}
-            <span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--cyan)">${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}</span>
+            <span style="font-family:var(--f-num);font-size:1rem;color:var(--cyan)">${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}</span>
             <span style="font-size:.93rem;color:var(--dim)">${STATE_LABELS[cell.state]||cell.state}</span>
           </div>
           ${lastAudit?`<div style="font-size:.92rem;color:var(--dim);margin-top:2px">Último: ${esc(lastAudit.date)} — ${esc(lastAudit.who)}</div>`:''}
         </div>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;font-weight:700;color:${color};white-space:nowrap">${label}</span>`;
+        <span style="font-family:var(--f-num);font-size:.95rem;font-weight:700;color:${color};white-space:nowrap">${label}</span>`;
       row.onclick=()=>{closeO('o-report');jumpToCell(rack.id,cell.bay,cell.level);};
       c.appendChild(row);
     });
@@ -3540,11 +3540,11 @@ function renderReportAudit(){
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           ${zone?`<span style="font-size:.93rem;color:${zone.color};font-weight:700">${esc(zone.name)}</span>`:''}
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.93rem;color:var(--cyan)">${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}</span>
+          <span style="font-family:var(--f-num);font-size:.93rem;color:var(--cyan)">${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}</span>
           ${daysSince!==null?`<span style="font-size:.9rem;color:var(--dim)">hace ${daysSince}d</span>`:''}
         </div>
       </div>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.92rem;color:var(--dim);white-space:nowrap;text-align:right">${a.date}</span>`;
+      <span style="font-family:var(--f-num);font-size:.92rem;color:var(--dim);white-space:nowrap;text-align:right">${a.date}</span>`;
     row.onclick=()=>{closeO('o-report');jumpToCell(rack.id,cell.bay,cell.level);};
     c.appendChild(row);
   });
@@ -3590,16 +3590,16 @@ function _buildMovRow(m){
   row.innerHTML='<span style="font-size:1.3rem;flex-shrink:0">'+icon+'</span>'
     +'<div style="flex:1;min-width:0">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">'
-        +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:1.08rem;color:var(--accent);font-weight:700">'+esc(m.sku||m.desc||'—')+'</span>'
+        +'<span style="font-family:var(--f-num);font-size:1.08rem;color:var(--accent);font-weight:700">'+esc(m.sku||m.desc||'—')+'</span>'
         +(m.qty?'<span style="font-size:1rem;font-weight:700;color:'+color+'">'+esc(m.qty)+(m.unit?' '+esc(m.unit):'')+'</span>':'')
         +'<span style="font-size:.9rem;font-weight:700;color:'+color+';background:'+color+'22;border:1px solid '+color+'44;border-radius:10px;padding:1px 8px">'+esc(m.type)+'</span>'
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-        +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.92rem;color:var(--cyan)">'+esc(m.rack)+(m.bay!=null?' B'+(m.bay+1)+'·N'+(m.level+1):'')+destInfo+'</span>'
+        +'<span style="font-family:var(--f-num);font-size:.92rem;color:var(--cyan)">'+esc(m.rack)+(m.bay!=null?' B'+(m.bay+1)+'·N'+(m.level+1):'')+destInfo+'</span>'
         +(m.note?'<span style="font-size:.9rem;color:var(--dim)">— '+esc(m.note)+'</span>':'')
       +'</div>'
     +'</div>'
-    +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.88rem;color:var(--dim);white-space:nowrap;text-align:right">'+esc(m.date)+'</span>';
+    +'<span style="font-family:var(--f-num);font-size:.88rem;color:var(--dim);white-space:nowrap;text-align:right">'+esc(m.date)+'</span>';
   if(m.rackId)row.onclick=()=>{closeO('o-report');jumpToCell(m.rackId,m.bay,m.level);};
   return row;
 }
@@ -3625,7 +3625,7 @@ function _appendMovPage(c){
   if(remaining>0){
     const btn=document.createElement('button');
     btn.className='mov-load-more';
-    btn.style.cssText='width:100%;padding:12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:5px;color:var(--dim);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:1rem;letter-spacing:1.5px;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:4px';
+    btn.style.cssText='width:100%;padding:12px;background:var(--bg3);border:1px dashed var(--border2);border-radius:5px;color:var(--dim);font-family:var(--f-ui);font-weight:700;font-size:1rem;cursor:pointer;transition:all .2s;margin-top:4px';
     btn.textContent=`Cargar ${Math.min(remaining,MOV_PAGE_SIZE)} más (${remaining} restantes)`;
     btn.onmouseover=()=>{btn.style.borderColor='var(--cyan)';btn.style.color='var(--cyan)';};
     btn.onmouseleave=()=>{btn.style.borderColor='var(--border2)';btn.style.color='var(--dim)';};
@@ -3689,7 +3689,7 @@ function buildRackA4CellHtml(b, l, rack, rCells, showEmpty, showNotes){
   }
 
   let inner=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-    <span style="display:inline-block;background:${sc};color:${st};font-size:7.5px;font-weight:800;letter-spacing:.6px;padding:1px 5px;border-radius:8px;text-transform:uppercase">${sn}</span>
+    <span style="display:inline-block;background:${sc};color:${st};font-size:7.5px;font-weight:800;padding:1px 5px;border-radius:8px;">${sn}</span>
     ${expAlert?`<span style="font-size:7.5px;font-weight:800;color:${expColor}">${minExp<0?'VENC':minExp+'d'}</span>`:''}
   </div>
   ${(cellShopNames.length||cellRespNames.length)?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px">
@@ -3778,7 +3778,7 @@ function printRackA4(){
   .stats{display:flex;align-items:center;gap:16px;margin-left:auto;flex-shrink:0;}
   .stat{text-align:center;}
   .stat-n{font-family:'Courier New',monospace;font-size:17px;font-weight:900;color:#1a2030;line-height:1;}
-  .stat-l{font-size:7.5px;text-transform:uppercase;letter-spacing:1.5px;color:#aaa;margin-top:1px;}
+  .stat-l{font-size:7.5px;color:#aaa;margin-top:1px;}
   .rack-meta{font-size:9px;color:#aaa;text-align:right;line-height:1.7;flex-shrink:0;}
   .legend{display:flex;gap:10px;margin-bottom:7px;flex-wrap:wrap;align-items:center;}
   .leg-item{display:flex;align-items:center;gap:3px;font-size:8px;color:#666;}
@@ -3788,7 +3788,7 @@ function printRackA4(){
 <div class="toolbar">
   <button onclick="window.print()">Imprimir / Guardar PDF</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
-  <span style="color:#aaa;font-size:10px;margin-left:6px">${esc(rack.name)} · ${rack.bays} bahías × ${rack.levels} niveles · A4 horizontal</span>
+  <span style="color:#aaa;font-size:10px;margin-left:6px">${esc(rack.name)}, ${rack.bays} bahías × ${rack.levels} niveles, A4 horizontal</span>
 </div>
 <div style="padding:0 3mm">
   <div class="rack-hd">
@@ -3857,12 +3857,12 @@ function buildReportTabCss(){
     .pbar-fill{height:100%;border-radius:4px;}
     .section-body{border:1px solid #dde;border-top:none;border-radius:0 0 5px 5px;overflow:hidden;}
     table{width:100%;border-collapse:collapse;}
-    th{padding:6px 10px;background:#f4f6fa;color:#444;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;text-align:left;border-bottom:1px solid #dde;}
+    th{padding:6px 10px;background:#f4f6fa;color:#444;font-size:10px;font-weight:700;text-align:left;border-bottom:1px solid #dde;}
     td{padding:7px 10px;border-bottom:1px solid #eef;font-size:11px;vertical-align:top;}
     tr:last-child td{border-bottom:none;}
     tr:nth-child(even) td{background:#fafbff;}
     .mono{font-family:'Courier New',monospace;font-weight:700;}
-    .badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+    .badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:9px;font-weight:700;}
     .badge-full{background:#d4f7e7;color:#0a5c35;}
     .badge-partial{background:#fff8d4;color:#7a5c00;}
     .badge-reserved{background:#d4eeff;color:#0a3c6e;}
@@ -4032,7 +4032,7 @@ function buildZonesReportBody(){
     body+=`<div class="section">
       <div class="section-hd" style="background:${zone.color||'#1a2030'}">
         <div class="section-name">${esc(zone.name)}</div>
-        <span class="section-meta">${zRacks.length} racks · ${occ}/${total} celdas · ${skusSet.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
+        <span class="section-meta">${zRacks.length} racks, ${occ}/${total} celdas, ${skusSet.size} SKUs, <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
       </div>
       <div class="section-body"><table>
         <thead><tr><th>Rack</th><th style="text-align:center">Bah×Niv</th><th style="text-align:center">Ocupadas</th><th style="text-align:center">%</th></tr></thead>
@@ -4077,7 +4077,7 @@ function buildRespReportBody(){
     body+=`<div class="section">
       <div class="section-hd">
         <div class="section-name">${esc(person.name)}${person.role?` — <span style="font-weight:400;font-size:11px">${esc(person.role)}</span>`:''}</div>
-        <span class="section-meta">${rackIds.size} racks · ${occ}/${total} celdas · ${skuMap.size} SKUs · <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
+        <span class="section-meta">${rackIds.size} racks, ${occ}/${total} celdas, ${skuMap.size} SKUs, <span class="pbar-wrap"><span class="pbar-fill" style="width:${pct}%;background:${bc}"></span></span> ${pct}%</span>
       </div>
       <div class="section-body">
         <div style="padding:6px 12px;font-size:10px;color:#666;border-bottom:1px solid #eef;background:#fafbff"><b>Racks:</b> ${rackNames}</div>
@@ -4112,7 +4112,7 @@ function buildTiendasReportBody(){
     body+=`<div class="section">
       <div class="section-hd">
         <div class="section-name">${esc(tienda.name)}${tienda.code?` (${esc(tienda.code)})`:''}</div>
-        <span class="section-meta">${racks.size} racks · ${occ}/${total} · ${skuMap.size} SKUs · ${pct}%</span>
+        <span class="section-meta">${racks.size} racks, ${occ}/${total}, ${skuMap.size} SKUs, ${pct}%</span>
       </div>
       <div class="section-body"><table>
         <thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:center">Cant.</th></tr></thead>
@@ -4137,11 +4137,11 @@ function buildValorReportBody(){
   </tr>`).join('');
   return `<div style="display:flex;gap:12px;margin-bottom:14px">
     <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
-      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Valor Total</div>
+      <div style="font-size:10px;color:#888;margin-bottom:4px">Valor Total</div>
       <div style="font-size:22px;font-weight:800;color:#1a6a3a;font-family:'Courier New',monospace">$${total.toFixed(2)}</div>
     </div>
     <div style="flex:1;border:1px solid #dde;border-radius:6px;padding:12px 16px;text-align:center">
-      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">SKUs con Costo</div>
+      <div style="font-size:10px;color:#888;margin-bottom:4px">SKUs con Costo</div>
       <div style="font-size:22px;font-weight:800;color:#1a4a8a;font-family:'Courier New',monospace">${all.filter(r=>r.hasCost).length}</div>
     </div>
   </div>
@@ -4250,7 +4250,7 @@ function exportReportAudit(){
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#555">${esc(r.zone)}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center;font-family:'Courier New',monospace;font-weight:700;font-size:13px">${r.bay}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center;font-family:'Courier New',monospace;font-weight:700;font-size:13px">${r.level}</td>
-      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:${stateColors[Object.keys(STATE_LABELS).find(k=>STATE_LABELS[k]===r.state)]||'#eee'}">${r.state}</span></td>
+      <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;background:${stateColors[Object.keys(STATE_LABELS).find(k=>STATE_LABELS[k]===r.state)]||'#eee'}">${r.state}</span></td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#111;font-weight:600">${esc(r.lastWho)}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;font-size:11px;color:#666;font-family:'Courier New',monospace">${esc(r.lastDate)}</td>
       <td style="padding:8px 11px;border-bottom:1px solid #e8ecf0;text-align:center;font-size:12px;font-weight:700;color:${r.daysSince==='NUNCA'?'#cc0022':parseInt(r.daysSince)>=30?'#cc0022':parseInt(r.daysSince)>=15?'#cc7700':'#226622'}">${r.daysSince}</td>
@@ -4267,15 +4267,15 @@ function exportReportAudit(){
     .hd-sub{font-size:13px;color:#8899bb;margin-top:3px;letter-spacing:1px;}
     .stats{background:#fff;border:1px solid #e0e4ea;padding:14px 28px;display:flex;gap:32px;align-items:center;}
     .stat-val{font-size:28px;font-weight:900;color:#0a0c0f;font-family:'Courier New',monospace;}
-    .stat-lbl{font-size:11px;color:#8899bb;text-transform:uppercase;letter-spacing:1px;}
+    .stat-lbl{font-size:11px;color:#8899bb;}
     table{width:100%;border-collapse:collapse;background:#fff;border-radius:0 0 8px 8px;overflow:hidden;}
     thead tr{background:#1a2030;}
-    thead th{padding:10px 11px;text-align:left;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8899bb;border-bottom:2px solid #f0a500;}
+    thead th{padding:10px 11px;text-align:left;font-size:10px;font-weight:700;color:#8899bb;border-bottom:2px solid #f0a500;}
     @media print{body{padding:0;}button{display:none!important;}}
   </style></head><body>
   <div class="hd">
     ${logoEl}
-    <div><div class="hd-brand">${esc(bname)}</div><div class="hd-sub">${esc(modeTitle)} · ${t('rep_generated')} ${now}</div></div>
+    <div><div class="hd-brand">${esc(bname)}</div><div class="hd-sub">${esc(modeTitle)}, ${t('rep_generated')} ${now}</div></div>
     <button onclick="window.print()" style="margin-left:auto;background:#f0a500;border:none;color:#000;font-weight:700;font-size:13px;padding:8px 18px;border-radius:4px;cursor:pointer;letter-spacing:1px">IMPRIMIR</button>
   </div>
   <div class="stats">
@@ -4380,18 +4380,18 @@ function renderReportResp(filter){
           +(displayRole?'<span style="font-size:.9rem;color:var(--dim);margin-left:7px">'+esc(displayRole)+'</span>':'')+'</div>'
           +'<div style="margin-left:auto;display:flex;align-items:center;gap:8px">'
             +'<div style="width:100px;height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px"></div></div>'
-            +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:1.14rem;color:'+bc+'">'+pct+'%</span>'
+            +'<span style="font-family:var(--f-num);font-size:1.14rem;color:'+bc+'">'+pct+'%</span>'
           +'</div>'
         +'</div>'
         +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px">'
-          +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Racks</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--bright)">'+data.racksArr.length+'</div></div>'
-          +'<div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">'+t('stat_occupied')+'</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--green)">'+data.occ+'<span style="font-size:1rem;color:var(--dim)">/'+data.total+'</span></div></div>'
-          +'<div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--cyan);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">SKUs</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--cyan)">'+data.skus.size+'</div></div>'
-          +'<div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">'+t('state_blocked')+'</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:1.1rem;color:var(--red)">'+data.blocked+'</div></div>'
+          +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--dim);margin-bottom:2px">Racks</div><div style="font-family:var(--f-num);font-size:1.1rem;color:var(--bright)">'+data.racksArr.length+'</div></div>'
+          +'<div style="background:rgba(79,196,138,.06);border:1px solid rgba(79,196,138,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--green);margin-bottom:2px">'+t('stat_occupied')+'</div><div style="font-family:var(--f-num);font-size:1.1rem;color:var(--green)">'+data.occ+'<span style="font-size:1rem;color:var(--dim)">/'+data.total+'</span></div></div>'
+          +'<div style="background:rgba(141,180,220,.06);border:1px solid rgba(141,180,220,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--cyan);margin-bottom:2px">SKUs</div><div style="font-family:var(--f-num);font-size:1.1rem;color:var(--cyan)">'+data.skus.size+'</div></div>'
+          +'<div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:1.14rem;color:var(--red);margin-bottom:2px">'+t('state_blocked')+'</div><div style="font-family:var(--f-num);font-size:1.1rem;color:var(--red)">'+data.blocked+'</div></div>'
         +'</div>'
-        +(tiendaNames.length?`<div style="margin-bottom:10px"><div style="font-size:1.16rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('catalog_shops')}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`+tiendaNames.map(s=>'<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:3px 12px;font-size:1.02rem;color:var(--accent)">'+esc(s)+'</span>').join('')+'</div></div>':'')
-        +`<div><div style="font-size:1.16rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px">${t('rep_assigned_racks')}</div>`
-          +'<div style="display:flex;flex-wrap:wrap;gap:5px">'+data.racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return '<span onclick="closeO(\'o-report\');selectRack(\''+r.id+'\')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:\'Share Tech Mono\',monospace;font-size:1.02rem;color:'+(z?z.color:'var(--dim)')+';cursor:pointer">'+esc(r.name)+'</span>';}).join('')+'</div>'
+        +(tiendaNames.length?`<div style="margin-bottom:10px"><div style="font-size:1.16rem;color:var(--accent);margin-bottom:5px">${t('catalog_shops')}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`+tiendaNames.map(s=>'<span style="background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:20px;padding:3px 12px;font-size:1.02rem;color:var(--accent)">'+esc(s)+'</span>').join('')+'</div></div>':'')
+        +`<div><div style="font-size:1.16rem;color:var(--dim);margin-bottom:5px">${t('rep_assigned_racks')}</div>`
+          +'<div style="display:flex;flex-wrap:wrap;gap:5px">'+data.racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return '<span onclick="closeO(\'o-report\');selectRack(\''+r.id+'\')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:var(--f-num);font-size:1.02rem;color:'+(z?z.color:'var(--dim)')+';cursor:pointer">'+esc(r.name)+'</span>';}).join('')+'</div>'
         +'</div>'
       +'</div>'
       +'</div>';
@@ -4464,9 +4464,9 @@ function renderReportTiendas(filter){
     const skuList=skus.map(s=>`
       <button type="button" style="width:100%;text-align:left;font:inherit;display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg);border:1px solid var(--border);border-radius:3px;cursor:pointer;appearance:none;-webkit-appearance:none"
       onclick="closeO('o-report');setTimeout(()=>openViewCell('${s.locs[0]?.rackId}',${s.locs[0]?.bay??0},${s.locs[0]?.level??0}),120)">
-        ${s.sku?`<span style="font-family:'Share Tech Mono',monospace;font-size:1rem;color:var(--accent);font-weight:700">${esc(s.sku)}</span>`:''}
+        ${s.sku?`<span style="font-family:var(--f-num);font-size:1rem;color:var(--accent);font-weight:700">${esc(s.sku)}</span>`:''}
         <span style="font-size:.95rem;color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.desc)||t('no_desc')}</span>
-        ${s.qty?`<span style="font-family:'Share Tech Mono',monospace;font-size:.95rem;color:var(--bright);flex-shrink:0">${esc(s.qty)} ${esc(s.unit||'')}</span>`:''}
+        ${s.qty?`<span style="font-family:var(--f-num);font-size:.95rem;color:var(--bright);flex-shrink:0">${esc(s.qty)} ${esc(s.unit||'')}</span>`:''}
         <span style="font-size:.88rem;color:var(--dim);flex-shrink:0">${s.locs.length} celda${s.locs.length!==1?'s':''}</span>
       </button>`).join('');
     const moreSkus='';
@@ -4482,20 +4482,20 @@ function renderReportTiendas(filter){
           +`<span style="font-size:1.1rem;font-weight:700;color:${isNone?'var(--dim)':'var(--bright)'}">${displayName}</span>`
           +'<div style="margin-left:auto;display:flex;align-items:center;gap:8px">'
             +`<div style="width:90px;height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${bc};border-radius:4px"></div></div>`
-            +`<span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:${bc}">${pct}%</span>`
+            +`<span style="font-family:var(--f-num);font-size:1.1rem;color:${bc}">${pct}%</span>`
           +'</div>'
         +'</div>'
         // Stats grid
         +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:12px">'
-          +`<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Racks</div><div style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--bright)">${racksArr.length}</div></div>`
-          +`<div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Ocupadas</div><div style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--green)">${data.occ}<span style="font-size:.9rem;color:var(--dim)">/${data.total}</span></div></div>`
-          +`<div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--cyan);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">SKUs únicos</div><div style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--cyan)">${totalSkus}</div></div>`
-          +`<div style="background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Unidades</div><div style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent)">${totalQty}</div></div>`
+          +`<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--dim);margin-bottom:2px">Racks</div><div style="font-family:var(--f-num);font-size:1.1rem;color:var(--bright)">${racksArr.length}</div></div>`
+          +`<div style="background:rgba(79,196,138,.06);border:1px solid rgba(79,196,138,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--green);margin-bottom:2px">Ocupadas</div><div style="font-family:var(--f-num);font-size:1.1rem;color:var(--green)">${data.occ}<span style="font-size:.9rem;color:var(--dim)">/${data.total}</span></div></div>`
+          +`<div style="background:rgba(141,180,220,.06);border:1px solid rgba(141,180,220,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--cyan);margin-bottom:2px">SKUs únicos</div><div style="font-family:var(--f-num);font-size:1.1rem;color:var(--cyan)">${totalSkus}</div></div>`
+          +`<div style="background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:4px;padding:7px 10px;text-align:center"><div style="font-size:.85rem;color:var(--accent);margin-bottom:2px">Unidades</div><div style="font-family:var(--f-num);font-size:1.1rem;color:var(--accent)">${totalQty}</div></div>`
         +'</div>'
         // Racks chips
-        +(racksArr.length?'<div style="margin-bottom:10px"><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px">Racks</div><div style="display:flex;flex-wrap:wrap;gap:5px">'+racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return`<span onclick="closeO('o-report');selectRack('${r.id}')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:.95rem;color:${z?z.color:'var(--dim)'};cursor:pointer">${esc(r.name)}</span>`;}).join('')+'</div></div>':'')
+        +(racksArr.length?'<div style="margin-bottom:10px"><div style="font-size:.85rem;color:var(--dim);margin-bottom:5px">Racks</div><div style="display:flex;flex-wrap:wrap;gap:5px">'+racksArr.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return`<span onclick="closeO('o-report');selectRack('${r.id}')" style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:3px;padding:3px 10px;font-family:var(--f-num);font-size:.95rem;color:${z?z.color:'var(--dim)'};cursor:pointer">${esc(r.name)}</span>`;}).join('')+'</div></div>':'')
         // SKU list
-        +(totalSkus?`<div><div style="font-size:.85rem;color:var(--dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">Productos (${totalSkus})</div><div style="display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto">${skuList}</div></div>`:'')
+        +(totalSkus?`<div><div style="font-size:.85rem;color:var(--dim);margin-bottom:6px">Productos (${totalSkus})</div><div style="display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto">${skuList}</div></div>`:'')
       +'</div>'
       +'</div>';
     c.appendChild(card);
@@ -4533,7 +4533,7 @@ function exportReportCSV(){
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#1a4a8a">${esc(r.rack)}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center;font-size:14px;font-weight:700;font-family:'Courier New',monospace">${r.bay}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center;font-size:14px;font-weight:700;font-family:'Courier New',monospace">${r.level}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center"><span style="display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:${stateColors[r.state]||'#eee'}">${stateNames[r.state]||r.state}</span></td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center"><span style="display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:${stateColors[r.state]||'#eee'}">${stateNames[r.state]||r.state}</span></td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#336">${esc(r.resps)}</td>
       <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:12px;color:#663300">${esc(r.shops)}</td>
     </tr>`).join('');
@@ -4555,7 +4555,7 @@ function exportReportCSV(){
   .wrap{max-width:1060px;margin:24px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.1);}
   .rep-head{background:linear-gradient(135deg,#0a0c0f 0%,#1a2440 100%);padding:24px 32px;display:flex;align-items:center;justify-content:space-between;}
   .rep-brand{display:flex;align-items:center;gap:14px;}
-  .rep-brand-txt{color:#fff;font-size:14px;letter-spacing:3px;text-transform:uppercase;opacity:.9;line-height:1.6;}
+  .rep-brand-txt{color:#fff;font-size:14px;opacity:.9;line-height:1.6;}
   .rep-brand-txt small{display:block;font-size:10px;opacity:.5;letter-spacing:2px;font-weight:400;}
   .rep-title{text-align:right;color:#fff;}
   .rep-title h1{font-size:24px;font-weight:900;letter-spacing:2px;color:#f0a500;}
@@ -4563,10 +4563,10 @@ function exportReportCSV(){
   .rep-stats{display:flex;background:#f8f9fb;border-bottom:2px solid #e8ecf0;padding:16px 32px;gap:32px;}
   .stat{text-align:center;}
   .stat-n{font-size:28px;font-weight:900;font-family:'Courier New',monospace;color:#111;}
-  .stat-l{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#999;margin-top:2px;font-weight:700;}
+  .stat-l{font-size:10px;color:#999;margin-top:2px;font-weight:700;}
   table{width:100%;border-collapse:collapse;}
   thead tr{background:#1a2440;}
-  thead th{padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#aaa;font-weight:700;border-bottom:2px solid #e8ecf0;}
+  thead th{padding:10px 12px;text-align:left;font-size:11px;color:#aaa;font-weight:700;border-bottom:2px solid #e8ecf0;}
   thead th.center{text-align:center;}
   tfoot tr{background:#f8f9fb;}
   tfoot td{padding:10px 12px;font-size:11px;color:#aaa;border-top:2px solid #e8ecf0;}
@@ -4626,7 +4626,7 @@ function updateStats(){
   const circ=2*Math.PI*24;const rc=document.getElementById('ringc');
   rc.style.strokeDashoffset=circ*(1-pct/100);rc.style.stroke=pct>80?'var(--red)':pct>55?'var(--yellow)':'var(--green)';
   document.getElementById('rpct').textContent=pct+'%';
-  document.getElementById('rdet').textContent=`${occ} / ${total} ${t('rep_cells_total')} · ${skuQtyMap.size} SKUs`;
+  document.getElementById('rdet').textContent=`${occ} / ${total} ${t('rep_cells_total')}, ${skuQtyMap.size} SKUs`;
   actualizarMetricasEspacio();
 }
 
@@ -4669,17 +4669,17 @@ function renderReportValor(filter){
 
   const sumEl=document.getElementById('rep-valor-summary');
   if(sumEl) sumEl.innerHTML=`
-    <div style="background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.25);border-radius:6px;padding:14px 18px;text-align:center">
-      <div style="font-size:1.7rem;font-family:'Share Tech Mono',monospace;color:var(--green);font-weight:700">$${fmtCurrency(partialVal)}</div>
-      <div style="font-size:.85rem;color:var(--dim);margin-top:3px;text-transform:uppercase;letter-spacing:1px">${t('rep_valor_total')}</div>
+    <div style="background:rgba(79,196,138,.07);border:1px solid rgba(79,196,138,.25);border-radius:6px;padding:14px 18px;text-align:center">
+      <div style="font-size:1.7rem;font-family:var(--f-num);color:var(--green);font-weight:700">$${fmtCurrency(partialVal)}</div>
+      <div style="font-size:.85rem;color:var(--dim);margin-top:3px;">${t('rep_valor_total')}</div>
     </div>
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:14px 18px;text-align:center">
-      <div style="font-size:1.5rem;font-family:'Share Tech Mono',monospace;color:var(--cyan)">${withCost.length}</div>
-      <div style="font-size:.85rem;color:var(--dim);margin-top:3px;text-transform:uppercase;letter-spacing:1px">${t('rep_valor_with_cost')}</div>
+      <div style="font-size:1.5rem;font-family:var(--f-num);color:var(--cyan)">${withCost.length}</div>
+      <div style="font-size:.85rem;color:var(--dim);margin-top:3px;">${t('rep_valor_with_cost')}</div>
     </div>
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:14px 18px;text-align:center">
-      <div style="font-size:1.5rem;font-family:'Share Tech Mono',monospace;color:var(--yellow)">${withoutCost.length}</div>
-      <div style="font-size:.85rem;color:var(--dim);margin-top:3px;text-transform:uppercase;letter-spacing:1px">${t('rep_valor_without_cost')}</div>
+      <div style="font-size:1.5rem;font-family:var(--f-num);color:var(--yellow)">${withoutCost.length}</div>
+      <div style="font-size:.85rem;color:var(--dim);margin-top:3px;">${t('rep_valor_without_cost')}</div>
     </div>`;
 
   const c=document.getElementById('rep-valor-cards');
@@ -4706,9 +4706,9 @@ function renderReportValor(filter){
     card.innerHTML=`
       <button type="button" style="width:100%;text-align:left;font:inherit;display:flex;align-items:center;gap:12px;padding:10px 14px;background:none;border:none;cursor:pointer;appearance:none;-webkit-appearance:none" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
         ${group==='zone'?`<div style="width:8px;height:8px;border-radius:2px;background:${g.zoneColor};flex-shrink:0"></div>`:''}
-        <span style="font-family:'Share Tech Mono',monospace;font-size:1.08rem;color:var(--accent);font-weight:700;flex:1">${esc(g.key||'—')}</span>
+        <span style="font-family:var(--f-num);font-size:1.08rem;color:var(--accent);font-weight:700;flex:1">${esc(g.key||'—')}</span>
         <span style="font-size:.9rem;color:var(--dim)">${g.rows.length} SKU${g.rows.length!==1?'s':''}</span>
-        ${hasCost?`<span style="font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--green);font-weight:700">$${fmtCurrency(g.total)}</span><span style="font-size:.8rem;color:var(--dim);margin-left:4px">${pct}%</span>`:`<span style="font-size:.85rem;color:var(--yellow)">${t('rep_valor_no_cost')}</span>`}
+        ${hasCost?`<span style="font-family:var(--f-num);font-size:1.1rem;color:var(--green);font-weight:700">$${fmtCurrency(g.total)}</span><span style="font-size:.8rem;color:var(--dim);margin-left:4px">${pct}%</span>`:`<span style="font-size:.85rem;color:var(--yellow)">${t('rep_valor_no_cost')}</span>`}
         <span style="color:var(--dim);font-size:.8rem;margin-left:6px">▼</span>
       </button>
       ${hasCost?`<div style="height:3px;background:linear-gradient(90deg,var(--green) ${pct}%,var(--bg) ${pct}%)"></div>`:''}
@@ -4724,13 +4724,13 @@ function renderReportValor(filter){
           </tr></thead>
           <tbody>
             ${g.rows.map(r=>`<tr style="border-top:1px solid var(--border)">
-              <td style="padding:5px 12px;font-family:'Share Tech Mono',monospace;color:var(--cyan)">${esc(r.sku||'—')}</td>
+              <td style="padding:5px 12px;font-family:var(--f-num);color:var(--cyan)">${esc(r.sku||'—')}</td>
               <td style="padding:5px 12px;color:var(--bright)">${esc(r.desc||'—')}</td>
-              <td style="padding:5px 8px;text-align:right;font-family:'Share Tech Mono',monospace">${esc(r.qty)} <span style="color:var(--dim);font-size:.85rem">${esc(r.unit)}</span></td>
+              <td style="padding:5px 8px;text-align:right;font-family:var(--f-num)">${esc(r.qty)} <span style="color:var(--dim);font-size:.85rem">${esc(r.unit)}</span></td>
               <td style="padding:5px 8px;text-align:right;color:${r.hasCost?'var(--accent)':'var(--dim)'}">
                 ${r.hasCost?'$'+fmtCurrency(r.cost):t('rep_valor_no_cost')}
               </td>
-              <td style="padding:5px 12px;text-align:right;font-family:'Share Tech Mono',monospace;font-weight:700;color:${r.hasCost?'var(--green)':'var(--dim)'}">
+              <td style="padding:5px 12px;text-align:right;font-family:var(--f-num);font-weight:700;color:${r.hasCost?'var(--green)':'var(--dim)'}">
                 ${r.hasCost?'$'+fmtCurrency(r.subtotal):'—'}
               </td>
               <td style="padding:5px 10px;font-size:.88rem;color:var(--dim)">${esc(r.rack)} ${t('bay_short')}${r.bay+1}${t('level_short')}${r.level+1}</td>
@@ -4826,7 +4826,7 @@ function printMovementsPDF(){
     return `<tr style="background:${i%2===0?'#fff':'#f8f9fb'}">
       <td style="padding:6px 8px;font-size:10px;color:#888;white-space:nowrap">${esc(m.date||'')}</td>
       <td style="padding:6px 8px;text-align:center">
-        <span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:800;letter-spacing:.5px;background:${tc}22;color:${tc};border:1px solid ${tc}55;text-transform:uppercase">${esc(m.type||'')}</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:800;background:${tc}22;color:${tc};border:1px solid ${tc}55;">${esc(m.type||'')}</span>
       </td>
       <td style="padding:6px 8px;font-family:'Courier New',monospace;font-size:10px;font-weight:800;color:#c07000">${esc(m.sku||'')}</td>
       <td style="padding:6px 8px;font-size:10px;color:#333;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.desc||'')}</td>
@@ -4849,7 +4849,7 @@ function printMovementsPDF(){
   .toolbar button.cls{background:#444;color:#fff;}
   @media print{.toolbar{display:none;}}
   table{width:100%;border-collapse:collapse;table-layout:fixed;}
-  thead th{background:#1a2030;color:#fff;padding:7px 8px;font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;font-weight:700;text-align:left;}
+  thead th{background:#1a2030;color:#fff;padding:7px 8px;font-size:9.5px;font-weight:700;text-align:left;}
   tbody tr:hover{background:#eef2ff!important;}
   td{border-bottom:1px solid #eee;vertical-align:middle;}
 </style>
@@ -4857,7 +4857,7 @@ function printMovementsPDF(){
 <div class="toolbar">
   <button onclick="window.print()">Imprimir / Guardar PDF</button>
   <button class="cls" onclick="window.close()">✕ Cerrar</button>
-  <span style="color:#aaa;font-size:10px;margin-left:6px">${rows.length} movimientos · ${esc(bname)} · ${dateStr}</span>
+  <span style="color:#aaa;font-size:10px;margin-left:6px">${rows.length} movimientos, ${esc(bname)}, ${dateStr}</span>
 </div>
 <div style="padding:0 1mm">
   <div style="display:flex;align-items:center;gap:14px;padding:8px 0 7px;border-bottom:3px solid #1a2030;margin-bottom:8px">
@@ -4976,7 +4976,7 @@ function updateExpiryPanel(){
     const div=document.createElement('button');
     div.type='button';
     div.className='expiry-item';
-    div.innerHTML=`<div class="ei-dot" style="background:${color};box-shadow:0 0 5px ${color}"></div>
+    div.innerHTML=`<div class="ei-dot" style="background:${color};"></div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;color:var(--bright);font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rack.name)} B${cell.bay+1}·N${cell.level+1}</div>
         <div class="ei-loc">${esc(label)} — ${esc(expiry)}</div>
@@ -5055,8 +5055,8 @@ function updateBPPreview(){
   const ctrl=document.createElement('div');
   ctrl.style.cssText='display:flex;gap:8px;margin-bottom:8px;width:100%';
   ctrl.innerHTML=`
-    <button onclick="bpSelectAll()" style="background:rgba(0,212,255,.1);border:1px solid var(--cyan);border-radius:3px;padding:3px 12px;color:var(--cyan);font-size:.95rem;font-weight:700;cursor:pointer;font-family:'Barlow Condensed',sans-serif">✓ Todas</button>
-    <button onclick="bpSelectNone()" style="background:var(--bg);border:1px solid var(--border2);border-radius:3px;padding:3px 12px;color:var(--dim);font-size:.95rem;font-weight:700;cursor:pointer;font-family:'Barlow Condensed',sans-serif">✕ Ninguna</button>
+    <button onclick="bpSelectAll()" style="background:rgba(141,180,220,.1);border:1px solid var(--cyan);border-radius:3px;padding:3px 12px;color:var(--cyan);font-size:.95rem;font-weight:700;cursor:pointer;font-family:var(--f-ui)">✓ Todas</button>
+    <button onclick="bpSelectNone()" style="background:var(--bg);border:1px solid var(--border2);border-radius:3px;padding:3px 12px;color:var(--dim);font-size:.95rem;font-weight:700;cursor:pointer;font-family:var(--f-ui)">✕ Ninguna</button>
     <span style="font-size:.9rem;color:var(--dim);align-self:center;margin-left:4px">Clic para seleccionar/quitar</span>`;
   preview.appendChild(ctrl);
 
@@ -5202,14 +5202,14 @@ function doBulkPrint(){
   +'.lbl{width:'+lblW+';'+(is4x6?'height:'+lblH+';':'')+'background:#fff;display:'+(is4x6?'grid':'flex')+';'+(is4x6?'grid-template-rows:auto 1fr auto;':'flex-direction:column;')+'border:'+(is4x6?'0':'2px solid #ddd')+';overflow:hidden;margin:'+(is4x6?'12px auto':'20px auto')+';page-break-after:always;}'
   +'@media print{.lbl{box-shadow:none;margin:0;}}'
   +'.hd{background:#111;color:#fff;padding:'+(is4x6?'12px 20px':'18px 24px')+';display:flex;align-items:center;justify-content:space-between;}'
-  +'.hd-brand{font-size:'+(is4x6?'13':'15')+'px;letter-spacing:3px;text-transform:uppercase;opacity:.85;line-height:1.5;}'
+  +'.hd-brand{font-size:'+(is4x6?'13':'15')+'px;opacity:.85;line-height:1.5;}'
   +'.hd-brand small{display:block;font-size:'+(is4x6?'9':'11')+'px;opacity:.5;letter-spacing:2px;}'
   +'.hd-rack{font-size:'+headRackSize+';font-weight:900;letter-spacing:3px;color:#f0a500;line-height:1;}'
   +'.hd-coord{font-size:'+headCoordSize+';font-weight:700;color:#bbb;letter-spacing:3px;margin-top:4px;}'
   +'.body{display:flex;overflow:hidden;'+(is4x6?'':'min-height:160mm;')+'}'
   +'.col-nums{width:'+colNumW+';flex-shrink:0;background:#f7f7f7;border-right:2px solid #ddd;display:flex;flex-direction:column;justify-content:center;gap:'+(is4x6?'10':'16')+'px;padding:'+(is4x6?'14px 16px':'20px 18px')+';}'
   +'.num-box{background:#fff;border:2.5px solid #333;border-radius:8px;text-align:center;padding:'+(is4x6?'10px 8px':'16px 10px')+';}'
-  +'.num-lbl{font-size:'+(is4x6?'11':'14')+'px;text-transform:uppercase;letter-spacing:3px;color:#999;margin-bottom:'+(is4x6?'4':'6')+'px;font-weight:700;}'
+  +'.num-lbl{font-size:'+(is4x6?'11':'14')+'px;color:#999;margin-bottom:'+(is4x6?'4':'6')+'px;font-weight:700;}'
   +'.num-val{font-size:'+numSize+';font-weight:900;font-family:\'Courier New\',monospace;color:#111;line-height:1;}'
   +'.num-val-sm{font-size:'+numSmSize+';font-weight:900;font-family:\'Courier New\',monospace;color:#111;letter-spacing:2px;}'
   +'.num-val-rack{font-weight:900;font-family:\'Courier New\',monospace;color:#111;letter-spacing:1px;word-break:break-word;overflow-wrap:break-word;line-height:1.15;}'
@@ -5217,12 +5217,12 @@ function doBulkPrint(){
   +'.info-top{display:flex;border-bottom:1.5px solid #eee;}'
   +'.ibox{flex:1;padding:'+(is4x6?'13px 16px':'18px 20px')+';border-right:1.5px solid #eee;}'
   +'.ibox:last-child{border-right:none;}'
-  +'.i-lbl{font-size:'+(is4x6?'11':'13')+'px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:'+(is4x6?'6':'8')+'px;font-weight:700;}'
+  +'.i-lbl{font-size:'+(is4x6?'11':'13')+'px;color:#bbb;margin-bottom:'+(is4x6?'6':'8')+'px;font-weight:700;}'
   +'.i-val{font-size:'+(is4x6?'20':'26')+'px;font-weight:800;color:#111;}'
-  +'.state-pill{display:inline-block;padding:'+(is4x6?'6px 20px':'10px 28px')+';border-radius:40px;font-size:'+(is4x6?'16':'20')+'px;font-weight:900;letter-spacing:2px;text-transform:uppercase;background:'+stateColors.full+';color:#000;}'
+  +'.state-pill{display:inline-block;padding:'+(is4x6?'6px 20px':'10px 28px')+';border-radius:40px;font-size:'+(is4x6?'16':'20')+'px;font-weight:900;background:'+stateColors.full+';color:#000;}'
   +'.people{flex:1;padding:'+(is4x6?'13px 16px':'18px 20px')+';display:flex;gap:16px;flex-wrap:wrap;overflow:hidden;}'
   +'.pgroup{flex:1;min-width:'+(is4x6?'0':'120px')+';}'
-  +'.p-lbl{font-size:'+(is4x6?'11':'13')+'px;text-transform:uppercase;letter-spacing:3px;color:#bbb;margin-bottom:'+(is4x6?'8':'10')+'px;font-weight:700;}'
+  +'.p-lbl{font-size:'+(is4x6?'11':'13')+'px;color:#bbb;margin-bottom:'+(is4x6?'8':'10')+'px;font-weight:700;}'
   +'.notes{background:#fffbe6;border-top:1.5px solid #ffe066;padding:'+(is4x6?'8px 16px':'12px 20px')+';font-size:'+(is4x6?'13':'16')+'px;color:#664400;font-style:italic;flex-shrink:0;}'
   +'.ft{background:#f5f5f5;border-top:2px solid #ddd;padding:'+(is4x6?'7px 20px':'10px 24px')+';display:flex;justify-content:space-between;align-items:center;}'
   +'.ft-date{font-size:'+(is4x6?'11':'13')+'px;color:#aaa;}'
@@ -5231,7 +5231,7 @@ function doBulkPrint(){
   +'<div class="toolbar">'
   +'<button onclick="window.print()">IMPRIMIR '+cells.length+' ETIQUETA'+(cells.length!==1?'S':'')+'</button>'
   +'<button class="cls" onclick="window.close()">✕ Cerrar</button>'
-  +'<span>'+cells.length+' etiqueta'+(cells.length!==1?'s':'')+' · formato '+(is4x6?'4×6"':'A4')+'</span>'
+  +'<span>'+cells.length+' etiqueta'+(cells.length!==1?'s':'')+', formato '+(is4x6?'4×6"':'A4')+'</span>'
   +'</div>'
   +labelsHtml
   +'</body></html>');
@@ -5512,7 +5512,7 @@ function notif(msg,type=''){
 function stateCol(s){return STATE_COLORS[s]||'var(--dim)';}
 function skuColor(sku){
   if(!sku)return'var(--dim)';let h=0;for(let i=0;i<sku.length;i++)h=(h*31+sku.charCodeAt(i))&0xffffff;
-  return['#00ff88','#f0a500','#00d4ff','#ff6b35','#ffd000','#a78bfa','#f472b6','#34d399'][Math.abs(h)%8];
+  return['#4fc48a','#f0a500','#8db4dc','#ff6b35','#ffd000','#a78bfa','#f472b6','#34d399'][Math.abs(h)%8];
 }
 
 function fullRender(){
@@ -5526,7 +5526,7 @@ function fullRender(){
 }
 
 // ═══════════════ CLOCK ═══════════════
-function tick(){const n=new Date();document.getElementById('hclock').innerHTML=`<div class="dot y"></div>${n.toTimeString().slice(0,8)}`;}
+function tick(){const n=new Date();document.getElementById('hclock').textContent=n.toTimeString().slice(0,8);}
 setInterval(tick,1000);tick();
 
 // ═══════════════ LOGO & NAME ═══════════════
@@ -5758,12 +5758,12 @@ function openCoordinadorModal() {
           <div>
             <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">EMAIL</label>
             <input id="coord-email-stock" type="email" placeholder="coordinador@efficommerce.com"
-              style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)">
+              style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:var(--f-ui);outline:none;background:var(--bg3);color:var(--bright)">
           </div>
           <div>
             <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">CONTRASEÑA</label>
             <input id="coord-pass-stock" type="password" placeholder="••••••••"
-              style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)"
+              style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:var(--f-ui);outline:none;background:var(--bg3);color:var(--bright)"
               onkeydown="if(event.key==='Enter') loginDesdeModal()">
           </div>
         </div>

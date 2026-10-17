@@ -267,7 +267,7 @@ async function guardarConteo(e) {
       : null;
 
     $('ok-msg').textContent = ultimoMensaje;
-    $('ok-sub').textContent = `Registro #${res.conteo?.id ?? ''}${ultimaFoto ? ' · con foto' : ' · sin foto'}`;
+    $('ok-sub').textContent = `Registro #${res.conteo?.id ?? ''}${ultimaFoto ? ', con foto' : ', sin foto'}`;
     $('form-conteo').hidden = true;
     $('vista-ok').hidden = false;
     window.scrollTo(0, 0);

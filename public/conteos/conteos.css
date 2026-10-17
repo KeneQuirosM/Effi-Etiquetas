@@ -3,7 +3,7 @@
    de iOS al enfocar), botón de guardar fijo abajo con margen para la barra
    de gestos. En pantallas anchas se centra en una columna de 560px. */
 :root {
-    --sans: 'Inter', system-ui, sans-serif;
+    --sans: 'Archivo', system-ui, sans-serif;
     --radius: 12px;
     --shadow: 0 1px 3px rgba(13,27,110,.08);
     --wa: #1f8f4e;
@@ -67,8 +67,8 @@ body {
     display: flex; flex-direction: column; gap: 12px;
 }
 .card-title {
-    font-size: 12px; font-weight: 600; letter-spacing: .5px;
-    text-transform: uppercase; color: var(--neutral-600);
+    font-size: 12px; font-weight: 600;
+color: var(--neutral-600);
     margin-bottom: -4px;
 }
 

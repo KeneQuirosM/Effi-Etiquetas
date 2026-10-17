@@ -51,7 +51,7 @@ function renderLogs() {
     if (!auditLog.length) { logEntriesDiv.innerHTML = '<span style="color:rgba(255,255,255,.5)">Sin registros</span>'; return; }
     logEntriesDiv.innerHTML = auditLog.slice(0, 60).map(l => {
         const cls = /error|no encontrada/i.test(l.action) ? 'log-er' : 'log-ok';
-        return `<div class="log-row"><span class="log-ts">[${esc(l.ts)}]</span> <span class="${cls}">${esc(l.action)}</span>${l.detail ? ` — <span class="log-gu">${esc(l.detail)}</span>` : ''}</div>`;
+        return `<div class="log-row"><span class="log-ts">[${esc(l.ts)}]</span> <span class="${cls}">${esc(l.action)}</span>${l.detail ? `: <span class="log-gu">${esc(l.detail)}</span>` : ''}</div>`;
     }).join('');
 }
 
@@ -204,7 +204,7 @@ function setExcelLoaded(file, guideCount, column) {
     document.getElementById('excelDropzoneContent').innerHTML = `
         <div class="dropzone-icon"><i class="fas fa-check-circle"></i></div>
         <div class="dropzone-filename">${esc(file.name)}</div>
-        <div class="dropzone-meta">${guideCount} guías detectadas · columna "${esc(column)}"</div>
+        <div class="dropzone-meta">${guideCount} guías detectadas en la columna "${esc(column)}"</div>
         <button type="button" class="dropzone-browse-btn" id="excelBrowseBtn"><i class="fas fa-rotate"></i> Cambiar archivo</button>`;
     document.getElementById('excelBrowseBtn').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('excelInput').click(); });
 }
@@ -261,7 +261,7 @@ function finalizeExcel(column) {
     }
 
     setExcelLoaded(excelFile, excelGuideSet.size, column);
-    addLog('EXCEL CARGADO', `${excelFile.name} · ${excelGuideSet.size} guías · columna "${column}"`);
+    addLog('EXCEL CARGADO', `${excelFile.name}, ${excelGuideSet.size} guías, columna "${column}"`);
     notify(`${excelGuideSet.size} guías detectadas en el Excel`, 'ok');
     updateCompareButton();
 }
@@ -344,7 +344,7 @@ async function handlePdfFile(file) {
         const doc = await pdfjsLib.getDocument({ data: buf }).promise;
         pdfNumPages = doc.numPages;
         setPdfLoaded(file, pdfNumPages);
-        addLog('PDF CARGADO', `${file.name} · ${pdfNumPages} páginas`);
+        addLog('PDF CARGADO', `${file.name}, ${pdfNumPages} páginas`);
         notify(`PDF cargado: ${pdfNumPages} páginas`, 'ok');
     } catch (err) {
         setPdfError('Archivo corrupto o formato inválido');
@@ -459,7 +459,7 @@ async function runCompareAndFilter() {
         await rebuildFilteredPdf();
         renderProductGroupsSummary();
 
-        addLog('COMPARACIÓN EJECUTADA', `${guideList.length} en Excel · ${foundGuides.length} encontradas · ${notFoundGuides.length} no encontradas`);
+        addLog('COMPARACIÓN EJECUTADA', `${guideList.length} en Excel, ${foundGuides.length} encontradas, ${notFoundGuides.length} no encontradas`);
         notify(`Comparación completa: ${foundGuides.length} de ${guideList.length} guías encontradas`, foundGuides.length === guideList.length ? 'ok' : 'warn');
     } catch (err) {
         notify(`Error al comparar/filtrar: ${err.message}`, 'err');
@@ -612,7 +612,7 @@ async function printSingleGuide(guideId) {
         const blob = await buildOutputPdf(pages);
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
-        addLog('IMPRESIÓN INDIVIDUAL', `Guía ${guideId} · ${pages.length} página(s)`);
+        addLog('IMPRESIÓN INDIVIDUAL', `Guía ${guideId}, ${pages.length} página(s)`);
     } catch (err) {
         notify(`Error al preparar la impresión: ${err.message}`, 'err');
     }
@@ -629,7 +629,7 @@ async function printProductGroup(idx) {
     try {
         const blob = await buildOutputPdf(pages);
         window.open(URL.createObjectURL(blob), '_blank');
-        addLog('IMPRESIÓN POR PRODUCTO', `${group.name} · ${group.guias.length} guía(s) · ${pages.length} página(s)`);
+        addLog('IMPRESIÓN POR PRODUCTO', `${group.name}, ${group.guias.length} guía(s), ${pages.length} página(s)`);
     } catch (err) {
         notify(`Error al preparar la impresión: ${err.message}`, 'err');
     }

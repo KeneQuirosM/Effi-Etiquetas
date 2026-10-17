@@ -107,9 +107,9 @@ function showRestrictedAccessMessage() {
     position:fixed;inset:0;z-index:999999;
     display:flex;align-items:center;justify-content:center;
     background:#0d1b6e;color:#fff;text-align:center;padding:24px;
-    font-family:'Inter',system-ui,sans-serif;font-size:1.15rem;font-weight:500;line-height:1.5;
+    font-family:'Archivo',system-ui,sans-serif;font-size:1.15rem;font-weight:500;line-height:1.5;
   `;
-  overlay.textContent = 'Acceso restringido — esta sección es solo para coordinadores. Redirigiendo al inicio...';
+  overlay.textContent = 'Esta sección es solo para coordinadores. Redirigiendo al inicio...';
   document.documentElement.appendChild(overlay);
 }
 

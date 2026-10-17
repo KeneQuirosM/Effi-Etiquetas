@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&family=Archivo+Narrow:wght@400..700&display=swap');
 /* Colores (marca/semánticos/neutros) movidos a /shared/tokens.css para no
    duplicar la paleta en los 4 módulos. Este archivo usa nombres de
    variable propios (--primary, --accent, --bg, etc.) usados en todo
@@ -38,8 +38,8 @@
   --radius-lg: 14px;
   --radius-xl: 18px;
 
-  --sans: 'Inter', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Archivo', system-ui, sans-serif;
+  --num: 'Archivo Narrow', 'Archivo', sans-serif;
 
   --sidebar-w: 310px;
   --transition: all .18s ease;
@@ -66,17 +66,6 @@ body {
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
-}
-
-/* círculo decorativo sutil */
-.sidebar::before {
-  content: '';
-  position: absolute;
-  top: -60px; right: -60px;
-  width: 220px; height: 220px;
-  border-radius: 50%;
-  background: rgba(122,157,243,0.1);
-  pointer-events: none;
 }
 
 /* ══ BRAND ══ */
@@ -123,29 +112,9 @@ body {
 }
 
 .brand p {
-  font-size: 10px;
+  font-size: 12px;
   color: rgba(255,255,255,.4);
-  letter-spacing: .6px;
-  text-transform: uppercase;
   margin: 0;
-}
-
-/* barra de estado debajo del brand */
-.brand-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 22px;
-  background: rgba(0,0,0,.12);
-  border-bottom: 1px solid rgba(255,255,255,.06);
-}
-.brand-status-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #4ade80; flex-shrink: 0;
-}
-.brand-status-text {
-  font-size: 11px;
-  color: #a9b3f0;
 }
 
 /* ══ SIDEBAR BODY ══ */
@@ -155,11 +124,9 @@ body {
 
 .field label {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: #c7cdf5;
-  letter-spacing: .6px;
-  text-transform: uppercase;
   margin-bottom: 6px;
 }
 
@@ -221,8 +188,6 @@ body {
 }
 .btn-print:hover {
   background: var(--primary-light);
-  transform: translateY(-1px);
-  box-shadow: 0 5px 14px rgba(42,71,212,.4);
 }
 .btn-print:active { transform: scale(.98); }
 
@@ -260,10 +225,8 @@ body {
   padding: 9px;
   background: transparent;
   color: rgba(255,255,255,.38);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: .7px;
-  text-transform: uppercase;
   border: 1px solid rgba(255,255,255,.1);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -437,11 +400,9 @@ body {
 
 .form-group label {
   display: block;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  letter-spacing: .6px;
-  text-transform: uppercase;
   margin-bottom: 5px;
 }
 
@@ -526,10 +487,10 @@ body {
 .btn-action:active { transform: scale(.97); }
 
 .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
-.btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.btn-primary:hover { background: var(--primary-light); }
 
 .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
-.btn-danger:hover { background: #a31c1c; transform: translateY(-1px); }
+.btn-danger:hover { background: #a31c1c; }
 
 .btn-ghost { background: var(--bg); color: var(--text); border-color: var(--border); }
 .btn-ghost:hover { background: var(--border); }
@@ -581,7 +542,7 @@ body {
 .inv-item:hover { background: var(--bg); }
 
 .inv-item .item-id {
-  font-family: var(--mono);
+  font-family: var(--num);
   font-size: 11px;
   font-weight: 700;
   color: var(--muted);
@@ -686,7 +647,7 @@ body {
 .inv-item input:focus { border-bottom-color: var(--primary); }
 
 .inv-item input.input-id {
-  font-family: var(--mono);
+  font-family: var(--num);
   font-size: 11px;
   font-weight: 700;
   color: var(--muted);
@@ -716,11 +677,9 @@ body {
 .btn-save-item:hover { opacity: 1 !important; }
 
 .section-label {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .6px;
   margin-bottom: 8px;
   margin-top: 4px;
 }
@@ -917,7 +876,7 @@ body {
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
   text-align: center;
-  font-family: var(--mono);
+  font-family: var(--num);
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
@@ -961,7 +920,7 @@ body {
   box-shadow: none;
 }
 .bulk-item .b-id {
-  font-family: var(--mono);
+  font-family: var(--num);
   font-size: 11px;
   font-weight: 700;
   color: var(--muted);
@@ -1427,14 +1386,14 @@ body {
 .conteo-foto-vacia { font-size: 11px; color: var(--muted); }
 .conteo-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .conteo-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.conteo-id { font-family: var(--mono); font-weight: 700; color: var(--primary); }
+.conteo-id { font-family: var(--num); font-weight: 700; color: var(--primary); }
 .conteo-qty { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .conteo-nombre { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conteo-datos {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px 12px; margin: 4px 0 0;
 }
-.conteo-datos dt { font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+.conteo-datos dt { font-size: 12px; color: var(--muted); }
 .conteo-datos dd { font-size: 12px; margin: 0; overflow-wrap: anywhere; }
 .conteo-pie { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); margin-top: 2px; }
 .conteo-del {

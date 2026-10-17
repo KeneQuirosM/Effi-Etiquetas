@@ -1,4 +1,4 @@
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&family=Archivo+Narrow:wght@400..700&display=swap');
   /* Colores (marca/semánticos/neutros) movidos a /shared/tokens.css para no
      duplicar la paleta en los 4 módulos. Nota: los neutros 50/100/200 de
      este archivo divergían levemente del resto (comentario "tonos
@@ -15,7 +15,8 @@
     --shadow-sm: 0 2px 8px rgba(13,27,110,.05);
     --shadow-md: 0 4px 16px rgba(13,27,110,.08);
     
-    --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    --font: 'Archivo', system-ui, sans-serif;
+    --num:  'Archivo Narrow', 'Archivo', sans-serif;
     --transition: all .18s ease;
   }
 
@@ -31,7 +32,7 @@
 
   /* ── CABECERA CORPORATIVA ── */
   header {
-    background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-800) 100%);
+    background: var(--brand-900);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding: 16px 32px;
     color: #ffffff;
@@ -136,7 +137,7 @@
     font-size: 0.88rem;
     transition: var(--transition);
   }
-  .file-label:hover { background: var(--brand-700); transform: translateY(-1px); }
+  .file-label:hover { background: var(--brand-700); }
   .file-info { margin-top: 10px; font-size: 0.8rem; color: var(--neutral-600); }
   .file-info.ok { color: var(--success-mid); font-weight: 600; }
   .file-info.err { color: var(--danger-mid); font-weight: 600; }
@@ -168,10 +169,8 @@
   .stat-val.red { color: var(--danger-mid); }
 
   .stat-label {
-    font-size: 0.7rem;
+    font-size: 12px;
     color: var(--neutral-600);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
     margin-top: 6px;
     font-weight: 600;
   }
@@ -216,7 +215,7 @@
     align-items: center;
     gap: 6px;
   }
-  .toggle-btn:hover { background: var(--neutral-50); transform: translateY(-1px); }
+  .toggle-btn:hover { background: var(--neutral-50); }
   .toggle-btn.active { background: var(--danger-bg); border-color: var(--danger-mid); color: var(--danger-mid); font-weight: 600; }
 
   .btn-download-xlsx { background: var(--success-mid) !important; color: white !important; border: none; font-weight: 600; }
@@ -254,7 +253,7 @@
   .group-header:hover { background: var(--neutral-50); }
   .group.open .group-header { border-bottom: 1px solid var(--neutral-200); background: var(--brand-50); }
 
-  .badge { font-size: 0.65rem; font-weight: 700; padding: 3px 9px; border-radius: 12px; text-transform: uppercase; }
+  .badge { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 12px;}
   .badge-dist { background: var(--brand-100); color: var(--brand-700); }
   .badge-prov { background: var(--success-bg); color: var(--success-mid); }
 
@@ -274,8 +273,8 @@
   /* ── TABLAS REPORTE ── */
   table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   th {
-    background: var(--neutral-50); color: var(--neutral-600); text-transform: uppercase;
-    font-size: 0.7rem; letter-spacing: 0.05em; padding: 10px 20px; text-align: left;
+    background: var(--neutral-50); color: var(--neutral-600);
+    font-size: 12px;padding: 10px 20px; text-align: left;
     border-bottom: 1px solid var(--neutral-200); font-weight: 600;
   }
   td { padding: 11px 20px; border-bottom: 1px solid var(--neutral-100); vertical-align: middle; }
@@ -283,7 +282,7 @@
   tr:hover td { background: var(--neutral-50); }
 
   .id-pill {
-    background: var(--neutral-50); color: var(--neutral-800); font-family: monospace;
+    background: var(--neutral-50); color: var(--neutral-800); font-family: var(--num);
     font-size: 0.78rem; padding: 2px 7px; border-radius: var(--radius-sm); font-weight: 600;
     border: 1px solid var(--neutral-200);
   }

@@ -16,14 +16,14 @@ async function loadDatabaseData() {
     const result = await response.json();
     dbData = result.tiendas || [];
     
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · Base de datos conectada · Alerta < 30 uds`;
+    document.getElementById('generation-p').innerHTML = `Base de datos conectada. Alerta con menos de 30 uds`;
     document.getElementById('footerNote').innerText = `Base de datos cargada.`;
 
     renderExclusionPanel();
     document.getElementById('exclusionPanel').style.display = 'block';
   } catch (error) {
     console.error('Error base de datos:', error);
-    document.getElementById('generation-p').innerHTML = `Picking & Packing · <span style="color:var(--danger-mid); font-weight:600;">Error de enlace BD</span>`;
+    document.getElementById('generation-p').innerHTML = `<span style="color:#ffb3b8; font-weight:600;">No se pudo conectar con la base de datos. Recarga la página.</span>`;
   }
 }
 
@@ -429,7 +429,7 @@ function buildExcelSummarySheet(wb, DATA, styles) {
   // Fila 1 — título grande
   wsSummary.mergeCells('A1:F1');
   const titleCell = wsSummary.getCell('A1');
-  titleCell.value = 'REPORTE DE ALISTAMIENTO — EFFICOMMERCE';
+  titleCell.value = 'Reporte de alistamiento de Efficommerce';
   titleCell.font = font({ size: 14, bold: true, color: { argb: C.titleFg } });
   titleCell.fill = fill(C.brandDark);
   titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -562,7 +562,7 @@ function buildExcelTiendaSheet(wb, group, styles, usedNames) {
   ws.mergeCells(`A2:${lastCol}2`);
   const t2 = ws.getCell('A2');
   const tipoBadge = group.tipo.includes('Bodega') ? 'BODEGA PROPIA' : 'DROPSHIPPING';
-  t2.value = `${tipoBadge}   ·   ${group.items.length} SKUs   ·   ${group.total.toLocaleString()} unidades salidas   ·   ${group.bajo30 > 0 ? group.bajo30 + ' SKUs críticos' : 'Sin alertas'}`;
+  t2.value = `${tipoBadge}: ${group.items.length} SKUs, ${group.total.toLocaleString()} unidades salidas, ${group.bajo30 > 0 ? group.bajo30 + ' SKUs críticos' : 'Sin alertas'}`;
   t2.font = font({ size: 9, color: { argb: C.subtitleFg } });
   t2.fill = fill(C.brandDark);
   t2.alignment = { vertical: 'middle', horizontal: 'center' };

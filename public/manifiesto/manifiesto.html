@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Comparativo de Manifiesto </title>
+  <title>Efficommerce | Manifiesto</title>
   <link rel="stylesheet" href="/shared/tokens.css">
   <link rel="stylesheet" href="manifiesto.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
@@ -167,7 +167,7 @@
           <!-- Títulos -->
           <div class="header-titles">
             <h1>Comparativo de devoluciones</h1>
-            <span class="header-sub">Manifiesto · Verificación de guías · RedLogistics</span>
+            <span class="header-sub">Verificación de guías contra el manifiesto de RedLogistics</span>
           </div>
         </div>
         <!-- Notificación cruces -->
@@ -175,11 +175,6 @@
           <i class="fas fa-exclamation-triangle"></i>
           <span class="notification-badge" id="notificationBadge">0</span>
         </button>
-      </div>
-      <!-- Barra de estado -->
-      <div class="header-status-bar">
-        <span class="header-status-dot"></span>
-        <span class="header-status-text">Sistema activo · Escaneo en tiempo real</span>
       </div>
     </header>
 
@@ -194,7 +189,7 @@
     <section class="dashboard-section">
       <div class="section-header">
         <i class="fas fa-chart-line"></i>
-        <h2>Panel de Control - Comparativo de Manifiesto</h2>
+        <h2>Escanear contra el manifiesto</h2>
       </div>
 
       <div class="dashboard-content">
@@ -290,35 +285,30 @@
         <!-- Métricas -->
         <div class="metrics-grid">
           <div class="metric-card total">
-            <div class="metric-icon"><i class="fas fa-clipboard-list"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashTotal">0</div>
               <div class="metric-label">Total en Manifiesto</div>
             </div>
           </div>
           <div class="metric-card correct">
-            <div class="metric-icon"><i class="fas fa-check-circle"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashCorrectas">0</div>
               <div class="metric-label">Correctas</div>
             </div>
           </div>
           <button type="button" class="metric-card warning" onclick="abrirModalFaltantes()" style="cursor: pointer;">
-            <div class="metric-icon"><i class="fas fa-exclamation-triangle"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashFaltantes">0</div>
               <div class="metric-label">Faltantes</div>
             </div>
           </button>
           <button type="button" class="metric-card repeat" onclick="abrirModalRepetidas()" style="cursor: pointer;">
-            <div class="metric-icon"><i class="fas fa-redo-alt"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashRepetidas">0</div>
               <div class="metric-label">Repetidas</div>
             </div>
           </button>
           <button type="button" class="metric-card danger" onclick="abrirModalNoManifestadas()" style="cursor: pointer;">
-            <div class="metric-icon"><i class="fas fa-times-circle"></i></div>
             <div class="metric-content">
               <div class="metric-value" id="dashNoManif">0</div>
               <div class="metric-label">No Manifestadas</div>
@@ -365,7 +355,7 @@
               </div>
             </div>
             <button class="btn-exportar-excel" onclick="exportarExcelDevoluciones()">
-              <i class="fas fa-file-excel"></i> Exportar Excel — Devoluciones
+              <i class="fas fa-file-excel"></i> Exportar devoluciones a Excel
             </button>
           </div>
           <div class="guias-table-wrapper">

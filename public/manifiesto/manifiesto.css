@@ -3,7 +3,7 @@
    Identidad: azul profundo, tipografía limpia, logística pro
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&family=Archivo+Narrow:wght@400..700&display=swap');
 /* Colores (marca/semánticos/púrpura/neutros) movidos a /shared/tokens.css
    para no duplicar la paleta en los 4 módulos. */
 @import url('/shared/tokens.css');
@@ -26,7 +26,8 @@
   --shadow-md: 0 4px 16px rgba(13,27,110,.11);
   --shadow-lg: 0 8px 28px rgba(13,27,110,.13);
 
-  --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font: 'Archivo', system-ui, sans-serif;
+  --num:  'Archivo Narrow', 'Archivo', sans-serif;
   --transition: all .18s ease;
 }
 
@@ -208,8 +209,6 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 
 .file-input-button:hover {
   background: var(--brand-700);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
 }
 
 .file-input-label {
@@ -229,65 +228,30 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 }
 
 /* ── METRICS GRID ── */
+/* Franja de conteo: una sola pieza dividida en celdas. La barra superior
+   de color es el código de estado; la cifra va en la familia condensada. */
 .metrics-grid {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 14px;
-  margin: 24px 0;
-  overflow-x: auto;
-  padding-bottom: 4px;
+    display: flex; flex-wrap: nowrap; overflow-x: auto;
+    background: white; border: 1px solid var(--neutral-200); border-radius: var(--radius-md);
 }
-
 .metric-card {
-  flex: 1;
-  min-width: 160px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px 20px;
-  border: 1px solid transparent; /* 3 de las 4 tarjetas son <button>: borde propio en vez del nativo */
-  font-family: inherit; /* idem — evita que un <button> use la tipografía del navegador */
-  border-radius: var(--radius-lg);
-  color: var(--neutral-800);
-  text-align: left;
-  transition: var(--transition);
-  position: relative;
-  overflow: hidden;
+    flex: 1; min-width: 150px; position: relative;
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 14px 18px 16px;
+    border: 0; border-left: 1px solid var(--neutral-200); border-top: 4px solid var(--neutral-400);
+    border-radius: 0; background: transparent;
+    color: var(--neutral-800); font-family: inherit; text-align: left;
+    transition: background-color .15s ease;
 }
-
-.metric-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-
-/* Solo tres colores con significado; Total y Repetidas van en neutro */
-.metric-card.total,
-.metric-card.repeat  { background: var(--neutral-50); border-color: var(--neutral-200); color: var(--neutral-800); }
-.metric-card.total .metric-label,
-.metric-card.repeat .metric-label,
-.metric-card.total .metric-icon,
-.metric-card.repeat .metric-icon { color: var(--neutral-400); opacity: 1; }
-.metric-card.correct { background: #e8f5e9; border-color: #c8e6c9; color: #1b5e20; }
-.metric-card.warning { background: #fff3e0; border-color: #ffe0b2; color: #8a4500; }
-.metric-card.danger  { background: #fdecea; border-color: #f8c9c4; color: #8e1c1c; }
-
-.metric-icon {
-  font-size: 1.5rem;
-  opacity: .85;
-  flex-shrink: 0;
-}
-
-.metric-value {
-  font-size: 30px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -.02em;
-}
-
-.metric-label {
-  margin-top: 4px;
-  font-size: 11.5px;
-  opacity: .85;
-  font-weight: 400;
-  line-height: 1.3;
-}
+.metric-card:first-child { border-left: 0; }
+.metric-card.correct { border-top-color: var(--success-mid); }
+.metric-card.warning { border-top-color: var(--warning-mid); }
+.metric-card.danger  { border-top-color: var(--danger-mid); }
+.metric-card.repeat  { border-top-color: var(--neutral-200); }
+button.metric-card { cursor: pointer; }
+button.metric-card:hover { background: var(--neutral-50); }
+.metric-value { font-family: var(--num); font-size: 34px; font-weight: 600; line-height: 1; }
+.metric-label { font-size: 12.5px; line-height: 1.3; color: var(--neutral-600); }
 
 /* ── PROGRESS BAR ── */
 .progress-container {
@@ -369,8 +333,6 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 .action-btn:hover {
   background: var(--neutral-50);
   border-color: var(--neutral-400);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
 }
 
 .action-btn.primary {
@@ -513,7 +475,6 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 }
 .btn-copy:hover {
   background: var(--brand-100);
-  transform: translateY(-1px);
 }
 
 /* ── LISTAS EN MODALES ── */
@@ -538,7 +499,7 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 }
 .faltante-item:hover { background: #fff0cc; transform: translateX(3px); }
 
-.faltante-number { font-weight: 600; color: var(--neutral-800); font-size: 13px; font-family: monospace; }
+.faltante-number { font-weight: 600; color: var(--neutral-800); font-size: 13px; font-family: var(--num); }
 
 .repetida-item {
   padding: 11px 14px;
@@ -579,10 +540,10 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 }
 
 .btn-marcar  { background: var(--success-mid); color: white; }
-.btn-marcar:hover  { background: #1b5e20; transform: translateY(-1px); }
+.btn-marcar:hover  { background: #1b5e20; }
 
 .btn-eliminar { background: var(--danger-mid); color: white; }
-.btn-eliminar:hover { background: #7f0000; transform: translateY(-1px); }
+.btn-eliminar:hover { background: #7f0000; }
 
 .btn-action.secondary { background: var(--neutral-600); color: white; }
 .btn-action.secondary:hover { background: var(--neutral-800); }
@@ -765,16 +726,13 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 @media (max-width: 768px) {
   body { padding: 12px 8px; }
   .dashboard-content { padding: 18px 16px; }
-  .metrics-grid { gap: 10px; }
-  .metric-card { min-width: 140px; padding: 14px 16px; }
-  .metric-value { font-size: 1.6rem; }
-  .metric-icon { font-size: 1.2rem; }
+  .metric-card { min-width: 130px; padding: 12px 14px 14px; }
+  .metric-value { font-size: 28px; }
   .section-header { padding: 16px 18px; }
 }
 
 @media (max-width: 480px) {
-  .metric-card { min-width: 120px; padding: 12px; flex-direction: column; text-align: center; gap: 6px; }
-  .metric-icon { margin: 0; }
+  .metric-card { min-width: 112px; padding: 12px; }
 }
 
 /* ── PRINT ── */
@@ -859,25 +817,6 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
         cursor: pointer; transition: background .15s, border-color .15s;
     }
     .header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
-    .header-status-bar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 22px;
-      background: rgba(0,0,0,0.15);
-      border-top: 0.5px solid rgba(255,255,255,0.08);
-    }
-    .header-status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #4caf50;
-      flex-shrink: 0;
-    }
-    .header-status-text {
-      font-size: 0.7rem;
-      color: rgba(255,255,255,0.45);
-    }
 
     /* ── TABLA DE GUÍAS ── */
     .guias-section {
@@ -900,8 +839,6 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
       padding: 12px 14px;
       text-align: left;
       font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .5px;
       white-space: nowrap;
     }
     .guias-table tbody tr {
@@ -984,20 +921,18 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
       align-items: center;
       gap: 8px;
       padding: 10px 22px;
-      background: linear-gradient(135deg, #1b5e20, #43a047);
+      background: var(--success-mid);
       color: white;
       border: none;
       border-radius: 8px;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 3px 10px rgba(27,94,32,0.3);
-      transition: all .2s;
+      transition: background-color .15s ease;
       margin-top: 14px;
     }
     .btn-exportar-excel:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 16px rgba(27,94,32,0.4);
+      background: var(--success-text);
     }
 
     .guias-toolbar {
@@ -1166,7 +1101,7 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 .scan-banner-ico svg { width: 36px; height: 36px; }
 .scan-banner-body { flex: 1; min-width: 0; }
 .scan-banner-guia {
-  font-family: monospace; font-size: 26px; font-weight: 600;
+  font-family: var(--num); font-size: 26px; font-weight: 600;
   letter-spacing: .5px; line-height: 1.15; word-break: break-all;
 }
 .scan-banner-msg { font-size: 14px; font-weight: 500; margin-top: 2px; }

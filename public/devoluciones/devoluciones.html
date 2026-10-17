@@ -6,7 +6,7 @@
     <title>Efficommerce | Devoluciones</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&family=Archivo+Narrow:wght@400..700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     <link rel="stylesheet" href="/shared/tokens.css">
     <link rel="stylesheet" href="devoluciones.css">
@@ -28,20 +28,16 @@
                 <div class="header-divider"></div>
                 <div class="header-titles">
                     <h1>Gestión de Devoluciones</h1>
-                    <span class="header-sub">Transportadora · Verificación de guías</span>
+                    <span class="header-sub">Verificación de guías de la transportadora</span>
                 </div>
             </div>
-        </div>
-        <div class="header-status-bar">
-            <span class="header-status-dot"></span>
-            <span class="header-status-text">Sistema activo · Escaneo en tiempo real</span>
         </div>
     </header>
 
     <!-- SECTION HEADER -->
     <div class="section-header">
         <i class="fas fa-undo-alt"></i>
-        <h2>Panel de Control — Devoluciones</h2>
+        <h2>Escanear devoluciones</h2>
     </div>
 
     <!-- CONTENIDO PRINCIPAL -->
@@ -135,21 +131,18 @@
         <!-- MÉTRICAS -->
         <div class="metrics-grid">
             <div class="metric-card total">
-                <div class="metric-icon"><i class="fas fa-clipboard-list"></i></div>
                 <div>
                     <div class="metric-value" id="totalCount">0</div>
                     <div class="metric-label">Total registros</div>
                 </div>
             </div>
             <div class="metric-card correct">
-                <div class="metric-icon"><i class="fas fa-check-circle"></i></div>
                 <div>
                     <div class="metric-value" id="devueltasCount">0</div>
                     <div class="metric-label">Devueltas</div>
                 </div>
             </div>
             <div class="metric-card warning">
-                <div class="metric-icon"><i class="fas fa-clock"></i></div>
                 <div>
                     <div class="metric-value" id="pendientesCount">0</div>
                     <div class="metric-label">Pendientes</div>
@@ -221,7 +214,7 @@
                     <span class="log-head-lbl">Auditoría</span>
                 </div>
                 <div class="log-body">
-                    <div id="logEntries" style="font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.78);">
+                    <div id="logEntries" style="font-family:var(--num);font-size:12px;color:rgba(255,255,255,.78);">
                         Sin registros
                     </div>
                 </div>

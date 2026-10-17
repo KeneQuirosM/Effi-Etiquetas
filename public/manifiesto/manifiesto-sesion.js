@@ -238,7 +238,7 @@
       'Cargaste ', { fuerte: archivoActual || 'archivo sin nombre' },
       ` (${manifiesto.length} guías), pero hay un avance guardado de `,
       { fuerte: referencia.archivo || 'archivo sin nombre' },
-      ` · ${referencia.correctas.length} de ${referencia.manifiesto.length} guías. ¿Reemplazarlo? Se perderá ese avance.`,
+      `, ${referencia.correctas.length} de ${referencia.manifiesto.length} guías. ¿Reemplazarlo? Se perderá ese avance.`,
     ], [
       boton('Reemplazar', 'is-peligro', decidir(reemplazarAvance), { destructivo: true }),
       boton('Mantener el anterior', '', decidir(mantenerAnterior)),
@@ -509,15 +509,15 @@
     const terminado = s.faltantes.length === 0;
     const exportadoHace = typeof s.exportadoEn === 'number' ? haceCuanto(Date.now() - s.exportadoEn) : '';
     if (s.exportado && terminado) {
-      return [`Manifiesto terminado y exportado ${exportadoHace}: `, archivo, ` · ${conteo}`];
+      return [`Manifiesto terminado y exportado ${exportadoHace}: `, archivo, `, ${conteo}`];
     }
     if (s.exportado) {
-      return [`Manifiesto exportado ${exportadoHace}, sin terminar: `, archivo, ` · ${conteo}`];
+      return [`Manifiesto exportado ${exportadoHace}, sin terminar: `, archivo, `, ${conteo}`];
     }
     if (terminado) {
-      return ['Manifiesto terminado, falta exportar: ', archivo, ` · ${conteo} · guardado ${haceCuanto(Date.now() - s.guardadoEn)}`];
+      return ['Manifiesto terminado, falta exportar: ', archivo, `, ${conteo}, guardado ${haceCuanto(Date.now() - s.guardadoEn)}`];
     }
-    return ['Hay un manifiesto sin terminar: ', archivo, ` · ${conteo} · guardado ${haceCuanto(Date.now() - s.guardadoEn)}`];
+    return ['Hay un manifiesto sin terminar: ', archivo, `, ${conteo}, guardado ${haceCuanto(Date.now() - s.guardadoEn)}`];
   }
 
   function ofrecerAvance(s) {

@@ -92,7 +92,7 @@ function showOfflineBanner() {
   if (document.getElementById('offline-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'offline-banner';
-  banner.innerHTML = 'Sin conexión — usando inventario en caché. Los cambios no se guardarán.';
+  banner.innerHTML = 'Sin conexión. Se muestra el inventario en caché y los cambios no se guardarán.';
   banner.style.cssText = `
     position:fixed;top:0;left:0;right:0;z-index:9000;
     background:#c98e00;color:#fff;text-align:center;
@@ -248,7 +248,7 @@ function populateTiendas() {
 /* ── OFFLINE GUARD ──────────────────────────────────── */
 function guardOffline() {
   if (isOffline) {
-    notify('Sin conexión — no se pueden guardar cambios', 'danger');
+    notify('Sin conexión. Los cambios no se pueden guardar hasta que vuelva la red.', 'danger');
     return true;
   }
   return false;
@@ -1538,7 +1538,7 @@ function updateBulkCount() {
   let n = 0, m = 0;
   bulkQty.forEach(q => { if (q > 0) { n++; m += q; } });
   document.getElementById('bulk-selected-count').textContent =
-    `${n} producto${n !== 1 ? 's' : ''} · ${m} etiqueta${m !== 1 ? 's' : ''}`;
+    `${n} producto${n !== 1 ? 's' : ''}, ${m} etiqueta${m !== 1 ? 's' : ''}`;
   document.getElementById('bulk-footer-count').textContent =
     m > 0 ? `${m} etiqueta${m !== 1 ? 's' : ''} en total` : 'Selecciona productos para imprimir';
   const printBtn = document.getElementById('bulk-print-btn');
