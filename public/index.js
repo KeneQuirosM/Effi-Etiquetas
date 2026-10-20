@@ -1220,6 +1220,7 @@ function renderConteos() {
         <dl class="conteo-datos">
           <div><dt>Tienda</dt><dd>${esc(c.tienda_nombre)}</dd></div>
           <div><dt>Contado por</dt><dd>${esc(c.contado_por)}</dd></div>
+          <div><dt>Mesa</dt><dd>${c.mesa == null ? 'N/A' : esc(c.mesa)}</dd></div>
           <div><dt>Cajas</dt><dd>${c.cajas == null ? 'N/A' : esc(c.cajas)}</dd></div>
           <div><dt>Medidas</dt><dd>${esc(fmtMedidas(c))}</dd></div>
           <div><dt>Lote</dt><dd>${esc(c.lote || 'N/A')}</dd></div>
@@ -1331,6 +1332,7 @@ async function exportConteosExcel() {
       { header: 'Fecha',       key: 'fecha',  width: 18, style: { numFmt: 'dd/mm/yyyy hh:mm' } },
       { header: 'Tienda',      key: 'tienda', width: 18 },
       { header: 'Contado por', key: 'por',    width: 20 },
+      { header: 'Mesa',        key: 'mesa',   width: 7 },
       { header: 'ID',          key: 'id',     width: 10 },
       { header: 'Producto',    key: 'prod',   width: 30 },
       { header: 'Cantidad',    key: 'cant',   width: 11 },
@@ -1357,6 +1359,7 @@ async function exportConteosExcel() {
         fecha: fechaLocalParaExcel(c.creado_en),
         tienda: c.tienda_nombre,
         por: c.contado_por,
+        mesa: c.mesa == null ? null : Number(c.mesa),
         id: c.producto_codigo,
         prod: c.producto_nombre || '',
         cant: num(c.cantidad),

@@ -86,6 +86,7 @@ export default async function handler(req, res) {
       const b = req.body || {};
       const tiendaId = Number(b.tienda_id);
       const contadoPor = texto(b.contado_por, 80);
+      const mesa = entero(b.mesa, 4);
       const codigo = texto(b.producto_codigo, 64);
       const cantidad = entero(b.cantidad, 10000000);
       const cajas = entero(b.cajas, 100000);
@@ -99,6 +100,7 @@ export default async function handler(req, res) {
 
       if (!Number.isInteger(tiendaId) || tiendaId <= 0) return res.status(400).json({ error: 'Tienda requerida' });
       if (!contadoPor) return res.status(400).json({ error: '"Contado por" es requerido (máx. 80 caracteres)' });
+      if (mesa === undefined || mesa === 0) return res.status(400).json({ error: 'Mesa inválida (1 a 4)' });
       if (!codigo) return res.status(400).json({ error: 'El ID del producto es requerido (máx. 64 caracteres)' });
       if (cantidad === null || cantidad === undefined) return res.status(400).json({ error: 'Cantidad inválida' });
       if (cajas === undefined) return res.status(400).json({ error: 'Cantidad de cajas inválida' });
@@ -155,6 +157,7 @@ export default async function handler(req, res) {
           tienda_id: tienda.id,
           tienda_nombre: tienda.nombre,
           contado_por: contadoPor,
+          mesa,
           producto_codigo: codigo,
           producto_nombre: prod?.nombre || null,
           cantidad, cajas,

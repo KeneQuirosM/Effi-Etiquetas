@@ -2,7 +2,7 @@
 
 Cada conteo que se guarda en `/conteos` se copia automáticamente como una fila en una hoja de Google Sheets, con **una pestaña por tienda** (se crea sola la primera vez que llega un conteo de esa tienda). Solo se copian los datos; las fotos siguen en Supabase.
 
-Columnas: Registro, Fecha y hora, Contado por, ID artículo, Producto, Cantidad, Cajas, Ancho, Largo, Alto, Lote, Vencimiento, Hora inicio, Hora cierre, Duración (min).
+Columnas: Registro, Fecha y hora, Contado por, ID artículo, Producto, Cantidad, Cajas, Ancho, Largo, Alto, Lote, Vencimiento, Hora inicio, Hora cierre, Duración (min), Mesa. (Mesa va al final para que las pestañas creadas antes no se desordenen; el script le agrega el encabezado sola.)
 
 El conteo siempre se guarda primero en Supabase. Si Google no responde, queda marcado como pendiente y se reenvía desde el panel (pestaña Conteos → "Enviar pendientes"). Si un coordinador elimina un conteo en el panel, también se borra su fila de la hoja.
 

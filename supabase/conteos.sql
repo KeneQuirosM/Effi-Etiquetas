@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS conteos (
   foto_path        TEXT,                   -- ruta dentro del bucket "conteos"
   hora_inicio      TIME,                   -- hora local en que empezó el conteo
   hora_cierre      TIME,                   -- hora local en que terminó
+  mesa             SMALLINT CHECK (mesa BETWEEN 1 AND 4),  -- mesa de conteo
   en_sheets        BOOLEAN NOT NULL DEFAULT false,  -- ya copiado a Google Sheets
   fecha            DATE NOT NULL DEFAULT ((NOW() AT TIME ZONE 'America/Costa_Rica')::date),
   creado_en        TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS conteos (
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS hora_inicio TIME;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS hora_cierre TIME;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS en_sheets BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS mesa SMALLINT CHECK (mesa BETWEEN 1 AND 4);
 
 CREATE INDEX IF NOT EXISTS idx_conteos_fecha  ON conteos(fecha);
 CREATE INDEX IF NOT EXISTS idx_conteos_tienda ON conteos(tienda_id);

@@ -39,7 +39,7 @@ function guardarPrefs(p) {
  * en cada cambio y se restaura al cargar; se borra al guardar el conteo.
  * La foto no se puede recuperar (el archivo se pierde con la pestaña).
  */
-const CAMPOS_BORRADOR = ['f-tienda', 'f-contado', 'f-inicio', 'f-cierre', 'f-codigo', 'f-cantidad', 'f-cajas',
+const CAMPOS_BORRADOR = ['f-tienda', 'f-contado', 'f-mesa', 'f-inicio', 'f-cierre', 'f-codigo', 'f-cantidad', 'f-cajas',
   'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc'];
 
 function guardarBorrador() {
@@ -205,6 +205,7 @@ function leerFormulario() {
   const datos = {
     tienda_id: $('f-tienda').value,
     contado_por: $('f-contado').value.trim(),
+    mesa: $('f-mesa').value,
     producto_codigo: $('f-codigo').value.trim(),
     cantidad: num('f-cantidad'),
     cajas: num('f-cajas'),
@@ -222,6 +223,7 @@ function leerFormulario() {
   const errores = [
     marcar('f-tienda', !datos.tienda_id) && 'Selecciona la tienda',
     marcar('f-contado', !datos.contado_por) && 'Indica quién contó',
+    marcar('f-mesa', !datos.mesa) && 'Selecciona la mesa',
     marcar('f-codigo', !datos.producto_codigo) && 'Indica el ID del artículo',
     marcar('f-cantidad', !esEntero(datos.cantidad)) && 'La cantidad debe ser un número entero',
     marcar('f-cajas', datos.cajas !== '' && !esEntero(datos.cajas)) && 'Las cajas deben ser un número entero',
@@ -251,6 +253,7 @@ function armarMensaje(d, tiendaNombre, productoNombre) {
   return [
     `*Ingresa mercancía de:* ${tiendaNombre}`,
     `*Contado por:* ${d.contado_por}`,
+    `*Mesa:* ${d.mesa}`,
     `*Horario del conteo:* ${horario}`,
     `*Artículo:* ID ${d.producto_codigo}${productoNombre ? ' - ' + productoNombre : ''}`,
     `*Unidades contadas:* ${Number(d.cantidad).toLocaleString('es-CR')}`,
@@ -284,12 +287,12 @@ async function guardarConteo(e) {
   btn.textContent = 'Guardando...';
 
   try {
-    const body = { ...datos, tienda_id: Number(datos.tienda_id) };
+    const body = { ...datos, tienda_id: Number(datos.tienda_id), mesa: Number(datos.mesa) };
     if (fotoBlob) body.foto = await blobADataURL(fotoBlob);
 
     const res = await apiRequestJSON('/api/conteos', { method: 'POST', body });
 
-    guardarPrefs({ tiendaId: datos.tienda_id, contadoPor: datos.contado_por });
+    guardarPrefs({ tiendaId: datos.tienda_id, contadoPor: datos.contado_por, mesa: datos.mesa });
     borrarBorrador();
 
     const tienda = tiendaActual();
@@ -365,6 +368,7 @@ function nuevoConteo() {
 (function init() {
   const prefs = leerPrefs();
   if (prefs.contadoPor) $('f-contado').value = prefs.contadoPor;
+  if (prefs.mesa) $('f-mesa').value = prefs.mesa;
 
   $('f-tienda').addEventListener('change', actualizarProductos);
   $('f-codigo').addEventListener('input', actualizarNombreProducto);
@@ -375,7 +379,7 @@ function nuevoConteo() {
     const f = e.target.closest('.field.invalid');
     if (f) f.classList.remove('invalid');
     // El inicio se marca con lo primero que se escribe del artículo
-    if (!$('f-inicio').value && !['f-inicio', 'f-cierre', 'f-tienda', 'f-contado'].includes(e.target.id)) {
+    if (!$('f-inicio').value && !['f-inicio', 'f-cierre', 'f-tienda', 'f-contado', 'f-mesa'].includes(e.target.id)) {
       $('f-inicio').value = horaActual();
     }
     guardarBorrador();

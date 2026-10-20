@@ -21,7 +21,7 @@ const ZONA = 'America/Costa_Rica';
 const COLUMNAS = [
   'Registro', 'Fecha y hora', 'Contado por', 'ID artículo', 'Producto',
   'Cantidad', 'Cajas', 'Ancho (cm)', 'Largo (cm)', 'Alto (cm)', 'Lote',
-  'Vencimiento', 'Hora inicio', 'Hora cierre', 'Duración (min)'
+  'Vencimiento', 'Hora inicio', 'Hora cierre', 'Duración (min)', 'Mesa'
 ];
 
 /* ── INSTALACIÓN ─────────────────────────────────────── */
@@ -98,7 +98,8 @@ function agregar_(c) {
     c.vencimiento ? Utilities.parseDate(c.vencimiento, ZONA, 'yyyy-MM-dd') : '',
     hora_(c.hora_inicio),
     hora_(c.hora_cierre),
-    duracion === null ? '' : duracion
+    duracion === null ? '' : duracion,
+    numero_(c.mesa)
   ]);
   return { ok: true, hoja: sh.getName() };
 }
@@ -133,6 +134,13 @@ function hojaTienda_(tienda) {
     // Quita la "Hoja 1" vacía que trae todo archivo nuevo
     const vacia = ss.getSheets().find(s => s.getName() !== nombre && s.getLastRow() === 0 && s.getLastColumn() === 0);
     if (vacia && ss.getSheets().length > 1) ss.deleteSheet(vacia);
+  }
+  // Pestañas creadas con una versión anterior: agrega los encabezados que falten
+  const enc = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  if (enc.length < COLUMNAS.length) {
+    sh.getRange(1, enc.length + 1, 1, COLUMNAS.length - enc.length)
+      .setValues([COLUMNAS.slice(enc.length)])
+      .setFontWeight('bold').setFontColor('#ffffff').setBackground('#0d1b6e');
   }
   return sh;
 }
