@@ -100,16 +100,16 @@ export default async function handler(req, res) {
 
       if (!Number.isInteger(tiendaId) || tiendaId <= 0) return res.status(400).json({ error: 'Tienda requerida' });
       if (!contadoPor) return res.status(400).json({ error: '"Contado por" es requerido (máx. 80 caracteres)' });
-      if (mesa === undefined || mesa === 0) return res.status(400).json({ error: 'Mesa inválida (1 a 4)' });
+      if (!mesa) return res.status(400).json({ error: 'Selecciona la mesa (1 a 4)' });
       if (!codigo) return res.status(400).json({ error: 'El ID del producto es requerido (máx. 64 caracteres)' });
       if (cantidad === null || cantidad === undefined) return res.status(400).json({ error: 'Cantidad inválida' });
       if (cajas === undefined) return res.status(400).json({ error: 'Cantidad de cajas inválida' });
       if (ancho === undefined || largo === undefined || alto === undefined) {
         return res.status(400).json({ error: 'Medidas inválidas' });
       }
-      if (b.lote && !lote) return res.status(400).json({ error: 'Número de lote inválido (máx. 64 caracteres)' });
-      if (vencimiento !== null && !esFechaValida(vencimiento)) {
-        return res.status(400).json({ error: 'Fecha de vencimiento inválida' });
+      if (!lote) return res.status(400).json({ error: 'El número de lote es requerido (máx. 64 caracteres)' });
+      if (!esFechaValida(vencimiento)) {
+        return res.status(400).json({ error: 'La fecha de vencimiento es requerida' });
       }
 
       if ((horaInicio !== null && !HORA_RE.test(horaInicio)) || (horaCierre !== null && !HORA_RE.test(horaCierre))) {

@@ -229,7 +229,9 @@ function leerFormulario() {
     marcar('f-cajas', datos.cajas !== '' && !esEntero(datos.cajas)) && 'Las cajas deben ser un número entero',
     marcar('f-ancho', !esMedida(datos.ancho_cm)) && 'Ancho inválido',
     marcar('f-largo', !esMedida(datos.largo_cm)) && 'Largo inválido',
-    marcar('f-alto', !esMedida(datos.alto_cm)) && 'Alto inválido'
+    marcar('f-alto', !esMedida(datos.alto_cm)) && 'Alto inválido',
+    marcar('f-lote', !datos.lote) && 'Indica el número de lote',
+    marcar('f-venc', !datos.vencimiento) && 'Indica la fecha de vencimiento'
   ].filter(Boolean);
 
   return { datos, errores };
@@ -317,34 +319,53 @@ async function guardarConteo(e) {
 }
 
 /* ── COMPARTIR ── */
-async function copiarMensaje(silencioso) {
-  try {
-    await navigator.clipboard.writeText(ultimoMensaje);
-    if (!silencioso) notify('Mensaje copiado', 'success');
-    return true;
-  } catch (_) {
-    if (!silencioso) notify('No se pudo copiar el mensaje', 'error');
-    return false;
-  }
+// Copia síncrona (textarea + execCommand): a diferencia de
+// navigator.clipboard, no hace esperar al toque del botón, así el menú de
+// compartir que se abre justo después sigue contando como acción del usuario.
+function copiarSincrono(texto) {
+  const ta = document.createElement('textarea');
+  ta.value = texto;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, texto.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (_) {}
+  ta.remove();
+  return ok;
+}
+
+async function copiarMensaje() {
+  let ok = false;
+  try { await navigator.clipboard.writeText(ultimoMensaje); ok = true; }
+  catch (_) { ok = copiarSincrono(ultimoMensaje); }
+  notify(ok ? 'Mensaje copiado' : 'No se pudo copiar el mensaje', ok ? 'success' : 'error');
 }
 
 // Con foto: menú nativo de compartir (en el celular aparece WhatsApp) con
-// la imagen y el texto como pie. Algunos teléfonos descartan el texto al
-// compartir imágenes, por eso también se copia al portapapeles para pegarlo.
+// la imagen y el texto como pie. Algunos teléfonos (iPhone) descartan el
+// texto al compartir imágenes, por eso también se copia para pegarlo.
 // Sin soporte para compartir archivos: abre WhatsApp solo con el texto.
-async function compartirWhatsApp() {
+//
+// Importante: nada de await antes de navigator.share/window.open. iOS solo
+// los permite dentro del toque del botón; una espera previa (p. ej. copiar
+// con navigator.clipboard) hacía que se bloquearan sin aviso.
+function compartirWhatsApp() {
   if (ultimaFoto && navigator.canShare && navigator.canShare({ files: [ultimaFoto] })) {
-    const copiado = await copiarMensaje(true);
-    try {
-      await navigator.share({ files: [ultimaFoto], text: ultimoMensaje });
-      return;
-    } catch (err) {
+    const copiado = copiarSincrono(ultimoMensaje);
+    navigator.share({ files: [ultimaFoto], text: ultimoMensaje }).catch(err => {
       if (err.name === 'AbortError') return;   // la persona cerró el menú
-    }
-    if (copiado) notify('No se pudo abrir el menú de compartir. El mensaje quedó copiado.', 'warn');
+      notify(copiado
+        ? 'No se pudo abrir el menú de compartir. El mensaje quedó copiado: abre WhatsApp y pégalo.'
+        : 'No se pudo abrir el menú de compartir. Usa "Copiar mensaje" y pégalo en WhatsApp.', 'warn');
+    });
+    return;
   }
-  if (ultimaFoto) notify('Se abrirá WhatsApp solo con el texto; adjunta la foto manualmente.', 'info');
-  window.open('https://wa.me/?text=' + encodeURIComponent(ultimoMensaje), '_blank', 'noopener');
+  const url = 'https://wa.me/?text=' + encodeURIComponent(ultimoMensaje);
+  const win = window.open(url, '_blank', 'noopener');
+  if (!win) window.location.href = url;   // ventana bloqueada: abrir en la misma pestaña
+  if (ultimaFoto) notify('WhatsApp se abre solo con el texto; adjunta la foto manualmente.', 'info');
 }
 
 /* ── NUEVO CONTEO ── */
