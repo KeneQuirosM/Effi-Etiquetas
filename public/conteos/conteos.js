@@ -293,7 +293,7 @@ function leerFormulario() {
     marcar('f-mesa', !datos.mesa) && 'Selecciona la mesa',
     marcar('f-codigo', !datos.producto_codigo) && 'Indica el ID del artículo',
     marcar('f-cantidad', !esEntero(datos.cantidad)) && 'La cantidad debe ser un número entero',
-    marcar('f-cajas', !esEntero(datos.cajas)) && 'Indica la cantidad de cajas (número entero)',
+    marcar('f-cajas', !esEntero(datos.cajas) || Number(datos.cajas) < 1) && 'Las cajas deben ser al menos 1',
     marcar('f-ancho', !esMedida(datos.ancho_cm)) && 'Ancho inválido',
     marcar('f-largo', !esMedida(datos.largo_cm)) && 'Largo inválido',
     marcar('f-alto', !esMedida(datos.alto_cm)) && 'Alto inválido',
