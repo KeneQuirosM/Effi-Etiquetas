@@ -120,6 +120,37 @@ body {
 .hint:empty { display: none; }
 .hint.ok { color: var(--success-mid); font-weight: 500; }
 
+/* ══ BUSCAR PRODUCTO POR NOMBRE ══ */
+.field input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; }
+.buscar-lista {
+    border: 1.5px solid var(--neutral-200);
+    border-radius: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: #fff;
+}
+.buscar-item {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; min-height: 48px;
+    padding: 8px 12px;
+    font: inherit; font-size: 15px; text-align: left;
+    color: var(--neutral-800);
+    background: #fff;
+    border: none; border-bottom: 1px solid var(--neutral-200);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.buscar-item:last-child { border-bottom: none; }
+.buscar-item:active { background: var(--brand-50); }
+.buscar-id {
+    flex-shrink: 0; min-width: 44px;
+    font-weight: 700; color: var(--brand-700);
+    font-variant-numeric: tabular-nums;
+}
+.buscar-nombre { min-width: 0; overflow-wrap: anywhere; }
+.buscar-vacio { padding: 12px; font-size: 13px; color: var(--neutral-600); }
+
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .row-mesa { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 10px; }
 .row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

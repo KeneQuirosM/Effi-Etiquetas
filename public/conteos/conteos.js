@@ -88,6 +88,7 @@ function tiendaActual() {
 }
 
 function actualizarProductos() {
+  renderBusqueda();
   const t = tiendaActual();
   $('dl-productos').innerHTML = (t?.inventario || [])
     .map(p => `<option value="${esc(p.id)}">${esc(p.producto)}</option>`).join('');
@@ -108,6 +109,72 @@ function actualizarNombreProducto() {
   if (p) hint.textContent = p.producto;
   else if (codigo && tiendaActual()) hint.textContent = 'ID no encontrado en el catálogo de esta tienda (se guarda igual)';
   else hint.textContent = '';
+}
+
+/* ── BUSCAR PRODUCTO POR NOMBRE ──
+ * Para quien no sabe el ID: filtra el catálogo de la tienda elegida (ya
+ * descargado con /api/tiendas) sin distinguir mayúsculas ni tildes. Cada
+ * palabra escrita debe aparecer en el nombre o el ID, en cualquier orden.
+ * Al tocar un resultado se llena el ID.
+ */
+const MAX_RESULTADOS = 15;
+
+function normalizar(s) {
+  return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function buscarProductos(texto) {
+  const t = tiendaActual();
+  const palabras = normalizar(texto).split(/\s+/).filter(Boolean);
+  if (!t || !palabras.length) return [];
+  const encontrados = [];
+  for (const p of t.inventario) {
+    const nombre = normalizar(p.producto);
+    const id = normalizar(p.id);
+    if (palabras.every(w => nombre.includes(w) || id.includes(w))) {
+      // Primero los que empiezan con lo escrito, luego el resto
+      encontrados.push({ p, rango: nombre.startsWith(palabras[0]) || id === palabras[0] ? 0 : 1 });
+    }
+  }
+  encontrados.sort((a, b) => a.rango - b.rango || String(a.p.producto).localeCompare(String(b.p.producto), 'es'));
+  return encontrados.map(e => e.p);
+}
+
+function renderBusqueda() {
+  const caja = $('buscar-resultados');
+  const texto = $('f-buscar').value;
+  if (!normalizar(texto)) { caja.hidden = true; caja.innerHTML = ''; return; }
+  caja.hidden = false;
+  if (!tiendaActual()) {
+    caja.innerHTML = '<div class="buscar-vacio">Elige primero la tienda.</div>';
+    return;
+  }
+  const res = buscarProductos(texto);
+  if (!res.length) {
+    caja.innerHTML = '<div class="buscar-vacio">Sin resultados en el catálogo de esta tienda.</div>';
+    return;
+  }
+  caja.innerHTML = res.slice(0, MAX_RESULTADOS).map(p => `
+    <button type="button" class="buscar-item" data-id="${esc(p.id)}">
+      <span class="buscar-id">${esc(p.id)}</span>
+      <span class="buscar-nombre">${esc(p.producto)}</span>
+    </button>`).join('') +
+    (res.length > MAX_RESULTADOS
+      ? `<div class="buscar-vacio">${res.length - MAX_RESULTADOS} más: escribe más palabras para afinar.</div>`
+      : '');
+}
+
+function elegirProducto(id) {
+  $('f-codigo').value = id;
+  limpiarBusqueda();
+  // Dispara lo mismo que escribir el ID: nombre en verde, hora de inicio, borrador
+  $('f-codigo').dispatchEvent(new Event('input', { bubbles: true }));
+  $('f-codigo').closest('.field').scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function limpiarBusqueda() {
+  $('f-buscar').value = '';
+  renderBusqueda();
 }
 
 /* ── FOTO ── */
@@ -376,6 +443,7 @@ function nuevoConteo() {
     .forEach(id => { $(id).value = ''; });
   document.querySelectorAll('.field.invalid').forEach(f => f.classList.remove('invalid'));
   quitarFoto();
+  limpiarBusqueda();
   actualizarNombreProducto();
   ultimaFoto = null;
   guardarBorrador();
@@ -393,6 +461,18 @@ function nuevoConteo() {
 
   $('f-tienda').addEventListener('change', actualizarProductos);
   $('f-codigo').addEventListener('input', actualizarNombreProducto);
+  $('f-buscar').addEventListener('input', renderBusqueda);
+  // Enter en el buscador no debe enviar el formulario: elige el primer resultado
+  $('f-buscar').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const primero = $('buscar-resultados').querySelector('.buscar-item');
+    if (primero) elegirProducto(primero.dataset.id);
+  });
+  $('buscar-resultados').addEventListener('click', e => {
+    const item = e.target.closest('.buscar-item');
+    if (item) elegirProducto(item.dataset.id);
+  });
   $('f-foto').addEventListener('change', onFotoSeleccionada);
   $('f-foto-galeria').addEventListener('change', onFotoSeleccionada);
   $('form-conteo').addEventListener('submit', guardarConteo);

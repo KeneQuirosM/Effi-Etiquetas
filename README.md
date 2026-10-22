@@ -42,6 +42,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 
 ### 6. Conteos (`/conteos/conteos.html`)
 - Pantalla para celular, abierta para todos (sin login), para registrar cada conteo de mercancía: tienda, quién contó, mesa (1 a 4), hora de inicio y de cierre, ID, cantidad, cajas, medidas (ancho/largo/alto), lote, vencimiento y foto
+- Si no se sabe el ID, se puede buscar el producto por nombre (sin distinguir mayúsculas ni tildes) dentro del catálogo de la tienda elegida
 - Se guarda en la tabla `conteos`; la foto se comprime en el navegador y se sube al bucket privado `conteos` de Supabase Storage
 - Tras guardar, "Compartir en WhatsApp" abre el menú de compartir del celular con la foto y el mensaje (se envía desde el WhatsApp de la persona, sin envío automático)
 - Opcional: cada conteo se copia a una hoja de Google Sheets con una pestaña por tienda (Apps Script en `google/`, instalación en `google/README.md`)

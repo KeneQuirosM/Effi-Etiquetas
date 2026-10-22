@@ -74,6 +74,11 @@
                 <datalist id="dl-productos"></datalist>
                 <p class="hint" id="f-codigo-nombre" aria-live="polite"></p>
             </div>
+            <div class="field">
+                <label for="f-buscar">¿No sabes el ID? Búscalo por nombre</label>
+                <input type="search" id="f-buscar" maxlength="80" placeholder="Ej: fiber gummies" autocomplete="off" enterkeyhint="search">
+                <div id="buscar-resultados" class="buscar-lista" hidden></div>
+            </div>
             <div class="row-2">
                 <div class="field">
                     <label for="f-cantidad">Cantidad <span class="req">*</span></label>
