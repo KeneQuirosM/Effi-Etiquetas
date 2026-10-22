@@ -103,7 +103,7 @@ export default async function handler(req, res) {
       if (!mesa) return res.status(400).json({ error: 'Selecciona la mesa (1 a 4)' });
       if (!codigo) return res.status(400).json({ error: 'El ID del producto es requerido (máx. 64 caracteres)' });
       if (cantidad === null || cantidad === undefined) return res.status(400).json({ error: 'Cantidad inválida' });
-      if (cajas === undefined) return res.status(400).json({ error: 'Cantidad de cajas inválida' });
+      if (cajas === null || cajas === undefined) return res.status(400).json({ error: 'La cantidad de cajas es requerida (número entero)' });
       if (ancho === undefined || largo === undefined || alto === undefined) {
         return res.status(400).json({ error: 'Medidas inválidas' });
       }
