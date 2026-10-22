@@ -128,6 +128,7 @@
       <button class="tab-btn" onclick="switchTab('tab-users')">Usuarios</button>
       <button class="tab-btn" onclick="switchTab('tab-devol')">Devoluciones</button>
       <button class="tab-btn" onclick="switchTab('tab-conteos')">Conteos</button>
+      <button class="tab-btn" onclick="switchTab('tab-impresion')">Impresión</button>
     </div>
 
     <!-- TAB: Agregar Producto -->
@@ -411,6 +412,41 @@
       </div>
       <p style="font-size:11px;color:var(--muted);margin-top:8px">Se registran las guías cada vez que se pulsa "Exportar devueltas" en Gestión de Devoluciones. Cada guía cuenta una sola vez, en el día en que se exportó por primera vez.</p>
     </div>
+    <!-- TAB: Estación de impresión (PC de la impresora de etiquetas) -->
+    <div id="tab-impresion" class="tab-content">
+      <p class="section-label" style="margin-bottom:10px">Estación de impresión de conteos</p>
+      <div class="estacion-box" id="estacion-box">
+        <div class="estacion-estado">
+          <span class="estacion-dot" aria-hidden="true"></span>
+          <div>
+            <strong id="estacion-titulo">Estación detenida</strong>
+            <span id="estacion-detalle">Actívala solo en la PC conectada a la impresora de etiquetas.</span>
+          </div>
+        </div>
+        <button type="button" class="btn-action btn-primary" id="estacion-btn" onclick="toggleEstacion()">Activar estación</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:10px 0 14px">Mientras esté activa, cada conteo que se guarde desde un celular con la casilla "Imprimir etiqueta" marcada se imprime aquí con la etiqueta 4x6 normal. Deja esta pestaña abierta y visible. Si la PC se reinicia, vuelve a abrir esta página: la estación se reactiva sola.</p>
+
+      <p class="section-label" style="margin-bottom:8px">Impresas en esta sesión</p>
+      <div class="inv-list" id="estacion-log">
+        <div class="inv-item"><span class="item-name" style="color:var(--muted)">Todavía no se ha impreso nada</span></div>
+      </div>
+
+      <details class="estacion-ayuda">
+        <summary>Cómo hacer que imprima sin preguntar (una sola vez en la PC)</summary>
+        <ol>
+          <li>Cierra todas las ventanas de Chrome.</li>
+          <li>Clic derecho en el escritorio → <b>Nuevo → Acceso directo</b>.</li>
+          <li>Pega esta línea y pulsa Siguiente; ponle de nombre "Effi Impresión":
+            <div class="estacion-cmd"><code id="estacion-cmd"></code><button type="button" class="btn-action btn-ghost" onclick="copiarComandoEstacion()">Copiar</button></div>
+          </li>
+          <li>Abre ese acceso directo, inicia sesión de coordinador, entra a esta pestaña y pulsa <b>Activar estación</b>.</li>
+          <li>En Windows, deja la impresora de etiquetas como <b>predeterminada</b> y con papel 4x6 en sus preferencias.</li>
+        </ol>
+        <p>Con ese acceso directo Chrome imprime directo en la impresora predeterminada, sin mostrar el cuadro de impresión. No instala nada: usa un perfil de Chrome aparte para que la opción funcione aunque Chrome ya esté abierto. Si la PC usa Edge, cambia la ruta por <code>"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"</code>. Sin el acceso directo la estación también funciona, pero en cada conteo aparece el cuadro de impresión y hay que pulsar Imprimir.</p>
+      </details>
+    </div>
+
     <!-- TAB: Conteos registrados desde conteos.html (pantalla móvil pública) -->
     <div id="tab-conteos" class="tab-content">
       <p class="section-label" style="margin-bottom:10px">Conteos de mercancía registrados</p>

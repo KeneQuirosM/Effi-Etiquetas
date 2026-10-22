@@ -10,6 +10,7 @@ const MAX_FOTO_BYTES = 3 * 1024 * 1024;   // ya llega comprimida desde el navega
 const MAX_RANGO_DIAS = 400;
 const MAX_FILAS = 1000;
 const URL_FIRMADA_SEG = 60 * 60;
+const IMPRESION_LOTE = 10;          // conteos que la estación de impresión toma por consulta
 const SYNC_LOTE = 5;              // conteos enviados a Sheets por llamada de "Enviar pendientes"
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -45,6 +46,56 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+
+    // ── ESTACIÓN DE IMPRESIÓN (solo coordinador) ──
+    // La pestaña "Impresión" de index.html, abierta en la PC de la impresora,
+    // consulta cada pocos segundos los conteos que pidieron etiqueta.
+    //   GET ?accion=por_imprimir              -> { ultimo_id } para arrancar
+    //   GET ?accion=por_imprimir&despues_de=N -> conteos pendientes con id > N
+    //   POST ?accion=impreso {id}             -> marca impreso_en solo si nadie
+    //     lo marcó antes; { reclamado } evita imprimir dos veces.
+    if (req.method === 'GET' && req.query?.accion === 'por_imprimir') {
+      const user = await requireUser(req, res);
+      if (!user) return;
+
+      if (req.query.despues_de === undefined) {
+        const { data, error } = await supabaseAdmin
+          .from('conteos').select('id').order('id', { ascending: false }).limit(1).maybeSingle();
+        if (error) {
+          console.error('Error leyendo último conteo:', error);
+          return res.status(500).json({ error: 'No se pudo iniciar la estación' });
+        }
+        return res.status(200).json({ ultimo_id: data?.id ?? 0 });
+      }
+
+      const despuesDe = Number(req.query.despues_de);
+      if (!Number.isInteger(despuesDe) || despuesDe < 0) return res.status(400).json({ error: 'Parámetro inválido' });
+      const { data, error } = await supabaseAdmin
+        .from('conteos').select('*')
+        .eq('imprimir', true).is('impreso_en', null).gt('id', despuesDe)
+        .order('id', { ascending: true }).limit(IMPRESION_LOTE);
+      if (error) {
+        console.error('Error leyendo conteos por imprimir:', error);
+        return res.status(500).json({ error: 'No se pudieron leer los conteos por imprimir' });
+      }
+      return res.status(200).json({ conteos: data.map(({ foto_path, ...r }) => r) });
+    }
+
+    if (req.method === 'POST' && req.query?.accion === 'impreso') {
+      const user = await requireUser(req, res);
+      if (!user) return;
+
+      const id = Number((req.body || {}).id);
+      if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido' });
+      const { data, error } = await supabaseAdmin
+        .from('conteos').update({ impreso_en: new Date().toISOString() })
+        .eq('id', id).is('impreso_en', null).select('id').maybeSingle();
+      if (error) {
+        console.error('Error marcando conteo impreso:', error);
+        return res.status(500).json({ error: 'No se pudo marcar como impreso' });
+      }
+      return res.status(200).json({ reclamado: Boolean(data) });
+    }
 
     // ── POST ?accion=sincronizar: reenviar a Google Sheets los conteos que
     // no llegaron (Google caído, o anteriores a configurar la hoja). Solo
@@ -151,23 +202,28 @@ export default async function handler(req, res) {
         }
       }
 
-      const { data, error } = await supabaseAdmin
-        .from('conteos')
-        .insert({
-          tienda_id: tienda.id,
-          tienda_nombre: tienda.nombre,
-          contado_por: contadoPor,
-          mesa,
-          producto_codigo: codigo,
-          producto_nombre: prod?.nombre || null,
-          cantidad, cajas,
-          ancho_cm: ancho, largo_cm: largo, alto_cm: alto,
-          lote, vencimiento,
-          hora_inicio: horaInicio, hora_cierre: horaCierre,
-          foto_path: fotoPath
-        })
-        .select('*')
-        .single();
+      const fila = {
+        tienda_id: tienda.id,
+        tienda_nombre: tienda.nombre,
+        contado_por: contadoPor,
+        mesa,
+        producto_codigo: codigo,
+        producto_nombre: prod?.nombre || null,
+        cantidad, cajas,
+        ancho_cm: ancho, largo_cm: largo, alto_cm: alto,
+        lote, vencimiento,
+        hora_inicio: horaInicio, hora_cierre: horaCierre,
+        foto_path: fotoPath,
+        imprimir: b.imprimir === true
+      };
+      let { data, error } = await supabaseAdmin.from('conteos').insert(fila).select('*').single();
+      // Si aún no se ejecutó la parte de conteos.sql que agrega "imprimir",
+      // guardar igual sin ese dato en vez de perder el conteo
+      if (error && /imprimir/.test(error.message || '')) {
+        console.error('Columna imprimir ausente; re-ejecutar supabase/conteos.sql:', error.message);
+        const { imprimir, ...sinImprimir } = fila;
+        ({ data, error } = await supabaseAdmin.from('conteos').insert(sinImprimir).select('*').single());
+      }
 
       if (error) {
         console.error('Error registrando conteo:', error);

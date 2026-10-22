@@ -164,6 +164,7 @@ function activateCoord(token, refreshToken) {
   btn.classList.add('active');
   document.getElementById('coord-icon').textContent = '';
   document.getElementById('coord-label').textContent = 'Coordinador Activo';
+  restaurarEstacion();
 }
 
 async function checkPin() {
@@ -335,7 +336,7 @@ function switchTab(id) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config','tab-users','tab-devol','tab-conteos'];
+  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config','tab-users','tab-devol','tab-conteos','tab-impresion'];
   const idx = tabs.indexOf(id);
   if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (id === 'tab-add-tienda') populateTiendas();
@@ -500,6 +501,7 @@ function lockCoord() {
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
   devolDias = null;
   conteos = null;
+  detenerEstacion(false);
   document.getElementById('conteo-list').innerHTML = '';
   document.getElementById('conteo-resumen').innerHTML = '';
   const btn = document.getElementById('btn-coord-toggle');
@@ -1229,6 +1231,7 @@ function renderConteos() {
         </dl>
         <div class="conteo-pie">
           <span>${esc(cuando)}</span>
+          <button type="button" class="conteo-print" onclick="reimprimirConteo(${Number(c.id)})" title="Imprimir etiqueta" aria-label="Imprimir etiqueta de ${esc(c.producto_codigo)}">${PRINT_ICON_SVG}</button>
           <button type="button" class="conteo-del" onclick="deleteConteo(${Number(c.id)})" title="Eliminar conteo" aria-label="Eliminar conteo ${esc(c.producto_codigo)}">${TRASH_ICON_SVG}</button>
         </div>
       </div>
@@ -1403,6 +1406,179 @@ async function exportConteosExcel() {
   } finally {
     exportandoConteos = false;
   }
+}
+
+/* ── ESTACIÓN DE IMPRESIÓN DE CONTEOS ──────────────────────
+ * En la PC de la impresora, la pestaña "Impresión" consulta cada pocos
+ * segundos los conteos guardados con la casilla "Imprimir etiqueta" y los
+ * imprime con la MISMA etiqueta 4x6 del generador (#etiqueta: logo, nombre,
+ * ID, tienda y QR de ubicación): llena los selectores de la barra lateral,
+ * imprime como el botón "Imprimir Etiqueta" y deja todo como estaba.
+ * Para imprimir sin el cuadro de diálogo, Chrome se abre con
+ * --kiosk-printing (acceso directo; ver la ayuda de la pestaña).
+ */
+const ESTACION_KEY = 'effi_estacion_impresion_v1';
+const ESTACION_INTERVALO_MS = 6000;
+const PRINT_ICON_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>';
+let estacion = { activa: false, iniciando: false, ultimoId: 0, timer: null, ocupada: false, impresas: [] };
+
+// Imprime la etiqueta estándar de un conteo. Si el producto no está en el
+// catálogo cargado (p. ej. se creó después de abrir la página), usa los
+// textos que trae el conteo.
+function imprimirEtiquetaConteo(c) {
+  const selTienda = document.getElementById('select-tienda');
+  const selProd = document.getElementById('select-producto');
+  const selId = document.getElementById('select-id');
+  const selFormato = document.getElementById('select-formato');
+  const etiqueta = document.getElementById('etiqueta');
+  const previo = { tienda: selTienda.value, prod: selProd.value, formato: selFormato.value };
+
+  const codigo = String(c.producto_codigo);
+  selTienda.value = c.tienda_id != null && getTienda(c.tienda_id) ? String(c.tienda_id) : '';
+  populateInventario(selTienda.value, selProd, selId);
+  const enCatalogo = [...selId.options].some(o => o.value === codigo);
+  // Si no está, se limpia: el generador autoselecciona cuando la tienda
+  // tiene un solo producto y saldría el QR de otro artículo
+  selId.value = enCatalogo ? codigo : '';
+  selProd.value = enCatalogo ? codigo : '';
+
+  selFormato.value = 'estandar';
+  etiqueta.classList.remove('solo-notas', 'fragil-mode', 'numeracion-mode');
+  updatePreview();
+  if (!enCatalogo) {
+    const nombre = String(c.producto_nombre || codigo).toUpperCase();
+    const vn = document.getElementById('view-name');
+    vn.textContent = nombre;
+    const len = nombre.length;
+    vn.style.fontSize = len <= 12 ? '34pt' : len <= 20 ? '28pt' : len <= 30 ? '22pt' : len <= 45 ? '17pt' : '13pt';
+    document.getElementById('view-id').textContent = codigo;
+    document.getElementById('view-tienda').textContent = String(c.tienda_nombre || '').toUpperCase();
+  }
+
+  document.body.classList.add('print-single');
+  window.print();
+  document.body.classList.remove('print-single');
+
+  // Restaurar lo que el usuario tenía seleccionado
+  selTienda.value = previo.tienda;
+  populateInventario(selTienda.value, selProd, selId);
+  selProd.value = previo.prod; selId.value = previo.prod;
+  selFormato.value = previo.formato;
+  selFormato.dispatchEvent(new Event('change'));
+}
+
+function reimprimirConteo(id) {
+  const c = (conteos || []).find(x => x.id === id);
+  if (c) imprimirEtiquetaConteo(c);
+}
+
+function renderEstacion(detalle, error) {
+  const box = document.getElementById('estacion-box');
+  box.classList.toggle('activa', estacion.activa && !error);
+  box.classList.toggle('error', !!error);
+  document.getElementById('estacion-titulo').textContent = !estacion.activa
+    ? 'Estación detenida'
+    : error ? 'Estación activa, con problemas' : 'Estación activa: esperando conteos';
+  document.getElementById('estacion-detalle').textContent = detalle;
+  document.getElementById('estacion-btn').textContent = estacion.activa ? 'Detener estación' : 'Activar estación';
+
+  const log = document.getElementById('estacion-log');
+  log.innerHTML = estacion.impresas.length
+    ? estacion.impresas.map(c => `
+      <div class="inv-item">
+        <span class="item-id">${esc(c.hora)}</span>
+        <span class="item-name">ID ${esc(c.producto_codigo)} · ${esc(c.producto_nombre || '')} · ${esc(c.tienda_nombre)} · Mesa ${esc(c.mesa ?? '-')} · ${esc(c.contado_por)}</span>
+        <button type="button" class="conteo-print" onclick="reimprimirEstacion(${Number(c.id)})" title="Reimprimir" aria-label="Reimprimir ${esc(c.producto_codigo)}">${PRINT_ICON_SVG}</button>
+      </div>`).join('')
+    : '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Todavía no se ha impreso nada</span></div>';
+}
+
+function reimprimirEstacion(id) {
+  const c = estacion.impresas.find(x => x.id === id);
+  if (c) imprimirEtiquetaConteo(c);
+}
+
+async function cicloEstacion() {
+  if (!estacion.activa || estacion.ocupada) return;
+  estacion.ocupada = true;
+  try {
+    const r = await apiFetch('GET', `/api/conteos?accion=por_imprimir&despues_de=${estacion.ultimoId}`);
+    for (const c of r.conteos || []) {
+      if (!estacion.activa) break;
+      estacion.ultimoId = Math.max(estacion.ultimoId, c.id);
+      // Reclamar antes de imprimir: si hay dos estaciones abiertas, solo una lo imprime
+      const { reclamado } = await apiFetch('POST', '/api/conteos?accion=impreso', { id: c.id });
+      if (!reclamado) continue;
+      imprimirEtiquetaConteo(c);
+      const hora = new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
+      estacion.impresas.unshift({ ...c, hora });
+      estacion.impresas = estacion.impresas.slice(0, 30);
+    }
+    renderEstacion(`Última revisión: ${new Date().toLocaleTimeString('es-CR')}`);
+  } catch (e) {
+    renderEstacion(`No se pudo consultar (${e.message || 'sin conexión'}). Se reintenta sola.`, true);
+  } finally {
+    estacion.ocupada = false;
+  }
+}
+
+async function iniciarEstacion() {
+  if (estacion.activa || estacion.iniciando) return;
+  estacion.iniciando = true;
+  try {
+    // Solo imprime lo que llegue desde ahora; lo anterior se reimprime a mano
+    const r = await apiFetch('GET', '/api/conteos?accion=por_imprimir');
+    estacion.ultimoId = r.ultimo_id || 0;
+  } catch (e) {
+    renderEstacion(`No se pudo iniciar: ${e.message || 'sin conexión'}`, true);
+    return;
+  } finally {
+    estacion.iniciando = false;
+  }
+  estacion.activa = true;
+  try { localStorage.setItem(ESTACION_KEY, '1'); } catch (_) {}
+  estacion.timer = setInterval(cicloEstacion, ESTACION_INTERVALO_MS);
+  renderEstacion('Lista. Los conteos nuevos con "Imprimir etiqueta" se imprimen aquí.');
+}
+
+// recordar=true: el usuario la detuvo (no se reactiva al recargar)
+function detenerEstacion(recordar = true) {
+  if (estacion.timer) clearInterval(estacion.timer);
+  estacion.timer = null;
+  estacion.activa = false;
+  if (recordar) { try { localStorage.removeItem(ESTACION_KEY); } catch (_) {} }
+  if (document.getElementById('estacion-box')) {
+    renderEstacion('Actívala solo en la PC conectada a la impresora de etiquetas.');
+  }
+}
+
+function toggleEstacion() {
+  if (estacion.activa) {
+    detenerEstacion();
+    notify('Estación de impresión detenida', 'info');
+  } else {
+    iniciarEstacion().then(() => { if (estacion.activa) notify('Estación de impresión activa', 'success'); });
+  }
+}
+
+function comandoEstacion() {
+  return `"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing --user-data-dir="%LOCALAPPDATA%\\EffiImpresion" ${location.origin}/`;
+}
+
+function copiarComandoEstacion() {
+  navigator.clipboard.writeText(comandoEstacion())
+    .then(() => notify('Línea copiada', 'success'))
+    .catch(() => notify('No se pudo copiar; selecciónala y cópiala a mano', 'warn'));
+}
+
+// Se llama al entrar en modo coordinador: si esta PC tenía la estación
+// activa (p. ej. tras reiniciar), se reactiva sola.
+function restaurarEstacion() {
+  const cmd = document.getElementById('estacion-cmd');
+  if (cmd) cmd.textContent = comandoEstacion();
+  let recordada = false;
+  try { recordada = localStorage.getItem(ESTACION_KEY) === '1'; } catch (_) {}
+  if (recordada) iniciarEstacion();
 }
 
 /* ── GESTIÓN DE USUARIOS COORDINADORES ─────────────────── */

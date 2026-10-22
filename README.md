@@ -46,6 +46,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 - Se guarda en la tabla `conteos`; la foto se comprime en el navegador y se sube al bucket privado `conteos` de Supabase Storage
 - Tras guardar, "Compartir en WhatsApp" abre el menú de compartir del celular con la foto y el mensaje (se envía desde el WhatsApp de la persona, sin envío automático)
 - Opcional: cada conteo se copia a una hoja de Google Sheets con una pestaña por tienda (Apps Script en `google/`, instalación en `google/README.md`)
+- Casilla "Imprimir etiqueta": la PC de la impresora, con la pestaña "Impresión" del Panel de Coordinador activa, imprime sola la etiqueta 4x6 estándar (logo, nombre, ID, tienda, QR) de cada conteo nuevo. Sin instalar nada: Chrome con `--kiosk-printing` imprime sin cuadro de diálogo (pasos en la propia pestaña)
 - El coordinador consulta los conteos en el Panel de Coordinador, pestaña "Conteos" (filtros por fecha/tienda, fotos, exportar a Excel con las fotos incrustadas, eliminar)
 
 ### 5. Reporte Distribuidor / Proveedor (`/reporte/reporte_distribuidor_proveedor.html`)

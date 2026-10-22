@@ -152,6 +152,17 @@ body {
 .buscar-vacio { padding: 12px; font-size: 13px; color: var(--neutral-600); }
 
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.check-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.check-row input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 24px; height: 24px; margin-top: 1px;
+    accent-color: var(--brand-700);
+}
+.check-row > span { display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
 .row-mesa { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 10px; }
 .row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 

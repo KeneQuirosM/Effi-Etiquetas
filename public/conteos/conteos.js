@@ -282,7 +282,8 @@ function leerFormulario() {
     lote: $('f-lote').value.trim(),
     vencimiento: $('f-venc').value,
     hora_inicio: $('f-inicio').value,
-    hora_cierre: $('f-cierre').value
+    hora_cierre: $('f-cierre').value,
+    imprimir: $('f-imprimir').checked
   };
 
   const esEntero = v => v !== '' && Number.isInteger(Number(v)) && Number(v) >= 0;
@@ -361,7 +362,7 @@ async function guardarConteo(e) {
 
     const res = await apiRequestJSON('/api/conteos', { method: 'POST', body });
 
-    guardarPrefs({ tiendaId: datos.tienda_id, contadoPor: datos.contado_por, mesa: datos.mesa });
+    guardarPrefs({ tiendaId: datos.tienda_id, contadoPor: datos.contado_por, mesa: datos.mesa, imprimir: datos.imprimir });
     borrarBorrador();
 
     const tienda = tiendaActual();
@@ -372,7 +373,7 @@ async function guardarConteo(e) {
       : null;
 
     $('ok-msg').textContent = ultimoMensaje;
-    $('ok-sub').textContent = `Registro #${res.conteo?.id ?? ''}${ultimaFoto ? ' · con foto' : ' · sin foto'}`;
+    $('ok-sub').textContent = `Registro #${res.conteo?.id ?? ''}${ultimaFoto ? ' · con foto' : ' · sin foto'}${datos.imprimir ? ' · etiqueta enviada a imprimir' : ''}`;
     $('form-conteo').hidden = true;
     $('vista-ok').hidden = false;
     window.scrollTo(0, 0);
@@ -458,6 +459,7 @@ function nuevoConteo() {
   const prefs = leerPrefs();
   if (prefs.contadoPor) $('f-contado').value = prefs.contadoPor;
   if (prefs.mesa) $('f-mesa').value = prefs.mesa;
+  $('f-imprimir').checked = prefs.imprimir !== false;   // marcada por defecto
 
   $('f-tienda').addEventListener('change', actualizarProductos);
   $('f-codigo').addEventListener('input', actualizarNombreProducto);
@@ -480,7 +482,7 @@ function nuevoConteo() {
     const f = e.target.closest('.field.invalid');
     if (f) f.classList.remove('invalid');
     // El inicio se marca con lo primero que se escribe del artículo
-    if (!$('f-inicio').value && !['f-inicio', 'f-cierre', 'f-tienda', 'f-contado', 'f-mesa'].includes(e.target.id)) {
+    if (!$('f-inicio').value && !['f-inicio', 'f-cierre', 'f-tienda', 'f-contado', 'f-mesa', 'f-imprimir', 'f-buscar'].includes(e.target.id)) {
       $('f-inicio').value = horaActual();
     }
     guardarBorrador();

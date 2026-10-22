@@ -1460,3 +1460,43 @@ body {
 .conteo-sheets.pendiente { border-color: var(--warning-border); background: var(--warning-bg); color: var(--warning-text); }
 .conteo-sheets .btn-action { padding: 5px 12px; font-size: 12px; }
 .conteo-sheets .btn-action[hidden] { display: none; }
+
+/* ══ ESTACIÓN DE IMPRESIÓN (panel coordinador) ══ */
+.estacion-box {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg);
+}
+.estacion-estado { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.estacion-estado > div { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); }
+.estacion-estado strong { font-size: 14px; color: var(--text); }
+.estacion-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.estacion-box.activa { border-color: var(--success-border); background: var(--success-bg); }
+.estacion-box.activa .estacion-dot { background: var(--success); box-shadow: 0 0 0 4px rgba(46,125,50,.18); }
+.estacion-box.error { border-color: var(--warning-border); background: var(--warning-bg); }
+.estacion-box.error .estacion-dot { background: var(--warning); }
+#estacion-log { max-height: 260px; }
+#estacion-log .item-id { min-width: 48px; }
+.estacion-ayuda { margin-top: 16px; font-size: 12px; color: var(--text); }
+.estacion-ayuda summary { cursor: pointer; font-weight: 600; color: var(--primary); }
+.estacion-ayuda ol { margin: 10px 0 8px 18px; display: flex; flex-direction: column; gap: 6px; }
+.estacion-ayuda p { color: var(--muted); }
+.estacion-cmd { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.estacion-cmd code {
+  flex: 1; min-width: 0;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  background: #0d1b2e; color: #b4c8fb;
+  font-family: var(--mono); font-size: 11px; overflow-wrap: anywhere;
+}
+.estacion-cmd .btn-action { padding: 6px 12px; font-size: 12px; }
+.conteo-print {
+  background: none; border: none; cursor: pointer;
+  color: var(--primary); opacity: .6; padding: 4px;
+  display: inline-flex; margin-left: auto;
+}
+.conteo-print:hover { opacity: 1; }
+.inv-item .conteo-print { color: var(--primary); font-size: inherit; }
+@media (max-width: 640px) {
+  .estacion-box { flex-direction: column; align-items: stretch; }
+}

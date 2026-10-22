@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS conteos (
   hora_cierre      TIME,                   -- hora local en que terminó
   mesa             SMALLINT CHECK (mesa BETWEEN 1 AND 4),  -- mesa de conteo
   en_sheets        BOOLEAN NOT NULL DEFAULT false,  -- ya copiado a Google Sheets
+  imprimir         BOOLEAN NOT NULL DEFAULT false,  -- pidió etiqueta en la estación de impresión
+  impreso_en       TIMESTAMPTZ,                     -- cuándo la tomó la estación
   fecha            DATE NOT NULL DEFAULT ((NOW() AT TIME ZONE 'America/Costa_Rica')::date),
   creado_en        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -38,10 +40,13 @@ ALTER TABLE conteos ADD COLUMN IF NOT EXISTS hora_inicio TIME;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS hora_cierre TIME;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS en_sheets BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS mesa SMALLINT CHECK (mesa BETWEEN 1 AND 4);
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS imprimir BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS impreso_en TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_conteos_fecha  ON conteos(fecha);
 CREATE INDEX IF NOT EXISTS idx_conteos_tienda ON conteos(tienda_id);
 CREATE INDEX IF NOT EXISTS idx_conteos_sin_sheets ON conteos(id) WHERE NOT en_sheets;
+CREATE INDEX IF NOT EXISTS idx_conteos_por_imprimir ON conteos(id) WHERE imprimir AND impreso_en IS NULL;
 
 ALTER TABLE conteos ENABLE ROW LEVEL SECURITY;
 
