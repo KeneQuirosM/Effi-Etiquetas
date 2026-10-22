@@ -1418,7 +1418,31 @@ async function exportConteosExcel() {
  * --kiosk-printing (acceso directo; ver la ayuda de la pestaña).
  */
 const ESTACION_KEY = 'effi_estacion_impresion_v1';
-const ESTACION_INTERVALO_MS = 6000;
+const ESTACION_INTERVALO_MS = 4000;
+
+// Reloj de la estación. Si la ventana queda minimizada o tapada, Chrome
+// frena los setInterval de la página hasta 1 vez por minuto (se veían
+// ~30 s de retraso). Los timers de un Worker no se frenan así: el worker
+// solo avisa cada N ms y la consulta la hace la página. CSP: worker-src
+// ya admite blob:. Si el navegador no permite workers, se usa setInterval.
+function crearRelojEstacion(fn, ms) {
+  try {
+    const src = `setInterval(() => postMessage(0), ${ms});`;
+    const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+    const w = new Worker(url);
+    URL.revokeObjectURL(url);
+    w.onmessage = fn;
+    return { parar: () => w.terminate() };
+  } catch (_) {
+    const id = setInterval(fn, ms);
+    return { parar: () => clearInterval(id) };
+  }
+}
+
+// Al volver a mostrarse la ventana, revisar en el acto
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && estacion.activa) cicloEstacion();
+});
 const PRINT_ICON_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>';
 let estacion = { activa: false, iniciando: false, ultimoId: 0, timer: null, ocupada: false, impresas: [] };
 
@@ -1537,13 +1561,14 @@ async function iniciarEstacion() {
   }
   estacion.activa = true;
   try { localStorage.setItem(ESTACION_KEY, '1'); } catch (_) {}
-  estacion.timer = setInterval(cicloEstacion, ESTACION_INTERVALO_MS);
+  estacion.timer = crearRelojEstacion(cicloEstacion, ESTACION_INTERVALO_MS);
+  cicloEstacion();
   renderEstacion('Lista. Los conteos nuevos con "Imprimir etiqueta" se imprimen aquí.');
 }
 
 // recordar=true: el usuario la detuvo (no se reactiva al recargar)
 function detenerEstacion(recordar = true) {
-  if (estacion.timer) clearInterval(estacion.timer);
+  if (estacion.timer) estacion.timer.parar();
   estacion.timer = null;
   estacion.activa = false;
   if (recordar) { try { localStorage.removeItem(ESTACION_KEY); } catch (_) {} }
