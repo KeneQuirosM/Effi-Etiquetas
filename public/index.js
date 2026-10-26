@@ -1479,9 +1479,14 @@ function imprimirEtiquetaConteo(c) {
     document.getElementById('view-tienda').textContent = String(c.tienda_nombre || '').toUpperCase();
   }
 
+  document.getElementById('view-lote').textContent = String(c.lote || '-').toUpperCase();
+  document.getElementById('view-venc').textContent = c.vencimiento ? fmtFechaDMY(c.vencimiento) : '-';
+  etiqueta.classList.add('con-lote');
+
   document.body.classList.add('print-single');
   window.print();
   document.body.classList.remove('print-single');
+  etiqueta.classList.remove('con-lote');
 
   // Restaurar lo que el usuario tenía seleccionado
   selTienda.value = previo.tienda;
