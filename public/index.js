@@ -2117,6 +2117,54 @@ async function saveGroupPrintToggle(value) {
   }
 }
 
+/* ── TOGGLES BOTONES DEL MENÚ LATERAL ──────────────── */
+// Ocultos por defecto: solo se muestran si la clave vale 'true'.
+const NAV_BUTTON_KEYS = {
+  devoluciones: 'mostrar_btn_devoluciones',
+  trazabilidad: 'mostrar_btn_trazabilidad'
+};
+const NAV_BUTTON_NAMES = {
+  devoluciones: 'Gestión de Devoluciones',
+  trazabilidad: 'Trazabilidad'
+};
+const navButtonsVisibles = { devoluciones: false, trazabilidad: false };
+
+async function loadNavButtonToggles() {
+  let config = {};
+  try { config = await apiGet('/api/config'); } catch {}
+  Object.keys(NAV_BUTTON_KEYS).forEach(key => {
+    navButtonsVisibles[key] = config[NAV_BUTTON_KEYS[key]] === 'true';
+    applyNavButtonToggle(key);
+  });
+}
+
+function applyNavButtonToggle(key) {
+  const visible = navButtonsVisibles[key];
+  const btn    = document.getElementById(`nav-btn-${key}`);
+  const toggle = document.getElementById(`toggle-nav-${key}`);
+  const label  = document.getElementById(`toggle-nav-${key}-label`);
+  if (btn) btn.style.display = visible ? '' : 'none';
+  if (toggle) toggle.checked = visible;
+  if (label) {
+    label.textContent = visible ? 'Activado' : 'Desactivado';
+    label.style.color = visible ? 'var(--accent)' : 'var(--muted)';
+  }
+}
+
+async function saveNavButtonToggle(key, value) {
+  const previous = navButtonsVisibles[key];
+  navButtonsVisibles[key] = value;
+  applyNavButtonToggle(key);
+  try {
+    await apiPost('/api/config', { clave: NAV_BUTTON_KEYS[key], valor: String(value) });
+    notify(`Botón ${NAV_BUTTON_NAMES[key]} ${value ? 'activado' : 'desactivado'}`, value ? 'success' : '');
+  } catch {
+    navButtonsVisibles[key] = previous;
+    applyNavButtonToggle(key);
+    notify('Error al guardar configuración', 'danger');
+  }
+}
+
 /* ── INIT ──────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   // Cargar datos iniciales
@@ -2125,6 +2173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadRotuloLogo();
   await loadUbicacionToggle();
   await loadGroupPrintToggle();
+  await loadNavButtonToggles();
 
   // Referencias a elementos del DOM
   const selTienda = document.getElementById('select-tienda');
