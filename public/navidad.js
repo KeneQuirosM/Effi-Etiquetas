@@ -39,7 +39,7 @@
     if (status) {
       const s = document.createElement('span');
       s.className = 'xmas-status';
-      s.textContent = ' · Felices fiestas';
+      s.textContent = ' · Feliz Navidad';
       status.appendChild(s);
     }
 
@@ -65,7 +65,7 @@
 
     const greeting = document.createElement('div');
     greeting.className = 'xmas-greeting';
-    greeting.innerHTML = '<strong>Felices fiestas</strong><span>Equipo de Logística Efficommerce</span>';
+    greeting.innerHTML = '<strong>FELIZ NAVIDAD</strong><span>Equipo de Logística Efficommerce</span>';
     if (etiqueta) main.insertBefore(greeting, etiqueta); else main.appendChild(greeting);
 
     const pines = document.createElement('div');
