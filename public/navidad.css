@@ -156,6 +156,10 @@
     height: 150px;
     pointer-events: none;
   }
+  .xmas-pines svg { position: absolute; bottom: 0; height: 150px; }
+  .xmas-pines-izq { left: 0; width: 210px; }
+  .xmas-pines-der { right: 0; width: 210px; }
+  .xmas-suelo { left: 0; width: 100%; }
 }
 
 @media screen and (prefers-reduced-motion: reduce) {

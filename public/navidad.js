@@ -68,17 +68,23 @@
     greeting.innerHTML = '<strong>FELIZ NAVIDAD</strong><span>Equipo de Logística Efficommerce</span>';
     if (etiqueta) main.insertBefore(greeting, etiqueta); else main.appendChild(greeting);
 
-    const pines = document.createElement('div');
-    pines.innerHTML = '<svg class="xmas-pines" aria-hidden="true" viewBox="0 0 1130 150" preserveAspectRatio="xMidYMax slice">'
-      + '<g fill="#1f5a43"><path d="M70 120 L110 40 L150 120 Z"/><path d="M80 90 L110 20 L140 90 Z"/><path d="M150 128 L176 70 L202 128 Z"/><path d="M157 104 L176 54 L195 104 Z"/>'
+    // Pinos en dos dibujos fijos anclados a cada esquina (no se recortan en
+    // pantallas angostas) y la nieve del suelo estirada a todo el ancho.
+    const arbol = '<g fill="#1f5a43"><path d="M70 120 L110 40 L150 120 Z"/><path d="M80 90 L110 20 L140 90 Z"/><path d="M150 128 L176 70 L202 128 Z"/><path d="M157 104 L176 54 L195 104 Z"/>'
       + '<path d="M930 124 L972 36 L1014 124 Z"/><path d="M941 92 L972 14 L1003 92 Z"/><path d="M1010 130 L1040 64 L1070 130 Z"/><path d="M1018 102 L1040 48 L1062 102 Z"/></g>'
       + '<g fill="#2f7a5a"><path d="M18 132 L42 80 L66 132 Z"/><path d="M24 110 L42 64 L60 110 Z"/><path d="M1066 134 L1090 86 L1114 134 Z"/><path d="M1072 114 L1090 70 L1108 114 Z"/></g>'
       + '<g fill="#f4c460"><path d="M110 14 l3 6 6 1 -4.5 4 1 6 -5.5 -3 -5.5 3 1 -6 -4.5 -4 6 -1 Z"/><path d="M972 8 l3 6 6 1 -4.5 4 1 6 -5.5 -3 -5.5 3 1 -6 -4.5 -4 6 -1 Z"/></g>'
       + '<g fill="#e53935"><circle cx="100" cy="76" r="3.5"/><circle cx="124" cy="104" r="3.5"/><circle cx="962" cy="70" r="3.5"/><circle cx="990" cy="104" r="3.5"/></g>'
-      + '<g fill="#f4b400"><circle cx="118" cy="62" r="3"/><circle cx="96" cy="108" r="3"/><circle cx="984" cy="56" r="3"/><circle cx="956" cy="110" r="3"/></g>'
+      + '<g fill="#f4b400"><circle cx="118" cy="62" r="3"/><circle cx="96" cy="108" r="3"/><circle cx="984" cy="56" r="3"/><circle cx="956" cy="110" r="3"/></g>';
+    const pines = document.createElement('div');
+    pines.className = 'xmas-pines';
+    pines.setAttribute('aria-hidden', 'true');
+    pines.innerHTML = '<svg class="xmas-pines-izq" viewBox="0 0 210 150">' + arbol + '</svg>'
+      + '<svg class="xmas-pines-der" viewBox="920 0 210 150">' + arbol + '</svg>'
+      + '<svg class="xmas-suelo" viewBox="0 0 1130 150" preserveAspectRatio="none">'
       + '<path d="M0 130 C120 112 240 126 380 120 C520 114 640 130 780 122 C900 116 1020 112 1130 124 L1130 150 L0 150 Z" fill="#ffffff"/>'
       + '<path d="M0 140 C160 130 320 144 520 136 C720 128 900 142 1130 134 L1130 150 L0 150 Z" fill="#e6ecf6"/></svg>';
-    main.appendChild(pines.firstChild);
+    main.appendChild(pines);
   }
 
   function aplicar(on) {
