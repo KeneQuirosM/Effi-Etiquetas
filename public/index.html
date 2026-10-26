@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/shared/tokens.css">
 <link rel="stylesheet" href="/index.css">
 <link rel="stylesheet" href="/navidad.css">
+<link rel="stylesheet" href="/halloween.css">
 </head>
 <body>
 
@@ -104,10 +105,6 @@
   </div>
 
   <div class="sidebar-footer">
-    <label class="navidad-toggle" for="navidad-toggle">
-      <span>Decoración navideña</span>
-      <input type="checkbox" id="navidad-toggle" checked>
-    </label>
     <button class="btn-coord" id="btn-coord-toggle" onclick="toggleCoordMode()">
       <span id="coord-icon"></span>
       <span id="coord-label">Modo Coordinador</span>
@@ -316,6 +313,30 @@
           </div>
           <div class="cfg-panel" id="cfg-panel-nav-trazabilidad" hidden>
             <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Muestra el botón Trazabilidad en el menú lateral para todos los usuarios. Desactivado por defecto.</p>
+          </div>
+        </section>
+        <section class="cfg-sec">
+          <div class="cfg-head">
+            <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-decoracion">
+              <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>
+              <span class="cfg-title">Decoración de temporada</span>
+              <span id="decoracion-tema-label" style="font-size:13px;font-weight:500;color:var(--muted)">Automática</span>
+              <svg class="cfg-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="cfg-panel" id="cfg-panel-decoracion" hidden>
+            <div class="form-row single" style="margin-bottom:10px">
+              <div class="form-group">
+                <label for="decoracion-tema">Tema</label>
+                <select id="decoracion-tema" onchange="saveDecoracionTema(this.value)">
+                  <option value="auto">Automática (según la fecha)</option>
+                  <option value="halloween">Halloween</option>
+                  <option value="navidad">Navidad</option>
+                  <option value="ninguna">Sin decoración</option>
+                </select>
+              </div>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Decora la pantalla del generador de etiquetas para todos los usuarios. Automática pone Halloween del 1 de octubre al 2 de noviembre y Navidad del 3 de noviembre al 6 de enero; el resto del año no hay decoración. Nunca sale en la etiqueta impresa.</p>
           </div>
         </section>
         <section class="cfg-sec">
@@ -695,6 +716,6 @@
 <script src="/shared/dom-utils.js"></script>
 <script src="/shared/api.js"></script>
 <script src="/index.js"></script>
-<script src="/navidad.js"></script>
+<script src="/decoracion.js"></script>
 </body>
 </html>

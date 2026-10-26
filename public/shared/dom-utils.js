@@ -13,7 +13,7 @@ const STORAGE_KEYS = {
   COORD_SESSION: 'effi_coord_session_v1',
   CONTEOS_PREFS: 'effi_conteos_prefs_v1',
   CONTEOS_BORRADOR: 'effi_conteos_borrador_v1',
-  NAVIDAD: 'effi_navidad_v1'
+  DECORACION: 'effi_decoracion_v1'
 };
 
 // Escapa caracteres HTML para prevenir XSS en innerHTML

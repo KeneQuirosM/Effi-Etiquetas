@@ -2170,6 +2170,42 @@ async function saveNavButtonToggle(key, value) {
   }
 }
 
+/* ── DECORACIÓN DE TEMPORADA ──────────────────────── */
+// Tema global elegido por el coordinador; aplicarDecoracion() vive en decoracion.js.
+const DECORACION_KEY = 'decoracion_tema';
+const DECORACION_NOMBRES = { auto: 'Automática', halloween: 'Halloween', navidad: 'Navidad', ninguna: 'Sin decoración' };
+let decoracionTema = 'auto';
+
+function applyDecoracionTema() {
+  if (typeof aplicarDecoracion === 'function') aplicarDecoracion(decoracionTema);
+  const sel   = document.getElementById('decoracion-tema');
+  const label = document.getElementById('decoracion-tema-label');
+  if (sel) sel.value = decoracionTema;
+  if (label) label.textContent = DECORACION_NOMBRES[decoracionTema];
+}
+
+async function loadDecoracionTema() {
+  let config = {};
+  try { config = await apiGet('/api/config'); } catch { return; }
+  const valor = config[DECORACION_KEY];
+  decoracionTema = DECORACION_NOMBRES[valor] ? valor : 'auto';
+  applyDecoracionTema();
+}
+
+async function saveDecoracionTema(value) {
+  const previous = decoracionTema;
+  decoracionTema = DECORACION_NOMBRES[value] ? value : 'auto';
+  applyDecoracionTema();
+  try {
+    await apiPost('/api/config', { clave: DECORACION_KEY, valor: decoracionTema });
+    notify(`Decoración: ${DECORACION_NOMBRES[decoracionTema]}`, 'success');
+  } catch {
+    decoracionTema = previous;
+    applyDecoracionTema();
+    notify('Error al guardar configuración', 'danger');
+  }
+}
+
 /* ── INIT ──────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   // Cargar datos iniciales
@@ -2179,6 +2215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadUbicacionToggle();
   await loadGroupPrintToggle();
   await loadNavButtonToggles();
+  await loadDecoracionTema();
 
   // Referencias a elementos del DOM
   const selTienda = document.getElementById('select-tienda');
