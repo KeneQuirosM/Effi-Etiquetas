@@ -321,7 +321,7 @@ body {
 .label-footer p { font-size: 50pt; font-weight: 700; margin: 0; font-family: var(--sans); }
 
 /* Lote/vencimiento de Conteos, sobre la línea del ID */
-.label-lote { display: none; justify-content: space-between; gap: 10px; padding: 0 2px 6px; font-family: var(--sans); font-size: 13pt; flex-shrink: 0; }
+.label-lote { display: none; justify-content: space-between; gap: 10px; padding: 0 2px 6px; font-family: var(--sans); font-size: 10pt; flex-shrink: 0; }
 .label-lote b { font-weight: 700; }
 #etiqueta.con-lote .label-lote { display: flex; }
 
