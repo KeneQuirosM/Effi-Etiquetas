@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS conteos (
   impreso_en       TIMESTAMPTZ,                     -- cuándo la tomó la estación
   trasladado_de    TEXT,                            -- último origen si se trasladó: "TIENDA · ID 008"
   trasladado_en    TIMESTAMPTZ,
+  origen_conteo_id BIGINT REFERENCES conteos(id) ON DELETE SET NULL,  -- si salió de un traslado parcial
   fecha            DATE NOT NULL DEFAULT ((NOW() AT TIME ZONE 'America/Costa_Rica')::date),
   creado_en        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -46,6 +47,7 @@ ALTER TABLE conteos ADD COLUMN IF NOT EXISTS imprimir BOOLEAN NOT NULL DEFAULT f
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS impreso_en TIMESTAMPTZ;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS trasladado_de TEXT;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS trasladado_en TIMESTAMPTZ;
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS origen_conteo_id BIGINT REFERENCES conteos(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_conteos_fecha  ON conteos(fecha);
 CREATE INDEX IF NOT EXISTS idx_conteos_tienda ON conteos(tienda_id);
@@ -71,9 +73,14 @@ CREATE TABLE IF NOT EXISTS conteos_traslados (
   de_producto_codigo TEXT NOT NULL,
   a_tienda_nombre    TEXT NOT NULL,
   a_producto_codigo  TEXT NOT NULL,
+  cantidad           INTEGER,             -- unidades trasladadas
+  nuevo_conteo_id    BIGINT REFERENCES conteos(id) ON DELETE SET NULL,  -- solo en traslados parciales
   trasladado_por     TEXT,
   creado_en          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE conteos_traslados ADD COLUMN IF NOT EXISTS cantidad INTEGER;
+ALTER TABLE conteos_traslados ADD COLUMN IF NOT EXISTS nuevo_conteo_id BIGINT REFERENCES conteos(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_conteos_traslados_conteo ON conteos_traslados(conteo_id);
 
@@ -86,6 +93,61 @@ CREATE POLICY "lectura_publica_conteos_traslados"
 DROP POLICY IF EXISTS "escritura_coordinador_conteos_traslados" ON conteos_traslados;
 CREATE POLICY "escritura_coordinador_conteos_traslados"
   ON conteos_traslados FOR ALL USING (auth.role() = 'authenticated');
+
+-- Traslado PARCIAL: divide un conteo en una sola transacción. El original
+-- se queda con (cantidad - p_cantidad) y (cajas - p_cajas, mínimo 1); se
+-- crea un conteo nuevo en la tienda/ID destino con p_cantidad y p_cajas,
+-- copiando lote, vencimiento, medidas, foto, mesa, horas, persona y fecha.
+-- Devuelve el id del conteo nuevo. Lo llama POST /api/conteos?accion=trasladar.
+CREATE OR REPLACE FUNCTION trasladar_parcial_conteo(
+  p_id BIGINT, p_cantidad INTEGER, p_cajas INTEGER,
+  p_tienda_id INTEGER, p_tienda_nombre TEXT,
+  p_codigo TEXT, p_nombre TEXT, p_por TEXT
+) RETURNS BIGINT AS $$
+DECLARE
+  c conteos%ROWTYPE;
+  nuevo_id BIGINT;
+BEGIN
+  SELECT * INTO c FROM conteos WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'El conteo ya no existe';
+  END IF;
+  IF p_cantidad IS NULL OR p_cantidad < 1 OR p_cantidad >= c.cantidad THEN
+    RAISE EXCEPTION 'Cantidad a trasladar inválida (entre 1 y %)', c.cantidad - 1;
+  END IF;
+  IF p_cajas IS NULL OR p_cajas < 1 THEN
+    RAISE EXCEPTION 'Las cajas trasladadas deben ser al menos 1';
+  END IF;
+
+  INSERT INTO conteos (
+    tienda_id, tienda_nombre, contado_por, producto_codigo, producto_nombre,
+    cantidad, cajas, ancho_cm, largo_cm, alto_cm, lote, vencimiento, foto_path,
+    hora_inicio, hora_cierre, mesa, fecha, creado_en,
+    trasladado_de, trasladado_en, origen_conteo_id
+  ) VALUES (
+    p_tienda_id, p_tienda_nombre, c.contado_por, p_codigo, p_nombre,
+    p_cantidad, p_cajas, c.ancho_cm, c.largo_cm, c.alto_cm, c.lote, c.vencimiento, c.foto_path,
+    c.hora_inicio, c.hora_cierre, c.mesa, c.fecha, c.creado_en,
+    c.tienda_nombre || ' · ID ' || c.producto_codigo || ' (parcial)', NOW(), c.id
+  ) RETURNING id INTO nuevo_id;
+
+  UPDATE conteos
+     SET cantidad = c.cantidad - p_cantidad,
+         cajas = GREATEST(1, COALESCE(c.cajas, 1) - p_cajas),
+         en_sheets = false
+   WHERE id = p_id;
+
+  INSERT INTO conteos_traslados (
+    conteo_id, nuevo_conteo_id, cantidad,
+    de_tienda_nombre, de_producto_codigo, a_tienda_nombre, a_producto_codigo, trasladado_por
+  ) VALUES (
+    p_id, nuevo_id, p_cantidad,
+    c.tienda_nombre, c.producto_codigo, p_tienda_nombre, p_codigo, p_por
+  );
+
+  RETURN nuevo_id;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Bucket privado para las fotos. La API sube y firma con la service role
 -- key, así que no hacen falta políticas de storage para el público.

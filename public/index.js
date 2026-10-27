@@ -1251,7 +1251,7 @@ function renderConteos() {
  */
 const conteosSel = new Set();
 const TRASLADO_TANDA = 5;          // igual que TRASLADO_LOTE en api/conteos.js
-let traslado = { items: [], codigos: new Map(), mensaje: '', enCurso: false };
+let traslado = { items: [], codigos: new Map(), cantidades: new Map(), cajas: new Map(), mensaje: '', enCurso: false };
 
 function toggleSelConteo(id, marcado) {
   if (marcado) conteosSel.add(id); else conteosSel.delete(id);
@@ -1283,6 +1283,8 @@ function abrirTraslado() {
   traslado.items = (conteos || []).filter(c => conteosSel.has(c.id));
   if (!traslado.items.length) return notify('Selecciona al menos un conteo', 'warn');
   traslado.codigos = new Map(traslado.items.map(c => [c.id, c.producto_codigo]));
+  traslado.cantidades = new Map(traslado.items.map(c => [c.id, String(c.cantidad)]));
+  traslado.cajas = new Map(traslado.items.map(c => [c.id, '1']));
   traslado.mensaje = '';
   const sel = document.getElementById('tr-destino');
   sel.innerHTML = '<option value="">-- Seleccione --</option>';
@@ -1334,8 +1336,35 @@ function renderTrasladoFilas() {
         <input type="text" list="tr-productos" maxlength="64" value="${esc(cod)}" data-id="${Number(c.id)}" oninput="cambiarCodigoTraslado(this)" aria-label="Nuevo ID para ${esc(c.producto_codigo)}">
         <span class="traslado-hint ${h.ok ? 'ok' : ''}">${esc(h.txt)}</span>
       </div>
+      <div class="traslado-cant" data-id="${Number(c.id)}">
+        <label>Cantidad <input type="number" min="1" max="${Number(c.cantidad)}" step="1" inputmode="numeric" value="${esc(traslado.cantidades.get(c.id))}" oninput="cambiarCantidadTraslado(this)" aria-label="Unidades a trasladar de ${esc(c.producto_codigo)}"> de ${Number(c.cantidad).toLocaleString('es-CR')} u.</label>
+        <label class="traslado-cajas">Cajas trasladadas <input type="number" min="1" step="1" inputmode="numeric" value="${esc(traslado.cajas.get(c.id))}" oninput="traslado.cajas.set(${Number(c.id)}, this.value)" aria-label="Cajas trasladadas de ${esc(c.producto_codigo)}"></label>
+        <span class="traslado-restante"></span>
+      </div>
     </div>`;
   }).join('');
+  traslado.items.forEach(c => actualizarParcialTraslado(c.id));
+}
+
+// Muestra "Cajas trasladadas" y lo que queda en el origen solo si es parcial
+function actualizarParcialTraslado(id) {
+  const c = traslado.items.find(x => x.id === id);
+  const caja = document.querySelector(`.traslado-cant[data-id="${id}"]`);
+  if (!c || !caja) return;
+  const n = Number(traslado.cantidades.get(id));
+  const valida = Number.isInteger(n) && n >= 1 && n <= c.cantidad;
+  const parcial = valida && n < c.cantidad;
+  caja.classList.toggle('parcial', parcial);
+  caja.classList.toggle('invalida', !valida);
+  caja.querySelector('.traslado-restante').textContent = !valida
+    ? `Debe ser entre 1 y ${c.cantidad}`
+    : parcial ? `Parcial: quedan ${(c.cantidad - n).toLocaleString('es-CR')} u. en ${c.tienda_nombre}` : 'Se traslada todo el conteo';
+}
+
+function cambiarCantidadTraslado(input) {
+  const id = Number(input.closest('.traslado-cant').dataset.id);
+  traslado.cantidades.set(id, input.value);
+  actualizarParcialTraslado(id);
 }
 
 function cambiarCodigoTraslado(input) {
@@ -1350,8 +1379,23 @@ async function confirmarTraslado() {
   if (traslado.enCurso) return;
   const destinoId = document.getElementById('tr-destino').value;
   if (!destinoId) return notify('Elige la tienda destino', 'warn');
-  const pedidos = traslado.items.map(c => ({ id: c.id, producto_codigo: String(traslado.codigos.get(c.id) || '').trim() }));
-  if (pedidos.some(p => !p.producto_codigo)) return notify('Todos los conteos necesitan un ID', 'warn');
+  const pedidos = [];
+  for (const c of traslado.items) {
+    const codigo = String(traslado.codigos.get(c.id) || '').trim();
+    if (!codigo) return notify('Todos los conteos necesitan un ID', 'warn');
+    const n = Number(traslado.cantidades.get(c.id));
+    if (!Number.isInteger(n) || n < 1 || n > c.cantidad) {
+      return notify(`ID ${c.producto_codigo}: la cantidad debe ser entre 1 y ${c.cantidad}`, 'warn');
+    }
+    const p = { id: c.id, producto_codigo: codigo };
+    if (n < c.cantidad) {
+      const cj = Number(traslado.cajas.get(c.id));
+      if (!Number.isInteger(cj) || cj < 1) return notify(`ID ${c.producto_codigo}: las cajas trasladadas deben ser al menos 1`, 'warn');
+      p.cantidad = n;
+      p.cajas = cj;
+    }
+    pedidos.push(p);
+  }
   const destino = getTienda(destinoId);
   if (!confirm(`¿Trasladar ${pedidos.length} conteo(s) a ${destino ? destino.nombre : 'la tienda destino'}?`)) return;
 
@@ -1387,7 +1431,8 @@ async function confirmarTraslado() {
 
   traslado.mensaje = movidos.length ? mensajeTraslado(nombreDestino, movidos) : '';
   document.getElementById('traslado-resumen').textContent =
-    `${movidos.length} conteo(s) trasladado(s) a ${nombreDestino}.` +
+    `${movidos.length} conteo(s) trasladado(s) a ${nombreDestino}` +
+    (movidos.some(r => r.parcial) ? ` (${movidos.filter(r => r.parcial).length} parcial(es)).` : '.') +
     (iguales ? ` ${iguales} ya estaban ahí con el mismo ID.` : '') +
     (fallidos.length ? ` ${fallidos.length} con error (siguen seleccionados).` : '');
   document.getElementById('traslado-msg').textContent = traslado.mensaje || 'No hubo cambios.';
@@ -1406,9 +1451,12 @@ function mensajeTraslado(destino, movidos) {
   const lineas = movidos.map((r, i) => {
     const desde = unaOrigen ? '' : `${r.de.tienda} · `;
     const cambioId = r.de.codigo === r.a.codigo ? `ID ${r.a.codigo}` : `ID ${r.de.codigo} → ID ${r.a.codigo}`;
+    const unidades = r.parcial
+      ? `${Number(r.cantidad).toLocaleString('es-CR')} de ${Number(r.total).toLocaleString('es-CR')} u. (quedan ${Number(r.restante).toLocaleString('es-CR')} en ${r.de.tienda})`
+      : `${Number(r.cantidad).toLocaleString('es-CR')} u.`;
     const extra = [
       r.a.nombre || r.de.nombre,
-      `${Number(r.cantidad).toLocaleString('es-CR')} u.`,
+      unidades,
       r.cajas != null ? `${r.cajas} caja${r.cajas === 1 ? '' : 's'}` : null,
       r.lote ? `Lote ${r.lote}` : null
     ].filter(Boolean).join(' · ');

@@ -101,7 +101,7 @@ export default async function handler(req, res) {
     // ── POST ?accion=trasladar (solo coordinador) ──
     // Mueve conteos a otra tienda y, por conteo, a otro ID de producto
     // (p. ej. de una tienda transitoria a la tienda real).
-    // Body: { destino_tienda_id, items: [{ id, producto_codigo }] }, máx.
+    // Body: { destino_tienda_id, items: [{ id, producto_codigo, cantidad?, cajas? }] }, máx.
     // TRASLADO_LOTE por llamada (el panel envía en tandas). Registra cada
     // movimiento en conteos_traslados y mueve la fila en Google Sheets.
     if (req.method === 'POST' && req.query?.accion === 'trasladar') {
@@ -120,7 +120,12 @@ export default async function handler(req, res) {
         const id = Number(it?.id);
         const codigo = texto(it?.producto_codigo, 64);
         if (!Number.isInteger(id) || id <= 0 || !codigo) return res.status(400).json({ error: 'Cada conteo necesita un ID de producto válido' });
-        pedidos.push({ id, codigo });
+        // cantidad omitida = todo el conteo; menor al total = traslado parcial
+        const cantidad = it.cantidad == null ? null : entero(it.cantidad, 10000000);
+        const cajas = it.cajas == null ? null : entero(it.cajas, 100000);
+        if (cantidad === undefined || cantidad === 0) return res.status(400).json({ error: 'La cantidad a trasladar debe ser al menos 1' });
+        if (cajas === undefined) return res.status(400).json({ error: 'Cajas trasladadas inválidas' });
+        pedidos.push({ id, codigo, cantidad, cajas });
       }
 
       const { data: destino, error: dErr } = await supabaseAdmin
@@ -143,10 +148,51 @@ export default async function handler(req, res) {
       const nombrePorCodigo = new Map((prods || []).map(p => [p.codigo, p.nombre]));
 
       const resultados = [];
-      for (const { id, codigo } of pedidos) {
+      for (const { id, codigo, cantidad, cajas } of pedidos) {
         const c = actuales.find(x => x.id === id);
         if (!c) { resultados.push({ id, ok: false, error: 'El conteo ya no existe' }); continue; }
         const de = { tienda: c.tienda_nombre, codigo: c.producto_codigo, nombre: c.producto_nombre };
+        if (cantidad != null && cantidad > c.cantidad) {
+          resultados.push({ id, ok: false, error: `Solo hay ${c.cantidad} u. en ese conteo` });
+          continue;
+        }
+
+        // ── Parcial: dividir el conteo en una transacción (función SQL) ──
+        if (cantidad != null && cantidad < c.cantidad) {
+          const nombreP = nombrePorCodigo.get(codigo) ?? (codigo === c.producto_codigo ? c.producto_nombre : null);
+          const cajasT = cajas || 1;
+          const { data: nuevoId, error: pErr } = await supabaseAdmin.rpc('trasladar_parcial_conteo', {
+            p_id: id, p_cantidad: cantidad, p_cajas: cajasT,
+            p_tienda_id: destino.id, p_tienda_nombre: destino.nombre,
+            p_codigo: codigo, p_nombre: nombreP, p_por: user.email || null
+          });
+          if (pErr) {
+            console.error('Error en traslado parcial:', id, pErr);
+            const falta = /trasladar_parcial_conteo|function/i.test(pErr.message || '') && !/inválid|existe|al menos/.test(pErr.message || '');
+            resultados.push({ id, ok: false, error: falta ? 'Falta ejecutar supabase/conteos.sql' : (pErr.message || 'No se pudo trasladar') });
+            continue;
+          }
+          const { data: filas } = await supabaseAdmin.from('conteos').select('*').in('id', [id, nuevoId]);
+          const original = (filas || []).find(x => x.id === id);
+          const nuevo = (filas || []).find(x => x.id === nuevoId);
+          // Sheets: actualizar la fila del original (borrar + agregar) y agregar la nueva
+          if (sheetsHabilitado()) {
+            if (original && await eliminarConteoDeSheets(id) && await enviarConteoASheets(original)) {
+              await supabaseAdmin.from('conteos').update({ en_sheets: true }).eq('id', id);
+            }
+            if (nuevo && await enviarConteoASheets(nuevo)) {
+              await supabaseAdmin.from('conteos').update({ en_sheets: true }).eq('id', nuevoId);
+            }
+          }
+          resultados.push({
+            id, ok: true, parcial: true, nuevo_id: nuevoId, de,
+            a: { tienda: destino.nombre, codigo, nombre: nombreP },
+            cantidad, total: c.cantidad, restante: original ? original.cantidad : c.cantidad - cantidad,
+            cajas: cajasT, lote: c.lote
+          });
+          continue;
+        }
+
         if (c.tienda_id === destinoId && c.producto_codigo === codigo) {
           resultados.push({ id, ok: true, sin_cambios: true, de, a: de });
           continue;
@@ -178,6 +224,7 @@ export default async function handler(req, res) {
           de_producto_codigo: c.producto_codigo,
           a_tienda_nombre: destino.nombre,
           a_producto_codigo: codigo,
+          cantidad: c.cantidad,
           trasladado_por: user.email || null
         });
         if (hErr) console.error('Error registrando historial de traslado:', id, hErr);
@@ -216,9 +263,11 @@ export default async function handler(req, res) {
 
       let enviados = 0;
       for (const c of lote) {
-        // Un conteo trasladado puede seguir en la pestaña de su tienda vieja;
-        // si no se borra primero, "agregar" lo ve como duplicado y no lo mueve
-        if (c.trasladado_en && !(await eliminarConteoDeSheets(c.id))) break;
+        // Borrar antes de agregar: un pendiente puede ser un conteo trasladado
+        // (su fila sigue en la pestaña vieja) o el original de un traslado
+        // parcial (fila con la cantidad vieja). Sin esto, "agregar" lo ve como
+        // duplicado y no lo actualiza. Si no estaba, borrar no hace nada.
+        if (!(await eliminarConteoDeSheets(c.id))) break;
         if (!(await enviarConteoASheets(c))) break;   // Google falla: no seguir insistiendo
         await supabaseAdmin.from('conteos').update({ en_sheets: true }).eq('id', c.id);
         enviados++;
@@ -418,7 +467,11 @@ export default async function handler(req, res) {
       }
       if (!data) return res.status(404).json({ error: 'El conteo no existe' });
 
-      if (data.foto_path) {
+      // La foto puede estar compartida con conteos salidos de un traslado parcial
+      const { count: usos } = data.foto_path
+        ? await supabaseAdmin.from('conteos').select('id', { count: 'exact', head: true }).eq('foto_path', data.foto_path)
+        : { count: 0 };
+      if (data.foto_path && !usos) {
         const { error: rmErr } = await supabaseAdmin.storage.from(BUCKET).remove([data.foto_path]);
         if (rmErr) console.error('Error borrando foto de conteo:', rmErr);
       }

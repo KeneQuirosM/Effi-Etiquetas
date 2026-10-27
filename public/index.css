@@ -1588,3 +1588,21 @@ body {
 @media print {
   #traslado-overlay { display: none !important; }
 }
+
+/* Cantidad a trasladar (traslado parcial) */
+.traslado-cant {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  font-size: 12px; color: var(--muted);
+}
+.traslado-cant label { display: inline-flex; align-items: center; gap: 6px; }
+.traslado-cant input {
+  width: 80px; padding: 5px 8px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font: inherit; font-size: 13px; color: var(--text);
+}
+.traslado-cajas { display: none !important; }
+.traslado-cant.parcial .traslado-cajas { display: inline-flex !important; }
+.traslado-cant.parcial .traslado-restante { color: var(--accent); font-weight: 600; }
+.traslado-cant.invalida label:first-child input { border-color: var(--danger); }
+.traslado-cant.invalida .traslado-restante { color: var(--danger); font-weight: 600; }
