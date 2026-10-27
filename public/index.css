@@ -1606,3 +1606,9 @@ body {
 .traslado-cant.parcial .traslado-restante { color: var(--accent); font-weight: 600; }
 .traslado-cant.invalida label:first-child input { border-color: var(--danger); }
 .traslado-cant.invalida .traslado-restante { color: var(--danger); font-weight: 600; }
+
+.traslado-imprimir {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer;
+}
+.traslado-imprimir input { width: 16px; height: 16px; accent-color: var(--primary); }

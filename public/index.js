@@ -1410,6 +1410,7 @@ async function confirmarTraslado() {
       prog.textContent = `Trasladando ${Math.min(i + TRASLADO_TANDA, pedidos.length)} de ${pedidos.length}...`;
       const r = await apiFetch('POST', '/api/conteos?accion=trasladar', {
         destino_tienda_id: Number(destinoId),
+        imprimir: document.getElementById('tr-imprimir').checked,
         items: pedidos.slice(i, i + TRASLADO_TANDA)
       });
       nombreDestino = r.destino || nombreDestino;
@@ -1435,6 +1436,9 @@ async function confirmarTraslado() {
     (movidos.some(r => r.parcial) ? ` (${movidos.filter(r => r.parcial).length} parcial(es)).` : '.') +
     (iguales ? ` ${iguales} ya estaban ahí con el mismo ID.` : '') +
     (fallidos.length ? ` ${fallidos.length} con error (siguen seleccionados).` : '');
+  if (movidos.length && document.getElementById('tr-imprimir').checked) {
+    document.getElementById('traslado-resumen').textContent += ' Las etiquetas nuevas se enviaron a la estación de impresión.';
+  }
   document.getElementById('traslado-msg').textContent = traslado.mensaje || 'No hubo cambios.';
   document.getElementById('traslado-form').hidden = true;
   document.getElementById('traslado-ok').hidden = false;
@@ -1693,7 +1697,7 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && estacion.activa) cicloEstacion();
 });
 const PRINT_ICON_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>';
-let estacion = { activa: false, iniciando: false, ultimoId: 0, timer: null, ocupada: false, impresas: [] };
+let estacion = { activa: false, iniciando: false, ultimoId: 0, desde: null, timer: null, ocupada: false, impresas: [] };
 
 // Imprime la etiqueta estándar de un conteo. Si el producto no está en el
 // catálogo cargado (p. ej. se creó después de abrir la página), usa los
@@ -1780,7 +1784,10 @@ async function cicloEstacion() {
   if (!estacion.activa || estacion.ocupada) return;
   estacion.ocupada = true;
   try {
-    const r = await apiFetch('GET', `/api/conteos?accion=por_imprimir&despues_de=${estacion.ultimoId}`);
+    // "desde" = hora del servidor al activar: toma también conteos viejos que
+    // vuelven a pedir etiqueta (traslados). despues_de queda de respaldo.
+    const q = `despues_de=${estacion.ultimoId}` + (estacion.desde ? `&desde=${encodeURIComponent(estacion.desde)}` : '');
+    const r = await apiFetch('GET', `/api/conteos?accion=por_imprimir&${q}`);
     for (const c of r.conteos || []) {
       if (!estacion.activa) break;
       estacion.ultimoId = Math.max(estacion.ultimoId, c.id);
@@ -1807,6 +1814,7 @@ async function iniciarEstacion() {
     // Solo imprime lo que llegue desde ahora; lo anterior se reimprime a mano
     const r = await apiFetch('GET', '/api/conteos?accion=por_imprimir');
     estacion.ultimoId = r.ultimo_id || 0;
+    estacion.desde = r.ahora || null;
   } catch (e) {
     renderEstacion(`No se pudo iniciar: ${e.message || 'sin conexión'}`, true);
     return;
@@ -1817,7 +1825,7 @@ async function iniciarEstacion() {
   try { localStorage.setItem(ESTACION_KEY, '1'); } catch (_) {}
   estacion.timer = crearRelojEstacion(cicloEstacion, ESTACION_INTERVALO_MS);
   cicloEstacion();
-  renderEstacion('Lista. Los conteos nuevos con "Imprimir etiqueta" se imprimen aquí.');
+  renderEstacion('Lista. Los conteos nuevos con "Imprimir etiqueta" y los trasladados se imprimen aquí.');
 }
 
 // recordar=true: el usuario la detuvo (no se reactiva al recargar)

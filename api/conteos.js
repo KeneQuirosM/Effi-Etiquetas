@@ -51,22 +51,41 @@ export default async function handler(req, res) {
     // ── ESTACIÓN DE IMPRESIÓN (solo coordinador) ──
     // La pestaña "Impresión" de index.html, abierta en la PC de la impresora,
     // consulta cada pocos segundos los conteos que pidieron etiqueta.
-    //   GET ?accion=por_imprimir              -> { ultimo_id } para arrancar
-    //   GET ?accion=por_imprimir&despues_de=N -> conteos pendientes con id > N
+    //   GET ?accion=por_imprimir              -> { ultimo_id, ahora } para arrancar
+    //   GET ?accion=por_imprimir&desde=ISO    -> pendientes pedidos desde esa hora
+    //     (incluye conteos viejos trasladados, que vuelven a pedir etiqueta)
+    //   GET ?accion=por_imprimir&despues_de=N -> pendientes con id > N (respaldo
+    //     si falta la columna imprimir_solicitado_en, y para páginas viejas)
     //   POST ?accion=impreso {id}             -> marca impreso_en solo si nadie
     //     lo marcó antes; { reclamado } evita imprimir dos veces.
     if (req.method === 'GET' && req.query?.accion === 'por_imprimir') {
       const user = await requireUser(req, res);
       if (!user) return;
 
-      if (req.query.despues_de === undefined) {
+      if (req.query.despues_de === undefined && req.query.desde === undefined) {
         const { data, error } = await supabaseAdmin
           .from('conteos').select('id').order('id', { ascending: false }).limit(1).maybeSingle();
         if (error) {
           console.error('Error leyendo último conteo:', error);
           return res.status(500).json({ error: 'No se pudo iniciar la estación' });
         }
-        return res.status(200).json({ ultimo_id: data?.id ?? 0 });
+        return res.status(200).json({ ultimo_id: data?.id ?? 0, ahora: new Date().toISOString() });
+      }
+
+      if (req.query.desde !== undefined) {
+        const desde = String(req.query.desde);
+        if (isNaN(Date.parse(desde))) return res.status(400).json({ error: 'Parámetro inválido' });
+        const { data, error } = await supabaseAdmin
+          .from('conteos').select('*')
+          .eq('imprimir', true).is('impreso_en', null).gte('imprimir_solicitado_en', desde)
+          .order('imprimir_solicitado_en', { ascending: true }).order('id', { ascending: true })
+          .limit(IMPRESION_LOTE);
+        if (!error) return res.status(200).json({ conteos: data.map(({ foto_path, ...r }) => r) });
+        if (!/imprimir_solicitado_en/.test(error.message || '') || req.query.despues_de === undefined) {
+          console.error('Error leyendo conteos por imprimir:', error);
+          return res.status(500).json({ error: 'No se pudieron leer los conteos por imprimir' });
+        }
+        // Falta re-ejecutar conteos.sql: seguir con el criterio por id
       }
 
       const despuesDe = Number(req.query.despues_de);
@@ -111,6 +130,10 @@ export default async function handler(req, res) {
       const b = req.body || {};
       const destinoId = Number(b.destino_tienda_id);
       const items = Array.isArray(b.items) ? b.items : [];
+      // Etiqueta nueva para lo trasladado: la estación de impresión la toma sola
+      const pedirEtiqueta = b.imprimir === true
+        ? () => ({ imprimir: true, impreso_en: null, imprimir_solicitado_en: new Date().toISOString() })
+        : () => ({});
       if (!Number.isInteger(destinoId) || destinoId <= 0) return res.status(400).json({ error: 'Elige la tienda destino' });
       if (!items.length || items.length > TRASLADO_LOTE) {
         return res.status(400).json({ error: `Envía entre 1 y ${TRASLADO_LOTE} conteos por llamada` });
@@ -172,6 +195,10 @@ export default async function handler(req, res) {
             resultados.push({ id, ok: false, error: falta ? 'Falta ejecutar supabase/conteos.sql' : (pErr.message || 'No se pudo trasladar') });
             continue;
           }
+          if (b.imprimir === true) {
+            const { error: iErr } = await supabaseAdmin.from('conteos').update(pedirEtiqueta()).eq('id', nuevoId);
+            if (iErr) console.error('No se pudo pedir la etiqueta del traslado parcial:', nuevoId, iErr.message);
+          }
           const { data: filas } = await supabaseAdmin.from('conteos').select('*').in('id', [id, nuevoId]);
           const original = (filas || []).find(x => x.id === id);
           const nuevo = (filas || []).find(x => x.id === nuevoId);
@@ -199,21 +226,27 @@ export default async function handler(req, res) {
         }
         const nombre = nombrePorCodigo.get(codigo) ?? (codigo === c.producto_codigo ? c.producto_nombre : null);
         const ahora = new Date().toISOString();
-        const { data: nuevo, error: uErr } = await supabaseAdmin
-          .from('conteos')
-          .update({
-            tienda_id: destino.id,
-            tienda_nombre: destino.nombre,
-            producto_codigo: codigo,
-            producto_nombre: nombre,
-            trasladado_de: `${c.tienda_nombre} · ID ${c.producto_codigo}`,
-            trasladado_en: ahora,
-            en_sheets: false
-          })
-          .eq('id', id).select('*').single();
+        const cambios = {
+          tienda_id: destino.id,
+          tienda_nombre: destino.nombre,
+          producto_codigo: codigo,
+          producto_nombre: nombre,
+          trasladado_de: `${c.tienda_nombre} · ID ${c.producto_codigo}`,
+          trasladado_en: ahora,
+          en_sheets: false
+        };
+        let { data: nuevo, error: uErr } = await supabaseAdmin
+          .from('conteos').update({ ...cambios, ...pedirEtiqueta() }).eq('id', id).select('*').single();
+        // Sin la columna imprimir_solicitado_en (falta re-ejecutar conteos.sql):
+        // trasladar igual, sin pedir la etiqueta
+        if (uErr && /imprimir_solicitado_en/.test(uErr.message || '')) {
+          console.error('Traslado sin etiqueta; re-ejecutar supabase/conteos.sql:', uErr.message);
+          ({ data: nuevo, error: uErr } = await supabaseAdmin
+            .from('conteos').update(cambios).eq('id', id).select('*').single());
+        }
         if (uErr) {
           console.error('Error trasladando conteo:', id, uErr);
-          const falta = /trasladado_/.test(uErr.message || '');
+          const falta = /trasladado_|imprimir_solicitado_en|column/.test(uErr.message || '');
           resultados.push({ id, ok: false, error: falta ? 'Falta ejecutar supabase/conteos.sql' : 'No se pudo trasladar' });
           continue;
         }
@@ -367,14 +400,15 @@ export default async function handler(req, res) {
         lote, vencimiento,
         hora_inicio: horaInicio, hora_cierre: horaCierre,
         foto_path: fotoPath,
-        imprimir: b.imprimir === true
+        imprimir: b.imprimir === true,
+        imprimir_solicitado_en: b.imprimir === true ? new Date().toISOString() : null
       };
       let { data, error } = await supabaseAdmin.from('conteos').insert(fila).select('*').single();
       // Si aún no se ejecutó la parte de conteos.sql que agrega "imprimir",
       // guardar igual sin ese dato en vez de perder el conteo
       if (error && /imprimir/.test(error.message || '')) {
         console.error('Columna imprimir ausente; re-ejecutar supabase/conteos.sql:', error.message);
-        const { imprimir, ...sinImprimir } = fila;
+        const { imprimir, imprimir_solicitado_en, ...sinImprimir } = fila;
         ({ data, error } = await supabaseAdmin.from('conteos').insert(sinImprimir).select('*').single());
       }
 

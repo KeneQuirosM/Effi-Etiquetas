@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS conteos (
   en_sheets        BOOLEAN NOT NULL DEFAULT false,  -- ya copiado a Google Sheets
   imprimir         BOOLEAN NOT NULL DEFAULT false,  -- pidió etiqueta en la estación de impresión
   impreso_en       TIMESTAMPTZ,                     -- cuándo la tomó la estación
+  imprimir_solicitado_en TIMESTAMPTZ,               -- cuándo se pidió la etiqueta (al guardar o al trasladar)
   trasladado_de    TEXT,                            -- último origen si se trasladó: "TIENDA · ID 008"
   trasladado_en    TIMESTAMPTZ,
   origen_conteo_id BIGINT REFERENCES conteos(id) ON DELETE SET NULL,  -- si salió de un traslado parcial
@@ -45,6 +46,7 @@ ALTER TABLE conteos ADD COLUMN IF NOT EXISTS en_sheets BOOLEAN NOT NULL DEFAULT 
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS mesa SMALLINT CHECK (mesa BETWEEN 1 AND 4);
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS imprimir BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS impreso_en TIMESTAMPTZ;
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS imprimir_solicitado_en TIMESTAMPTZ;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS trasladado_de TEXT;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS trasladado_en TIMESTAMPTZ;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS origen_conteo_id BIGINT REFERENCES conteos(id) ON DELETE SET NULL;
@@ -53,6 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_conteos_fecha  ON conteos(fecha);
 CREATE INDEX IF NOT EXISTS idx_conteos_tienda ON conteos(tienda_id);
 CREATE INDEX IF NOT EXISTS idx_conteos_sin_sheets ON conteos(id) WHERE NOT en_sheets;
 CREATE INDEX IF NOT EXISTS idx_conteos_por_imprimir ON conteos(id) WHERE imprimir AND impreso_en IS NULL;
+CREATE INDEX IF NOT EXISTS idx_conteos_cola_impresion ON conteos(imprimir_solicitado_en) WHERE imprimir AND impreso_en IS NULL;
 
 ALTER TABLE conteos ENABLE ROW LEVEL SECURITY;
 
