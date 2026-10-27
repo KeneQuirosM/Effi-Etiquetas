@@ -1111,6 +1111,7 @@ async function loadConteos() {
     const data = await apiFetch('GET', url);
     conteos = data.conteos || [];
     conteosCargadosEn = Date.now();
+    conteosSel.clear();
     renderSheetsEstado(data.sheets);
     if (data.truncado) notify('Se muestran solo los 1000 conteos más recientes del rango', 'warn');
     renderConteos();
@@ -1200,6 +1201,7 @@ function renderConteos() {
     <div class="devol-stat"><span class="devol-stat-val">${unidades.toLocaleString('es-CR')}</span><span class="devol-stat-lbl">Unidades contadas</span></div>
     <div class="devol-stat"><span class="devol-stat-val">${personas.toLocaleString('es-CR')}</span><span class="devol-stat-lbl">Personas</span></div>`;
 
+  renderSeleccionConteos();
   const list = document.getElementById('conteo-list');
   if (!filas.length) {
     list.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Sin conteos en este rango</span></div>';
@@ -1215,10 +1217,12 @@ function renderConteos() {
       ${foto}
       <div class="conteo-body">
         <div class="conteo-top">
+          <label class="conteo-check" title="Seleccionar para trasladar"><input type="checkbox" ${conteosSel.has(c.id) ? 'checked' : ''} onchange="toggleSelConteo(${Number(c.id)}, this.checked)" aria-label="Seleccionar conteo ${esc(c.producto_codigo)}"></label>
           <span class="conteo-id">ID ${esc(c.producto_codigo)}</span>
           <span class="conteo-qty">${Number(c.cantidad).toLocaleString('es-CR')} u.</span>
         </div>
         <div class="conteo-nombre">${esc(c.producto_nombre || 'Producto no encontrado en el catálogo')}</div>
+        ${c.trasladado_de ? `<div class="conteo-traslado">Trasladado desde ${esc(c.trasladado_de)}</div>` : ''}
         <dl class="conteo-datos">
           <div><dt>Tienda</dt><dd>${esc(c.tienda_nombre)}</dd></div>
           <div><dt>Contado por</dt><dd>${esc(c.contado_por)}</dd></div>
@@ -1237,6 +1241,203 @@ function renderConteos() {
       </div>
     </div>`;
   }).join('');
+}
+
+/* ── TRASLADO DE CONTEOS ──────────────────────────────────
+ * Para pasar conteos hechos en una tienda transitoria a la tienda real,
+ * con su ID en esa tienda (p. ej. ID 008 → ID 120). Se seleccionan en la
+ * lista, se elige destino e ID por conteo y la API los mueve en tandas.
+ * Al final se arma el mensaje para WhatsApp.
+ */
+const conteosSel = new Set();
+const TRASLADO_TANDA = 5;          // igual que TRASLADO_LOTE en api/conteos.js
+let traslado = { items: [], codigos: new Map(), mensaje: '', enCurso: false };
+
+function toggleSelConteo(id, marcado) {
+  if (marcado) conteosSel.add(id); else conteosSel.delete(id);
+  renderSeleccionConteos();
+}
+
+function seleccionarTodosConteos(marcar) {
+  conteosFiltrados().forEach(c => { if (marcar) conteosSel.add(c.id); else conteosSel.delete(c.id); });
+  renderConteos();
+}
+
+function renderSeleccionConteos() {
+  const barra = document.getElementById('conteo-seleccion');
+  const visibles = conteosFiltrados();
+  barra.hidden = !visibles.length;
+  // Solo cuentan los seleccionados que siguen cargados
+  const ids = new Set((conteos || []).map(c => c.id));
+  [...conteosSel].forEach(id => { if (!ids.has(id)) conteosSel.delete(id); });
+  const n = conteosSel.size;
+  document.getElementById('ct-sel-n').textContent = `${n} seleccionado${n === 1 ? '' : 's'}`;
+  document.getElementById('ct-trasladar-btn').disabled = n === 0;
+  const todos = document.getElementById('ct-sel-todos');
+  const marcados = visibles.filter(c => conteosSel.has(c.id)).length;
+  todos.checked = marcados > 0 && marcados === visibles.length;
+  todos.indeterminate = marcados > 0 && marcados < visibles.length;
+}
+
+function abrirTraslado() {
+  traslado.items = (conteos || []).filter(c => conteosSel.has(c.id));
+  if (!traslado.items.length) return notify('Selecciona al menos un conteo', 'warn');
+  traslado.codigos = new Map(traslado.items.map(c => [c.id, c.producto_codigo]));
+  traslado.mensaje = '';
+  const sel = document.getElementById('tr-destino');
+  sel.innerHTML = '<option value="">-- Seleccione --</option>';
+  appData.tiendas.forEach(t => sel.add(new Option(t.nombre, t.id)));
+  const n = traslado.items.length;
+  document.getElementById('traslado-titulo').textContent = `Trasladar ${n} conteo${n === 1 ? '' : 's'}`;
+  document.getElementById('traslado-progreso').textContent = '';
+  document.getElementById('tr-confirmar').disabled = false;
+  document.getElementById('traslado-form').hidden = false;
+  document.getElementById('traslado-ok').hidden = true;
+  renderTrasladoFilas();
+  document.getElementById('traslado-overlay').classList.add('show');
+  sel.focus();
+}
+
+function cerrarTraslado() {
+  if (traslado.enCurso) return;
+  document.getElementById('traslado-overlay').classList.remove('show');
+}
+
+function productoEnDestino(codigo) {
+  const t = getTienda(document.getElementById('tr-destino').value);
+  if (!t || !codigo) return null;
+  return t.inventario.find(p => String(p.id).toLowerCase() === String(codigo).trim().toLowerCase()) || null;
+}
+
+function hintTraslado(codigo) {
+  if (!document.getElementById('tr-destino').value) return { txt: 'Elige la tienda destino', ok: false };
+  if (!String(codigo).trim()) return { txt: 'Falta el ID', ok: false };
+  const p = productoEnDestino(codigo);
+  return p ? { txt: p.producto, ok: true } : { txt: 'No está en el catálogo de la tienda destino (se traslada igual)', ok: false };
+}
+
+function renderTrasladoFilas() {
+  const t = getTienda(document.getElementById('tr-destino').value);
+  document.getElementById('tr-productos').innerHTML = (t?.inventario || [])
+    .map(p => `<option value="${esc(p.id)}">${esc(p.producto)}</option>`).join('');
+  document.getElementById('traslado-filas').innerHTML = traslado.items.map(c => {
+    const cod = traslado.codigos.get(c.id) ?? '';
+    const h = hintTraslado(cod);
+    return `
+    <div class="traslado-fila">
+      <div class="traslado-origen">
+        <strong>${esc(c.tienda_nombre)} · ID ${esc(c.producto_codigo)}</strong>
+        <span>${esc(c.producto_nombre || 'Sin nombre')} · ${Number(c.cantidad).toLocaleString('es-CR')} u.${c.lote ? ' · Lote ' + esc(c.lote) : ''}</span>
+      </div>
+      <span class="traslado-flecha" aria-hidden="true">→</span>
+      <div class="traslado-destino">
+        <input type="text" list="tr-productos" maxlength="64" value="${esc(cod)}" data-id="${Number(c.id)}" oninput="cambiarCodigoTraslado(this)" aria-label="Nuevo ID para ${esc(c.producto_codigo)}">
+        <span class="traslado-hint ${h.ok ? 'ok' : ''}">${esc(h.txt)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cambiarCodigoTraslado(input) {
+  traslado.codigos.set(Number(input.dataset.id), input.value);
+  const h = hintTraslado(input.value);
+  const hint = input.nextElementSibling;
+  hint.textContent = h.txt;
+  hint.classList.toggle('ok', h.ok);
+}
+
+async function confirmarTraslado() {
+  if (traslado.enCurso) return;
+  const destinoId = document.getElementById('tr-destino').value;
+  if (!destinoId) return notify('Elige la tienda destino', 'warn');
+  const pedidos = traslado.items.map(c => ({ id: c.id, producto_codigo: String(traslado.codigos.get(c.id) || '').trim() }));
+  if (pedidos.some(p => !p.producto_codigo)) return notify('Todos los conteos necesitan un ID', 'warn');
+  const destino = getTienda(destinoId);
+  if (!confirm(`¿Trasladar ${pedidos.length} conteo(s) a ${destino ? destino.nombre : 'la tienda destino'}?`)) return;
+
+  traslado.enCurso = true;
+  const btn = document.getElementById('tr-confirmar');
+  const prog = document.getElementById('traslado-progreso');
+  btn.disabled = true;
+  const resultados = [];
+  let nombreDestino = destino ? destino.nombre : '';
+  try {
+    for (let i = 0; i < pedidos.length; i += TRASLADO_TANDA) {
+      prog.textContent = `Trasladando ${Math.min(i + TRASLADO_TANDA, pedidos.length)} de ${pedidos.length}...`;
+      const r = await apiFetch('POST', '/api/conteos?accion=trasladar', {
+        destino_tienda_id: Number(destinoId),
+        items: pedidos.slice(i, i + TRASLADO_TANDA)
+      });
+      nombreDestino = r.destino || nombreDestino;
+      resultados.push(...(r.resultados || []));
+    }
+  } catch (e) {
+    notify(e.message || 'No se pudo completar el traslado', 'danger');
+  } finally {
+    traslado.enCurso = false;
+    btn.disabled = false;
+    prog.textContent = '';
+  }
+  if (!resultados.length) return;
+
+  const movidos = resultados.filter(r => r.ok && !r.sin_cambios);
+  const fallidos = resultados.filter(r => !r.ok);
+  const iguales = resultados.filter(r => r.sin_cambios).length;
+  if (fallidos.length) notify(`${fallidos.length} conteo(s) no se trasladaron: ${fallidos[0].error}`, 'warn', 8000);
+
+  traslado.mensaje = movidos.length ? mensajeTraslado(nombreDestino, movidos) : '';
+  document.getElementById('traslado-resumen').textContent =
+    `${movidos.length} conteo(s) trasladado(s) a ${nombreDestino}.` +
+    (iguales ? ` ${iguales} ya estaban ahí con el mismo ID.` : '') +
+    (fallidos.length ? ` ${fallidos.length} con error (siguen seleccionados).` : '');
+  document.getElementById('traslado-msg').textContent = traslado.mensaje || 'No hubo cambios.';
+  document.getElementById('traslado-form').hidden = true;
+  document.getElementById('traslado-ok').hidden = false;
+
+  resultados.filter(r => r.ok).forEach(r => conteosSel.delete(r.id));
+  await loadConteos();
+  fallidos.forEach(r => conteosSel.add(r.id));
+  renderConteos();
+}
+
+function mensajeTraslado(destino, movidos) {
+  const origenes = [...new Set(movidos.map(r => r.de.tienda))];
+  const unaOrigen = origenes.length === 1;
+  const lineas = movidos.map((r, i) => {
+    const desde = unaOrigen ? '' : `${r.de.tienda} · `;
+    const cambioId = r.de.codigo === r.a.codigo ? `ID ${r.a.codigo}` : `ID ${r.de.codigo} → ID ${r.a.codigo}`;
+    const extra = [
+      r.a.nombre || r.de.nombre,
+      `${Number(r.cantidad).toLocaleString('es-CR')} u.`,
+      r.cajas != null ? `${r.cajas} caja${r.cajas === 1 ? '' : 's'}` : null,
+      r.lote ? `Lote ${r.lote}` : null
+    ].filter(Boolean).join(' · ');
+    return `${i + 1}. ${desde}${cambioId} · ${extra}`;
+  });
+  const unidades = movidos.reduce((s, r) => s + (Number(r.cantidad) || 0), 0);
+  return [
+    '*Traslado de conteos*',
+    unaOrigen ? `*De tienda:* ${origenes[0]}` : null,
+    `*A tienda:* ${destino}`,
+    `*Conteos trasladados:* ${movidos.length} (${unidades.toLocaleString('es-CR')} u.)`,
+    `*Fecha:* ${new Date().toLocaleString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+    '',
+    ...lineas
+  ].filter(l => l !== null).join('\n');
+}
+
+function copiarMensajeTraslado() {
+  navigator.clipboard.writeText(traslado.mensaje)
+    .then(() => notify('Mensaje copiado', 'success'))
+    .catch(() => notify('No se pudo copiar el mensaje', 'danger'));
+}
+
+// Sin esperas antes de window.open: el navegador solo abre ventanas
+// dentro del clic (mismo cuidado que en conteos.js)
+function compartirTrasladoWhatsApp() {
+  if (!traslado.mensaje) return notify('No hay traslados para compartir', 'warn');
+  const url = 'https://wa.me/?text=' + encodeURIComponent(traslado.mensaje);
+  if (!window.open(url, '_blank', 'noopener')) window.location.href = url;
 }
 
 async function deleteConteo(id) {

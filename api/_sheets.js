@@ -46,11 +46,14 @@ export async function enviarConteoASheets(conteo) {
   }
 }
 
+// Devuelve true si la fila ya no está en la hoja (o no estaba)
 export async function eliminarConteoDeSheets(id) {
-  if (!sheetsHabilitado()) return;
+  if (!sheetsHabilitado()) return false;
   try {
     await llamar({ accion: 'eliminar', id });
+    return true;
   } catch (err) {
     console.error('Error eliminando conteo de Google Sheets:', id, err.message);
+    return false;
   }
 }

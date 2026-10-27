@@ -47,6 +47,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 - Tras guardar, "Compartir en WhatsApp" abre el menú de compartir del celular con la foto y el mensaje (se envía desde el WhatsApp de la persona, sin envío automático)
 - Opcional: cada conteo se copia a una hoja de Google Sheets con una pestaña por tienda (Apps Script en `google/`, instalación en `google/README.md`)
 - Casilla "Imprimir etiqueta": la PC de la impresora, con la pestaña "Impresión" del Panel de Coordinador activa, imprime sola la etiqueta 4x6 estándar (logo, nombre, ID, tienda, QR) de cada conteo nuevo. Sin instalar nada: Chrome con `--kiosk-printing` imprime sin cuadro de diálogo (pasos en la propia pestaña)
+- Traslado de conteos (Panel de Coordinador, pestaña Conteos): seleccionar uno o varios conteos, elegir la tienda destino y el ID de cada uno en esa tienda (p. ej. de una tienda transitoria a la real). Queda historial en `conteos_traslados`, la fila de Google Sheets se mueve a la pestaña nueva y se genera el mensaje para WhatsApp
 - El coordinador consulta los conteos en el Panel de Coordinador, pestaña "Conteos" (filtros por fecha/tienda, fotos, exportar a Excel con las fotos incrustadas, eliminar)
 
 ### 5. Reporte Distribuidor / Proveedor (`/reporte/reporte_distribuidor_proveedor.html`)
@@ -76,6 +77,7 @@ La BD tiene 16 tablas en Supabase PostgreSQL divididas en dos grupos:
 - `devoluciones_registro` — una fila por guía devuelta (guia, fecha). Se crea con `supabase/devoluciones_registro.sql` (ejecutar manualmente en el SQL Editor), que también define la función `devoluciones_por_dia`
 
 **Conteos:**
+- `conteos_traslados` — historial de traslados de conteos entre tiendas/IDs (quién, cuándo, de dónde a dónde)
 - `conteos` — un registro por conteo de mercancía. Se crea con `supabase/conteos.sql` (ejecutar manualmente en el SQL Editor), que también crea el bucket privado `conteos` para las fotos
 
 El campo `skus.producto_id` vincula STOCKFORGE con el catálogo de etiquetas. Cuando un SKU tiene `producto_id`, al guardar el almacén se actualiza automáticamente `productos.ubicacion` con la posición física.

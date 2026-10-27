@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS conteos (
   en_sheets        BOOLEAN NOT NULL DEFAULT false,  -- ya copiado a Google Sheets
   imprimir         BOOLEAN NOT NULL DEFAULT false,  -- pidió etiqueta en la estación de impresión
   impreso_en       TIMESTAMPTZ,                     -- cuándo la tomó la estación
+  trasladado_de    TEXT,                            -- último origen si se trasladó: "TIENDA · ID 008"
+  trasladado_en    TIMESTAMPTZ,
   fecha            DATE NOT NULL DEFAULT ((NOW() AT TIME ZONE 'America/Costa_Rica')::date),
   creado_en        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -42,6 +44,8 @@ ALTER TABLE conteos ADD COLUMN IF NOT EXISTS en_sheets BOOLEAN NOT NULL DEFAULT 
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS mesa SMALLINT CHECK (mesa BETWEEN 1 AND 4);
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS imprimir BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS impreso_en TIMESTAMPTZ;
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS trasladado_de TEXT;
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS trasladado_en TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_conteos_fecha  ON conteos(fecha);
 CREATE INDEX IF NOT EXISTS idx_conteos_tienda ON conteos(tienda_id);
@@ -57,6 +61,31 @@ CREATE POLICY "lectura_publica_conteos"
 DROP POLICY IF EXISTS "escritura_coordinador_conteos" ON conteos;
 CREATE POLICY "escritura_coordinador_conteos"
   ON conteos FOR ALL USING (auth.role() = 'authenticated');
+
+-- Historial de traslados (panel de coordinador → Conteos → Trasladar):
+-- una fila por conteo movido de tienda y/o ID, con quién lo hizo.
+CREATE TABLE IF NOT EXISTS conteos_traslados (
+  id                 BIGSERIAL PRIMARY KEY,
+  conteo_id          BIGINT NOT NULL REFERENCES conteos(id) ON DELETE CASCADE,
+  de_tienda_nombre   TEXT NOT NULL,
+  de_producto_codigo TEXT NOT NULL,
+  a_tienda_nombre    TEXT NOT NULL,
+  a_producto_codigo  TEXT NOT NULL,
+  trasladado_por     TEXT,
+  creado_en          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_conteos_traslados_conteo ON conteos_traslados(conteo_id);
+
+ALTER TABLE conteos_traslados ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "lectura_publica_conteos_traslados" ON conteos_traslados;
+CREATE POLICY "lectura_publica_conteos_traslados"
+  ON conteos_traslados FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "escritura_coordinador_conteos_traslados" ON conteos_traslados;
+CREATE POLICY "escritura_coordinador_conteos_traslados"
+  ON conteos_traslados FOR ALL USING (auth.role() = 'authenticated');
 
 -- Bucket privado para las fotos. La API sube y firma con la service role
 -- key, así que no hacen falta políticas de storage para el público.

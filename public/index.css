@@ -1505,3 +1505,86 @@ body {
 @media (max-width: 640px) {
   .estacion-box { flex-direction: column; align-items: stretch; }
 }
+
+/* ══ TRASLADO DE CONTEOS (panel coordinador) ══ */
+.conteo-seleccion {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 12px; margin-bottom: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg); font-size: 12px;
+}
+.conteo-seleccion[hidden] { display: none; }
+.conteo-seleccion #ct-sel-n { color: var(--muted); }
+.conteo-seleccion .btn-action { margin-left: auto; padding: 6px 14px; font-size: 12px; }
+.conteo-seleccion .btn-action:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+.conteo-sel-todos { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; }
+.conteo-check { display: inline-flex; margin-right: 6px; cursor: pointer; }
+.conteo-check input, .conteo-sel-todos input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+.conteo-top { justify-content: flex-start; }
+.conteo-top .conteo-qty { margin-left: auto; }
+.conteo-traslado { font-size: 11px; color: var(--accent); font-weight: 600; }
+
+#traslado-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 9500;
+  background: rgba(7,16,74,.45);
+  align-items: center; justify-content: center;
+  padding: 16px;
+}
+#traslado-overlay.show { display: flex; }
+.traslado-modal {
+  width: 100%; max-width: 760px; max-height: calc(100vh - 32px);
+  display: flex; flex-direction: column;
+  background: var(--panel); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); padding: 18px 20px;
+  overflow: hidden;
+}
+.traslado-modal > div { display: flex; flex-direction: column; min-height: 0; }
+.traslado-modal > div[hidden] { display: none; }
+.traslado-head { flex-direction: row !important; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.traslado-head h3 { font-size: 16px; color: var(--primary); }
+.traslado-cerrar { background: none; border: none; font-size: 18px; color: var(--muted); cursor: pointer; padding: 4px 8px; }
+.traslado-ayuda { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.traslado-filas {
+  overflow-y: auto; min-height: 0;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+}
+.traslado-fila {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px; align-items: center;
+  padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.traslado-fila:last-child { border-bottom: none; }
+.traslado-origen { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.traslado-origen span { color: var(--muted); overflow-wrap: anywhere; }
+.traslado-flecha { color: var(--muted); font-size: 16px; }
+.traslado-destino { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.traslado-destino input {
+  width: 100%; padding: 7px 10px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font: inherit; font-size: 13px;
+}
+.traslado-hint { font-size: 11px; color: var(--warning); overflow-wrap: anywhere; }
+.traslado-hint.ok { color: var(--success); font-weight: 600; }
+.traslado-acciones {
+  flex-direction: row !important; display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; flex-wrap: wrap; margin-top: 14px;
+}
+#traslado-progreso { margin-right: auto; font-size: 12px; color: var(--muted); }
+.traslado-resumen { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+.traslado-msg {
+  overflow-y: auto; min-height: 0; max-height: 50vh;
+  white-space: pre-wrap; word-break: break-word;
+  font-family: var(--sans); font-size: 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 12px;
+}
+.btn-wa { background: #1f8f4e; color: #fff; border-color: #1f8f4e; }
+.btn-wa:hover { background: #18733e; }
+@media (max-width: 640px) {
+  .traslado-fila { grid-template-columns: 1fr; }
+  .traslado-flecha { display: none; }
+}
+@media print {
+  #traslado-overlay { display: none !important; }
+}

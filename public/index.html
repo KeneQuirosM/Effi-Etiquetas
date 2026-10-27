@@ -539,6 +539,11 @@
         <button type="button" class="btn-action btn-ghost" id="conteo-sheets-btn" onclick="sincronizarSheets()">Enviar pendientes</button>
       </div>
       <div class="devol-resumen" id="conteo-resumen"></div>
+      <div class="conteo-seleccion" id="conteo-seleccion" hidden>
+        <label class="conteo-sel-todos"><input type="checkbox" id="ct-sel-todos" onchange="seleccionarTodosConteos(this.checked)"> Seleccionar todos</label>
+        <span id="ct-sel-n">0 seleccionados</span>
+        <button type="button" class="btn-action btn-primary" id="ct-trasladar-btn" onclick="abrirTraslado()" disabled>Trasladar seleccionados</button>
+      </div>
       <div class="conteo-list" id="conteo-list">
         <div class="inv-item"><span class="item-name" style="color:var(--muted)">Selecciona un rango</span></div>
       </div>
@@ -712,6 +717,41 @@
 <div id="bulk-print-area"></div>
 
 <div class="toast" id="toast"></div>
+
+<!-- TRASLADO DE CONTEOS (panel coordinador → Conteos) -->
+<div id="traslado-overlay" role="dialog" aria-modal="true" aria-labelledby="traslado-titulo">
+  <div class="traslado-modal">
+    <div class="traslado-head">
+      <h3 id="traslado-titulo">Trasladar conteos</h3>
+      <button type="button" class="traslado-cerrar" onclick="cerrarTraslado()" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div id="traslado-form">
+      <div class="form-group" style="margin-bottom:12px">
+        <label for="tr-destino">Tienda destino</label>
+        <select id="tr-destino" onchange="renderTrasladoFilas()"></select>
+      </div>
+      <p class="traslado-ayuda">Revisa el ID de cada conteo en la tienda destino. Viene con el mismo ID; cámbialo si en la tienda destino el producto tiene otro.</p>
+      <datalist id="tr-productos"></datalist>
+      <div class="traslado-filas" id="traslado-filas"></div>
+      <div class="traslado-acciones">
+        <span id="traslado-progreso"></span>
+        <button type="button" class="btn-action btn-ghost" onclick="cerrarTraslado()">Cancelar</button>
+        <button type="button" class="btn-action btn-primary" id="tr-confirmar" onclick="confirmarTraslado()">Trasladar</button>
+      </div>
+    </div>
+
+    <div id="traslado-ok" hidden>
+      <p class="traslado-resumen" id="traslado-resumen"></p>
+      <pre class="traslado-msg" id="traslado-msg"></pre>
+      <div class="traslado-acciones">
+        <button type="button" class="btn-action btn-ghost" onclick="copiarMensajeTraslado()">Copiar mensaje</button>
+        <button type="button" class="btn-action btn-wa" onclick="compartirTrasladoWhatsApp()">Compartir en WhatsApp</button>
+        <button type="button" class="btn-action btn-primary" onclick="cerrarTraslado()">Listo</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="/shared/dom-utils.js"></script>
 <script src="/shared/api.js"></script>

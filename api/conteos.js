@@ -11,7 +11,8 @@ const MAX_RANGO_DIAS = 400;
 const MAX_FILAS = 1000;
 const URL_FIRMADA_SEG = 60 * 60;
 const IMPRESION_LOTE = 10;          // conteos que la estación de impresión toma por consulta
-const SYNC_LOTE = 5;              // conteos enviados a Sheets por llamada de "Enviar pendientes"
+const SYNC_LOTE = 5;
+const TRASLADO_LOTE = 5;             // conteos por llamada de "trasladar" (cada uno toca Sheets 2 veces)              // conteos enviados a Sheets por llamada de "Enviar pendientes"
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const FOTO_RE = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
@@ -97,6 +98,106 @@ export default async function handler(req, res) {
       return res.status(200).json({ reclamado: Boolean(data) });
     }
 
+    // ── POST ?accion=trasladar (solo coordinador) ──
+    // Mueve conteos a otra tienda y, por conteo, a otro ID de producto
+    // (p. ej. de una tienda transitoria a la tienda real).
+    // Body: { destino_tienda_id, items: [{ id, producto_codigo }] }, máx.
+    // TRASLADO_LOTE por llamada (el panel envía en tandas). Registra cada
+    // movimiento en conteos_traslados y mueve la fila en Google Sheets.
+    if (req.method === 'POST' && req.query?.accion === 'trasladar') {
+      const user = await requireUser(req, res);
+      if (!user) return;
+
+      const b = req.body || {};
+      const destinoId = Number(b.destino_tienda_id);
+      const items = Array.isArray(b.items) ? b.items : [];
+      if (!Number.isInteger(destinoId) || destinoId <= 0) return res.status(400).json({ error: 'Elige la tienda destino' });
+      if (!items.length || items.length > TRASLADO_LOTE) {
+        return res.status(400).json({ error: `Envía entre 1 y ${TRASLADO_LOTE} conteos por llamada` });
+      }
+      const pedidos = [];
+      for (const it of items) {
+        const id = Number(it?.id);
+        const codigo = texto(it?.producto_codigo, 64);
+        if (!Number.isInteger(id) || id <= 0 || !codigo) return res.status(400).json({ error: 'Cada conteo necesita un ID de producto válido' });
+        pedidos.push({ id, codigo });
+      }
+
+      const { data: destino, error: dErr } = await supabaseAdmin
+        .from('tiendas').select('id, nombre').eq('id', destinoId).maybeSingle();
+      if (dErr) {
+        console.error('Error buscando tienda destino:', dErr);
+        return res.status(500).json({ error: 'No se pudo validar la tienda destino' });
+      }
+      if (!destino) return res.status(400).json({ error: 'La tienda destino no existe' });
+
+      const { data: actuales, error: cErr } = await supabaseAdmin
+        .from('conteos').select('*').in('id', pedidos.map(p => p.id));
+      if (cErr) {
+        console.error('Error leyendo conteos a trasladar:', cErr);
+        return res.status(500).json({ error: 'No se pudieron leer los conteos' });
+      }
+      const { data: prods } = await supabaseAdmin
+        .from('productos').select('codigo, nombre')
+        .eq('tienda_id', destinoId).in('codigo', [...new Set(pedidos.map(p => p.codigo))]);
+      const nombrePorCodigo = new Map((prods || []).map(p => [p.codigo, p.nombre]));
+
+      const resultados = [];
+      for (const { id, codigo } of pedidos) {
+        const c = actuales.find(x => x.id === id);
+        if (!c) { resultados.push({ id, ok: false, error: 'El conteo ya no existe' }); continue; }
+        const de = { tienda: c.tienda_nombre, codigo: c.producto_codigo, nombre: c.producto_nombre };
+        if (c.tienda_id === destinoId && c.producto_codigo === codigo) {
+          resultados.push({ id, ok: true, sin_cambios: true, de, a: de });
+          continue;
+        }
+        const nombre = nombrePorCodigo.get(codigo) ?? (codigo === c.producto_codigo ? c.producto_nombre : null);
+        const ahora = new Date().toISOString();
+        const { data: nuevo, error: uErr } = await supabaseAdmin
+          .from('conteos')
+          .update({
+            tienda_id: destino.id,
+            tienda_nombre: destino.nombre,
+            producto_codigo: codigo,
+            producto_nombre: nombre,
+            trasladado_de: `${c.tienda_nombre} · ID ${c.producto_codigo}`,
+            trasladado_en: ahora,
+            en_sheets: false
+          })
+          .eq('id', id).select('*').single();
+        if (uErr) {
+          console.error('Error trasladando conteo:', id, uErr);
+          const falta = /trasladado_/.test(uErr.message || '');
+          resultados.push({ id, ok: false, error: falta ? 'Falta ejecutar supabase/conteos.sql' : 'No se pudo trasladar' });
+          continue;
+        }
+
+        const { error: hErr } = await supabaseAdmin.from('conteos_traslados').insert({
+          conteo_id: id,
+          de_tienda_nombre: c.tienda_nombre,
+          de_producto_codigo: c.producto_codigo,
+          a_tienda_nombre: destino.nombre,
+          a_producto_codigo: codigo,
+          trasladado_por: user.email || null
+        });
+        if (hErr) console.error('Error registrando historial de traslado:', id, hErr);
+
+        // Google Sheets: sacar la fila de la pestaña vieja y ponerla en la nueva.
+        // Si falla, queda en_sheets = false y "Enviar pendientes" lo termina.
+        if (sheetsHabilitado() && await eliminarConteoDeSheets(id) && await enviarConteoASheets(nuevo)) {
+          await supabaseAdmin.from('conteos').update({ en_sheets: true }).eq('id', id);
+        }
+
+        resultados.push({
+          id, ok: true, de,
+          a: { tienda: destino.nombre, codigo, nombre },
+          cantidad: nuevo.cantidad, cajas: nuevo.cajas, lote: nuevo.lote
+        });
+      }
+
+      return res.status(200).json({ destino: destino.nombre, resultados });
+    }
+
     // ── POST ?accion=sincronizar: reenviar a Google Sheets los conteos que
     // no llegaron (Google caído, o anteriores a configurar la hoja). Solo
     // coordinador; procesa un lote por llamada y el panel repite hasta 0.
@@ -115,6 +216,9 @@ export default async function handler(req, res) {
 
       let enviados = 0;
       for (const c of lote) {
+        // Un conteo trasladado puede seguir en la pestaña de su tienda vieja;
+        // si no se borra primero, "agregar" lo ve como duplicado y no lo mueve
+        if (c.trasladado_en && !(await eliminarConteoDeSheets(c.id))) break;
         if (!(await enviarConteoASheets(c))) break;   // Google falla: no seguir insistiendo
         await supabaseAdmin.from('conteos').update({ en_sheets: true }).eq('id', c.id);
         enviados++;
