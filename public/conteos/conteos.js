@@ -45,6 +45,7 @@ const CAMPOS_BORRADOR = ['f-tienda', 'f-contado', 'f-mesa', 'f-inicio', 'f-cierr
 function guardarBorrador() {
   const b = {};
   CAMPOS_BORRADOR.forEach(id => { if ($(id).value) b[id] = $(id).value; });
+  if ($('f-sin-venc').checked) b['f-sin-venc'] = true;
   try { localStorage.setItem(STORAGE_KEYS.CONTEOS_BORRADOR, JSON.stringify(b)); } catch (_) {}
 }
 
@@ -61,7 +62,9 @@ function borrarBorrador() {
 function restaurarBorrador() {
   const b = leerBorrador();
   CAMPOS_BORRADOR.forEach(id => { if (b[id] && id !== 'f-tienda') $(id).value = b[id]; });
-  return ['f-codigo', 'f-cantidad', 'f-cajas', 'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc'].some(id => b[id]);
+  $('f-sin-venc').checked = !!b['f-sin-venc'];
+  aplicarSinVencimiento();
+  return ['f-codigo', 'f-cantidad', 'f-cajas', 'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc', 'f-sin-venc'].some(id => b[id]);
 }
 
 /* ── TIENDAS Y PRODUCTOS ── */
@@ -261,6 +264,16 @@ function fmtDuracion(m) {
   return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`;
 }
 
+// "No tiene fecha de vencimiento": deshabilita y limpia la fecha
+function aplicarSinVencimiento() {
+  const sin = $('f-sin-venc').checked;
+  $('f-venc').disabled = sin;
+  if (sin) {
+    $('f-venc').value = '';
+    $('f-venc').closest('.field').classList.remove('invalid');
+  }
+}
+
 /* ── VALIDACIÓN ── */
 function marcar(id, invalido) {
   $(id).closest('.field').classList.toggle('invalid', invalido);
@@ -280,7 +293,8 @@ function leerFormulario() {
     largo_cm: num('f-largo'),
     alto_cm: num('f-alto'),
     lote: $('f-lote').value.trim(),
-    vencimiento: $('f-venc').value,
+    vencimiento: $('f-sin-venc').checked ? '' : $('f-venc').value,
+    sin_vencimiento: $('f-sin-venc').checked,
     hora_inicio: $('f-inicio').value,
     hora_cierre: $('f-cierre').value,
     imprimir: $('f-imprimir').checked
@@ -299,7 +313,7 @@ function leerFormulario() {
     marcar('f-largo', !esMedida(datos.largo_cm)) && 'Largo inválido',
     marcar('f-alto', !esMedida(datos.alto_cm)) && 'Alto inválido',
     marcar('f-lote', !datos.lote) && 'Indica el número de lote',
-    marcar('f-venc', !datos.vencimiento) && 'Indica la fecha de vencimiento'
+    marcar('f-venc', !datos.vencimiento && !datos.sin_vencimiento) && 'Indica la fecha de vencimiento o marca "no tiene fecha de vencimiento"'
   ].filter(Boolean);
 
   return { datos, errores };
@@ -442,6 +456,8 @@ function compartirWhatsApp() {
 function nuevoConteo() {
   ['f-codigo', 'f-cantidad', 'f-cajas', 'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc', 'f-inicio', 'f-cierre']
     .forEach(id => { $(id).value = ''; });
+  $('f-sin-venc').checked = false;
+  aplicarSinVencimiento();
   document.querySelectorAll('.field.invalid').forEach(f => f.classList.remove('invalid'));
   quitarFoto();
   limpiarBusqueda();
@@ -476,13 +492,14 @@ function nuevoConteo() {
     if (item) elegirProducto(item.dataset.id);
   });
   $('f-foto').addEventListener('change', onFotoSeleccionada);
+  $('f-sin-venc').addEventListener('change', () => { aplicarSinVencimiento(); guardarBorrador(); });
   $('f-foto-galeria').addEventListener('change', onFotoSeleccionada);
   $('form-conteo').addEventListener('submit', guardarConteo);
   $('form-conteo').addEventListener('input', e => {
     const f = e.target.closest('.field.invalid');
     if (f) f.classList.remove('invalid');
     // El inicio se marca con lo primero que se escribe del artículo
-    if (!$('f-inicio').value && !['f-inicio', 'f-cierre', 'f-tienda', 'f-contado', 'f-mesa', 'f-imprimir', 'f-buscar'].includes(e.target.id)) {
+    if (!$('f-inicio').value && !['f-inicio', 'f-cierre', 'f-tienda', 'f-contado', 'f-mesa', 'f-imprimir', 'f-buscar', 'f-sin-venc'].includes(e.target.id)) {
       $('f-inicio').value = horaActual();
     }
     guardarBorrador();

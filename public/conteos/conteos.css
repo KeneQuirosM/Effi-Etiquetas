@@ -162,6 +162,15 @@ body {
     width: 24px; height: 24px; margin-top: 1px;
     accent-color: var(--brand-700);
 }
+.check-mini { margin-top: 4px; align-items: center; }
+/* Dentro de .field: anular el estilo de los inputs de texto */
+.field .check-mini input[type="checkbox"] {
+    -webkit-appearance: auto; appearance: auto;
+    width: 20px; height: 20px; min-width: 0; margin: 0; padding: 0;
+    border: none; border-radius: 0; background: none;
+}
+.check-mini > span { font-size: 14px; color: var(--neutral-600); }
+.field input[type="date"]:disabled { opacity: .45; }
 .check-row > span { display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
 .row-mesa { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 10px; }
 .row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

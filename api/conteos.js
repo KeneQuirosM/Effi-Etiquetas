@@ -345,8 +345,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Medidas inválidas' });
       }
       if (!lote) return res.status(400).json({ error: 'El número de lote es requerido (máx. 64 caracteres)' });
-      if (!esFechaValida(vencimiento)) {
-        return res.status(400).json({ error: 'La fecha de vencimiento es requerida' });
+      // Obligatoria salvo que se marque explícitamente "no tiene fecha de vencimiento"
+      if (b.sin_vencimiento === true ? vencimiento !== null : !esFechaValida(vencimiento)) {
+        return res.status(400).json({ error: 'Indica la fecha de vencimiento o marca que no tiene' });
       }
 
       if ((horaInicio !== null && !HORA_RE.test(horaInicio)) || (horaCierre !== null && !HORA_RE.test(horaCierre))) {
