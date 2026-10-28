@@ -170,7 +170,7 @@ body {
     border: none; border-radius: 0; background: none;
 }
 .check-mini > span { font-size: 14px; color: var(--neutral-600); }
-.field input[type="date"]:disabled { opacity: .45; }
+.field input:disabled { opacity: .45; }
 .check-row > span { display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
 .row-mesa { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 10px; }
 .row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

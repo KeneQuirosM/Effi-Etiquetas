@@ -344,7 +344,10 @@ export default async function handler(req, res) {
       if (ancho === undefined || largo === undefined || alto === undefined) {
         return res.status(400).json({ error: 'Medidas inválidas' });
       }
-      if (!lote) return res.status(400).json({ error: 'El número de lote es requerido (máx. 64 caracteres)' });
+      // Obligatorio salvo que se marque explícitamente "no tiene número de lote"
+      if (b.sin_lote === true ? b.lote : !lote) {
+        return res.status(400).json({ error: b.sin_lote === true ? 'Marcaste "sin lote" pero enviaste un lote' : 'Indica el número de lote (máx. 64 caracteres) o marca que no tiene' });
+      }
       // Obligatoria salvo que se marque explícitamente "no tiene fecha de vencimiento"
       if (b.sin_vencimiento === true ? vencimiento !== null : !esFechaValida(vencimiento)) {
         return res.status(400).json({ error: 'Indica la fecha de vencimiento o marca que no tiene' });
