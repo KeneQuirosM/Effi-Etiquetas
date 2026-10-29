@@ -34,6 +34,16 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('POST producto error:', error);
+        if (error.code === '23505') {
+          // productos_pkey: la secuencia del id quedó atrasada (datos importados con id explícito)
+          if (/pkey/.test(error.message || '')) {
+            return res.status(409).json({ error: 'Error de base de datos: la secuencia de IDs de productos está desincronizada' });
+          }
+          return res.status(409).json({ error: `Ya existe un producto con el código "${codigo.trim()}" en esta tienda` });
+        }
+        if (error.code === '23503') {
+          return res.status(400).json({ error: 'La tienda seleccionada ya no existe. Recarga la página.' });
+        }
         return res.status(400).json({ error: 'No se pudo crear el producto' });
       }
 
@@ -63,6 +73,9 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('PATCH producto error:', error);
+        if (error.code === '23505') {
+          return res.status(409).json({ error: 'Ya existe otro producto con ese código en esta tienda' });
+        }
         return res.status(400).json({ error: 'No se pudo editar el producto' });
       }
 
