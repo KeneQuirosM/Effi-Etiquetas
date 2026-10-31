@@ -300,6 +300,7 @@ function populateInventario(tiendaIdx, prodSel, idSel) {
     inventarioCompleto = [];
     searchInput.value = '';
     searchInput.disabled = true;
+    updatePreview();   // sin esto la vista previa seguía con la tienda anterior
     return;
   }
 
@@ -2297,6 +2298,30 @@ function updatePreview() {
   if (fragilTienda) {
     fragilTienda.textContent = tiendaName.toUpperCase();
   }
+
+  actualizarBotonImprimir();
+}
+
+/* ── BOTÓN IMPRIMIR: solo si la etiqueta tiene lo que necesita ──
+ * Sin esto se imprimía "PRODUCTO / 0000" (o "TIENDA" en Frágil).
+ * Estándar y Numeración usan el producto; Frágil solo la tienda;
+ * Solo Observaciones no usa ninguno (se imprime en blanco a propósito).
+ */
+function actualizarBotonImprimir() {
+  const btn = document.getElementById('btn-print');
+  const hint = document.getElementById('print-hint');
+  if (!btn) return;
+  const formato = document.getElementById('select-formato')?.value;
+  const hayTienda = document.getElementById('select-tienda').value !== '';
+  const hayProducto = document.getElementById('select-id').value !== '';
+  let falta = '';
+  if (formato === 'fragil') {
+    if (!hayTienda) falta = 'Selecciona una tienda para imprimir.';
+  } else if (formato !== 'solo-notas' && !hayProducto) {
+    falta = hayTienda ? 'Selecciona un producto para imprimir.' : 'Selecciona una tienda y un producto para imprimir.';
+  }
+  btn.disabled = !!falta;
+  if (hint) hint.textContent = falta;
 } // ← CIERRE CORRECTO DE LA FUNCIÓN
 
 /* ── CONFIGURACIÓN: ACORDEÓN ────────────────────────── */
@@ -2547,7 +2572,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Botón imprimir etiqueta individual
-  document.getElementById('btn-print').addEventListener('click', () => {
+  document.getElementById('btn-print').addEventListener('click', e => {
+    if (e.currentTarget.disabled) return;
     document.body.classList.add('print-single');
     window.print();
     document.body.classList.remove('print-single');

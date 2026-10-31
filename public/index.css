@@ -225,6 +225,21 @@ body {
   box-shadow: 0 5px 14px rgba(42,71,212,.4);
 }
 .btn-print:active { transform: scale(.98); }
+.btn-print:disabled,
+.btn-print:disabled:hover {
+  opacity: .45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  background: var(--accent);
+}
+.print-hint {
+  margin: 0 20px 8px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+.print-hint:empty { display: none; }
 
 .btn-bulk {
   display: flex;
