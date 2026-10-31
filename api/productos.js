@@ -2,6 +2,19 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requireUser } from './_auth.js';
 
+// Postgres: 23505 = viola UNIQUE(tienda_id, codigo), 23503 = tienda_id no existe.
+// Antes todo salía como 400 genérico y la importación JSON no podía
+// distinguir un duplicado (se omite) de un error real.
+function errorProducto(res, error, accion) {
+  if (error?.code === '23505') {
+    return res.status(409).json({ error: 'Ya existe un producto con ese ID en esta tienda' });
+  }
+  if (error?.code === '23503') {
+    return res.status(400).json({ error: 'La tienda no existe' });
+  }
+  return res.status(400).json({ error: `No se pudo ${accion} el producto` });
+}
+
 export default async function handler(req, res) {
   setCors(req, res, 'POST, PATCH, DELETE, OPTIONS');
 
@@ -34,7 +47,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('POST producto error:', error);
-        return res.status(400).json({ error: 'No se pudo crear el producto' });
+        return errorProducto(res, error, 'crear');
       }
 
       return res.status(201).json(data);
@@ -63,7 +76,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('PATCH producto error:', error);
-        return res.status(400).json({ error: 'No se pudo editar el producto' });
+        return errorProducto(res, error, 'editar');
       }
 
       return res.status(200).json(data);

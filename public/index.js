@@ -36,7 +36,16 @@ function isTokenExpired(token) {
 
 // Intenta renovar el token con el refresh_token guardado.
 // Devuelve true si tuvo éxito, false si hubo que cerrar sesión.
-async function tryRefreshToken() {
+// Las llamadas simultáneas (p. ej. los 10 productos de un lote de la
+// importación JSON) comparten un solo intento: antes cada una renovaba por
+// su cuenta con el mismo refresh_token y repetía los avisos.
+let refreshEnCurso = null;
+function tryRefreshToken() {
+  if (!refreshEnCurso) refreshEnCurso = renovarToken().finally(() => { refreshEnCurso = null; });
+  return refreshEnCurso;
+}
+
+async function renovarToken() {
   const refreshToken = localStorage.getItem(REFRESH_KEY);
   if (!refreshToken) { lockCoord(); return false; }
   try {
@@ -65,6 +74,7 @@ async function apiGet(path) {
 }
 
 // Función base que maneja el retry automático al expirar el token
+let avisoSesionExpiradaEn = 0;
 async function apiFetch(method, path, body) {
   let r = await apiRequest(API + path, { method, token: coordToken, body });
 
@@ -72,14 +82,25 @@ async function apiFetch(method, path, body) {
     // Intentar renovar el token una sola vez antes de cerrar sesión
     const renewed = await tryRefreshToken();
     if (!renewed) {
-      notify('⏳ La sesión expiró. Vuelve a iniciar sesión.', 'danger');
+      // Un solo aviso aunque fallen varias llamadas a la vez
+      if (Date.now() - avisoSesionExpiradaEn > 5000) {
+        avisoSesionExpiradaEn = Date.now();
+        notify('La sesión expiró. Vuelve a iniciar sesión.', 'danger');
+      }
       throw new Error('Sesión expirada');
     }
     // Reintentar con el nuevo token
     r = await apiRequest(API + path, { method, token: coordToken, body });
   }
 
-  if (!r.ok) { const e = await r.json(); throw new Error(e.error || 'Error'); }
+  if (!r.ok) {
+    // .status para que el llamador distinga casos (p. ej. 409 = duplicado);
+    // si la respuesta no es JSON (500/504 de Vercel) se usa un texto genérico
+    const e = await r.json().catch(() => ({}));
+    const err = new Error(e.error || `Error del servidor (${r.status})`);
+    err.status = r.status;
+    throw err;
+  }
   return r.json();
 }
 
@@ -723,18 +744,38 @@ async function handleJSONImport(input) {
 
       let tiendasCreadas = 0;
       let tiendasExistentes = 0;
+      let tiendasConError = 0;
       let productosAgregados = 0;
-      let productosOmitidos = 0;
+      let productosDuplicados = 0;   // ya existían (409): no es un error
+      let productosConError = 0;
+      let detenida = false;          // la sesión venció: no seguir intentando
 
       // Mapa de nombres de tiendas existentes -> id (normalizado)
       const tiendasExistentesMap = new Map();
-      appData.tiendas.forEach(t => {
-        tiendasExistentesMap.set(t.nombre.trim().toLowerCase(), t.id);
-      });
+      const cargarMapaTiendas = () => {
+        tiendasExistentesMap.clear();
+        appData.tiendas.forEach(t => tiendasExistentesMap.set(t.nombre.trim().toLowerCase(), t.id));
+      };
+      cargarMapaTiendas();
 
-      for (let i = 0; i < parsed.tiendas.length; i++) {
-        const tienda = parsed.tiendas[i];
-        const nombreTienda = tienda.nombre.trim();
+      // Explica un fallo de apiPost; 'sesion' corta la importación
+      const tipoError = err => {
+        if (err?.message === 'Sesión expirada') return 'sesion';
+        if (err?.status === 409) return 'duplicado';
+        return 'error';
+      };
+      const textoError = err => err instanceof TypeError ? 'Error de conexión' : (err?.message || 'Error desconocido');
+
+      for (let i = 0; i < parsed.tiendas.length && !detenida; i++) {
+        const tienda = parsed.tiendas[i] || {};
+        const items = Array.isArray(tienda.inventario) ? tienda.inventario : [];
+        const nombreTienda = String(tienda.nombre ?? '').trim();
+        if (!nombreTienda) {
+          tiendasConError++;
+          productosConError += items.length;
+          logImport(`Tienda ${i+1}/${parsed.tiendas.length} sin nombre: se omite junto con sus ${items.length} producto(s)`, 'error');
+          continue;
+        }
         const nombreNormalizado = nombreTienda.toLowerCase();
         let tiendaId;
 
@@ -744,7 +785,7 @@ async function handleJSONImport(input) {
         if (tiendasExistentesMap.has(nombreNormalizado)) {
           tiendaId = tiendasExistentesMap.get(nombreNormalizado);
           tiendasExistentes++;
-          logImport(`   ↳ Tienda ya existe (ID: ${tiendaId}), se usarán sus productos`, 'warn');
+          logImport(`   ↳ Tienda ya existe (ID: ${tiendaId}), se agregan sus productos`, 'warn');
         } else {
           // Crear nueva tienda
           try {
@@ -754,42 +795,62 @@ async function handleJSONImport(input) {
             tiendasExistentesMap.set(nombreNormalizado, tiendaId);
             logImport(`   Tienda creada (ID: ${tiendaId})`, 'success');
           } catch (err) {
-            logImport(`   Error al crear tienda: ${err.message}`, 'error');
-            continue; // saltar productos de esta tienda
+            const tipo = tipoError(err);
+            if (tipo === 'sesion') { detenida = true; break; }
+            if (tipo === 'duplicado') {
+              // Existe en la base pero no en lo cargado (la creó otra PC): recargar y usarla
+              await loadData();
+              cargarMapaTiendas();
+              tiendaId = tiendasExistentesMap.get(nombreNormalizado);
+            }
+            if (tiendaId) {
+              tiendasExistentes++;
+              logImport(`   ↳ La tienda ya existía en la base (ID: ${tiendaId}), se agregan sus productos`, 'warn');
+            } else {
+              tiendasConError++;
+              productosConError += items.length;
+              logImport(`   Error al crear tienda: ${textoError(err)}. Se omiten sus ${items.length} producto(s)`, 'error');
+              continue;
+            }
           }
         }
 
         // Procesar productos en batches de 10 para acelerar la importación
-        const items = tienda.inventario || [];
         logImport(`   Procesando ${items.length} productos en lotes de 10...`, 'info');
         const BATCH = 10;
-        for (let b = 0; b < items.length; b += BATCH) {
+        for (let b = 0; b < items.length && !detenida; b += BATCH) {
           const lote = items.slice(b, b + BATCH);
-          const resultados = await Promise.allSettled(
-            lote.map(item => apiPost('/api/productos', {
-              tienda_id: tiendaId,
-              codigo: String(item.id),
-              nombre: item.producto,
-              ubicacion: item.ubicacion || null
-            }))
-          );
+          const resultados = await Promise.allSettled(lote.map(item => {
+            // Sin ID o sin nombre se crearía un producto con código "undefined"/"null"
+            const codigo = item && item.id !== undefined && item.id !== null ? String(item.id).trim() : '';
+            const nombre = String(item?.producto ?? '').trim();
+            if (!codigo || !nombre) return Promise.reject(Object.assign(new Error('Falta el ID o el nombre del producto'), { status: 400 }));
+            return apiPost('/api/productos', { tienda_id: tiendaId, codigo, nombre, ubicacion: item.ubicacion || null });
+          }));
           resultados.forEach((res, j) => {
-            const item = lote[j];
+            const item = lote[j] || {};
+            const etiqueta = `[${item.id ?? '?'}] ${item.producto ?? ''}`;
             if (res.status === 'fulfilled') {
               productosAgregados++;
-              logImport(`      [${item.id}] ${item.producto}`, 'success');
+              logImport(`      ${etiqueta}`, 'success');
+              return;
+            }
+            const tipo = tipoError(res.reason);
+            if (tipo === 'sesion') { detenida = true; return; }
+            if (tipo === 'duplicado') {
+              productosDuplicados++;
+              logImport(`      Duplicado omitido (ya existía): ${etiqueta}`, 'warn');
             } else {
-              productosOmitidos++;
-              const msg = res.reason?.message || '';
-              if (msg.includes('duplicate') || msg.includes('ya existe')) {
-                logImport(`      Duplicado omitido: [${item.id}] ${item.producto}`, 'warn');
-              } else {
-                logImport(`      Error [${item.id}]: ${msg}`, 'error');
-              }
+              productosConError++;
+              logImport(`      Error ${etiqueta}: ${textoError(res.reason)}`, 'error');
             }
           });
         }
-        logImport(`   Tienda "${nombreTienda}" completada.`, 'info');
+        if (!detenida) logImport(`   Tienda "${nombreTienda}" completada.`, 'info');
+      }
+
+      if (detenida) {
+        logImport('IMPORTACIÓN DETENIDA: la sesión expiró. Inicia sesión y vuelve a importar el archivo; lo ya importado se omitirá como duplicado.', 'error');
       }
 
       // Recargar datos
@@ -800,9 +861,10 @@ async function handleJSONImport(input) {
       document.getElementById('select-producto').innerHTML = '<option value="">-- Producto --</option>';
       document.getElementById('select-id').innerHTML = '<option value="">-- ID --</option>';
 
-      const mensaje = `Tiendas nuevas: ${tiendasCreadas} | Tiendas actualizadas: ${tiendasExistentes} | Productos agregados: ${productosAgregados} | Omitidos: ${productosOmitidos}`;
-      logImport(`IMPORTACIÓN FINALIZADA: ${mensaje}`, 'success');
-      notify(mensaje, 'success');
+      const errores = tiendasConError + productosConError;
+      const mensaje = `Tiendas nuevas: ${tiendasCreadas} | Tiendas existentes: ${tiendasExistentes} | Productos agregados: ${productosAgregados} | Duplicados omitidos: ${productosDuplicados} | Errores: ${errores}`;
+      logImport(`${detenida ? 'IMPORTACIÓN INCOMPLETA' : 'IMPORTACIÓN FINALIZADA'}: ${mensaje}`, detenida || errores ? 'error' : 'success');
+      notify(mensaje, detenida ? 'danger' : errores ? 'warn' : 'success', errores || detenida ? 9000 : undefined);
 
     } catch(err) {
       logImport(`Error crítico: ${err.message}`, 'error');

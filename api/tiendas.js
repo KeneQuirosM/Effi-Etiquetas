@@ -74,6 +74,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('Error creando tienda:', error);
+        if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una tienda con ese nombre' });
         return res.status(400).json({ error: 'No se pudo crear la tienda' });
       }
 
@@ -97,6 +98,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('Error renombrando tienda:', error);
+        if (error.code === '23505') return res.status(409).json({ error: 'Ya existe una tienda con ese nombre' });
         return res.status(400).json({ error: 'No se pudo renombrar la tienda' });
       }
 
