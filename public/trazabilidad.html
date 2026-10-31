@@ -2590,7 +2590,10 @@ function exportResults() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsA.length ? rowsA : [{ 'Resultado': 'Todo cuadra - sin discrepancias' }]), 'Base vs Salidas');
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rowsB.length ? rowsB : [{ 'Resultado': 'Todo cuadra - sin diferencias' }]), 'Dev. Movimientos vs Dev');
-        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        // Hora local: con toISOString() (UTC), en Costa Rica después de las
+        // 18:00 el nombre del archivo salía con la fecha de mañana
+        const ahora = new Date();
+        const stamp = `${localDateKey(ahora)}-${[ahora.getHours(), ahora.getMinutes(), ahora.getSeconds()].map(n => String(n).padStart(2, '0')).join('-')}`;
         XLSX.writeFile(wb, `trazabilidad_${stamp}.xlsx`);
         addLog('EXPORTACIÓN', `${rowsA.length} fila(s) en Base vs Salidas · ${rowsB.length} fila(s) en Devoluciones`);
         notify('Resultados exportados a Excel', 'ok');

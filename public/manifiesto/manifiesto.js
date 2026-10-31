@@ -238,7 +238,7 @@ async function processPdfManifest(pdfData) {
 
   let guias = [];
   try {
-    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: pdfData, isEvalSupported: false }).promise;
     const totalPaginas = pdf.numPages;
 
     let textoCompleto = '';

@@ -341,7 +341,7 @@ async function handlePdfFile(file) {
     setPdfLoading();
     try {
         const buf = await file.arrayBuffer();
-        const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+        const doc = await pdfjsLib.getDocument({ data: buf, isEvalSupported: false }).promise;
         pdfNumPages = doc.numPages;
         setPdfLoaded(file, pdfNumPages);
         addLog('PDF CARGADO', `${file.name} · ${pdfNumPages} páginas`);
@@ -398,7 +398,7 @@ async function runCompareAndFilter() {
     try {
         const guideList = [...excelGuideSet];
         const buf = await pdfFile.arrayBuffer();
-        const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+        const pdfDoc = await pdfjsLib.getDocument({ data: buf, isEvalSupported: false }).promise;
         const numPages = pdfDoc.numPages;
 
         const pageGuideMap = new Array(numPages + 1).fill(null);
