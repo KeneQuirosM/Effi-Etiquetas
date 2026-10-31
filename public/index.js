@@ -170,16 +170,31 @@ function activateCoord(token, refreshToken) {
 async function checkPin() {
   const email    = document.getElementById('coord-email')?.value?.trim();
   const password = document.getElementById('coord-password')?.value?.trim();
-  if (!email || !password) return;
+  const errorEl = document.getElementById('pin-error');
+  const btn = document.getElementById('pin-submit');
+  if (btn.disabled) return;   // ya hay un intento en curso (doble clic / Enter)
+  if (!email || !password) {
+    errorEl.textContent = 'Escribe el correo y la contraseña.';
+    return;
+  }
 
+  // apiRequestJSON y no apiPost: apiPost trata el 401 como sesión vencida
+  // e intentaba renovarla, mostrando "La sesión expiró" ante una clave mal escrita
+  const textoBtn = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Ingresando...';
+  errorEl.textContent = '';
   try {
-    const data = await apiPost('/api/auth', { email, password });
+    const data = await apiRequestJSON(API + '/api/auth', { method: 'POST', body: { email, password } });
     activateCoord(data.token, data.refresh_token);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
     notify('Sesión iniciada', 'success');
   } catch(e) {
-    document.getElementById('pin-error').textContent = 'Credenciales incorrectas';
+    errorEl.textContent = mensajeErrorLogin(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoBtn;
   }
 }
 

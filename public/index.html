@@ -35,10 +35,8 @@
           onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
       </div>
     </div>
-    <button class="btn-action btn-primary" onclick="checkPin()" style="width:100%;padding:11px;font-size:14px;justify-content:center;">
-      Iniciar Sesión
-    </button>
-    <div class="pin-error" id="pin-error"></div>
+    <button class="btn-action btn-primary" id="pin-submit" onclick="checkPin()" style="width:100%;padding:11px;font-size:14px;justify-content:center;">Iniciar Sesión</button>
+    <div class="pin-error" id="pin-error" role="alert"></div>
     <button class="btn-cancel-pin" onclick="closePinModal()">Cancelar</button>
   </div>
 </div>

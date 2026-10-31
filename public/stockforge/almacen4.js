@@ -5685,24 +5685,15 @@ function desactivarCoordinador() {
   });
 }
 
+// Devuelve null si inició sesión, o el mensaje de error para mostrar
 async function loginCoordinador(email, password) {
   try {
-    const response = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'Credenciales incorrectas');
-    }
-    const data = await response.json();
+    const data = await apiRequestJSON('/api/auth', { method: 'POST', body: { email, password } });
     activarCoordinador(data.token, data.refresh_token);
     notif('Sesión iniciada como coordinador', 'ok');
-    return true;
+    return null;
   } catch(e) {
-    notif(e.message || 'Error de conexión', 'err');
-    return false;
+    return mensajeErrorLogin(e);
   }
 }
 
@@ -5767,10 +5758,8 @@ function openCoordinadorModal() {
               onkeydown="if(event.key==='Enter') loginDesdeModal()">
           </div>
         </div>
-        <button class="btn bp" onclick="loginDesdeModal()" style="width:100%;padding:11px;font-size:1rem;font-weight:700">
-          Iniciar Sesión
-        </button>
-        <div id="coord-error" style="font-size:12px;color:var(--red);margin-top:6px;min-height:16px"></div>
+        <button class="btn bp" id="coord-login-btn" onclick="loginDesdeModal()" style="width:100%;padding:11px;font-size:1rem;font-weight:700">Iniciar Sesión</button>
+        <div id="coord-error" role="alert" style="font-size:12px;color:var(--red);margin-top:6px;min-height:16px"></div>
       </div>
       <div class="mft" style="justify-content:center">
         <button class="btn bo" onclick="cerrarModalCoordinador()" style="min-width:100px">Cancelar</button>
@@ -5802,15 +5791,23 @@ async function loginDesdeModal() {
   const email = document.getElementById('coord-email-stock').value.trim();
   const password = document.getElementById('coord-pass-stock').value.trim();
   const errorEl = document.getElementById('coord-error');
+  const btn = document.getElementById('coord-login-btn');
+  if (btn.disabled) return;   // ya hay un intento en curso (doble clic / Enter)
   if (!email || !password) {
-    errorEl.textContent = 'Email y contraseña requeridos';
+    errorEl.textContent = 'Escribe el correo y la contraseña.';
     return;
   }
-  const ok = await loginCoordinador(email, password);
-  if (ok) {
+  const textoBtn = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Ingresando...';
+  errorEl.textContent = '';
+  const error = await loginCoordinador(email, password);
+  btn.disabled = false;
+  btn.textContent = textoBtn;
+  if (!error) {
     document.getElementById('o-pin').classList.remove('open');
   } else {
-    errorEl.textContent = 'Credenciales incorrectas';
+    errorEl.textContent = error;
   }
 }
 

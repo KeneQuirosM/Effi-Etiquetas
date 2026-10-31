@@ -8,6 +8,21 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
+// Traduce el error de Supabase Auth a [status HTTP, mensaje]. Antes todo
+// error salía como 401 "Credenciales incorrectas", también con Supabase
+// caído o limitando intentos, y el usuario creía que la clave estaba mal.
+export function respuestaErrorLogin(error) {
+  const status = Number(error?.status) || 0;
+  if (status === 429 || error?.code === 'over_request_rate_limit') {
+    return [429, 'Demasiados intentos. Intenta de nuevo en unos minutos.'];
+  }
+  // status 0 = Supabase no respondió (AuthRetryableFetchError)
+  if (status === 0 || status >= 500 || error?.name === 'AuthRetryableFetchError') {
+    return [503, 'El servicio de inicio de sesión no está disponible. Intenta de nuevo en un momento.'];
+  }
+  return [401, 'Credenciales incorrectas'];
+}
+
 export default async function handler(req, res) {
   setCors(req, res, 'POST, OPTIONS');
 
@@ -35,9 +50,8 @@ export default async function handler(req, res) {
 
     if (error) {
       console.error('Login error:', error);
-      return res.status(401).json({
-        error: 'Credenciales incorrectas'
-      });
+      const [status, mensaje] = respuestaErrorLogin(error);
+      return res.status(status).json({ error: mensaje });
     }
 
     return res.status(200).json({
