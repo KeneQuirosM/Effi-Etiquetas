@@ -5739,27 +5739,28 @@ function openCoordinadorModal() {
     <div class="modal" style="width:320px">
       <div class="mhd">
         <div class="mttl">Acceso Coordinador</div>
-        <button class="mcl" onclick="cerrarModalCoordinador()">✕</button>
+        <button type="button" class="mcl" onclick="cerrarModalCoordinador()" aria-label="Cerrar">✕</button>
       </div>
       <div class="mbdy" style="padding:20px 24px">
         <div id="pin-subtitle" style="text-align:center;color:var(--dim);font-size:1.05rem;margin-bottom:16px;line-height:1.4">
           Ingresá tu email y contraseña de coordinador
         </div>
+        <form id="coord-form-stock" onsubmit="event.preventDefault(); loginDesdeModal();" novalidate>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
           <div>
-            <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">EMAIL</label>
-            <input id="coord-email-stock" type="email" placeholder="coordinador@efficommerce.com"
+            <label for="coord-email-stock" style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">EMAIL</label>
+            <input id="coord-email-stock" name="email" type="email" autocomplete="username" placeholder="coordinador@efficommerce.com"
               style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)">
           </div>
           <div>
-            <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">CONTRASEÑA</label>
-            <input id="coord-pass-stock" type="password" placeholder="••••••••"
-              style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)"
-              onkeydown="if(event.key==='Enter') loginDesdeModal()">
+            <label for="coord-pass-stock" style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:4px">CONTRASEÑA</label>
+            <input id="coord-pass-stock" name="password" type="password" autocomplete="current-password" placeholder="••••••••"
+              style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:3px;font-size:13px;font-family:'Barlow Condensed',sans-serif;outline:none;background:var(--bg3);color:var(--bright)">
           </div>
         </div>
-        <button class="btn bp" id="coord-login-btn" onclick="loginDesdeModal()" style="width:100%;padding:11px;font-size:1rem;font-weight:700">Iniciar Sesión</button>
+        <button type="submit" class="btn bp" id="coord-login-btn" style="width:100%;padding:11px;font-size:1rem;font-weight:700">Iniciar Sesión</button>
         <div id="coord-error" role="alert" style="font-size:12px;color:var(--red);margin-top:6px;min-height:16px"></div>
+        </form>
       </div>
       <div class="mft" style="justify-content:center">
         <button class="btn bo" onclick="cerrarModalCoordinador()" style="min-width:100px">Cancelar</button>
@@ -5794,7 +5795,10 @@ async function loginDesdeModal() {
   const btn = document.getElementById('coord-login-btn');
   if (btn.disabled) return;   // ya hay un intento en curso (doble clic / Enter)
   if (!email || !password) {
-    errorEl.textContent = 'Escribe el correo y la contraseña.';
+    // Enter en el correo con la contraseña vacía: pasar a la contraseña sin regañar
+    const desdeEmail = email && document.activeElement?.id === 'coord-email-stock';
+    if (!desdeEmail) errorEl.textContent = 'Escribe el correo y la contraseña.';
+    document.getElementById(email ? 'coord-pass-stock' : 'coord-email-stock').focus();
     return;
   }
   const textoBtn = btn.textContent;
@@ -5808,6 +5812,7 @@ async function loginDesdeModal() {
     document.getElementById('o-pin').classList.remove('open');
   } else {
     errorEl.textContent = error;
+    document.getElementById('coord-pass-stock').select();   // listo para reintentar
   }
 }
 

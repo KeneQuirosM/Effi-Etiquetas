@@ -195,7 +195,10 @@ async function checkPin() {
   const btn = document.getElementById('pin-submit');
   if (btn.disabled) return;   // ya hay un intento en curso (doble clic / Enter)
   if (!email || !password) {
-    errorEl.textContent = 'Escribe el correo y la contraseña.';
+    // Enter en el correo con la contraseña vacía: pasar a la contraseña sin regañar
+    const desdeEmail = email && document.activeElement?.id === 'coord-email';
+    if (!desdeEmail) errorEl.textContent = 'Escribe el correo y la contraseña.';
+    document.getElementById(email ? 'coord-password' : 'coord-email').focus();
     return;
   }
 
@@ -213,6 +216,8 @@ async function checkPin() {
     notify('Sesión iniciada', 'success');
   } catch(e) {
     errorEl.textContent = mensajeErrorLogin(e);
+    btn.disabled = false;   // antes del foco: con el botón bloqueado el foco se pierde
+    document.getElementById('coord-password').select();   // listo para reintentar
   } finally {
     btn.disabled = false;
     btn.textContent = textoBtn;

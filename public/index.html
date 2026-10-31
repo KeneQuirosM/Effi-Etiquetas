@@ -19,25 +19,28 @@
   <div class="pin-modal">
     <h3>Modo Coordinador</h3>
     <p>Inicia sesión para acceder</p>
+    <!-- Formulario real: Enter envía desde cualquier campo y los gestores de
+         contraseñas reconocen usuario/contraseña. novalidate: los mensajes
+         los muestra checkPin, no los globos del navegador. -->
+    <form id="pin-form" onsubmit="event.preventDefault(); checkPin();" novalidate>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
       <div>
-        <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:.6px;text-transform:uppercase;">Email</label>
-        <input id="coord-email" type="email" placeholder="coordinador@efficommerce.com"
+        <label for="coord-email" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:.6px;text-transform:uppercase;">Email</label>
+        <input id="coord-email" name="email" type="email" autocomplete="username" placeholder="coordinador@efficommerce.com"
           style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .18s"
-          onkeydown="if(event.key==='Enter') document.getElementById('coord-password').focus()"
           onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
       </div>
       <div>
-        <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:.6px;text-transform:uppercase;">Contraseña</label>
-        <input id="coord-password" type="password" placeholder="••••••••"
+        <label for="coord-password" style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:.6px;text-transform:uppercase;">Contraseña</label>
+        <input id="coord-password" name="password" type="password" autocomplete="current-password" placeholder="••••••••"
           style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .18s"
-          onkeydown="if(event.key==='Enter') checkPin()"
           onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
       </div>
     </div>
-    <button class="btn-action btn-primary" id="pin-submit" onclick="checkPin()" style="width:100%;padding:11px;font-size:14px;justify-content:center;">Iniciar Sesión</button>
+    <button type="submit" class="btn-action btn-primary" id="pin-submit" style="width:100%;padding:11px;font-size:14px;justify-content:center;">Iniciar Sesión</button>
     <div class="pin-error" id="pin-error" role="alert"></div>
-    <button class="btn-cancel-pin" onclick="closePinModal()">Cancelar</button>
+    </form>
+    <button type="button" class="btn-cancel-pin" onclick="closePinModal()">Cancelar</button>
   </div>
 </div>
 
@@ -66,23 +69,23 @@
 
   <div class="sidebar-body">
     <div class="field">
-      <label>Tienda</label>
+      <label for="select-tienda">Tienda</label>
       <select id="select-tienda"><option value="">-- Seleccione --</option></select>
     </div>
     <div class="field">
-      <label>Buscar producto</label>
+      <label for="search-producto">Buscar producto</label>
       <input type="text" id="search-producto" placeholder="Escribe para filtrar..." autocomplete="off" disabled>
     </div>
     <div class="field">
-      <label>Producto</label>
+      <label for="select-producto">Producto</label>
       <select id="select-producto"><option value="">-- Seleccione --</option></select>
     </div>
     <div class="field">
-      <label>ID</label>
+      <label for="select-id">ID</label>
       <select id="select-id"><option value="">-- ID --</option></select>
     </div>
     <div class="field">
-      <label>Formato</label>
+      <label for="select-formato">Formato</label>
       <select id="select-formato">
         <option value="estandar">Estándar (Normal)</option>
         <option value="solo-notas">Solo Observaciones (Renglones)</option>
@@ -136,17 +139,17 @@
     <div id="tab-add-item" class="tab-content active">
       <div class="form-row">
         <div class="form-group">
-          <label>Tienda</label>
+          <label for="c-select-tienda">Tienda</label>
           <select id="c-select-tienda"></select>
         </div>
         <div class="form-group">
-          <label>ID del Producto</label>
+          <label for="c-new-id">ID del Producto</label>
           <input type="text" id="c-new-id" placeholder="Ej: 72">
         </div>
       </div>
       <div class="form-row single">
         <div class="form-group">
-          <label>Nombre del Producto</label>
+          <label for="c-new-nombre">Nombre del Producto</label>
           <input type="text" id="c-new-nombre" placeholder="Ej: CEPILLO ELÉCTRICO FACIAL">
         </div>
       </div>
@@ -157,7 +160,7 @@
     <div id="tab-add-tienda" class="tab-content">
       <div class="form-row single" style="margin-bottom:16px">
         <div class="form-group">
-          <label>Nombre de la Tienda Nueva</label>
+          <label for="c-tienda-nombre">Nombre de la Tienda Nueva</label>
           <input type="text" id="c-tienda-nombre" placeholder="Ej: Mi Nueva Tienda">
         </div>
       </div>
@@ -166,11 +169,11 @@
       <p class="section-label" style="margin-bottom:10px">Renombrar Tienda Existente</p>
       <div class="form-row" style="margin-bottom:14px">
         <div class="form-group">
-          <label>Tienda</label>
+          <label for="c-rename-tienda-select">Tienda</label>
           <select id="c-rename-tienda-select"></select>
         </div>
         <div class="form-group">
-          <label>Nombre Nuevo</label>
+          <label for="c-rename-tienda-nombre">Nombre Nuevo</label>
           <input type="text" id="c-rename-tienda-nombre" placeholder="Ej: SICOMMER 2">
         </div>
       </div>
@@ -181,7 +184,7 @@
     <div id="tab-manage" class="tab-content">
       <div class="form-row single" style="margin-bottom:12px">
         <div class="form-group">
-          <label>Selecciona Tienda</label>
+          <label for="m-select-tienda">Selecciona Tienda</label>
           <select id="m-select-tienda" onchange="renderManageList()"></select>
         </div>
       </div>
@@ -360,14 +363,14 @@
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Contraseña Nueva</label>
+                <label for="c-pin-nuevo">Contraseña Nueva</label>
                 <div class="pw-field">
                   <input type="password" id="c-pin-nuevo" maxlength="32" placeholder="••••••••" autocomplete="new-password">
                   <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
                 </div>
               </div>
               <div class="form-group">
-                <label>Confirmar Nueva</label>
+                <label for="c-pin-confirm">Confirmar Nueva</label>
                 <div class="pw-field">
                   <input type="password" id="c-pin-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
                   <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
@@ -421,20 +424,20 @@
       <p class="section-label" style="margin-bottom:10px">Nuevo Coordinador</p>
       <div class="form-row single" style="margin-bottom:12px">
         <div class="form-group">
-          <label>Email</label>
+          <label for="u-email">Email</label>
           <input type="email" id="u-email" placeholder="nuevo@efficommerce.com" autocomplete="off">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Contraseña</label>
+          <label for="u-password">Contraseña</label>
           <div class="pw-field">
             <input type="password" id="u-password" maxlength="32" placeholder="••••••••" autocomplete="new-password">
             <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
           </div>
         </div>
         <div class="form-group">
-          <label>Confirmar</label>
+          <label for="u-password-confirm">Confirmar</label>
           <div class="pw-field">
             <input type="password" id="u-password-confirm" maxlength="32" placeholder="••••••••" autocomplete="new-password">
             <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg class="pw-ico-show" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-ico-hide" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
@@ -662,7 +665,7 @@
     <div class="rotulo-modal-body">
       <div class="form-row single" style="margin-bottom:12px">
         <div class="form-group">
-          <label>Nombre (texto grande)</label>
+          <label for="rotulo-input-name">Nombre (texto grande)</label>
           <input type="text" id="rotulo-input-name" placeholder="Ej: SICOMMER"
             oninput="updateRotuloPreview()"
             style="text-transform:uppercase">
@@ -670,7 +673,7 @@
       </div>
       <div class="form-row single" style="margin-bottom:4px">
         <div class="form-group">
-          <label>ID <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+          <label for="rotulo-input-id">ID <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
           <input type="text" id="rotulo-input-id" placeholder="Ej: 39753" oninput="updateRotuloPreview()">
         </div>
       </div>
