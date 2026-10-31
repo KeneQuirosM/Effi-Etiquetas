@@ -1,4 +1,4 @@
-import { supabase } from './_supabase.js';
+import { supabase, selectAll } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requireUser } from './_auth.js';
 
@@ -25,20 +25,23 @@ export default async function handler(req, res) {
         { data: movimientos, error: errM, count: movCount },
         { data: bodegaCfg }
       ] = await Promise.all([
-        supabase.from('zonas').select('*'),
-        supabase.from('racks').select('*'),
-        supabase.from('responsables').select('*'),
-        supabase.from('tiendas').select('id, nombre, creado_en'),
-        supabase.from('rack_responsables').select('*'),
-        supabase.from('rack_tiendas').select('*'),
-        supabase.from('celdas').select(`
+        // Paginadas con selectAll: Supabase corta en 1000 filas sin avisar,
+        // y como el POST reemplaza todo, una celda que no llega aquí se
+        // guardaría vacía (borrando sus SKUs).
+        selectAll(() => supabase.from('zonas').select('*').order('id')),
+        selectAll(() => supabase.from('racks').select('*').order('id')),
+        selectAll(() => supabase.from('responsables').select('*').order('id')),
+        selectAll(() => supabase.from('tiendas').select('id, nombre, creado_en').order('id')),
+        selectAll(() => supabase.from('rack_responsables').select('*').order('rack_id').order('responsable_id')),
+        selectAll(() => supabase.from('rack_tiendas').select('*').order('rack_id').order('tienda_id')),
+        selectAll(() => supabase.from('celdas').select(`
           *,
           celda_responsables(responsable_id),
           celda_tiendas(tienda_id),
           skus(*),
           audits(*),
           changelog(*)
-        `).range(0, 999),
+        `).order('id')),
         supabase.from('movimientos').select('*', { count: 'exact' }).order('ts', { ascending: false }).range(0, 499),
         supabase.from('bodega_config').select('area_total_m2, area_pasillos_m2').eq('id', 1).maybeSingle()
       ]);

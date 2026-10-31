@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './_supabase.js';
+import { supabaseAdmin, selectAll } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requireUser } from './_auth.js';
 
@@ -11,20 +11,27 @@ export default async function handler(req, res) {
 
     // ── GET: obtener todas las tiendas con sus productos ──
     if (req.method === 'GET') {
-      const { data: tiendas, error: tErr } = await supabaseAdmin
-        .from('tiendas')
-        .select('id, nombre')
-        .order('nombre');
+      // Paginado: sin esto Supabase corta en 1000 filas sin avisar
+      const [
+        { data: tiendas, error: tErr },
+        { data: productos, error: pErr }
+      ] = await Promise.all([
+        selectAll(() => supabaseAdmin
+          .from('tiendas')
+          .select('id, nombre')
+          .order('nombre')
+          .order('id')),
+        selectAll(() => supabaseAdmin
+          .from('productos')
+          .select('id, tienda_id, codigo, nombre, ubicacion')
+          .order('codigo')
+          .order('id'))
+      ]);
 
       if (tErr) {
         console.error('Error tiendas:', tErr);
         return res.status(500).json({ error: 'No se pudieron cargar las tiendas' });
       }
-
-      const { data: productos, error: pErr } = await supabaseAdmin
-        .from('productos')
-        .select('id, tienda_id, codigo, nombre, ubicacion')
-        .order('codigo');
 
       if (pErr) {
         console.error('Error productos:', pErr);

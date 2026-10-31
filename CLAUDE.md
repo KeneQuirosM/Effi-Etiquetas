@@ -56,7 +56,7 @@ try {
   return res.status(500).json({ error: 'Error interno del servidor' });
 }
 ```
-`_supabase.js` exports both `supabaseAdmin` (the real client, service-role key, no session persistence) and `supabase` as an alias of the same client — either name may show up depending on the file, they're identical. `_rateLimit.js` is in-memory per serverless instance (resets on cold start, not shared across instances) — a first line of defense only, not a hard guarantee.
+`_supabase.js` exports both `supabaseAdmin` (the real client, service-role key, no session persistence) and `supabase` as an alias of the same client — either name may show up depending on the file, they're identical. It also exports `selectAll(() => query)`, which pages with `.range()` until an empty page: Supabase silently caps every response at "Max rows" (1000 by default), so any read that must return a whole table (`tiendas.js` GET, `stockforge.js` GET) goes through it. The callback must build a fresh query each call and order by a unique key (end with the PK). `_rateLimit.js` is in-memory per serverless instance (resets on cold start, not shared across instances) — a first line of defense only, not a hard guarantee.
 
 ### STOCKFORGE full-state read/replace, not incremental CRUD
 
