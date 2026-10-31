@@ -199,9 +199,20 @@ async function checkPin() {
 }
 
 async function changePin() {
-    const nuevoPin = document.getElementById('c-pin-nuevo').value;
-    const confirmPin = document.getElementById('c-pin-confirm').value;
+    const actualEl = document.getElementById('c-pin-actual');
+    const nuevoEl = document.getElementById('c-pin-nuevo');
+    const confirmEl = document.getElementById('c-pin-confirm');
+    const btn = document.getElementById('c-pin-btn');
+    const actual = actualEl.value;
+    const nuevoPin = nuevoEl.value;
+    const confirmPin = confirmEl.value;
 
+    if (btn.disabled) return;   // ya hay un cambio en curso
+    if (!actual) {
+        notify('Escribe tu contraseña actual', 'danger');
+        actualEl.focus();
+        return;
+    }
     if (!nuevoPin || nuevoPin.length < 6) {
         notify('La contraseña debe tener al menos 6 caracteres', 'danger');
         return;
@@ -210,39 +221,37 @@ async function changePin() {
         notify('Las contraseñas no coinciden', 'danger');
         return;
     }
+    if (nuevoPin === actual) {
+        notify('La contraseña nueva debe ser distinta de la actual', 'danger');
+        return;
+    }
     if (!coordToken) {
         notify('Debes iniciar sesión primero', 'danger');
         return;
     }
 
+    // apiPost renueva el token y reintenta si la sesión venció (un 401 no
+    // cambia nada); si la renovación falla, cierra la sesión y avisa.
+    // La contraseña actual incorrecta llega como 403 con su mensaje.
+    const textoBtn = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Actualizando...';
     try {
-        const response = await fetch('/api/change-password', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${coordToken}`
-            },
-            body: JSON.stringify({ password: nuevoPin })
-        });
-
-        if (response.status === 401) {
-            lockCoord();
-            notify('Sesión expirada. Vuelve a iniciar sesión.', 'danger');
-            return;
-        }
-
-        const result = await response.json();
-
-        if (response.ok) {
-            notify('Contraseña actualizada correctamente', 'success');
-            document.getElementById('c-pin-nuevo').value = '';
-            document.getElementById('c-pin-confirm').value = '';
-        } else {
-            notify(result.error || 'Error al cambiar la contraseña', 'danger');
-        }
+        await apiPost('/api/change-password', { current_password: actual, password: nuevoPin });
+        notify('Contraseña actualizada correctamente', 'success');
+        actualEl.value = '';
+        nuevoEl.value = '';
+        confirmEl.value = '';
     } catch (error) {
-        console.error('Error al cambiar PIN:', error);
-        notify('Error de conexión', 'danger');
+        if (error.message === 'Sesión expirada') return;   // apiFetch ya avisó y cerró la sesión
+        notify(error instanceof TypeError ? 'Error de conexión' : (error.message || 'Error al cambiar la contraseña'), 'danger');
+        if (error.message === 'La contraseña actual no es correcta') {
+            actualEl.value = '';
+            actualEl.focus();
+        }
+    } finally {
+        btn.disabled = false;
+        btn.textContent = textoBtn;
     }
 }
 
