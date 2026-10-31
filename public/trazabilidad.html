@@ -12,7 +12,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Efficommerce | Trazabilidad</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
@@ -888,30 +888,23 @@ function auditBaseFechaChoice(headers) {
     });
 }
 
-// Diagnóstico con datos REALES en vez de ejemplos hipotéticos: si alguna
-// fila de Base trae la fecha de despacho como objeto Date con hora
-// distinta de medianoche UTC, lo deja explícito en el log de auditoría
-// con el valor crudo y la key que realmente se calculó — verificado
-// empíricamente (generando y releyendo un .xlsx real con xlsx@0.18.5,
-// probando horas de madrugada, tarde y medianoche) que SheetJS codifica
-// SIEMPRE el valor tal cual viene en Excel en los campos UTC del objeto
-// Date, sin importar la hora del día ni la zona horaria del navegador —
-// por eso toISOString() ya da la key correcta en todos los casos, y NO
-// se cambia a getFullYear()/getMonth()/getDate() (locales): eso desplaza
-// un día hacia atrás cualquier fecha de madrugada o sin hora en husos
-// detrás de UTC como Costa Rica, comprobado con una fecha real.
+// Diagnóstico con datos REALES: si alguna fila de Base trae la fecha de
+// despacho con hora distinta de medianoche, lo deja en el log de auditoría
+// con la fecha/hora leída y el día que se calculó. SheetJS (cellDates)
+// entrega la fecha/hora del Excel en HORA LOCAL del navegador (ver
+// parseDate), por eso se miran los campos locales y no los UTC.
 function auditBaseFechaTimeComponents() {
     if (!cols.baseFecha) return;
     let withTime = 0, example = null;
     baseRows.forEach(r => {
         const v = r[cols.baseFecha];
-        if (v instanceof Date && !isNaN(v) && (v.getUTCHours() || v.getUTCMinutes() || v.getUTCSeconds())) {
+        if (v instanceof Date && !isNaN(v) && (v.getHours() || v.getMinutes() || v.getSeconds())) {
             withTime++;
             if (!example) example = v;
         }
     });
     if (withTime > 0) {
-        addLog('FECHA BASE CON HORA', `${formatNumber(withTime)} fila(s) de Base traen "${cols.baseFecha}" con hora distinta de medianoche. Ejemplo — valor crudo: ${example.toISOString()} (UTC) → día calculado: ${parseDate(example).key}. Esto es correcto: SheetJS codifica la fecha/hora real del Excel en los campos UTC del objeto, así que el día no cambia sin importar la zona horaria del navegador.`);
+        addLog('FECHA BASE CON HORA', `${formatNumber(withTime)} fila(s) de Base traen "${cols.baseFecha}" con hora distinta de medianoche. Ejemplo — fecha/hora leída: ${example.toLocaleString('es-CR')} → día calculado: ${parseDate(example).key}. El día se toma de la fecha local del Excel, así que la hora no lo cambia.`);
     }
 }
 
@@ -978,27 +971,22 @@ function findSheet(workbook, candidates) {
    fecha a objetos Date; el resto (texto o serial numérico) se cubre
    con heurísticas de respaldo.
 
-   OJO con "usar getters locales en vez de UTC" como fix genérico para
-   desfases de un día — SE VERIFICÓ (con la versión real de la librería,
-   xlsx@0.18.5, generando y releyendo un .xlsx con cellDates:true) que
-   SheetJS construye el objeto Date representando la fecha/hora TAL CUAL
-   viene en el Excel en los campos UTC del objeto (getUTCFullYear/Month/
-   Date), sin importar la zona horaria del navegador — es una convención
-   documentada de la librería, no un accidente. Por eso value.toISOString()
-   en la rama "value instanceof Date" YA es correcto: para una celda de
-   fecha pura (medianoche) leída en un huso detrás de UTC (ej. Costa Rica,
-   UTC-6), cambiar a getFullYear()/getMonth()/getDate() (locales) la
-   desplazaría un día HACIA ATRÁS — se comprobó explícitamente y rompe el
-   caso más común (fechas sin hora), así que esa rama y la del serial
-   numérico (que ya arma el Date con Date.UTC) se dejan como están. */
+   SheetJS (cellDates:true, xlsx@0.20.2) entrega la fecha/hora del Excel
+   en HORA LOCAL del navegador: una celda "21/07/2026 22:30" llega como
+   el Date local 21/07/2026 22:30. Por eso el día se toma con los getters
+   LOCALES (localDateKey). Con toISOString() (UTC), en Costa Rica (UTC-6)
+   toda hora desde las 18:00 caía en el día siguiente. Verificado con
+   archivos de openpyxl, LibreOffice (.xlsx y .xls) y SheetJS, en 8 zonas
+   horarias, incluido el sistema de fechas 1904. (xlsx@0.18.5 además le
+   sumaba 13 s a cada fecha en Costa Rica y leía mal el sistema 1904.)
+   El serial numérico se arma con Date.UTC y se lee en UTC: es coherente. */
+function localDateKey(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function parseDate(value) {
     if (value instanceof Date && !isNaN(value)) {
-        // { timeZone: 'UTC' } en el display, no solo en la key: sin esto,
-        // toLocaleDateString() formatea en la zona LOCAL del navegador y
-        // una fecha pura (medianoche UTC) se muestra un día antes en
-        // cualquier huso detrás de UTC — la key ya salía bien, pero el
-        // texto en pantalla no coincidía con ella.
-        return { key: value.toISOString().slice(0, 10), display: value.toLocaleDateString('es-CR', { timeZone: 'UTC' }) };
+        return { key: localDateKey(value), display: value.toLocaleDateString('es-CR') };
     }
     if (typeof value === 'number' && XLSX.SSF && XLSX.SSF.parse_date_code) {
         const p = XLSX.SSF.parse_date_code(value);
@@ -1027,9 +1015,11 @@ function parseDate(value) {
         return { key, display: !isNaN(displayDate) ? displayDate.toLocaleDateString('es-CR') : str };
     }
 
+    // Texto sin año-mes-día al inicio (ej. "7/21/2026 10:30 PM"): new Date
+    // lo interpreta en hora local, así que el día también se toma en local
     const parsed = new Date(str);
     if (!isNaN(parsed) && /\d/.test(str)) {
-        return { key: parsed.toISOString().slice(0, 10), display: parsed.toLocaleDateString('es-CR') };
+        return { key: localDateKey(parsed), display: parsed.toLocaleDateString('es-CR') };
     }
     return { key: str.toLowerCase(), display: str };
 }
