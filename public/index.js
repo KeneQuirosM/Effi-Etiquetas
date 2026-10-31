@@ -615,16 +615,14 @@ async function removeLogo() {
   notify('Logo eliminado');
 }
 
-async function loadLogo() {
-  // Intentar desde API primero, caer a localStorage
-  try {
-    const config = await apiGet('/api/config');
-    if (config[LOGO_KEY]) {
-      localStorage.setItem(LOGO_KEY, config[LOGO_KEY]);
-      applyLogo(config[LOGO_KEY]);
-      return;
-    }
-  } catch(e) {}
+// config: el objeto de /api/config ya descargado, o null si falló
+function loadLogo(config) {
+  // Primero el de la API, si no el guardado en localStorage
+  if (config && config[LOGO_KEY]) {
+    localStorage.setItem(LOGO_KEY, config[LOGO_KEY]);
+    applyLogo(config[LOGO_KEY]);
+    return;
+  }
   const saved = localStorage.getItem(LOGO_KEY);
   if (saved) applyLogo(saved);
 }
@@ -670,15 +668,12 @@ async function removeRotuloLogo() {
   notify('Logo del rótulo eliminado');
 }
 
-async function loadRotuloLogo() {
-  try {
-    const config = await apiGet('/api/config');
-    if (config[ROTULO_LOGO_KEY]) {
-      localStorage.setItem(ROTULO_LOGO_KEY, config[ROTULO_LOGO_KEY]);
-      applyRotuloLogo(config[ROTULO_LOGO_KEY]);
-      return;
-    }
-  } catch(e) {}
+function loadRotuloLogo(config) {
+  if (config && config[ROTULO_LOGO_KEY]) {
+    localStorage.setItem(ROTULO_LOGO_KEY, config[ROTULO_LOGO_KEY]);
+    applyRotuloLogo(config[ROTULO_LOGO_KEY]);
+    return;
+  }
   const saved = localStorage.getItem(ROTULO_LOGO_KEY);
   if (saved) applyRotuloLogo(saved);
 }
@@ -2322,13 +2317,8 @@ document.querySelectorAll('#tab-config .cfg-head-btn').forEach(btn =>
 /* ── TOGGLE UBICACIÓN QR ────────────────────────────── */
 const UBICACION_KEY = 'mostrar_ubicacion';
 
-async function loadUbicacionToggle() {
-  try {
-    const config = await apiGet('/api/config');
-    mostrarUbicacion = config[UBICACION_KEY] === 'true';
-  } catch {
-    mostrarUbicacion = false;
-  }
+function loadUbicacionToggle(config) {
+  mostrarUbicacion = !!config && config[UBICACION_KEY] === 'true';
   applyUbicacionToggle();
 }
 
@@ -2360,13 +2350,9 @@ async function saveUbicacionToggle(value) {
 const GROUP_PRINT_KEY = 'alistamiento_imprimir_grupo';
 let imprimirGrupoAlistamiento = true;
 
-async function loadGroupPrintToggle() {
-  try {
-    const config = await apiGet('/api/config');
-    imprimirGrupoAlistamiento = config[GROUP_PRINT_KEY] !== 'false';
-  } catch {
-    imprimirGrupoAlistamiento = true;
-  }
+function loadGroupPrintToggle(config) {
+  // Sin config (falló la carga) queda habilitada, igual que si la clave no existe
+  imprimirGrupoAlistamiento = !config || config[GROUP_PRINT_KEY] !== 'false';
   applyGroupPrintToggle();
 }
 
@@ -2406,9 +2392,8 @@ const NAV_BUTTON_NAMES = {
 };
 const navButtonsVisibles = { devoluciones: false, trazabilidad: false };
 
-async function loadNavButtonToggles() {
-  let config = {};
-  try { config = await apiGet('/api/config'); } catch {}
+function loadNavButtonToggles(config) {
+  config = config || {};
   Object.keys(NAV_BUTTON_KEYS).forEach(key => {
     navButtonsVisibles[key] = config[NAV_BUTTON_KEYS[key]] === 'true';
     applyNavButtonToggle(key);
@@ -2456,9 +2441,8 @@ function applyDecoracionTema() {
   if (label) label.textContent = DECORACION_NOMBRES[decoracionTema];
 }
 
-async function loadDecoracionTema() {
-  let config = {};
-  try { config = await apiGet('/api/config'); } catch { return; }
+function loadDecoracionTema(config) {
+  if (!config) return;   // sin config se deja el tema que ya está aplicado
   const valor = config[DECORACION_KEY];
   decoracionTema = DECORACION_NOMBRES[valor] ? valor : 'auto';
   applyDecoracionTema();
@@ -2480,14 +2464,18 @@ async function saveDecoracionTema(value) {
 
 /* ── INIT ──────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
-  // Cargar datos iniciales
+  // Cargar datos iniciales: inventario y configuración en paralelo, y la
+  // configuración UNA sola vez (antes se descargaba 6 veces en fila, con los
+  // logos en base64 en cada respuesta). null = no se pudo cargar.
+  const configPromise = apiGet('/api/config').catch(() => null);
   await loadData();
-  await loadLogo();
-  await loadRotuloLogo();
-  await loadUbicacionToggle();
-  await loadGroupPrintToggle();
-  await loadNavButtonToggles();
-  await loadDecoracionTema();
+  const config = await configPromise;
+  loadLogo(config);
+  loadRotuloLogo(config);
+  loadUbicacionToggle(config);
+  loadGroupPrintToggle(config);
+  loadNavButtonToggles(config);
+  loadDecoracionTema(config);
 
   // Referencias a elementos del DOM
   const selTienda = document.getElementById('select-tienda');
