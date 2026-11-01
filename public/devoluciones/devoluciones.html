@@ -50,7 +50,7 @@
         <!-- SCANNER -->
         <div class="input-card">
             <div class="input-group">
-                <label>
+                <label for="guiaInput">
                     <i class="fas fa-barcode"></i>
                     Escanear / Ingresar Guía
                 </label>
@@ -65,6 +65,12 @@
                         <i class="fas fa-times"></i>
                         Limpiar
                     </button>
+                    <!-- Pitido por cada lectura de la pistola; encendido por defecto -->
+                    <label class="scan-sound" title="Pitido distinto según el resultado de cada lectura">
+                        <input type="checkbox" id="scanSoundToggle" checked>
+                        <span class="scan-sound-track" aria-hidden="true"></span>
+                        Sonido
+                    </label>
                 </div>
             </div>
             <div class="input-group">

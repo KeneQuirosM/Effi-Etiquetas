@@ -23,6 +23,70 @@
     const progressPct     = document.getElementById('progressPct');
     const logEntriesDiv   = document.getElementById('logEntries');
 
+    /* ── SONIDO DE LA PISTOLA (Web Audio, sin archivos) ──
+     * En bodega el operario no mira la pantalla: cada lectura suena distinto.
+     *   marcada: pitido agudo corto · ya estaba marcada: dos pitidos
+     *   no encontrada: zumbido grave de tres pulsos (se oye entre el ruido)
+     * Encendido por defecto; el interruptor "Sonido" lo apaga y se recuerda.
+     * El navegador solo deja crear el audio tras una interacción, por eso se
+     * prepara con el primer clic/tecla y se reanuda antes de sonar si hace falta.
+     */
+    const CLAVE_SONIDO = 'effi_devoluciones_sonido_v1';
+    const sonidoToggle = document.getElementById('scanSoundToggle');
+    let audioCtx = null;
+
+    function sonidoActivo(){ return !sonidoToggle || sonidoToggle.checked; }
+    function prepararAudio(){
+        if(!sonidoActivo()) return;
+        try{
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if(!Ctx) return;
+            if(!audioCtx) audioCtx = new Ctx();
+            if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+        }catch(e){ audioCtx = null; }
+    }
+    function pitido(frecuencia, inicio, duracion, forma='sine', volumen=0.25){
+        const osc = audioCtx.createOscillator(), gan = audioCtx.createGain();
+        const t0 = audioCtx.currentTime + inicio;
+        osc.type = forma; osc.frequency.value = frecuencia;
+        gan.gain.setValueAtTime(0.0001, t0);
+        gan.gain.exponentialRampToValueAtTime(volumen, t0 + 0.01);
+        gan.gain.exponentialRampToValueAtTime(0.0001, t0 + duracion);
+        osc.connect(gan).connect(audioCtx.destination);
+        osc.start(t0); osc.stop(t0 + duracion + 0.02);
+    }
+    function sonar(tipo){
+        if(!sonidoActivo()) return;
+        prepararAudio();
+        if(!audioCtx) return;
+        const tocar = () => {
+            try{
+                if(tipo === 'ok') pitido(1320, 0, 0.09);
+                else if(tipo === 'repetida'){ pitido(880, 0, 0.08); pitido(880, 0.14, 0.08); }
+                else { [0, 0.18, 0.36].forEach(t => pitido(330, t, 0.13, 'square', 0.18)); }
+            }catch(e){ /* el navegador lo bloqueó: silencio */ }
+        };
+        if(audioCtx.state === 'running') tocar();
+        else audioCtx.resume().then(tocar).catch(()=>{});
+    }
+    // Destello del campo: verde si se marcó, rojo si no se encontró
+    function destello(tipo){
+        guiaInput.classList.remove('scan-flash-ok','scan-flash-error');
+        void guiaInput.offsetWidth;   // reinicia si llegan dos lecturas seguidas
+        guiaInput.classList.add(tipo === 'ok' ? 'scan-flash-ok' : 'scan-flash-error');
+        clearTimeout(destello._t);
+        destello._t = setTimeout(()=>guiaInput.classList.remove('scan-flash-ok','scan-flash-error'), tipo === 'ok' ? 600 : 1200);
+    }
+    if(sonidoToggle){
+        try{ sonidoToggle.checked = localStorage.getItem(CLAVE_SONIDO) !== '0'; }catch(e){}
+        sonidoToggle.addEventListener('change',()=>{
+            try{ localStorage.setItem(CLAVE_SONIDO, sonidoToggle.checked ? '1' : '0'); }catch(e){}
+            prepararAudio();
+            guiaInput.focus();
+        });
+    }
+    ['pointerdown','keydown'].forEach(ev => document.addEventListener(ev, prepararAudio, { once: true }));
+
     function saveLogs(){ localStorage.setItem(STORAGE_KEYS.DEV_LOG, JSON.stringify(auditLog.slice(-200))); }
     function loadLogs(){
         try{ const s=localStorage.getItem(STORAGE_KEYS.DEV_LOG); if(s){ auditLog=JSON.parse(s); renderLogs(); } }catch(e){}
@@ -252,17 +316,19 @@
         const guia=String(raw).trim();
         if(!guia){ notify('Ingrese un número de guía','err'); guiaInput.focus(); return false; }
         const r=originalRowsData.find(x=>String(x['Guía transportadora'])===guia);
-        if(!r){ notify(`Guía ${guia} no encontrada`,'err'); guiaInput.value=''; guiaInput.focus(); return false; }
+        if(!r){ sonar('error'); destello('error'); notify(`Guía ${guia} no encontrada`,'err'); guiaInput.value=''; guiaInput.focus(); return false; }
         const dist=r['Distribuidor']||'', prov=r['Proveedor Dropshipping']||'';
         const cliente=r['Destinatario']||'Desconocido';
         const articulos=getProductArticulos(guia);
         const prod=articulos.length?articulos.map(a=>a.nombre||a.id).join(', '):'Producto';
         if(!devolutionSet.has(guia)){
+            sonar('ok'); destello('ok');
             devolutionSet.add(guia); addLog(guia,dist,prov,cliente,prod,'MARCADA (escáner)');
             showLastScan(guia,dist,prov,cliente,true,articulos);
             notify(`Guía ${guia} marcada`,'ok');
             updateRowStatus(guia,true); saveMarks(); updateStats();
         } else {
+            sonar('repetida');
             showLastScan(guia,dist,prov,cliente,true,articulos);
             notify(`Guía ${guia} ya estaba marcada`,'inf');
         }

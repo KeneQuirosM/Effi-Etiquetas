@@ -161,6 +161,39 @@
             border-color: var(--brand-500);
             box-shadow: 0 0 0 3px rgba(42,71,212,.1);
         }
+        /* Destello tras cada lectura de la pistola (lo pone devoluciones.js) */
+        .scan-input.scan-flash-error {
+            border-color: var(--danger-mid);
+            background: var(--danger-bg);
+            box-shadow: 0 0 0 4px rgba(198,40,40,.25);
+        }
+        .scan-input.scan-flash-ok {
+            border-color: var(--success-mid);
+            box-shadow: 0 0 0 4px rgba(46,125,50,.2);
+        }
+
+        /* Interruptor "Sonido" — igual al de manifiesto */
+        .scan-sound {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 12px; font-weight: 500; color: var(--neutral-600);
+            cursor: pointer; user-select: none;
+        }
+        .scan-sound input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+        .scan-sound-track {
+            position: relative; width: 34px; height: 20px; border-radius: 20px;
+            background: var(--neutral-200); transition: background .2s;
+        }
+        .scan-sound-track::before {
+            content: ''; position: absolute; top: 3px; left: 3px;
+            width: 14px; height: 14px; border-radius: 50%; background: #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .2s;
+        }
+        .scan-sound input:checked + .scan-sound-track { background: #2a47d4; }
+        .scan-sound input:checked + .scan-sound-track::before { transform: translateX(14px); }
+        .scan-sound input:focus-visible + .scan-sound-track { outline: 2px solid #2a9fd6; outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) {
+            .scan-sound-track, .scan-sound-track::before { transition: none; }
+        }
 
         /* ══ BUTTONS — mismos que manifiesto ══ */
         .btn {
