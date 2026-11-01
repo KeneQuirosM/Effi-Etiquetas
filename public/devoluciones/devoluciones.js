@@ -158,7 +158,7 @@
 
     function renderTable(){
         if(!originalRowsData.length){
-            tableBody.innerHTML=`<tr><td colspan="99" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">∅</span><div class="empty-t">Sin datos cargados</div><div class="empty-s">Cargue un archivo Excel para comenzar</div></div></td></tr>`;
+            tableBody.innerHTML=`<tr><td colspan="99" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">∅</span><div class="empty-t">Sin datos cargados</div><div class="empty-s">Carga un archivo Excel para comenzar</div></div></td></tr>`;
             updateStats(); return;
         }
         // Índice original (posición en el Excel, antes de agrupar devueltas
@@ -314,7 +314,7 @@
 
     function marcarGuia(raw){
         const guia=String(raw).trim();
-        if(!guia){ notify('Ingrese un número de guía','err'); guiaInput.focus(); return 'vacio'; }
+        if(!guia){ notify('Ingresa un número de guía','err'); guiaInput.focus(); return 'vacio'; }
         const r=originalRowsData.find(x=>String(x['Guía transportadora'])===guia);
         if(!r){ sonar('error'); destello('error'); notify(`Guía ${guia} no encontrada`,'err'); guiaInput.value=''; guiaInput.focus(); return 'error'; }
         const dist=r['Distribuidor']||'', prov=r['Proveedor Dropshipping']||'';
@@ -559,7 +559,7 @@
     }
 
     function loadGuiasFile(){
-        if(!originalRowsData.length){ notify('Primero cargue el archivo de devoluciones (la base)','err'); return; }
+        if(!originalRowsData.length){ notify('Primero carga el archivo de devoluciones (la base)','err'); return; }
         const inp=document.createElement('input');
         inp.type='file'; inp.accept='.xlsx,.xls,.csv';
         inp.onchange=e=>{
@@ -583,7 +583,7 @@
     }
 
     function exportDevueltas(){
-        if(!workbookOriginal){ notify('Primero cargue un archivo','err'); return; }
+        if(!workbookOriginal){ notify('Primero carga un archivo','err'); return; }
         if(!devolutionSet.size){ notify('No hay guías marcadas','err'); return; }
         if(!confirm(`¿Exportar ${devolutionSet.size} filas marcadas?`)) return;
         const rows=XLSX.utils.sheet_to_json(worksheetOriginal,{header:1,defval:""});
@@ -612,7 +612,7 @@
                 ?`${r.nuevas} devolución(es) registradas hoy en la base de datos`
                 :'Todas las guías ya estaban registradas en la base de datos','ok');
         }catch(err){
-            notify(`No se pudo registrar en la base de datos: ${err.message}. Vuelva a exportar para reintentar.`,'warn');
+            notify(`No se pudo registrar en la base de datos: ${err.message}. Vuelve a exportar para reintentar.`,'warn');
         }
     }
 

@@ -433,7 +433,8 @@ export default async function handler(req, res) {
 
       let fotoPath = null;
       if (foto) {
-        const hoy = new Date().toISOString().slice(0, 7);
+        // Mes de Costa Rica, como la columna fecha (en UTC, desde las 18:00 del último día ya sería el mes siguiente)
+        const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Costa_Rica', year: 'numeric', month: '2-digit' }).format(new Date());
         fotoPath = `${hoy}/${randomUUID()}.${EXT[foto.tipo]}`;
         const { error: upErr } = await supabaseAdmin.storage
           .from(BUCKET).upload(fotoPath, foto.buffer, { contentType: foto.tipo, upsert: false });

@@ -77,7 +77,7 @@ async function cargarOpciones() {
   const selPersona = $('f-contado'), selMesa = $('f-mesa');
   try {
     const { personas, mesas } = await apiRequestJSON('/api/conteos?accion=opciones');
-    selPersona.innerHTML = '<option value="">-- Seleccione --</option>' +
+    selPersona.innerHTML = '<option value="">-- Selecciona --</option>' +
       personas.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
     selMesa.innerHTML = '<option value="">--</option>' +
       Array.from({ length: mesas }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
@@ -100,7 +100,7 @@ async function cargarTiendas() {
   try {
     const data = await apiRequestJSON('/api/tiendas');
     tiendas = data.tiendas || [];
-    sel.innerHTML = '<option value="">-- Seleccione --</option>' +
+    sel.innerHTML = '<option value="">-- Selecciona --</option>' +
       tiendas.map(t => `<option value="${esc(t.id)}">${esc(t.nombre)}</option>`).join('');
     const tiendaId = leerBorrador()['f-tienda'] || leerPrefs().tiendaId;
     if (tiendaId && tiendas.some(t => String(t.id) === String(tiendaId))) {
@@ -361,16 +361,11 @@ const AVISO_CAJAS = 200;
 const AVISO_MEDIDA_CM = 250;      // una medida mayor suele ser un error de tipeo (1500 en vez de 15.0)
 const AVISO_VENC_ANIOS = 10;      // vencimiento más lejano que esto
 
-function hoyLocalISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 function avisosSentidoComun(d) {
   const avisos = [];
   const cant = Number(d.cantidad), cajas = Number(d.cajas);
   if (d.vencimiento) {
-    const hoy = hoyLocalISO();
+    const hoy = fechaLocalISO();
     const limite = `${Number(hoy.slice(0, 4)) + AVISO_VENC_ANIOS}${hoy.slice(4)}`;
     if (d.vencimiento < hoy) avisos.push({ campo: 'f-venc', texto: `La fecha de vencimiento (${fechaCorta(d.vencimiento)}) ya pasó: el producto está vencido.` });
     else if (d.vencimiento > limite) avisos.push({ campo: 'f-venc', texto: `La fecha de vencimiento (${fechaCorta(d.vencimiento)}) es a más de ${AVISO_VENC_ANIOS} años.` });

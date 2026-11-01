@@ -80,6 +80,11 @@ Unlike `tiendas.js`/`productos.js` (normal per-row CRUD), `api/stockforge.js` re
 
 `api/reporte-tiendas.js` reads from a `historial_movimientos` table that doesn't exist yet (wrapped in try/catch so it silently returns 0 counts instead of erroring) — and it's currently **not called from any frontend file** (`public/reporte/reporte.js` only fetches `/api/tiendas` directly). Treat it as unfinished/orphaned rather than a maintained endpoint unless you're specifically wiring it up.
 
+## UI copy
+
+- All user-facing Spanish text uses **tú** ("Selecciona", "Ingresa", "Revisa", "Haz clic"): never voseo ("Seleccioná", "Ingresá", "Debés") nor usted ("Seleccione", "Ingrese", "Cargue"), including placeholders like `-- Selecciona --`.
+- Dates shown or used as keys/filenames are local (Costa Rica): use `fechaLocalISO()` from `dom-utils.js` instead of hand-rolling `getFullYear()/padStart` or `toISOString().slice(0, 10)`. The only intended UTC uses are Excel serial conversions (built with `Date.UTC` from local parts) and stored instants (`toISOString()` timestamps). `trazabilidad.html` keeps its own inline copy (`localDateKey`) because it must also work opened from `file://`.
+
 ## Visual conventions
 
 - No decorative emojis in UI strings, code comments, or markdown. Text labels carry meaning on their own; don't decorate headings, buttons, log messages, or docs with pictographic emoji.

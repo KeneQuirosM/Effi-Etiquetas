@@ -276,7 +276,7 @@ async function handleFile(event) {
   const isExcel = ['xls', 'xlsx'].includes(fileExtension);
 
   if (!isPDF && !isExcel) {
-    notify('Formato no soportado. Use .xls, .xlsx o .pdf', 'error');
+    notify('Formato no soportado. Usa .xls, .xlsx o .pdf', 'error');
     return;
   }
 
@@ -814,7 +814,7 @@ function renderTablaGuias() {
   if (filas.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" class="tabla-vacia">
       <i class="fas fa-barcode" style="font-size:34px;display:block;margin-bottom:10px;opacity:.45"></i>
-      Cargue un manifiesto y escanee guías para verlas aquí
+      Carga un manifiesto y escanea guías para verlas aquí
     </td></tr>`;
     return;
   }

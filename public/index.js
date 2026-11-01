@@ -289,7 +289,7 @@ function populateTiendas() {
     const el = document.getElementById(id);
     if (!el) return;
     const cur = el.value;
-    el.innerHTML = '<option value="">-- Seleccione --</option>';
+    el.innerHTML = '<option value="">-- Selecciona --</option>';
     appData.tiendas.forEach(t => {
       el.add(new Option(t.nombre, t.id));
     });
@@ -842,12 +842,12 @@ async function handleJSONImport(input) {
         return notify('JSON inválido: falta "tiendas"', 'danger');
 
       if (!coordToken)
-        return notify('Debés estar en modo Coordinador para importar', 'danger');
+        return notify('Debes estar en modo Coordinador para importar', 'danger');
 
       clearImportLog();
       logImport('Iniciando importación...', 'info');
       logImport(`Total de tiendas en archivo: ${parsed.tiendas.length}`, 'info');
-      notify('Importando... espere', '');
+      notify('Importando... espera', '');
 
       let tiendasCreadas = 0;
       let tiendasExistentes = 0;
@@ -1161,9 +1161,6 @@ function openReporte()    { window.open('/reporte/reporte_distribuidor_proveedor
 let devolDias = null;      // [{fecha:'AAAA-MM-DD', total}] del último rango consultado
 let devolRango = null;     // {desde, hasta} de esa consulta
 
-function fechaISO(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 function parseFecha(s) {
   const [y, m, d] = s.split('-').map(Number);
   return new Date(y, m - 1, d);
@@ -1184,8 +1181,8 @@ function devolPreset(preset) {
     desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
     hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
   }
-  document.getElementById('dv-desde').value = fechaISO(desde);
-  document.getElementById('dv-hasta').value = fechaISO(hasta);
+  document.getElementById('dv-desde').value = fechaLocalISO(desde);
+  document.getElementById('dv-hasta').value = fechaLocalISO(hasta);
   document.getElementById('dv-grupo').value = (preset === 'mes' || preset === 'mes-actual' || preset === 'mes-anterior') ? 'semana' : 'dia';
   document.querySelectorAll('.devol-presets [data-preset]').forEach(b =>
     b.classList.toggle('active', b.dataset.preset === preset));
@@ -1221,8 +1218,8 @@ function renderDevolReport() {
   // Recorre cada día del rango (incluye días sin devoluciones) y lo suma a su grupo
   const grupos = new Map();
   let total = 0, dias = 0, mejor = null;
-  for (let d = parseFecha(devolRango.desde); fechaISO(d) <= devolRango.hasta; d = sumarDias(d, 1)) {
-    const f = fechaISO(d);
+  for (let d = parseFecha(devolRango.desde); fechaLocalISO(d) <= devolRango.hasta; d = sumarDias(d, 1)) {
+    const f = fechaLocalISO(d);
     const n = porDia.get(f) || 0;
     total += n; dias++;
     if (n > 0 && (!mejor || n > mejor.n)) mejor = { f, n };
@@ -1230,7 +1227,7 @@ function renderDevolReport() {
     let key, label;
     if (grupo === 'semana') {
       const lunes = sumarDias(d, -((d.getDay() + 6) % 7));
-      key = fechaISO(lunes);
+      key = fechaLocalISO(lunes);
       label = `Semana del ${lunes.toLocaleDateString('es-CR', fmtCorto)} al ${sumarDias(lunes, 6).toLocaleDateString('es-CR', fmtCorto)}`;
     } else if (grupo === 'mes') {
       key = f.slice(0, 7);
@@ -1278,8 +1275,8 @@ function populateConteoTiendas() {
 function conteoPreset(preset) {
   const hoy = new Date();
   const desde = preset === 'semana' ? sumarDias(hoy, -6) : preset === 'mes' ? sumarDias(hoy, -29) : hoy;
-  document.getElementById('ct-desde').value = fechaISO(desde);
-  document.getElementById('ct-hasta').value = fechaISO(hoy);
+  document.getElementById('ct-desde').value = fechaLocalISO(desde);
+  document.getElementById('ct-hasta').value = fechaLocalISO(hoy);
   document.querySelectorAll('.conteo-presets [data-preset]').forEach(b =>
     b.classList.toggle('active', b.dataset.preset === preset));
   loadConteos();
@@ -1476,7 +1473,7 @@ function abrirTraslado() {
   traslado.cajas = new Map(traslado.items.map(c => [c.id, '1']));
   traslado.mensaje = '';
   const sel = document.getElementById('tr-destino');
-  sel.innerHTML = '<option value="">-- Seleccione --</option>';
+  sel.innerHTML = '<option value="">-- Selecciona --</option>';
   appData.tiendas.forEach(t => sel.add(new Option(t.nombre, t.id)));
   const n = traslado.items.length;
   document.getElementById('traslado-titulo').textContent = `Trasladar ${n} conteo${n === 1 ? '' : 's'}`;

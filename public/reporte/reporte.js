@@ -293,7 +293,7 @@ function calculateStats(unmatchedStores = []) {
         ${unmatchedStores.map(n => `<span style="background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:4px; margin-right:6px; display:inline-block;">${esc(n)}</span>`).join('')}
       </div>
       <div style="margin-top:8px; color:var(--neutral-600); font-size:0.74rem;">
-        <i class="fas fa-info-circle"></i> Verificá que el nombre en la BD coincida exactamente con el nombre en el Excel (después del guión).
+        <i class="fas fa-info-circle"></i> Verifica que el nombre en la BD coincida exactamente con el nombre en el Excel (después del guión).
       </div>
     `;
 

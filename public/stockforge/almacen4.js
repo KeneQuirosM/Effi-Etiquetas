@@ -101,15 +101,15 @@ const TRANSLATIONS={
     // PIN modal
     pin_title:'Acceso Coordinador', pin_setup:'Configurar PIN', pin_confirm:'Confirmar PIN',
     pin_unlock:'Ingresar PIN', pin_change1:'Cambiar PIN', pin_change2:'Nuevo PIN', pin_change3:'Confirmar nuevo PIN',
-    pin_sub_setup:'Creá un PIN de 4 dígitos. Lo necesitarás para editar el inventario.',
-    pin_sub_unlock:'Ingresá el PIN de coordinador para activar el modo edición.',
-    pin_sub_change1:'Ingresá el PIN actual para continuar.',
+    pin_sub_setup:'Crea un PIN de 4 dígitos. Lo necesitarás para editar el inventario.',
+    pin_sub_unlock:'Ingresa el PIN de coordinador para activar el modo edición.',
+    pin_sub_change1:'Ingresa el PIN actual para continuar.',
     // Snapshots modal
     snap_title:'Snapshots del Inventario',
     snap_info:'Hasta 7 snapshots rotantes. El más antiguo se elimina automáticamente.',
     snap_save_now:'Guardar ahora',
     snap_none:'Sin snapshots guardados aún.',
-    snap_none_sub:'Hacé click en "Guardar ahora" para crear el primero.',
+    snap_none_sub:'Haz clic en "Guardar ahora" para crear el primero.',
     snap_latest:'● Más reciente', snap_restore:'Restaurar', snap_download:'⬇', snap_delete:'✕',
     snap_racks:'racks', snap_skus_label:'SKUs',
     btn_download_json:'⬇ Descargar JSON actual',
@@ -144,7 +144,7 @@ const TRANSLATIONS={
     notif_snap_error:'Error al guardar snapshot',
     notif_snap_restore_error:'Error al restaurar snapshot',
     notif_save_error:'Error al guardar',
-    notif_pin_locked:'Ingresá el PIN de coordinador para editar',
+    notif_pin_locked:'Ingresa el PIN de coordinador para editar',
     notif_pin_locked_snap:'Se requiere PIN de coordinador para restaurar',
     notif_pin_locked_del:'Se requiere PIN de coordinador para eliminar snapshots',
     notif_transfer_done:'Traslado registrado',
@@ -206,9 +206,9 @@ const TRANSLATIONS={
     // Audit
     audit_no_prev:'Sin conteos previos registrados',
     // PIN modal dynamic subtitles
-    pin_sub_confirm:'Repetí el PIN para confirmarlo.',
-    pin_sub_change2:'Ingresá el nuevo PIN de 4 dígitos.',
-    pin_sub_change3:'Repetí el nuevo PIN.',
+    pin_sub_confirm:'Repite el PIN para confirmarlo.',
+    pin_sub_change2:'Ingresa el nuevo PIN de 4 dígitos.',
+    pin_sub_change3:'Repite el nuevo PIN.',
     // Report
     rep_generated:'Generado:',
     rep_records:'registros',
@@ -996,7 +996,7 @@ function exportJSON(){
   const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
   const now=new Date();
-  const stamp=now.getFullYear()+''+(now.getMonth()+1).toString().padStart(2,'0')+now.getDate().toString().padStart(2,'0')+'_'+now.getHours().toString().padStart(2,'0')+now.getMinutes().toString().padStart(2,'0');
+  const stamp=fechaLocalISO(now).replace(/-/g,'')+'_'+now.getHours().toString().padStart(2,'0')+now.getMinutes().toString().padStart(2,'0');
   a.download='stockforge_'+stamp+'.json';a.click();
   notif(t('notif_json_exported'),'ok');
 }
@@ -1033,7 +1033,7 @@ function importExcelStock(ev){
         <span style="font-size:.87rem">Solo se actualizarán celdas asignadas a esa tienda.</span>
       </div>
       <select id="excel-tienda-sel" class="fi" style="font-size:1rem">
-        <option value="">— Seleccioná una tienda —</option>
+        <option value="">— Selecciona una tienda —</option>
         ${state.tiendas.map(t=>`<option value="${t.id}">${esc(t.name)}${t.code?' ('+esc(t.code)+')':''}</option>`).join('')}
       </select>
       <button class="btn bp" id="excel-tienda-ok" style="width:100%;padding:11px;font-size:1rem;font-weight:700">Importar</button>
@@ -1046,7 +1046,7 @@ function importExcelStock(ev){
     document.getElementById('excel-tienda-cls').addEventListener('click',()=>closeO('o-excel-tienda'));
     document.getElementById('excel-tienda-ok').addEventListener('click',()=>{
       const sel=document.getElementById('excel-tienda-sel');
-      if(!sel||!sel.value){notif('Seleccioná una tienda','warn');return;}
+      if(!sel||!sel.value){notif('Selecciona una tienda','warn');return;}
       closeO('o-excel-tienda');
       _doExcelImport(sel.value, ext, file);
     });
@@ -3645,7 +3645,7 @@ function openPrintByRack(){
     <div class="modal" style="max-width:440px">
       <div class="mhd"><span class="mttl">Imprimir Rack — A4 Horizontal</span><button class="cls" onclick="closeO('o-print-rack')">✕</button></div>
       <div class="mbdy" style="padding:20px;display:flex;flex-direction:column;gap:14px">
-        <div style="font-size:.94rem;color:var(--dim)">Seleccioná el rack para imprimir su grilla completa en A4 apaisado.</div>
+        <div style="font-size:.94rem;color:var(--dim)">Selecciona el rack para imprimir su grilla completa en A4 apaisado.</div>
         <select id="pbr-rack" class="fi" style="font-size:1rem">
           ${state.racks.map(r=>{const z=state.zones.find(z=>z.id===r.zone);return `<option value="${r.id}">${esc(r.name)}${z?' — '+esc(z.name):''} (${r.bays}×${r.levels})</option>`;}).join('')}
         </select>
@@ -4125,7 +4125,7 @@ function buildTiendasReportBody(){
 
 function buildValorReportBody(){
   const all=buildValorData();
-  if(!all.length) return `<div class="empty-msg">Sin datos de valor — asigná costos a los productos</div>`;
+  if(!all.length) return `<div class="empty-msg">Sin datos de valor — asigna costos a los productos</div>`;
   const total=all.reduce((a,r)=>a+r.subtotal,0);
   const rows=all.map(r=>`<tr>
     <td class="mono sku-id">${esc(r.sku)||'—'}</td>
@@ -5721,7 +5721,7 @@ async function renovarTokenSiEsNecesario() {
 
 function guardEdit(fn) {
   if (!coordUnlocked) {
-    notif('Ingresá como coordinador para editar', 'warn');
+    notif('Ingresa como coordinador para editar', 'warn');
     openCoordinadorModal();
     return;
   }
@@ -5743,7 +5743,7 @@ function openCoordinadorModal() {
       </div>
       <div class="mbdy" style="padding:20px 24px">
         <div id="pin-subtitle" style="text-align:center;color:var(--dim);font-size:1.05rem;margin-bottom:16px;line-height:1.4">
-          Ingresá tu email y contraseña de coordinador
+          Ingresa tu email y contraseña de coordinador
         </div>
         <form id="coord-form-stock" onsubmit="event.preventDefault(); loginDesdeModal();" novalidate>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;text-align:left">
