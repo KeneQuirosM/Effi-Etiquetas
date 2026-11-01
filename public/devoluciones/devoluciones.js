@@ -413,7 +413,7 @@
         if(worksheetOriginal['!cols']) ws['!cols']=[...worksheetOriginal['!cols']];
         if(worksheetOriginal['!merges']) ws['!merges']=[...worksheetOriginal['!merges']];
         const wb2=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb2,ws,sheetName);
-        XLSX.writeFile(wb2,`devoluciones_${new Date().toISOString().slice(0,10)}.xlsx`);
+        XLSX.writeFile(wb2,`devoluciones_${fechaLocalISO()}.xlsx`);
         notify(`${devolutionSet.size} filas exportadas`,'ok');
         registrarDevolucionesDelDia([...devolutionSet]);
     }

@@ -99,6 +99,15 @@ function notify(msg, type = 'info', duration, accion) {
   return { cerrar };
 }
 
+/* ── FECHA LOCAL ──────────────────────────────────────────
+ * AAAA-MM-DD en la hora local del navegador, para nombres de archivo.
+ * No usar toISOString().slice(0, 10): es la fecha UTC y en Costa Rica
+ * (UTC-6) desde las 18:00 da la fecha de mañana.
+ */
+function fechaLocalISO(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /* ── DEBOUNCE ─────────────────────────────────────────── */
 function debounce(fn, ms = 200) {
   let t;

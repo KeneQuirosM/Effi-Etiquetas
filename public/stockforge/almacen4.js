@@ -4775,7 +4775,7 @@ function exportValorExcel(){
   const ws2=XLSX.utils.aoa_to_sheet(summary);
   ws2['!cols']=[{wch:28},{wch:20}];
   XLSX.utils.book_append_sheet(wb,ws2,'Resumen');
-  XLSX.writeFile(wb,`${bname}_valor_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb,`${bname}_valor_${fechaLocalISO()}.xlsx`);
   notif(currentLang==='en'?'Excel exported':'Excel exportado','ok');
 }
 
@@ -4807,7 +4807,7 @@ function exportSkusExcel(){
   const ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[{wch:14},{wch:32},{wch:8},{wch:8},{wch:14},{wch:16},{wch:6},{wch:6},{wch:12},{wch:24},{wch:24},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws,'SKUs');
-  XLSX.writeFile(wb,`${bname}_skus_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb,`${bname}_skus_${fechaLocalISO()}.xlsx`);
   notif(currentLang==='en'?'Excel exported':'Excel exportado','ok');
 }
 
@@ -4938,7 +4938,7 @@ function exportReportExcel(){
   const ws3=XLSX.utils.aoa_to_sheet(movData);ws3['!cols']=[{wch:12},{wch:10},{wch:14},{wch:28},{wch:8},{wch:8},{wch:14},{wch:6},{wch:6}];
   XLSX.utils.book_append_sheet(wb,ws3,currentLang==='en'?'Movements':'Movimientos');
 
-  XLSX.writeFile(wb,`${bname}_reporte_completo_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb,`${bname}_reporte_completo_${fechaLocalISO()}.xlsx`);
   notif(currentLang==='en'?'Full Excel exported':'Excel completo exportado','ok');
 }
 

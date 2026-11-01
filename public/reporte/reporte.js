@@ -661,7 +661,7 @@ async function exportarExcelBonito() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Reporte_Picking_${new Date().toISOString().slice(0,10)}.xlsx`;
+  a.download = `Reporte_Picking_${fechaLocalISO()}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 

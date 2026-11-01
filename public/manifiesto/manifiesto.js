@@ -953,7 +953,7 @@ function generarExcelDevoluciones(filas, horaFinal) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Devoluciones');
 
-  const fechaArchivo = horaFinal.toISOString().slice(0, 10);
+  const fechaArchivo = fechaLocalISO(horaFinal);
   const nombreArchivo = `Recepcion Devoluciones ${fechaArchivo}.xlsx`;
   XLSX.writeFile(wb, nombreArchivo);
   notify(`Excel exportado: ${nombreArchivo}`, 'success');
