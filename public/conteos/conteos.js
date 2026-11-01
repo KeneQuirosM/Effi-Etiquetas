@@ -464,7 +464,7 @@ async function guardarConteo(e) {
     const body = { ...datos, tienda_id: Number(datos.tienda_id), mesa: Number(datos.mesa) };
     if (fotoBlob) body.foto = await blobADataURL(fotoBlob);
 
-    const res = await apiRequestJSON('/api/conteos', { method: 'POST', body });
+    const res = await apiRequestJSON('/api/conteos', { method: 'POST', body, headers: headersDispositivo() });
 
     guardarPrefs({ tiendaId: datos.tienda_id, contadoPor: datos.contado_por, mesa: datos.mesa, imprimir: datos.imprimir });
     borrarBorrador();
@@ -482,6 +482,7 @@ async function guardarConteo(e) {
     $('vista-ok').hidden = false;
     window.scrollTo(0, 0);
   } catch (err) {
+    manejarNoVinculado(err);
     notify(err.message || 'No se pudo guardar el conteo. Revisa la conexión e intenta de nuevo.', 'error');
   } finally {
     guardando = false;
@@ -602,4 +603,5 @@ function nuevoConteo() {
 
   cargarTiendas();
   cargarOpciones();
+  revisarDispositivo();   // canjea el QR de vinculación si viene en la URL
 })();

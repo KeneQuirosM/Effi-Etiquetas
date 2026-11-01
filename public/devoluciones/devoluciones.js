@@ -607,11 +607,12 @@
     // veces no duplica el conteo. El Excel se descarga igual aunque esto falle.
     async function registrarDevolucionesDelDia(guias){
         try{
-            const r=await apiRequestJSON('/api/devoluciones',{method:'POST',body:{guias}});
+            const r=await apiRequestJSON('/api/devoluciones',{method:'POST',body:{guias},headers:headersDispositivo()});
             notify(r.nuevas
                 ?`${r.nuevas} devolución(es) registradas hoy en la base de datos`
                 :'Todas las guías ya estaban registradas en la base de datos','ok');
         }catch(err){
+            manejarNoVinculado(err);
             notify(`No se pudo registrar en la base de datos: ${err.message}. Vuelve a exportar para reintentar.`,'warn');
         }
     }
@@ -645,4 +646,5 @@
     });
 
     loadLogs();
+    revisarDispositivo();   // canjea el QR de vinculación si viene en la URL
     guiaInput.focus();

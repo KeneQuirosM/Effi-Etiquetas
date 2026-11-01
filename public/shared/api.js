@@ -9,8 +9,8 @@
  */
 
 // Arma y ejecuta la petición fetch con headers estándar (JSON + Authorization opcional)
-async function apiRequest(path, { method = 'GET', token, body } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
+async function apiRequest(path, { method = 'GET', token, body, headers: extra } = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(extra || {}) };
   if (token) headers['Authorization'] = 'Bearer ' + token;
   const opts = { method, headers };
   if (body !== undefined) opts.body = JSON.stringify(body);
@@ -22,10 +22,11 @@ async function apiRequest(path, { method = 'GET', token, body } = {}) {
 async function apiRequestJSON(path, opts) {
   const res = await apiRequest(path, opts);
   if (!res.ok) {
-    let message = 'Error';
-    try { const e = await res.json(); message = e.error || message; } catch (_) {}
+    let message = 'Error', codigo = null;
+    try { const e = await res.json(); message = e.error || message; codigo = e.codigo || null; } catch (_) {}
     const err = new Error(message);
     err.status = res.status;
+    err.codigo = codigo;
     err.retryAfter = Number(res.headers.get('Retry-After')) || null;
     throw err;
   }

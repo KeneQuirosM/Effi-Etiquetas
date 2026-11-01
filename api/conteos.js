@@ -4,6 +4,7 @@ import { setCors } from './_cors.js';
 import { requireUser } from './_auth.js';
 import { rateLimit } from './_rateLimit.js';
 import { sheetsHabilitado, enviarConteoASheets, eliminarConteoDeSheets } from './_sheets.js';
+import { exigirDispositivo } from './_dispositivo.js';
 
 const BUCKET = 'conteos';
 const MAX_FOTO_BYTES = 3 * 1024 * 1024;   // ya llega comprimida desde el navegador
@@ -362,6 +363,8 @@ export default async function handler(req, res) {
     // coordinador), por eso va con rate limit, igual que devoluciones.
     if (req.method === 'POST') {
       if (!rateLimit(req, res, { max: 20, windowMs: 60000 })) return;
+      // Con "Exigir dispositivo vinculado" encendido, solo celulares vinculados por QR
+      if (!(await exigirDispositivo(req, res))) return;
 
       const b = req.body || {};
       const opciones = await leerOpciones();

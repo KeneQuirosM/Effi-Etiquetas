@@ -67,6 +67,7 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 - Tras guardar, "Compartir en WhatsApp" abre el menú de compartir del celular con la foto y el mensaje (se envía desde el WhatsApp de la persona, sin envío automático)
 - Opcional: cada conteo se copia a una hoja de Google Sheets con una pestaña por tienda (Apps Script en `google/`, instalación en `google/README.md`). Los que fallen quedan pendientes y se reenvían con "Enviar pendientes"
 - Casilla "Imprimir etiqueta": la PC de la impresora, con la pestaña "Impresión" del Panel de Coordinador activa, imprime sola la etiqueta 4x6 estándar (logo, nombre, ID, tienda, lote, vencimiento, QR) de cada conteo nuevo. Sin instalar nada: Chrome con `--kiosk-printing` imprime sin cuadro de diálogo (pasos en la propia pestaña)
+- Dispositivos vinculados (Panel de Coordinador > Configuración): el panel muestra un QR de un solo uso que vence en 5 minutos; al escanearlo con el celular se abre Conteos (o Devoluciones) y ese equipo queda vinculado. Para una PC se copia el enlace. Con "Exigir dispositivo vinculado" activado, solo los equipos vinculados pueden guardar conteos o registrar devoluciones; desde la misma lista se desvincula un equipo perdido
 - Traslado de conteos (Panel de Coordinador, pestaña Conteos): seleccionar uno o varios conteos, elegir la tienda destino y el ID de cada uno en esa tienda (p. ej. de una tienda transitoria a la real). Se puede trasladar solo parte de las unidades: el conteo se divide (el original se queda con el resto) con la función SQL `trasladar_parcial_conteo`. Queda historial en `conteos_traslados`, la fila de Google Sheets se mueve a la pestaña nueva y se genera el mensaje para WhatsApp. Si se pide imprimir al trasladar, la estación imprime la etiqueta nueva
 - El coordinador consulta los conteos en el Panel de Coordinador, pestaña "Conteos" (filtros por fecha/tienda, fotos, exportar a Excel con las fotos incrustadas, eliminar)
 
@@ -108,6 +109,9 @@ El guardado del almacén reemplaza el estado completo en una sola transacción c
 **Conteos** — `supabase/conteos.sql`:
 - `conteos` — un registro por conteo de mercancía. El script también crea el bucket privado `conteos` para las fotos y la función `trasladar_parcial_conteo`
 - `conteos_traslados` — historial de traslados de conteos entre tiendas/IDs (quién, cuándo, de dónde a dónde)
+
+**Dispositivos vinculados** — `supabase/dispositivos.sql`:
+- `dispositivos` — equipos autorizados a enviar Conteos y Devoluciones (nombre y hash de su credencial). Sin acceso público: solo la API la lee
 
 El campo `skus.producto_id` vincula STOCKFORGE con el catálogo de etiquetas. Cuando un SKU tiene `producto_id`, al guardar el almacén se actualiza automáticamente `productos.ubicacion` con la posición física.
 
@@ -165,7 +169,8 @@ effi-etiquetas/
 ├── supabase/
 │   ├── replace_warehouse_state.sql  # función de guardado completo de STOCKFORGE
 │   ├── devoluciones_registro.sql    # tabla + función devoluciones_por_dia
-│   └── conteos.sql                  # tablas, bucket y trasladar_parcial_conteo
+│   ├── conteos.sql                  # tablas, bucket y trasladar_parcial_conteo
+│   └── dispositivos.sql             # dispositivos vinculados por QR
 ├── google/
 │   ├── conteos-sheets.gs     # Apps Script receptor de conteos
 │   └── README.md             # instalación de la copia a Google Sheets
@@ -198,6 +203,7 @@ El coordinador usa el mismo usuario en el generador de etiquetas y en STOCKFORGE
    2. `supabase/replace_warehouse_state.sql`
    3. `supabase/devoluciones_registro.sql`
    4. `supabase/conteos.sql`
+   5. `supabase/dispositivos.sql`
 3. Ir a **Authentication → Users → Invite User** → crear el coordinador (luego se pueden agregar más desde la pestaña Usuarios)
 4. Copiar desde **Project Settings → API**:
    - Project URL → `SUPABASE_URL`

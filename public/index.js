@@ -395,7 +395,7 @@ function switchTab(id) {
   if (id === 'tab-users') loadUsers();
   if (id === 'tab-devol' && !devolDias) devolPreset('semana');
   if (id === 'tab-conteos') { populateConteoTiendas(); if (!conteos) conteoPreset('semana'); }
-  if (id === 'tab-config') cargarOpcionesConteos();
+  if (id === 'tab-config') { cargarOpcionesConteos(); cargarDispositivos(); }
 }
 
 /* ── COORD ACTIONS ─────────────────────────────────── */
@@ -647,6 +647,7 @@ function toggleCoordMode() {
 
 function lockCoord() {
   enviarBorradosPendientesYa();
+  cancelarVinculoDispositivo();
   coordToken = null;
   coordUnlocked = false;
   localStorage.removeItem(SESSION_KEY);
@@ -2682,6 +2683,132 @@ function loadDecoracionTema(config) {
   const valor = config[DECORACION_KEY];
   decoracionTema = DECORACION_NOMBRES[valor] ? valor : 'auto';
   applyDecoracionTema();
+}
+
+/* ── DISPOSITIVOS VINCULADOS ───────────────────────────
+ * Como "dispositivos vinculados" de WhatsApp: el panel pide un token de un
+ * solo uso (vence en 5 min) y lo muestra como QR con la URL de Conteos o
+ * Devoluciones + ?vincular=<token>; el dispositivo lo canjea al abrirla
+ * (shared/dispositivo.js). Mientras el QR está a la vista se revisa cada 3 s
+ * si ya se vinculó. "Exigir dispositivo vinculado" es exigir_dispositivo en
+ * /api/config; la API lo aplica en los POST de conteos y devoluciones.
+ */
+let dispositivosLista = [];
+let vinculoPendiente = null;   // { id, nombre, expira, poll, cuenta }
+
+function fmtFechaHora(iso) {
+  return iso ? new Date(iso).toLocaleString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+}
+
+async function cargarDispositivos({ silencioso = false } = {}) {
+  const lista = document.getElementById('disp-lista');
+  if (!lista) return null;
+  try {
+    const r = await apiFetch('GET', '/api/dispositivos');
+    dispositivosLista = r.dispositivos || [];
+    const toggle = document.getElementById('toggle-exigir-disp');
+    const label = document.getElementById('toggle-exigir-disp-label');
+    toggle.checked = !!r.exigir;
+    label.textContent = r.exigir ? 'Activado' : 'Desactivado';
+    label.classList.toggle('on', !!r.exigir);
+    document.getElementById('disp-resumen').textContent =
+      `${dispositivosLista.length} vinculado${dispositivosLista.length !== 1 ? 's' : ''}${r.exigir ? ' · exigido' : ''}`;
+    lista.innerHTML = dispositivosLista.length
+      ? dispositivosLista.map(d => `
+        <div class="inv-item">
+          <span class="item-name">${esc(d.nombre)}<br><span class="disp-meta">Vinculado ${esc(fmtFechaHora(d.vinculado_en))} · Último uso ${esc(fmtFechaHora(d.ultimo_uso))}</span></span>
+          <button type="button" class="btn-action btn-ghost" data-id="${esc(d.id)}" data-nombre="${esc(d.nombre)}" onclick="desvincularDispositivo(this)">Desvincular</button>
+        </div>`).join('')
+      : '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Ningún dispositivo vinculado todavía</span></div>';
+    return r;
+  } catch (e) {
+    if (!silencioso) lista.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--danger)">${esc(e.message || 'No se pudieron cargar los dispositivos')}</span></div>`;
+    return null;
+  }
+}
+
+async function crearVinculoDispositivo() {
+  if (guardOffline()) return;
+  const inp = document.getElementById('disp-nombre');
+  const nombre = inp.value.trim();
+  if (!nombre) { notify('Ponle un nombre al dispositivo, p. ej. "Celular corporativo"', 'danger'); inp.focus(); return; }
+  const btn = document.getElementById('disp-btn');
+  btn.disabled = true;
+  try {
+    const r = await apiFetch('POST', '/api/dispositivos?accion=crear_vinculo', { nombre });
+    cancelarVinculoDispositivo();
+    const destino = document.getElementById('disp-destino').value;
+    const url = `${location.origin}/${destino}?vincular=${encodeURIComponent(r.token)}`;
+    document.getElementById('disp-qr-img').innerHTML = QRCode.generate(url, 232);
+    document.getElementById('disp-enlace').value = url;
+    document.getElementById('disp-qr').hidden = false;
+    vinculoPendiente = { id: r.id, nombre, expira: new Date(r.expira).getTime() };
+    const tic = () => {
+      const resta = Math.max(0, vinculoPendiente.expira - Date.now());
+      document.getElementById('disp-cuenta').textContent = `${Math.floor(resta / 60000)}:${String(Math.floor(resta / 1000) % 60).padStart(2, '0')}`;
+      if (!resta) { cancelarVinculoDispositivo(); notify('El QR venció. Genera uno nuevo si todavía hace falta.', 'warn'); }
+    };
+    tic();
+    vinculoPendiente.cuenta = setInterval(tic, 1000);
+    vinculoPendiente.poll = setInterval(async () => {
+      if (!vinculoPendiente) return;
+      const id = vinculoPendiente.id, nom = vinculoPendiente.nombre;
+      const res = await cargarDispositivos({ silencioso: true });
+      if (res && dispositivosLista.some(d => d.id === id)) {
+        cancelarVinculoDispositivo();
+        inp.value = '';
+        notify(`"${nom}" quedó vinculado`, 'success');
+      }
+    }, 3000);
+  } catch (e) {
+    notify(e.message || 'No se pudo generar el QR', 'danger');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function cancelarVinculoDispositivo() {
+  if (vinculoPendiente) { clearInterval(vinculoPendiente.cuenta); clearInterval(vinculoPendiente.poll); }
+  vinculoPendiente = null;
+  const qr = document.getElementById('disp-qr');
+  if (qr) { qr.hidden = true; document.getElementById('disp-qr-img').innerHTML = ''; document.getElementById('disp-enlace').value = ''; }
+}
+
+function copiarEnlaceDispositivo() {
+  const v = document.getElementById('disp-enlace').value;
+  navigator.clipboard.writeText(v)
+    .then(() => notify('Enlace copiado: ábrelo en el dispositivo a vincular', 'success'))
+    .catch(() => { document.getElementById('disp-enlace').select(); notify('Cópialo a mano: ya quedó seleccionado', 'warn'); });
+}
+
+async function desvincularDispositivo(btn) {
+  const { id, nombre } = btn.dataset;
+  if (!confirm(`¿Desvincular "${nombre}"? Si "Exigir dispositivo vinculado" está activado, ya no podrá guardar.`)) return;
+  btn.disabled = true;
+  try {
+    await apiFetch('DELETE', '/api/dispositivos', { id });
+    notify(`"${nombre}" desvinculado`, 'success');
+  } catch (e) {
+    notify(e.message || 'No se pudo desvincular', 'danger');
+  }
+  cargarDispositivos();
+}
+
+async function guardarExigirDispositivo(valor) {
+  const toggle = document.getElementById('toggle-exigir-disp');
+  if (valor && !dispositivosLista.length &&
+      !confirm('No hay dispositivos vinculados: Conteos y Devoluciones dejarán de poder guardar desde cualquier equipo. ¿Activarlo igual?')) {
+    toggle.checked = false;
+    return;
+  }
+  try {
+    await apiPost('/api/config', { clave: 'exigir_dispositivo', valor: String(valor) });
+    notify(valor ? 'Ahora solo los dispositivos vinculados pueden guardar' : 'Cualquier dispositivo puede volver a guardar', valor ? 'success' : 'warn');
+  } catch (e) {
+    toggle.checked = !valor;
+    notify(e.message || 'No se pudo guardar la configuración', 'danger');
+  }
+  cargarDispositivos();
 }
 
 /* ── CONTEOS: PERSONAS Y MESAS ────────────────────────

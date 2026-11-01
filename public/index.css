@@ -1641,3 +1641,13 @@ body {
 .nav-toggle-row:last-child { border-bottom: none; }
 .nav-toggle-row .nav-toggle-estado { margin-left: auto; font-size: 12px; color: var(--muted); }
 .nav-toggle-row .nav-toggle-estado.on { color: var(--accent); }
+
+/* ── Dispositivos vinculados (Configuración) ── */
+.disp-qr { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 14px; padding: 12px; border: 1.5px solid var(--border); border-radius: var(--radius-md); }
+.disp-qr[hidden] { display: none; }
+.disp-qr-img { background: #fff; padding: 14px; border-radius: 8px; line-height: 0; flex-shrink: 0; }
+.disp-qr-info { flex: 1; min-width: 220px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.disp-enlace { display: flex; gap: 8px; }
+.disp-enlace input { flex: 1; min-width: 0; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 12px; font-family: var(--mono, monospace); }
+.disp-lista .inv-item { gap: 10px; }
+.disp-lista .disp-meta { font-size: 11px; color: var(--muted); }

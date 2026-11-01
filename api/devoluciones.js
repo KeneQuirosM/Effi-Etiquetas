@@ -2,6 +2,7 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requireUser } from './_auth.js';
 import { rateLimit } from './_rateLimit.js';
+import { exigirDispositivo } from './_dispositivo.js';
 
 const MAX_GUIAS = 50000;
 const CHUNK = 1000;
@@ -25,6 +26,8 @@ export default async function handler(req, res) {
     // Las guías que ya existían conservan su fecha original.
     if (req.method === 'POST') {
       if (!rateLimit(req, res, { max: 10, windowMs: 60000 })) return;
+      // Con "Exigir dispositivo vinculado" encendido, solo equipos vinculados por QR
+      if (!(await exigirDispositivo(req, res))) return;
 
       const { guias } = req.body || {};
       if (!Array.isArray(guias) || !guias.length) {
