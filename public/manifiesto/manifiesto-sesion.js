@@ -93,7 +93,6 @@
       nombreRuta: window.nombreRuta,
       piloto: window.piloto,
       bodeguero: window.bodeguero,
-      crucesActivos: Array.isArray(crucesActivos) ? crucesActivos.slice() : [],
       empleado: campoEmpleado ? campoEmpleado.value : '',
       mensajero: campoMensajero ? campoMensajero.value : '',
       transportadora: campoTransportadora ? campoTransportadora.value : '',
@@ -277,7 +276,6 @@
       if (etiquetaArchivo) etiquetaArchivo.textContent = previo.etiqueta;
     }
     if (campoArchivo) campoArchivo.value = '';
-    if (typeof cerrarModalCruces === 'function') cerrarModalCruces();
     const guardado = avisoPendiente ? leerAvance() : null;
     if (guardado) ofrecerAvance(guardado);
     else { avisoPendiente = false; ocultarAviso(); }
@@ -588,10 +586,6 @@
         const el = document.getElementById(id);
         if (el) el.textContent = v;
       });
-
-      crucesActivos.length = 0;
-      (Array.isArray(s.crucesActivos) ? s.crucesActivos : []).forEach(c => crucesActivos.push(c));
-      if (crucesActivos.length) mostrarIconoNotificacion(crucesActivos); else ocultarIconoNotificacion();
 
       if (campos) {
         if (campoEmpleado) campoEmpleado.value = s.empleado || '';

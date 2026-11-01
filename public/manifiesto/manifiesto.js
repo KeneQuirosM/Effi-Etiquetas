@@ -120,7 +120,7 @@ function onScanEnter(e) {
   updateStats();
 }
 
-// Extrae guías, metadatos de ruta y verifica cruces desde un Excel de manifiesto ya parseado
+// Extrae guías y metadatos de ruta desde un Excel de manifiesto ya parseado
 function processExcelManifest(rows) {
   const infoRuta = document.getElementById("infoRuta");
   const infoPiloto = document.getElementById("infoPiloto");
@@ -147,22 +147,6 @@ function processExcelManifest(rows) {
 
   // Extraer guías
   const guias = cells.filter(val => guiaRegex.test(val)).map(guia => normalizarGuia(guia));
-
-  // Verificar cruces de ruta (solo para Excel)
-  const lhCodesInManifesto = extraerLHCodes(rows);
-  const destinatarios = extraerDestinatarios(rows);
-
-  if (lhCodesInManifesto.length > 0) {
-    const posiblesCruces = verificarCrucesDeRuta(lhCodesInManifesto, destinatarios);
-    const crucesImportantes = posiblesCruces.filter(cruce =>
-      cruce.tipo === "DESTINATARIO_INCORRECTO"
-    );
-    if (crucesImportantes.length > 0) {
-      notify(`${crucesImportantes.length} destinatario(s) en ruta incorrecta`, 'warning');
-      mostrarModalCruces(crucesImportantes);
-      mostrarIconoNotificacion(crucesImportantes);
-    }
-  }
 
   notify(`Excel: ${guias.length} guías encontradas`, 'success');
 
@@ -709,21 +693,6 @@ function openComparativoWindow() {
   win.document.write(html);
   win.document.close();
 }
-
-// ====== CRUCES ======
-const lhDestinatarios = {
-  "LH001": ["AGENCIA CAÑAS", "AGENCIA LIBERIA"], "LH002": ["AGENCIA BUENOS AIRES", "DIGITAL SAT PEREZ ZELEDON"], "LH003": ["AGENCIA LIMON"], "LH004": ["AGENCIA CIUDAD QUESADA"], "LH005": ["AGENCIA JACO", "AGENCIA PUNTARENAS"], "LH006": ["AGENCIA PLAZA GRECIA", "AGENCIA SAN RAMON"], "LH019": ["AGENCIA GUAPILES"], "LH021": ["AGENCIA SANTA CRUZ"]
-};
-function extraerLHCodes(rows) { const codes = new Set(); rows.forEach(row => { if(Array.isArray(row)) row.forEach(cell => { const v = String(cell).trim(); if(/^LH\d{2,3}$/i.test(v)) codes.add(v.toUpperCase()); const m = v.match(/ruta\s*[:\-]\s*(LH\d{2,3})/i); if(m) codes.add(m[1].toUpperCase()); }); }); return Array.from(codes); }
-function extraerDestinatarios(rows) { const dest = new Set(); for(let i=2; i<rows.length; i++) { const row = rows[i]; if(Array.isArray(row) && row[3]) { const d = String(row[3]).trim().toUpperCase(); if(d && d !== "DESTINATARIO" && d.length > 2) dest.add(d); } } return Array.from(dest); }
-function verificarCrucesDeRuta(lhCodes, destinatarios) { const cruces = []; lhCodes.forEach(code => { if(!lhDestinatarios[code]) cruces.push({ tipo: "LH_INEXISTENTE", motivo: `${code} no existe` }); }); return cruces; }
-function mostrarModalCruces(cruces) { let modal = document.getElementById('crucesModal'); if(!modal){ modal=document.createElement('div'); modal.id='crucesModal'; modal.className='modal'; document.body.appendChild(modal); } modal.innerHTML = `<div class="modal-content"><div class="modal-header"><h3>Cruces</h3><span onclick="cerrarModalCruces()">&times;</span></div><div class="modal-body">${cruces.map(c=>`<div>${esc(c.motivo)}</div>`).join('')}</div></div>`; modal.style.display='block'; }
-function cerrarModalCruces() { const m = document.getElementById('crucesModal'); if(m) m.style.display='none'; }
-let crucesActivos = [];
-function mostrarIconoNotificacion(cruces) { crucesActivos=cruces; const icono=document.getElementById('notificationIcon'); if(icono && cruces.length) icono.style.display='flex'; }
-function ocultarIconoNotificacion() { const i=document.getElementById('notificationIcon'); if(i) i.style.display='none'; }
-function abrirModalCrucesDesdeIcono() { if(crucesActivos.length) mostrarModalCruces(crucesActivos); }
-function limpiarNotificaciones() { ocultarIconoNotificacion(); cerrarModalCruces(); }
 
 // ====== BUSCADOR DE TABLA ======
 
