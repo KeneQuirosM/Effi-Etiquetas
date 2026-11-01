@@ -35,8 +35,12 @@ function esc(str) {
  * cualquier página sin depender del CSS/HTML propio de cada módulo
  * (necesario para reporte_distribuidor_proveedor.html, que no tenía
  * ninguna infraestructura de toasts).
+ *
+ * accion (opcional): { texto, alHacer } agrega un botón al toast (p. ej.
+ * "Deshacer"); al tocarlo se llama alHacer() y el toast se cierra.
+ * Devuelve { cerrar() } para cerrarlo antes de tiempo.
  */
-function notify(msg, type = 'info', duration) {
+function notify(msg, type = 'info', duration, accion) {
   const TYPE_ALIASES = {
     success: 'success', ok: 'success',
     danger: 'error', err: 'error', error: 'error',
@@ -53,12 +57,37 @@ function notify(msg, type = 'info', duration) {
     container = document.createElement('div');
     container.id = '__notify_container';
     container.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:360px';
+    container.setAttribute('role', 'status');
+    container.setAttribute('aria-live', 'polite');
     document.body.appendChild(container);
   }
 
   const toast = document.createElement('div');
   toast.style.cssText = `pointer-events:auto;background:#1a1a2e;color:#fff;border-left:4px solid ${COLORS[kind]};border-radius:6px;padding:10px 14px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:.92rem;line-height:1.4;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s`;
   toast.innerHTML = `${ICONS[kind]} ${esc(msg)}`;
+
+  let cerrado = false;
+  const cerrar = () => {
+    if (cerrado) return;
+    cerrado = true;
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(8px)';
+    setTimeout(() => toast.remove(), 250);
+  };
+
+  if (accion && accion.texto) {
+    toast.style.display = 'flex';
+    toast.style.alignItems = 'center';
+    toast.style.gap = '12px';
+    toast.innerHTML = `<span style="flex:1">${ICONS[kind]} ${esc(msg)}</span>`;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = accion.texto;
+    btn.style.cssText = 'flex-shrink:0;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.55);border-radius:4px;padding:3px 10px;font:inherit;font-weight:600;cursor:pointer';
+    btn.addEventListener('click', () => { cerrar(); accion.alHacer(); });
+    toast.appendChild(btn);
+  }
+
   container.appendChild(toast);
 
   requestAnimationFrame(() => {
@@ -66,11 +95,8 @@ function notify(msg, type = 'info', duration) {
     toast.style.transform = 'translateY(0)';
   });
 
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(8px)';
-    setTimeout(() => toast.remove(), 250);
-  }, duration);
+  setTimeout(cerrar, duration);
+  return { cerrar };
 }
 
 /* ── DEBOUNCE ─────────────────────────────────────────── */

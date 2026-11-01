@@ -134,7 +134,8 @@ async function loadData() {
     notify('Cargando inventario...', '');
     const data = await apiGet('/api/tiendas');
     appData = data;
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    ocultarBorradosPendientes();   // siguen en la base hasta que vence el "Deshacer"
+    localStorage.setItem(CACHE_KEY, JSON.stringify(appData));
     isOffline = false;
     hideOfflineBanner();
     hideToast();
@@ -406,7 +407,16 @@ async function addProducto() {
   if (!newId) return notify('El ID es requerido', 'danger');
   if (!newNombre) return notify('El nombre es requerido', 'danger');
   const tienda = getTienda(tiendaIdx);
+  const repetido = productoConCodigo(tienda, newId);
+  if (repetido) {
+    notify(`Ya existe el ID ${newId} en ${tienda.nombre}: "${repetido.producto}"`, 'danger');
+    const campo = document.getElementById('c-new-id');
+    campo.focus(); campo.select();
+    return;
+  }
   try {
+    // Si ese código tiene un borrado pendiente, borrarlo ya (si no, la base lo rechaza como repetido)
+    await confirmarBorradoPendientePorCodigo(tienda.id, newId);
     await apiPost('/api/productos', { tienda_id: tienda.id, codigo: newId, nombre: newNombre });
     await loadData();
     populateTiendas();
@@ -434,25 +444,106 @@ async function addTienda() {
   } catch(e) { notify(e.message, 'danger'); }
 }
 
-async function removeProducto(tiendaIdx, productId) {
+/* ── ELIMINAR PRODUCTO CON "DESHACER" ─────────────────────
+ * El producto desaparece de la pantalla al instante y el aviso ofrece
+ * "Deshacer" durante DESHACER_MS; recién al vencer el plazo se borra en la
+ * base. Se demora el borrado (en vez de borrar y volver a crearlo al
+ * deshacer) porque recrearlo le daría otro id y perdería el vínculo con
+ * StockForge (skus.producto_id) que actualiza la ubicación del QR.
+ * Si la página o la sesión se cierran antes, el borrado se envía igual.
+ */
+const DESHACER_MS = 6000;
+const borradosPendientes = new Map();   // _dbId -> { tiendaId, item, indice, timer, aviso }
+
+// Busca en la tienda un producto con ese código (como el UNIQUE de la base)
+function productoConCodigo(tienda, codigo, excluirDbId) {
+  if (!tienda) return null;
+  return tienda.inventario.find(i => String(i.id).trim() === codigo && String(i._dbId) !== String(excluirDbId)) || null;
+}
+
+function refrescarVistasTienda(tiendaId) {
+  renderManageList();
+  if (String(document.getElementById('select-tienda').value) === String(tiendaId)) {
+    populateInventario(String(tiendaId), document.getElementById('select-producto'), document.getElementById('select-id'));
+  }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(appData)); } catch (_) {}
+}
+
+function ocultarBorradosPendientes() {
+  if (!borradosPendientes.size) return;
+  appData.tiendas.forEach(t => {
+    t.inventario = t.inventario.filter(i => !borradosPendientes.has(i._dbId));
+  });
+}
+
+function removeProducto(tiendaIdx, productId) {
   if (guardOffline()) return;
   const t = getTienda(tiendaIdx);
   if (!t) return;
-  const inv = t.inventario;
-  const item = inv.find(i => i.id === productId);
-  if (!item) return;
-  try {
-    await apiDelete('/api/productos', { id: item._dbId });
-    await loadData();
-    renderManageList();
-    const mainIdx = document.getElementById('select-tienda').value;
-    if (mainIdx == tiendaIdx) {
-      populateInventario(tiendaIdx, document.getElementById('select-producto'), document.getElementById('select-id'));
-      updatePreview();
-    }
-    notify('Producto eliminado');
-  } catch(e) { notify(e.message, 'danger'); }
+  const indice = t.inventario.findIndex(i => i.id === productId);
+  if (indice < 0) return;
+  const item = t.inventario[indice];
+  t.inventario.splice(indice, 1);
+  refrescarVistasTienda(t.id);
+
+  const pendiente = { tiendaId: t.id, item, indice };
+  pendiente.timer = setTimeout(() => confirmarBorrado(item._dbId), DESHACER_MS);
+  pendiente.aviso = notify(`Producto "${item.producto}" eliminado`, 'info', DESHACER_MS,
+    { texto: 'Deshacer', alHacer: () => deshacerBorrado(item._dbId) });
+  borradosPendientes.set(item._dbId, pendiente);
 }
+
+function reinsertarProducto(p) {
+  const t = getTienda(p.tiendaId);
+  if (!t || t.inventario.some(i => i._dbId === p.item._dbId)) return;
+  t.inventario.splice(Math.min(p.indice, t.inventario.length), 0, p.item);
+  refrescarVistasTienda(p.tiendaId);
+}
+
+function deshacerBorrado(dbId) {
+  const p = borradosPendientes.get(dbId);
+  if (!p) return;
+  clearTimeout(p.timer);
+  borradosPendientes.delete(dbId);
+  reinsertarProducto(p);
+  notify(`"${p.item.producto}" restaurado`, 'success');
+}
+
+async function confirmarBorrado(dbId) {
+  const p = borradosPendientes.get(dbId);
+  if (!p) return;
+  clearTimeout(p.timer);
+  borradosPendientes.delete(dbId);
+  p.aviso?.cerrar();
+  try {
+    await apiDelete('/api/productos', { id: dbId });
+  } catch (e) {
+    reinsertarProducto(p);
+    notify(`No se pudo eliminar "${p.item.producto}": ${e.message}`, 'danger');
+  }
+}
+
+async function confirmarBorradoPendientePorCodigo(tiendaId, codigo) {
+  for (const [dbId, p] of borradosPendientes) {
+    if (String(p.tiendaId) === String(tiendaId) && String(p.item.id).trim() === codigo) await confirmarBorrado(dbId);
+  }
+}
+
+// Al cerrar la página o la sesión no se espera el plazo: se envían ya.
+// keepalive deja terminar el pedido aunque la página se esté cerrando.
+function enviarBorradosPendientesYa() {
+  if (!borradosPendientes.size || !coordToken) return;
+  for (const [dbId, p] of borradosPendientes) {
+    clearTimeout(p.timer);
+    fetch(API + '/api/productos', {
+      method: 'DELETE', keepalive: true,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${coordToken}` },
+      body: JSON.stringify({ id: dbId })
+    }).catch(() => {});
+  }
+  borradosPendientes.clear();
+}
+window.addEventListener('pagehide', enviarBorradosPendientesYa);
 
 async function deleteTienda() {
   if (guardOffline()) return;
@@ -507,8 +598,17 @@ async function saveProductoEdit(tiendaIdx, originalId, row) {
 
   if (!newId) return notify('El ID no puede estar vacío', 'danger');
   if (!newNombre) return notify('El nombre no puede estar vacío', 'danger');
+  const tiendaEdit = getTienda(tiendaIdx);
+  const repetido = productoConCodigo(tiendaEdit, newId, dbId);
+  if (repetido) {
+    notify(`Ya existe el ID ${newId} en ${tiendaEdit.nombre}: "${repetido.producto}"`, 'danger');
+    const campo = row.querySelector('.input-id');
+    campo.focus(); campo.select();
+    return;
+  }
 
   try {
+    await confirmarBorradoPendientePorCodigo(tiendaEdit?.id, newId);
     await apiPatch('/api/productos', { id: dbId, codigo: newId, nombre: newNombre, ubicacion: newUbic || null });
     await loadData();
     renderManageList();
@@ -545,6 +645,7 @@ function toggleCoordMode() {
 }
 
 function lockCoord() {
+  enviarBorradosPendientesYa();
   coordToken = null;
   coordUnlocked = false;
   localStorage.removeItem(SESSION_KEY);
