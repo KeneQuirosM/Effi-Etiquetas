@@ -18,6 +18,44 @@ const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const FOTO_RE = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
 const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
+// Mesas y personas de conteo: se editan en el panel de coordinador
+// (Configuración > Conteos) y se guardan en "configuracion"; estos son los
+// valores mientras nadie las cambie. conteos.html las pide con
+// GET ?accion=opciones y el POST valida contra los mismos valores.
+const CLAVE_MESAS = 'conteos_mesas';
+const CLAVE_PERSONAS = 'conteos_personas';
+const MESAS_DEFECTO = 4;
+const MESAS_MAX = 50;
+const PERSONAS_DEFECTO = ['Elianeth Martinez', 'Kene Quiros', 'Cesar Navarro', 'Alexander Alvarez'];
+const VENC_ANIO_MIN = 2000, VENC_ANIO_MAX = 2100;   // fuera de esto es un error de tipeo (p. ej. 0202)
+
+async function leerOpciones() {
+  const opciones = { mesas: MESAS_DEFECTO, personas: PERSONAS_DEFECTO };
+  const { data, error } = await supabaseAdmin
+    .from('configuracion').select('clave, valor').in('clave', [CLAVE_MESAS, CLAVE_PERSONAS]);
+  if (error) { console.error('Error leyendo opciones de conteos:', error); return opciones; }
+  for (const { clave, valor } of data || []) {
+    if (clave === CLAVE_MESAS) {
+      const n = Number(valor);
+      if (Number.isInteger(n) && n >= 1 && n <= MESAS_MAX) opciones.mesas = n;
+    } else if (clave === CLAVE_PERSONAS) {
+      try {
+        const lista = JSON.parse(valor);
+        if (Array.isArray(lista)) {
+          const limpia = lista.map(x => String(x ?? '').trim()).filter(x => x && x.length <= 80);
+          if (limpia.length) opciones.personas = limpia;
+        }
+      } catch (_) { /* valor corrupto: quedan los de por defecto */ }
+    }
+  }
+  return opciones;
+}
+
+// Para comparar nombres sin importar mayúsculas, tildes ni espacios de más
+function normalizarNombre(s) {
+  return String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
 function esFechaValida(s) {
   return typeof s === 'string' && FECHA_RE.test(s) && !isNaN(Date.parse(s + 'T00:00:00Z'));
 }
@@ -47,6 +85,11 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+
+    // ── GET ?accion=opciones: mesas y personas del formulario (público) ──
+    if (req.method === 'GET' && req.query?.accion === 'opciones') {
+      return res.status(200).json(await leerOpciones());
+    }
 
     // ── ESTACIÓN DE IMPRESIÓN (solo coordinador) ──
     // La pestaña "Impresión" de index.html, abierta en la PC de la impresora,
@@ -321,9 +364,11 @@ export default async function handler(req, res) {
       if (!rateLimit(req, res, { max: 20, windowMs: 60000 })) return;
 
       const b = req.body || {};
+      const opciones = await leerOpciones();
       const tiendaId = Number(b.tienda_id);
-      const contadoPor = texto(b.contado_por, 80);
-      const mesa = entero(b.mesa, 4);
+      // Se guarda el nombre tal como está en la lista (sin variantes de escritura)
+      const contadoPor = opciones.personas.find(p => normalizarNombre(p) === normalizarNombre(b.contado_por)) || null;
+      const mesa = entero(b.mesa, opciones.mesas);
       const codigo = texto(b.producto_codigo, 64);
       const cantidad = entero(b.cantidad, 10000000);
       const cajas = entero(b.cajas, 100000);
@@ -336,8 +381,8 @@ export default async function handler(req, res) {
       const horaCierre = b.hora_cierre ? b.hora_cierre : null;
 
       if (!Number.isInteger(tiendaId) || tiendaId <= 0) return res.status(400).json({ error: 'Tienda requerida' });
-      if (!contadoPor) return res.status(400).json({ error: '"Contado por" es requerido (máx. 80 caracteres)' });
-      if (!mesa) return res.status(400).json({ error: 'Selecciona la mesa (1 a 4)' });
+      if (!contadoPor) return res.status(400).json({ error: 'Elige quién contó de la lista' });
+      if (!mesa) return res.status(400).json({ error: `Selecciona la mesa (1 a ${opciones.mesas})` });
       if (!codigo) return res.status(400).json({ error: 'El ID del producto es requerido (máx. 64 caracteres)' });
       if (cantidad === null || cantidad === undefined) return res.status(400).json({ error: 'Cantidad inválida' });
       if (!cajas) return res.status(400).json({ error: 'Las cajas deben ser un número entero de al menos 1' });
@@ -351,6 +396,12 @@ export default async function handler(req, res) {
       // Obligatoria salvo que se marque explícitamente "no tiene fecha de vencimiento"
       if (b.sin_vencimiento === true ? vencimiento !== null : !esFechaValida(vencimiento)) {
         return res.status(400).json({ error: 'Indica la fecha de vencimiento o marca que no tiene' });
+      }
+      if (vencimiento !== null) {
+        const anio = Number(vencimiento.slice(0, 4));
+        if (anio < VENC_ANIO_MIN || anio > VENC_ANIO_MAX) {
+          return res.status(400).json({ error: `Fecha de vencimiento inválida (año ${vencimiento.slice(0, 4)})` });
+        }
       }
 
       if ((horaInicio !== null && !HORA_RE.test(horaInicio)) || (horaCierre !== null && !HORA_RE.test(horaCierre))) {
@@ -418,6 +469,11 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('Error registrando conteo:', error);
+        // La base todavía tiene el CHECK viejo (mesa 1 a 4): falta re-ejecutar conteos.sql
+        if (error.code === '23514' && /mesa/.test(error.message || '')) {
+          if (fotoPath) await supabaseAdmin.storage.from(BUCKET).remove([fotoPath]);
+          return res.status(500).json({ error: `La base de datos aún no acepta la mesa ${mesa}: hay que volver a ejecutar supabase/conteos.sql` });
+        }
         if (fotoPath) await supabaseAdmin.storage.from(BUCKET).remove([fotoPath]);
         return res.status(500).json({ error: 'No se pudo registrar el conteo' });
       }

@@ -67,6 +67,33 @@ function restaurarBorrador() {
   return ['f-codigo', 'f-cantidad', 'f-cajas', 'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc', 'f-sin-lote', 'f-sin-venc'].some(id => b[id]);
 }
 
+/* ── PERSONAS Y MESAS ──
+ * Vienen de la API (se editan en Panel de coordinador > Configuración >
+ * Conteos), así no quedan fijas en el HTML. Al llegar se repone lo que ya
+ * estaba elegido: el borrador o lo recordado del último conteo; un nombre
+ * escrito antes a mano (p. ej. "kene quirós") se empareja con la lista.
+ */
+async function cargarOpciones() {
+  const selPersona = $('f-contado'), selMesa = $('f-mesa');
+  try {
+    const { personas, mesas } = await apiRequestJSON('/api/conteos?accion=opciones');
+    selPersona.innerHTML = '<option value="">-- Seleccione --</option>' +
+      personas.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    selMesa.innerHTML = '<option value="">--</option>' +
+      Array.from({ length: mesas }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
+    const borrador = leerBorrador(), prefs = leerPrefs();
+    const persona = borrador['f-contado'] || prefs.contadoPor;
+    const coincide = personas.find(n => normalizar(n) === normalizar(persona));
+    if (coincide) selPersona.value = coincide;
+    const mesa = Number(borrador['f-mesa'] || prefs.mesa);
+    if (Number.isInteger(mesa) && mesa >= 1 && mesa <= mesas) selMesa.value = String(mesa);
+  } catch (e) {
+    selPersona.innerHTML = '<option value="">No se pudo cargar la lista</option>';
+    selMesa.innerHTML = '<option value="">--</option>';
+    notify('No se pudo cargar la lista de personas y mesas. Revisa la conexión y recarga.', 'error');
+  }
+}
+
 /* ── TIENDAS Y PRODUCTOS ── */
 async function cargarTiendas() {
   const sel = $('f-tienda');
@@ -325,6 +352,56 @@ function leerFormulario() {
   return { datos, errores };
 }
 
+/* ── AVISOS DE SENTIDO COMÚN ──
+ * Datos válidos pero raros: no bloquean, piden confirmar. Los umbrales se
+ * ajustan acá si la operación lo necesita.
+ */
+const AVISO_CANTIDAD = 5000;      // unidades en un solo conteo
+const AVISO_CAJAS = 200;
+const AVISO_MEDIDA_CM = 250;      // una medida mayor suele ser un error de tipeo (1500 en vez de 15.0)
+const AVISO_VENC_ANIOS = 10;      // vencimiento más lejano que esto
+
+function hoyLocalISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function avisosSentidoComun(d) {
+  const avisos = [];
+  const cant = Number(d.cantidad), cajas = Number(d.cajas);
+  if (d.vencimiento) {
+    const hoy = hoyLocalISO();
+    const limite = `${Number(hoy.slice(0, 4)) + AVISO_VENC_ANIOS}${hoy.slice(4)}`;
+    if (d.vencimiento < hoy) avisos.push({ campo: 'f-venc', texto: `La fecha de vencimiento (${fechaCorta(d.vencimiento)}) ya pasó: el producto está vencido.` });
+    else if (d.vencimiento > limite) avisos.push({ campo: 'f-venc', texto: `La fecha de vencimiento (${fechaCorta(d.vencimiento)}) es a más de ${AVISO_VENC_ANIOS} años.` });
+  }
+  if (cant === 0) avisos.push({ campo: 'f-cantidad', texto: 'La cantidad es 0.' });
+  else if (cant > AVISO_CANTIDAD) avisos.push({ campo: 'f-cantidad', texto: `La cantidad es muy alta: ${cant.toLocaleString('es-CR')} unidades.` });
+  if (cajas > AVISO_CAJAS) avisos.push({ campo: 'f-cajas', texto: `Son muchas cajas: ${cajas.toLocaleString('es-CR')}.` });
+  if (cant > 0 && cajas > cant) avisos.push({ campo: 'f-cantidad', texto: `Hay más cajas (${cajas}) que unidades (${cant}). ¿Están invertidas?` });
+  [['f-ancho', 'ancho', d.ancho_cm], ['f-largo', 'largo', d.largo_cm], ['f-alto', 'alto', d.alto_cm]].forEach(([campo, nombre, v]) => {
+    if (v !== '' && Number(v) > AVISO_MEDIDA_CM) avisos.push({ campo, texto: `El ${nombre} es ${Number(v).toLocaleString('es-CR')} cm (más de ${(AVISO_MEDIDA_CM / 100).toLocaleString('es-CR')} m).` });
+  });
+  return avisos;
+}
+
+// Muestra los avisos; resuelve true si eligen guardar igual
+function confirmarAvisos(avisos) {
+  const dlg = $('dlg-avisos');
+  if (!dlg || typeof dlg.showModal !== 'function') {
+    return Promise.resolve(window.confirm(avisos.map(a => '- ' + a.texto).join('\n') + '\n\n¿Guardar igual?'));
+  }
+  $('dlg-avisos-lista').innerHTML = avisos.map(a => `<li>${esc(a.texto)}</li>`).join('');
+  return new Promise(resolve => {
+    const cerrar = valor => { dlg.close(); resolve(valor); };
+    $('dlg-guardar').onclick = () => cerrar(true);
+    $('dlg-revisar').onclick = () => cerrar(false);
+    dlg.oncancel = e => { e.preventDefault(); cerrar(false); };   // tecla atrás / Escape = revisar
+    dlg.showModal();
+    $('dlg-revisar').focus();
+  });
+}
+
 /* ── MENSAJE PARA WHATSAPP ── */
 function fechaCorta(iso) {
   if (!iso) return 'N/A';
@@ -365,6 +442,18 @@ async function guardarConteo(e) {
     const primero = document.querySelector('.field.invalid input, .field.invalid select');
     if (primero) primero.focus();
     return;
+  }
+  const avisos = avisosSentidoComun(datos);
+  if (avisos.length) {
+    guardando = true;   // evita un segundo envío mientras el diálogo está abierto
+    const seguir = await confirmarAvisos(avisos);
+    guardando = false;
+    if (!seguir) {
+      const campo = $(avisos[0].campo);
+      campo.focus();
+      campo.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
   }
   if (!datos.hora_cierre) {
     datos.hora_cierre = horaActual();
@@ -479,8 +568,6 @@ function nuevoConteo() {
 /* ── INICIO ── */
 (function init() {
   const prefs = leerPrefs();
-  if (prefs.contadoPor) $('f-contado').value = prefs.contadoPor;
-  if (prefs.mesa) $('f-mesa').value = prefs.mesa;
   $('f-imprimir').checked = prefs.imprimir !== false;   // marcada por defecto
 
   $('f-tienda').addEventListener('change', actualizarProductos);
@@ -519,4 +606,5 @@ function nuevoConteo() {
   actualizarNombreProducto();
 
   cargarTiendas();
+  cargarOpciones();
 })();

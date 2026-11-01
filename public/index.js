@@ -395,6 +395,7 @@ function switchTab(id) {
   if (id === 'tab-users') loadUsers();
   if (id === 'tab-devol' && !devolDias) devolPreset('semana');
   if (id === 'tab-conteos') { populateConteoTiendas(); if (!conteos) conteoPreset('semana'); }
+  if (id === 'tab-config') cargarOpcionesConteos();
 }
 
 /* ── COORD ACTIONS ─────────────────────────────────── */
@@ -2648,6 +2649,58 @@ function loadDecoracionTema(config) {
   const valor = config[DECORACION_KEY];
   decoracionTema = DECORACION_NOMBRES[valor] ? valor : 'auto';
   applyDecoracionTema();
+}
+
+/* ── CONTEOS: PERSONAS Y MESAS ────────────────────────
+ * Opciones de "Contado por" y "Mesa" de la pantalla de Conteos (celular).
+ * Se guardan en /api/config (conteos_personas como JSON, conteos_mesas);
+ * api/conteos.js las sirve con ?accion=opciones y valida contra ellas.
+ */
+const CONTEOS_MESAS_MAX = 50;
+
+async function cargarOpcionesConteos() {
+  const ta = document.getElementById('cfg-conteos-personas');
+  const inp = document.getElementById('cfg-conteos-mesas');
+  if (!ta || !inp) return;
+  try {
+    const { personas, mesas } = await apiGet('/api/conteos?accion=opciones');
+    ta.value = personas.join('\n');
+    inp.value = mesas;
+    document.getElementById('cfg-conteos-resumen').textContent =
+      `${personas.length} persona${personas.length !== 1 ? 's' : ''} · ${mesas} mesa${mesas !== 1 ? 's' : ''}`;
+  } catch (e) {
+    document.getElementById('cfg-conteos-resumen').textContent = 'No se pudo cargar';
+  }
+}
+
+async function guardarOpcionesConteos() {
+  if (guardOffline()) return;
+  const ta = document.getElementById('cfg-conteos-personas');
+  const inp = document.getElementById('cfg-conteos-mesas');
+  const btn = document.getElementById('cfg-conteos-btn');
+  const personas = ta.value.split('\n').map(x => x.trim().replace(/\s+/g, ' ')).filter(Boolean);
+  const clave = n => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const repetida = personas.find((n, i) => personas.findIndex(m => clave(m) === clave(n)) !== i);
+  const larga = personas.find(n => n.length > 80);
+  const mesas = Number(inp.value);
+
+  if (!personas.length) { notify('Escribe al menos una persona', 'danger'); ta.focus(); return; }
+  if (repetida) { notify(`"${repetida}" está repetida en la lista`, 'danger'); ta.focus(); return; }
+  if (larga) { notify(`El nombre "${larga.slice(0, 30)}..." es demasiado largo (máx. 80)`, 'danger'); ta.focus(); return; }
+  if (!Number.isInteger(mesas) || mesas < 1 || mesas > CONTEOS_MESAS_MAX) {
+    notify(`La cantidad de mesas debe ser un número entero entre 1 y ${CONTEOS_MESAS_MAX}`, 'danger'); inp.focus(); return;
+  }
+  btn.disabled = true;
+  try {
+    await apiPost('/api/config', { clave: 'conteos_personas', valor: JSON.stringify(personas) });
+    await apiPost('/api/config', { clave: 'conteos_mesas', valor: String(mesas) });
+    notify('Personas y mesas de Conteos guardadas', 'success');
+    await cargarOpcionesConteos();
+  } catch (e) {
+    notify(e.message || 'No se pudieron guardar las opciones de Conteos', 'danger');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function saveDecoracionTema(value) {

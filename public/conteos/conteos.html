@@ -35,16 +35,15 @@
             <div class="row-mesa">
                 <div class="field">
                     <label for="f-contado">Contado por <span class="req">*</span></label>
-                    <input type="text" id="f-contado" maxlength="80" placeholder="Nombre de quien contó" autocomplete="name" required>
+                    <!-- Lista y mesas: Panel de coordinador > Configuración > Conteos -->
+                    <select id="f-contado" required>
+                        <option value="">Cargando...</option>
+                    </select>
                 </div>
                 <div class="field">
                     <label for="f-mesa">Mesa <span class="req">*</span></label>
                     <select id="f-mesa" required>
                         <option value="">--</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
                     </select>
                 </div>
             </div>
@@ -166,6 +165,16 @@
             <button type="submit" class="btn btn-primary btn-block" id="btn-guardar">Guardar conteo</button>
         </div>
     </form>
+
+    <!-- AVISOS DE SENTIDO COMÚN: datos válidos pero raros (vencido, muy lejano, cantidades exageradas) -->
+    <dialog id="dlg-avisos" class="dlg-avisos" aria-labelledby="dlg-avisos-titulo">
+        <h2 id="dlg-avisos-titulo">Revisa antes de guardar</h2>
+        <ul id="dlg-avisos-lista"></ul>
+        <div class="dlg-acciones">
+            <button type="button" class="btn btn-ghost" id="dlg-revisar">Revisar</button>
+            <button type="button" class="btn btn-primary" id="dlg-guardar">Está bien, guardar</button>
+        </div>
+    </dialog>
 
     <!-- CONFIRMACIÓN -->
     <section id="vista-ok" class="card ok-card" hidden>

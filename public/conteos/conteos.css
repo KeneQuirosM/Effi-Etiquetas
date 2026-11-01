@@ -257,3 +257,19 @@ body {
 @media (max-width: 340px) {
     .row-3 { grid-template-columns: 1fr 1fr; }
 }
+
+/* ══ AVISOS DE SENTIDO COMÚN ══ */
+.dlg-avisos {
+    margin: auto;
+    width: min(92vw, 440px);
+    border: none;
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(13,27,110,.25);
+    color: var(--neutral-800);
+}
+.dlg-avisos::backdrop { background: rgba(13,27,110,.45); }
+.dlg-avisos h2 { font-size: 17px; margin-bottom: 10px; color: var(--warning-text, #7a4f00); }
+.dlg-avisos ul { padding-left: 20px; margin-bottom: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.dlg-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dlg-acciones .btn { width: 100%; }

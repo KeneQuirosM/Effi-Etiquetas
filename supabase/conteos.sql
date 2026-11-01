@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS conteos (
   foto_path        TEXT,                   -- ruta dentro del bucket "conteos"
   hora_inicio      TIME,                   -- hora local en que empezó el conteo
   hora_cierre      TIME,                   -- hora local en que terminó
-  mesa             SMALLINT CHECK (mesa BETWEEN 1 AND 4),  -- mesa de conteo
+  mesa             SMALLINT CHECK (mesa >= 1),  -- mesa de conteo (el máximo se configura en el panel)
   en_sheets        BOOLEAN NOT NULL DEFAULT false,  -- ya copiado a Google Sheets
   imprimir         BOOLEAN NOT NULL DEFAULT false,  -- pidió etiqueta en la estación de impresión
   impreso_en       TIMESTAMPTZ,                     -- cuándo la tomó la estación
@@ -43,7 +43,12 @@ CREATE TABLE IF NOT EXISTS conteos (
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS hora_inicio TIME;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS hora_cierre TIME;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS en_sheets BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE conteos ADD COLUMN IF NOT EXISTS mesa SMALLINT CHECK (mesa BETWEEN 1 AND 4);
+ALTER TABLE conteos ADD COLUMN IF NOT EXISTS mesa SMALLINT CHECK (mesa >= 1);
+-- La cantidad de mesas ya no está fija en 4: se configura en el panel de
+-- coordinador (Configuración > Conteos) y la API valida el máximo. Acá solo
+-- se exige mesa >= 1. Reemplaza el CHECK viejo (BETWEEN 1 AND 4) si existía.
+ALTER TABLE conteos DROP CONSTRAINT IF EXISTS conteos_mesa_check;
+ALTER TABLE conteos ADD CONSTRAINT conteos_mesa_check CHECK (mesa >= 1);
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS imprimir BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS impreso_en TIMESTAMPTZ;
 ALTER TABLE conteos ADD COLUMN IF NOT EXISTS imprimir_solicitado_en TIMESTAMPTZ;
