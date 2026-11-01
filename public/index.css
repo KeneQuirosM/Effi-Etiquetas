@@ -1629,3 +1629,15 @@ body {
   margin-top: 12px; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer;
 }
 .traslado-imprimir input { width: 16px; height: 16px; accent-color: var(--primary); }
+
+/* ── Botones del menú que el coordinador ocultó (Configuración > Botones del menú) ── */
+.btn-bulk.nav-oculto { display: none !important; }
+.nav-toggles { display: flex; flex-direction: column; }
+.nav-toggle-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 2px; border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--text); cursor: pointer;
+}
+.nav-toggle-row:last-child { border-bottom: none; }
+.nav-toggle-row .nav-toggle-estado { margin-left: auto; font-size: 12px; color: var(--muted); }
+.nav-toggle-row .nav-toggle-estado.on { color: var(--accent); }

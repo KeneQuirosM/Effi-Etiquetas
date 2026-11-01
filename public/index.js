@@ -2580,23 +2580,51 @@ async function saveGroupPrintToggle(value) {
   }
 }
 
-/* ── TOGGLES BOTONES DEL MENÚ LATERAL ──────────────── */
-// Ocultos por defecto: solo se muestran si la clave vale 'true'.
-const NAV_BUTTON_KEYS = {
-  devoluciones: 'mostrar_btn_devoluciones',
-  trazabilidad: 'mostrar_btn_trazabilidad'
+/* ── BOTONES DEL MENÚ LATERAL ─────────────────────────
+ * Configuración > "Botones del menú": un interruptor por botón, guardado en
+ * /api/config como 'true'/'false'. Devoluciones y Trazabilidad conservan su
+ * clave y siguen ocultos salvo que se activen; el resto está visible salvo
+ * que se desactive. Se ocultan con la clase .nav-oculto (display:none
+ * !important) para no chocar con .coord-only, que usa style.display (Reporte
+ * se ve solo con sesión de coordinador Y el interruptor encendido).
+ */
+const NAV_BOTONES = {
+  masiva:       { clave: 'mostrar_btn_masiva',       nombre: 'Impresión Masiva',        defecto: true },
+  almacen:      { clave: 'mostrar_btn_almacen',      nombre: 'Gestión de Almacén',      defecto: true },
+  devoluciones: { clave: 'mostrar_btn_devoluciones', nombre: 'Gestión de Devoluciones', defecto: false },
+  manifiestos:  { clave: 'mostrar_btn_manifiestos',  nombre: 'Gestión de Manifiestos',  defecto: true },
+  alistamiento: { clave: 'mostrar_btn_alistamiento', nombre: 'Alistamiento',            defecto: true },
+  conteos:      { clave: 'mostrar_btn_conteos',      nombre: 'Conteos',                 defecto: true },
+  trazabilidad: { clave: 'mostrar_btn_trazabilidad', nombre: 'Trazabilidad',            defecto: false },
+  reporte:      { clave: 'mostrar_btn_reporte',      nombre: 'Reporte',                 defecto: true }
 };
-const NAV_BUTTON_NAMES = {
-  devoluciones: 'Gestión de Devoluciones',
-  trazabilidad: 'Trazabilidad'
-};
-const navButtonsVisibles = { devoluciones: false, trazabilidad: false };
+const navButtonsVisibles = Object.fromEntries(Object.entries(NAV_BOTONES).map(([k, b]) => [k, b.defecto]));
+
+// Arma una fila con interruptor por botón en Configuración
+(function renderNavToggles() {
+  const cont = document.getElementById('nav-toggles');
+  if (!cont) return;
+  cont.innerHTML = Object.entries(NAV_BOTONES).map(([k, b]) => `
+    <label class="nav-toggle-row" for="toggle-nav-${k}">
+      <span>${esc(b.nombre)}</span>
+      <span class="nav-toggle-estado" id="toggle-nav-${k}-label"></span>
+      <span class="switch-toggle">
+        <input type="checkbox" id="toggle-nav-${k}" data-nav="${k}">
+        <span class="switch-track"></span>
+      </span>
+    </label>`).join('');
+  cont.addEventListener('change', e => {
+    const k = e.target.dataset.nav;
+    if (k) saveNavButtonToggle(k, e.target.checked);
+  });
+})();
 
 function loadNavButtonToggles(config) {
   config = config || {};
-  Object.keys(NAV_BUTTON_KEYS).forEach(key => {
-    navButtonsVisibles[key] = config[NAV_BUTTON_KEYS[key]] === 'true';
-    applyNavButtonToggle(key);
+  Object.entries(NAV_BOTONES).forEach(([k, b]) => {
+    const v = config[b.clave];
+    navButtonsVisibles[k] = b.defecto ? v !== 'false' : v === 'true';
+    applyNavButtonToggle(k);
   });
 }
 
@@ -2605,11 +2633,16 @@ function applyNavButtonToggle(key) {
   const btn    = document.getElementById(`nav-btn-${key}`);
   const toggle = document.getElementById(`toggle-nav-${key}`);
   const label  = document.getElementById(`toggle-nav-${key}-label`);
-  if (btn) btn.style.display = visible ? '' : 'none';
+  if (btn) btn.classList.toggle('nav-oculto', !visible);
   if (toggle) toggle.checked = visible;
   if (label) {
-    label.textContent = visible ? 'Activado' : 'Desactivado';
-    label.style.color = visible ? 'var(--accent)' : 'var(--muted)';
+    label.textContent = visible ? 'Visible' : 'Oculto';
+    label.classList.toggle('on', visible);
+  }
+  const resumen = document.getElementById('nav-resumen');
+  if (resumen) {
+    const n = Object.values(navButtonsVisibles).filter(Boolean).length;
+    resumen.textContent = `${n} de ${Object.keys(NAV_BOTONES).length} visibles`;
   }
 }
 
@@ -2618,8 +2651,8 @@ async function saveNavButtonToggle(key, value) {
   navButtonsVisibles[key] = value;
   applyNavButtonToggle(key);
   try {
-    await apiPost('/api/config', { clave: NAV_BUTTON_KEYS[key], valor: String(value) });
-    notify(`Botón ${NAV_BUTTON_NAMES[key]} ${value ? 'activado' : 'desactivado'}`, value ? 'success' : '');
+    await apiPost('/api/config', { clave: NAV_BOTONES[key].clave, valor: String(value) });
+    notify(`Botón ${NAV_BOTONES[key].nombre} ${value ? 'visible' : 'oculto'}`, value ? 'success' : '');
   } catch {
     navButtonsVisibles[key] = previous;
     applyNavButtonToggle(key);
