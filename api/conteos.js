@@ -445,15 +445,20 @@ export default async function handler(req, res) {
         .eq('tienda_id', tiendaId).eq('codigo', codigo).maybeSingle();
 
       let fotoPath = null;
+      let avisoFoto = null;
       if (foto) {
         // Mes de Costa Rica, como la columna fecha (en UTC, desde las 18:00 del último día ya sería el mes siguiente)
         const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Costa_Rica', year: 'numeric', month: '2-digit' }).format(new Date());
         fotoPath = `${hoy}/${randomUUID()}.${EXT[foto.tipo]}`;
         const { error: upErr } = await supabaseAdmin.storage
           .from(BUCKET).upload(fotoPath, foto.buffer, { contentType: foto.tipo, upsert: false });
+        // Si el almacenamiento falla (cuota llena, bucket, etc.) el conteo se
+        // guarda igual sin foto: perder la foto es mejor que frenar el conteo.
+        // El motivo vuelve al celular para poder diagnosticarlo.
         if (upErr) {
           console.error('Error subiendo foto de conteo:', upErr);
-          return res.status(500).json({ error: 'No se pudo guardar la foto' });
+          avisoFoto = `La foto no se pudo guardar (${upErr.message || upErr.error || 'error de almacenamiento'}); el conteo se guardó sin foto.`;
+          fotoPath = null;
         }
       }
 
@@ -498,7 +503,7 @@ export default async function handler(req, res) {
       }
 
       const { id, fecha, creado_en, producto_nombre } = data;
-      return res.status(201).json({ conteo: { id, fecha, creado_en, producto_nombre } });
+      return res.status(201).json({ conteo: { id, fecha, creado_en, producto_nombre }, aviso_foto: avisoFoto });
     }
 
     // ── GET: conteos en un rango (solo coordinador) ──

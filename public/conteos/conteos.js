@@ -477,7 +477,10 @@ async function guardarConteo(e) {
       : null;
 
     $('ok-msg').textContent = ultimoMensaje;
-    $('ok-sub').textContent = `Registro #${res.conteo?.id ?? ''}${ultimaFoto ? ' · con foto' : ' · sin foto'}${datos.imprimir ? ' · etiqueta enviada a imprimir' : ''}`;
+    const fotoGuardada = ultimaFoto && !res.aviso_foto;
+    $('ok-sub').textContent = `Registro #${res.conteo?.id ?? ''}${fotoGuardada ? ' · con foto' : ' · sin foto'}${datos.imprimir ? ' · etiqueta enviada a imprimir' : ''}`;
+    // La foto no se subió pero el conteo sí: avisar (sigue disponible para WhatsApp)
+    if (res.aviso_foto) notify(res.aviso_foto, 'warn', 12000);
     $('form-conteo').hidden = true;
     $('vista-ok').hidden = false;
     window.scrollTo(0, 0);
