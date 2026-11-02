@@ -120,19 +120,19 @@
   <!-- COORDINATOR PANEL -->
   <div id="coord-panel">
     <div class="coord-header">
-      <h2>Panel de Coordinador <span class="coord-badge">ADMIN</span></h2>
+      <h2>Panel de Coordinador <span class="coord-badge" id="coord-badge">ADMIN</span></h2>
       <button class="btn-action btn-ghost" onclick="lockCoord()">Cerrar sesión</button>
     </div>
 
     <div class="coord-tabs">
-      <button class="tab-btn active" onclick="switchTab('tab-add-item')">Agregar Producto</button>
-      <button class="tab-btn" onclick="switchTab('tab-add-tienda')">Nueva Tienda</button>
-      <button class="tab-btn" onclick="switchTab('tab-manage')">Gestionar Inventario</button>
-      <button class="tab-btn" onclick="switchTab('tab-config')">Configuración</button>
-      <button class="tab-btn" onclick="switchTab('tab-users')">Usuarios</button>
-      <button class="tab-btn" onclick="switchTab('tab-devol')">Devoluciones</button>
-      <button class="tab-btn" onclick="switchTab('tab-conteos')">Conteos</button>
-      <button class="tab-btn" onclick="switchTab('tab-impresion')">Impresión</button>
+      <button class="tab-btn active" data-tab="tab-add-item" data-permiso="tab-add-item" onclick="switchTab('tab-add-item')">Agregar Producto</button>
+      <button class="tab-btn" data-tab="tab-add-tienda" data-permiso="tab-add-tienda" onclick="switchTab('tab-add-tienda')">Nueva Tienda</button>
+      <button class="tab-btn" data-tab="tab-manage" data-permiso="tab-manage" onclick="switchTab('tab-manage')">Gestionar Inventario</button>
+      <button class="tab-btn" data-tab="tab-config" onclick="switchTab('tab-config')">Configuración</button>
+      <button class="tab-btn" data-tab="tab-users" data-solo-admin onclick="switchTab('tab-users')">Usuarios y permisos</button>
+      <button class="tab-btn" data-tab="tab-devol" data-permiso="tab-devol" onclick="switchTab('tab-devol')">Devoluciones</button>
+      <button class="tab-btn" data-tab="tab-conteos" data-permiso="tab-conteos" onclick="switchTab('tab-conteos')">Conteos</button>
+      <button class="tab-btn" data-tab="tab-impresion" data-permiso="tab-impresion" onclick="switchTab('tab-impresion')">Impresión</button>
     </div>
 
     <!-- TAB: Agregar Producto -->
@@ -202,7 +202,7 @@
       <!-- Acordeón de configuración: solo una sección abierta a la vez (toggleConfigSection en index.js).
            Los controles conservan sus id, name y eventos originales. -->
       <div class="cfg-acc">
-        <section class="cfg-sec">
+        <section class="cfg-sec" data-permiso="cfg-logos">
           <div class="cfg-head">
             <button type="button" class="cfg-head-btn" aria-expanded="true" aria-controls="cfg-panel-logos">
               <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg>
@@ -248,7 +248,7 @@
             <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Logo independiente del rótulo. Si no se sube, usa el mismo que la etiqueta.</p>
           </div>
         </section>
-        <section class="cfg-sec">
+        <section class="cfg-sec" data-permiso="cfg-qr">
           <div class="cfg-head">
             <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-qr">
               <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>
@@ -266,7 +266,7 @@
             <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Muestra el código QR con la ubicación física del producto en la etiqueta. Activar cuando tengas ubicaciones asignadas en STOCKFORGE.</p>
           </div>
         </section>
-        <section class="cfg-sec">
+        <section class="cfg-sec" data-permiso="cfg-grupo">
           <div class="cfg-head">
             <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-grupo">
               <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>
@@ -283,7 +283,7 @@
             <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Habilita el botón Imprimir de cada grupo de producto en Alistamiento (orden "Agrupar por producto"). Al desactivarlo los botones quedan deshabilitados para todos los usuarios; el PDF completo y la impresión por guía siguen disponibles.</p>
           </div>
         </section>
-        <section class="cfg-sec">
+        <section class="cfg-sec" data-permiso="cfg-nav">
           <div class="cfg-head">
             <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-nav">
               <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -298,7 +298,7 @@
             <p style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:22px">Muestra u oculta cada botón del menú lateral para todos los usuarios. Ocultar un botón no bloquea la página: quien tenga el enlace puede abrirla igual. Reporte además solo aparece con sesión de coordinador.</p>
           </div>
         </section>
-        <section class="cfg-sec">
+        <section class="cfg-sec" data-permiso="cfg-decoracion">
           <div class="cfg-head">
             <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-decoracion">
               <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>
@@ -322,7 +322,7 @@
             <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Decora la pantalla del generador de etiquetas para todos los usuarios. Automática pone Halloween del 1 de octubre al 2 de noviembre y Navidad del 3 de noviembre al 6 de enero; el resto del año no hay decoración. Nunca sale en la etiqueta impresa.</p>
           </div>
         </section>
-        <section class="cfg-sec">
+        <section class="cfg-sec" data-permiso="cfg-conteos">
           <div class="cfg-head">
             <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-conteos">
               <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18.5 14a6.5 6.5 0 0 1 3 6"/></svg>
@@ -346,7 +346,7 @@
             <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">Son las opciones de "Contado por" y "Mesa" en la pantalla de Conteos del celular. Los conteos ya guardados no cambian.</p>
           </div>
         </section>
-        <section class="cfg-sec">
+        <section class="cfg-sec" data-permiso="cfg-disp">
           <div class="cfg-head">
             <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-disp">
               <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
@@ -438,7 +438,7 @@
             <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">Por seguridad se pide tu contraseña actual. La nueva debe tener al menos 6 caracteres.</p>
           </div>
         </section>
-        <section class="cfg-sec">
+        <section class="cfg-sec" data-permiso="cfg-json">
           <div class="cfg-head">
             <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-json">
               <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
@@ -471,18 +471,26 @@
       </div>
     </div>
 
-    <!-- TAB: Usuarios Coordinadores -->
+    <!-- TAB: Usuarios y permisos (solo perfil administrador) -->
     <div id="tab-users" class="tab-content">
-      <p class="section-label" style="margin-bottom:12px">Coordinadores activos</p>
+      <p class="section-label" style="margin-bottom:12px">Usuarios activos</p>
       <div class="inv-list" id="users-list">
         <div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>
       </div>
       <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
-      <p class="section-label" style="margin-bottom:10px">Nuevo Coordinador</p>
-      <div class="form-row single" style="margin-bottom:12px">
+      <p class="section-label" style="margin-bottom:10px">Nuevo usuario</p>
+      <div class="form-row" style="margin-bottom:12px">
         <div class="form-group">
           <label for="u-email">Email</label>
           <input type="email" id="u-email" placeholder="nuevo@efficommerce.com" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="u-rol">Perfil</label>
+          <select id="u-rol">
+            <option value="coordinador">Coordinador</option>
+            <option value="bodeguero">Bodeguero</option>
+            <option value="administrador">Administrador</option>
+          </select>
         </div>
       </div>
       <div class="form-row">
@@ -501,8 +509,20 @@
           </div>
         </div>
       </div>
-      <button class="btn-action btn-primary" onclick="createUser()">＋ Crear Coordinador</button>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px">El coordinador podrá iniciar sesión inmediatamente con estas credenciales.</p>
+      <button class="btn-action btn-primary" onclick="createUser()">＋ Crear usuario</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">El usuario podrá iniciar sesión inmediatamente con estas credenciales.</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+      <p class="section-label" style="margin-bottom:10px">Permisos por perfil</p>
+      <div class="perm-perfiles" role="group" aria-label="Perfil a editar">
+        <button type="button" class="perm-perfil-btn active" data-rol="coordinador" onclick="elegirPerfilPermisos('coordinador')">Coordinador</button>
+        <button type="button" class="perm-perfil-btn" data-rol="bodeguero" onclick="elegirPerfilPermisos('bodeguero')">Bodeguero</button>
+      </div>
+      <!-- Un interruptor por permiso; lo llena renderPermisos() en index.js -->
+      <div id="perm-lista" class="perm-lista">
+        <div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:22px">Apagado, ese perfil no ve la pestaña, la sección o el botón al entrar al modo coordinador. El administrador siempre ve todo, y esta pestaña solo la ve él. Un botón del menú que está oculto en Configuración &gt; Botones del menú sigue oculto para todos. Los cambios aplican la próxima vez que la persona abra el panel o recargue la página.</p>
     </div>
 
     <!-- TAB: Reporte de devoluciones (registradas al exportar en devoluciones.html) -->

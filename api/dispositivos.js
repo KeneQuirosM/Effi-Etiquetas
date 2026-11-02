@@ -1,6 +1,6 @@
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
-import { requireUser } from './_auth.js';
+import { requirePermiso } from './_permisos.js';
 import { rateLimit } from './_rateLimit.js';
 import { sha256, tokenAleatorio, exigirActivo, dispositivoDeLaPeticion } from './_dispositivo.js';
 
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     }
 
     // ── Del resto: solo coordinador ──
-    const user = await requireUser(req, res);
+    const user = await requirePermiso(req, res, 'cfg-disp');
     if (!user) return;
 
     if (req.method === 'POST' && accion === 'crear_vinculo') {

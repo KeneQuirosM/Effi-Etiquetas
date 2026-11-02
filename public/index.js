@@ -6,11 +6,13 @@ const ROTULO_LOGO_KEY = STORAGE_KEYS.ROTULO_LOGO;
 const CACHE_KEY = STORAGE_KEYS.INVENTARIO_CACHE;      // offline cache
 const SESSION_KEY = STORAGE_KEYS.COORD_SESSION;        // localStorage access token — persiste entre pestañas
 const REFRESH_KEY = 'effi_coord_refresh_v1';        // localStorage refresh token — persiste entre pestañas
+const PERFIL_KEY = 'effi_coord_perfil_v1';          // { rol, permisos } de la sesión, para aplicarlo sin esperar al servidor
 
 /* ── STATE ─────────────────────────────────────────── */
 let appData = { tiendas: [] };
 let coordToken = null;
 let coordUnlocked = false;
+let perfil = null;   // { rol, permisos } de la sesión (ver PERFILES Y PERMISOS); null = sin sesión o aún sin cargar
 let pinBuffer = '';
 let isOffline = false;
 let mostrarUbicacion = false;
@@ -186,7 +188,11 @@ function activateCoord(token, refreshToken) {
   btn.classList.add('active');
   document.getElementById('coord-icon').textContent = '';
   document.getElementById('coord-label').textContent = 'Coordinador Activo';
-  restaurarEstacion();
+  // Primero el perfil guardado (sin parpadeo), después el del servidor
+  try { perfil = JSON.parse(localStorage.getItem(PERFIL_KEY) || 'null'); } catch { perfil = null; }
+  aplicarPerfil();
+  if (puede('tab-impresion')) restaurarEstacion();
+  cargarPerfil();
 }
 
 async function checkPin() {
@@ -385,17 +391,19 @@ function filterProductos() {
 
 /* ── TAB SWITCH ────────────────────────────────────── */
 function switchTab(id) {
+  if (!puedeVerTab(id)) return;
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const tabs = ['tab-add-item','tab-add-tienda','tab-manage','tab-config','tab-users','tab-devol','tab-conteos','tab-impresion'];
-  const idx = tabs.indexOf(id);
-  if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  document.querySelector(`.tab-btn[data-tab="${id}"]`)?.classList.add('active');
   if (id === 'tab-add-tienda') populateTiendas();
-  if (id === 'tab-users') loadUsers();
+  if (id === 'tab-users') { loadUsers(); cargarPermisos(); }
   if (id === 'tab-devol' && !devolDias) devolPreset('semana');
   if (id === 'tab-conteos') { populateConteoTiendas(); if (!conteos) conteoPreset('semana'); }
-  if (id === 'tab-config') { cargarOpcionesConteos(); cargarDispositivos(); }
+  if (id === 'tab-config') {
+    if (puede('cfg-conteos')) cargarOpcionesConteos();
+    if (puede('cfg-disp')) cargarDispositivos();
+  }
 }
 
 /* ── COORD ACTIONS ─────────────────────────────────── */
@@ -639,7 +647,7 @@ function closePinModal() {
 function toggleCoordMode() {
   if (coordUnlocked) {
     const panel = document.getElementById('coord-panel');
-    panel.classList.toggle('visible');
+    if (panel.classList.toggle('visible')) cargarPerfil();
   } else {
     openPinModal();
   }
@@ -650,8 +658,11 @@ function lockCoord() {
   cancelarVinculoDispositivo();
   coordToken = null;
   coordUnlocked = false;
+  perfil = null;
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(PERFIL_KEY);
+  aplicarPerfil();
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
   devolDias = null;
   conteos = null;
@@ -2069,29 +2080,31 @@ async function loadUsers() {
   container.innerHTML = '<span class="skeleton-sr" role="status">Cargando usuarios...</span>' + skeletonRow.repeat(3);
 
   try {
-    const r = await fetch('/api/users', {
-      headers: { 'Authorization': `Bearer ${coordToken}` }
-    });
-    if (r.status === 401) { lockCoord(); return; }
-    const { users } = await r.json();
+    const { users } = await apiFetch('GET', '/api/users');
 
     if (!users?.length) {
       container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Sin usuarios registrados</span></div>';
       return;
     }
 
+    const opciones = rol => Object.entries(ROL_NOMBRES)
+      .map(([k, n]) => `<option value="${k}"${k === rol ? ' selected' : ''}>${n}</option>`).join('');
     container.innerHTML = users.map(u => `
       <div class="inv-item">
-        <span class="item-name">${esc(u.email)}</span>
+        <span class="item-name">${esc(u.email)}${u.yo ? ' <span class="user-yo">(tú)</span>' : ''}</span>
         <span style="font-size:11px;color:var(--muted);margin-left:8px">
           ${new Date(u.created_at).toLocaleDateString('es-CR')}
         </span>
-        <button type="button" class="user-del-btn" onclick="askDeleteUser(this)"
+        <select class="user-rol" data-id="${esc(String(u.id))}" data-email="${esc(u.email)}" data-rol="${esc(u.rol)}"
+          aria-label="Perfil de ${esc(u.email)}" ${u.yo ? 'disabled title="No puedes cambiar tu propio perfil"' : ''}
+          onchange="cambiarRolUsuario(this)">${opciones(u.rol)}</select>
+        ${u.yo ? '' : `<button type="button" class="user-del-btn" onclick="askDeleteUser(this)"
           data-id="${esc(String(u.id))}" data-email="${esc(u.email)}"
-          title="Eliminar coordinador" aria-label="Eliminar coordinador ${esc(u.email)}">${TRASH_ICON_SVG}</button>
+          title="Eliminar usuario" aria-label="Eliminar usuario ${esc(u.email)}">${TRASH_ICON_SVG}</button>`}
       </div>
     `).join('');
-  } catch {
+  } catch (e) {
+    if (e.message === 'Sesión expirada') return;
     container.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--danger)">Error al cargar usuarios</span></div>';
   }
 }
@@ -2145,44 +2158,47 @@ async function createUser() {
   const email   = document.getElementById('u-email').value.trim();
   const pass    = document.getElementById('u-password').value;
   const confirm = document.getElementById('u-password-confirm').value;
+  const rol     = document.getElementById('u-rol').value;
 
   if (!email)              return notify('Email requerido', 'danger');
   if (!pass || pass.length < 6) return notify('Contraseña mínimo 6 caracteres', 'danger');
   if (pass !== confirm)    return notify('Las contraseñas no coinciden', 'danger');
 
   try {
-    const r = await fetch('/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${coordToken}` },
-      body: JSON.stringify({ email, password: pass })
-    });
-    const data = await r.json();
-    if (!r.ok) return notify(data.error || 'Error al crear usuario', 'danger');
-
+    await apiPost('/api/users', { email, password: pass, rol });
     document.getElementById('u-email').value = '';
     document.getElementById('u-password').value = '';
     document.getElementById('u-password-confirm').value = '';
-    notify(`Coordinador "${email}" creado`, 'success');
+    notify(`${ROL_NOMBRES[rol]} "${email}" creado`, 'success');
     loadUsers();
-  } catch {
-    notify('Error de conexión', 'danger');
+  } catch (e) {
+    if (e.message !== 'Sesión expirada') notify(e.message || 'Error al crear usuario', 'danger');
   }
 }
 
 async function deleteUser(id, email) {
   try {
-    const r = await fetch('/api/users', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${coordToken}` },
-      body: JSON.stringify({ id })
-    });
-    const data = await r.json();
-    if (!r.ok) return notify(data.error || 'Error al eliminar', 'danger');
-
-    notify(`Coordinador "${email}" eliminado`, 'danger');
+    await apiDelete('/api/users', { id });
+    notify(`Usuario "${email}" eliminado`, 'danger');
     loadUsers();
-  } catch {
-    notify('Error de conexión', 'danger');
+  } catch (e) {
+    if (e.message !== 'Sesión expirada') notify(e.message || 'Error al eliminar', 'danger');
+  }
+}
+
+async function cambiarRolUsuario(sel) {
+  const { id, email, rol: anterior } = sel.dataset;
+  const rol = sel.value;
+  sel.disabled = true;
+  try {
+    await apiPatch('/api/users', { id, rol });
+    sel.dataset.rol = rol;
+    notify(`${email} ahora es ${ROL_NOMBRES[rol]}`, 'success');
+  } catch (e) {
+    sel.value = anterior;
+    if (e.message !== 'Sesión expirada') notify(e.message || 'No se pudo cambiar el perfil', 'danger');
+  } finally {
+    sel.disabled = false;
   }
 }
 
@@ -2663,6 +2679,158 @@ async function saveNavButtonToggle(key, value) {
     notify('Error al guardar configuración', 'danger');
   }
 }
+
+/* ── PERFILES Y PERMISOS ──────────────────────────────
+ * Tres perfiles: administrador, coordinador y bodeguero. El perfil vive en
+ * Supabase Auth (app_metadata.rol) y los permisos de coordinador y bodeguero
+ * en /api/config (permisos_roles); GET /api/users?accion=yo devuelve los de
+ * la sesión ya resueltos (api/_permisos.js tiene la lista y los valores por
+ * defecto, las claves de PERMISOS_UI deben coincidir). Lo que el perfil no
+ * puede ver se oculta con .rol-oculto, aparte de .nav-oculto (el interruptor
+ * global de Botones del menú), así un botón se ve solo si los dos lo dejan.
+ * El administrador ve todo y es el único que ve "Usuarios y permisos".
+ * La API además rechaza (403) guardar en Configuración y en Dispositivos sin
+ * el permiso de esa sección, y todo lo de usuarios y permisos sin ser admin.
+ */
+const ROL_NOMBRES = { administrador: 'Administrador', coordinador: 'Coordinador', bodeguero: 'Bodeguero' };
+
+function puede(permiso) {
+  if (!coordUnlocked) return false;
+  if (!perfil || perfil.rol === 'administrador') return true;   // sin perfil cargado: como antes, todo visible
+  return perfil.permisos?.[permiso] !== false;
+}
+function esAdmin() {
+  return coordUnlocked && (!perfil || perfil.rol === 'administrador');
+}
+function puedeVerTab(id) {
+  const btn = document.querySelector(`.tab-btn[data-tab="${id}"]`);
+  if (!btn) return true;
+  if (btn.hasAttribute('data-solo-admin')) return esAdmin();
+  return !btn.dataset.permiso || puede(btn.dataset.permiso);
+}
+
+function aplicarPerfil() {
+  const conSesion = coordUnlocked;
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+    btn.classList.toggle('rol-oculto', conSesion && !puedeVerTab(btn.dataset.tab));
+  });
+  document.querySelectorAll('#tab-config .cfg-sec[data-permiso]').forEach(sec => {
+    sec.classList.toggle('rol-oculto', conSesion && !puede(sec.dataset.permiso));
+  });
+  // Botones del menú: sin sesión no se aplica el perfil (solo el interruptor global)
+  Object.keys(NAV_BOTONES).forEach(k => {
+    document.getElementById(`nav-btn-${k}`)?.classList.toggle('rol-oculto', conSesion && !puede(`nav-${k}`));
+  });
+  const badge = document.getElementById('coord-badge');
+  if (badge) badge.textContent = (conSesion && perfil ? ROL_NOMBRES[perfil.rol] : 'Administrador').toUpperCase();
+
+  if (!conSesion) return;
+  // Si la pestaña abierta quedó oculta, pasar a la primera visible
+  const activa = document.querySelector('.tab-btn.active');
+  if (!activa || activa.classList.contains('rol-oculto')) {
+    // Configuración al final: para quien solo tiene "Cambiar contraseña" no es lo primero
+    const primera = document.querySelector('.tab-btn[data-tab]:not(.rol-oculto):not([data-tab="tab-config"])')
+      || document.querySelector('.tab-btn[data-tab="tab-config"]');
+    if (primera) switchTab(primera.dataset.tab);
+  }
+  if (!puede('tab-impresion') && estacion.activa) detenerEstacion(false);
+}
+
+async function cargarPerfil() {
+  if (!coordUnlocked) return;
+  try {
+    const data = await apiFetch('GET', '/api/users?accion=yo');
+    if (!coordUnlocked) return;   // se cerró la sesión mientras tanto
+    perfil = { rol: data.rol, permisos: data.permisos || {} };
+    try { localStorage.setItem(PERFIL_KEY, JSON.stringify(perfil)); } catch (_) {}
+    aplicarPerfil();
+  } catch (_) { /* sin conexión: queda el perfil guardado */ }
+}
+
+// Editor de permisos (pestaña Usuarios y permisos, solo administrador)
+function permisosUI() {
+  return [
+    { titulo: 'Pestañas del panel', items: [
+      ['tab-add-item', 'Agregar Producto'], ['tab-add-tienda', 'Nueva Tienda'],
+      ['tab-manage', 'Gestionar Inventario'], ['tab-devol', 'Devoluciones'],
+      ['tab-conteos', 'Conteos'], ['tab-impresion', 'Impresión']
+    ] },
+    { titulo: 'Secciones de Configuración', items: [
+      ['cfg-logos', 'Logos'], ['cfg-qr', 'QR de ubicación'], ['cfg-grupo', 'Imprimir por grupo (Alistamiento)'],
+      ['cfg-nav', 'Botones del menú'], ['cfg-decoracion', 'Decoración de temporada'],
+      ['cfg-conteos', 'Conteos: personas y mesas'], ['cfg-disp', 'Dispositivos vinculados'],
+      ['cfg-json', 'Datos de inventario (JSON)']
+    ] },
+    { titulo: 'Botones del menú lateral', items:
+      Object.entries(NAV_BOTONES).map(([k, b]) => [`nav-${k}`, b.nombre]) }
+  ];
+}
+let permisosRoles = null;          // { coordinador: {...}, bodeguero: {...} }
+let perfilPermisosEditado = 'coordinador';
+
+async function cargarPermisos() {
+  const cont = document.getElementById('perm-lista');
+  if (!cont) return;
+  try {
+    permisosRoles = await apiFetch('GET', '/api/users?accion=permisos');
+    renderPermisos();
+  } catch (e) {
+    if (e.message === 'Sesión expirada') return;
+    cont.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--danger)">No se pudieron cargar los permisos</span></div>';
+  }
+}
+
+function elegirPerfilPermisos(rol) {
+  perfilPermisosEditado = rol;
+  document.querySelectorAll('.perm-perfil-btn').forEach(b => {
+    const activo = b.dataset.rol === rol;
+    b.classList.toggle('active', activo);
+    b.setAttribute('aria-pressed', String(activo));
+  });
+  renderPermisos();
+}
+
+function renderPermisos() {
+  const cont = document.getElementById('perm-lista');
+  if (!cont || !permisosRoles) return;
+  const p = permisosRoles[perfilPermisosEditado] || {};
+  cont.innerHTML = permisosUI().map(g => {
+    const n = g.items.filter(([k]) => p[k] !== false).length;
+    return `
+    <div class="perm-grupo">
+      <p class="perm-grupo-titulo">${esc(g.titulo)} <span class="cfg-summary">${n} de ${g.items.length}</span></p>
+      ${g.items.map(([k, nombre]) => {
+        const on = p[k] !== false;
+        return `
+        <label class="nav-toggle-row" for="perm-${k}">
+          <span>${esc(nombre)}</span>
+          <span class="nav-toggle-estado${on ? ' on' : ''}">${on ? 'Visible' : 'Oculto'}</span>
+          <span class="switch-toggle">
+            <input type="checkbox" id="perm-${k}" data-permiso="${k}"${on ? ' checked' : ''}>
+            <span class="switch-track"></span>
+          </span>
+        </label>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('perm-lista')?.addEventListener('change', async e => {
+  const k = e.target.dataset.permiso;
+  if (!k || !permisosRoles) return;
+  const rol = perfilPermisosEditado;
+  const anterior = permisosRoles[rol][k];
+  permisosRoles[rol][k] = e.target.checked;
+  renderPermisos();
+  try {
+    await apiPost('/api/users?accion=permisos', { permisos: permisosRoles });
+    notify(`Permisos de ${ROL_NOMBRES[rol]} guardados`, 'success', 1800);
+  } catch (err) {
+    permisosRoles[rol][k] = anterior;
+    renderPermisos();
+    if (err.message !== 'Sesión expirada') notify(err.message || 'No se pudieron guardar los permisos', 'danger');
+  }
+});
 
 /* ── DECORACIÓN DE TEMPORADA ──────────────────────── */
 // Tema global elegido por el coordinador; aplicarDecoracion() vive en decoracion.js.

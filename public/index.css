@@ -1642,6 +1642,26 @@ body {
 .nav-toggle-row .nav-toggle-estado { margin-left: auto; font-size: 12px; color: var(--muted); }
 .nav-toggle-row .nav-toggle-estado.on { color: var(--accent); }
 
+/* ── Perfiles y permisos (Usuarios y permisos) ── */
+/* Lo que el perfil de la sesión no puede ver; aparte de .nav-oculto (interruptor global) */
+.tab-btn.rol-oculto, .cfg-sec.rol-oculto, .btn-bulk.rol-oculto { display: none !important; }
+#users-list .user-yo { font-size: 11px; color: var(--muted); font-weight: 400; }
+#users-list .user-rol {
+  margin-left: auto; padding: 4px 8px; font: inherit; font-size: 12px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--panel); color: var(--text);
+}
+#users-list .user-rol:disabled { opacity: .6; }
+#users-list .inv-item .user-rol + .user-del-btn { margin-left: 8px; }
+.perm-perfiles { display: inline-flex; gap: 4px; padding: 3px; margin-bottom: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; }
+.perm-perfil-btn {
+  border: none; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500;
+  padding: 6px 16px; border-radius: 999px; cursor: pointer;
+}
+.perm-perfil-btn.active { background: var(--panel); color: var(--primary); box-shadow: var(--shadow-xs); font-weight: 600; }
+.perm-lista { display: flex; flex-direction: column; gap: 14px; }
+.perm-grupo { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 6px 12px; }
+.perm-grupo-titulo { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 2px; font-size: 12px; font-weight: 600; color: var(--text); }
+
 /* ── Dispositivos vinculados (Configuración) ── */
 .disp-qr { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 14px; padding: 12px; border: 1.5px solid var(--border); border-radius: var(--radius-md); }
 .disp-qr[hidden] { display: none; }

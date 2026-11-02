@@ -1,6 +1,24 @@
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
-import { requireUser } from './_auth.js';
+import { requirePermiso, PERMISOS_CLAVE } from './_permisos.js';
+
+// Permiso (sección de Configuración) que hace falta para guardar cada clave.
+// Una clave que no está aquí la puede guardar solo el administrador.
+const PERMISO_DE_CLAVE = {
+  sf_logo:                     'cfg-logos',   // STORAGE_KEYS.LOGO
+  effi_rotulo_logo_v1:         'cfg-logos',   // STORAGE_KEYS.ROTULO_LOGO
+  mostrar_ubicacion:           'cfg-qr',
+  alistamiento_imprimir_grupo: 'cfg-grupo',
+  decoracion_tema:             'cfg-decoracion',
+  conteos_personas:            'cfg-conteos',
+  conteos_mesas:               'cfg-conteos',
+  exigir_dispositivo:          'cfg-disp'
+};
+function permisoDeClave(clave) {
+  if (PERMISO_DE_CLAVE[clave]) return PERMISO_DE_CLAVE[clave];
+  if (/^mostrar_btn_/.test(clave)) return 'cfg-nav';
+  return null;
+}
 
 export default async function handler(req, res) {
   setCors(req, res, 'GET, POST, OPTIONS');
@@ -28,14 +46,18 @@ export default async function handler(req, res) {
 
     // ── POST: guardar configuración ──
     if (req.method === 'POST') {
-      const user = await requireUser(req, res);
-      if (!user) return;
-
-      const { clave, valor } = req.body;
+      const { clave, valor } = req.body || {};
 
       if (!clave || valor === undefined) {
         return res.status(400).json({ error: 'clave y valor requeridos' });
       }
+      // Los permisos se guardan validados por /api/users?accion=permisos
+      if (clave === PERMISOS_CLAVE) {
+        return res.status(400).json({ error: 'Usa /api/users?accion=permisos' });
+      }
+
+      const user = await requirePermiso(req, res, permisoDeClave(clave));
+      if (!user) return;
 
       const { error } = await supabaseAdmin.rpc('upsert_config', {
         p_clave: clave,

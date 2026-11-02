@@ -1,0 +1,115 @@
+import { supabaseAdmin } from './_supabase.js';
+import { requireUser } from './_auth.js';
+
+/**
+ * Perfiles y permisos del modo coordinador.
+ *
+ * El perfil vive en app_metadata.rol del usuario de Supabase Auth (solo la
+ * service-role key puede cambiarlo, el usuario no). Los usuarios que ya
+ * existían antes de los perfiles no tienen rol y cuentan como administrador,
+ * para que nadie pierda acceso al subir esto; los que se crean desde ahora
+ * siempre llevan un rol explícito.
+ *
+ * Los permisos de coordinador y bodeguero se guardan como JSON en
+ * configuracion.permisos_roles ({ coordinador: { clave: bool }, bodeguero: {...} }).
+ * El administrador tiene todo siempre. Una clave que falta en el JSON toma el
+ * valor por defecto de PERMISOS, así un permiso nuevo no cambia nada hasta
+ * que el administrador lo toque. Las claves deben coincidir con PERMISOS_UI
+ * en public/index.js.
+ */
+export const ROLES = ['administrador', 'coordinador', 'bodeguero'];
+export const ROLES_EDITABLES = ['coordinador', 'bodeguero'];
+export const PERMISOS_CLAVE = 'permisos_roles';
+
+// clave: [defecto coordinador, defecto bodeguero]
+export const PERMISOS = {
+  // Pestañas del panel
+  'tab-add-item':     [true, false],
+  'tab-add-tienda':   [true, false],
+  'tab-manage':       [true, false],
+  'tab-devol':        [true, false],
+  'tab-conteos':      [true, true],
+  'tab-impresion':    [true, true],
+  // Secciones de Configuración (Cambiar contraseña siempre está)
+  'cfg-logos':        [true, false],
+  'cfg-qr':           [true, false],
+  'cfg-grupo':        [true, false],
+  'cfg-nav':          [true, false],
+  'cfg-decoracion':   [true, false],
+  'cfg-conteos':      [true, false],
+  'cfg-disp':         [true, false],
+  'cfg-json':         [true, false],
+  // Botones del menú lateral (con sesión iniciada)
+  'nav-masiva':       [true, true],
+  'nav-almacen':      [true, true],
+  'nav-devoluciones': [true, true],
+  'nav-manifiestos':  [true, true],
+  'nav-alistamiento': [true, true],
+  'nav-conteos':      [true, true],
+  'nav-trazabilidad': [true, true],
+  'nav-reporte':      [true, false]
+};
+
+export function rolDe(user) {
+  const rol = user?.app_metadata?.rol;
+  return ROLES.includes(rol) ? rol : 'administrador';
+}
+
+// Deja solo claves conocidas con valor booleano
+export function limpiarPermisos(entrada) {
+  const salida = {};
+  ROLES_EDITABLES.forEach(rol => {
+    const src = entrada?.[rol] || {};
+    salida[rol] = {};
+    Object.keys(PERMISOS).forEach(k => {
+      if (typeof src[k] === 'boolean') salida[rol][k] = src[k];
+    });
+  });
+  return salida;
+}
+
+export async function leerPermisosGuardados() {
+  const { data, error } = await supabaseAdmin
+    .from('configuracion')
+    .select('valor')
+    .eq('clave', PERMISOS_CLAVE)
+    .maybeSingle();
+  if (error) throw error;
+  try { return limpiarPermisos(JSON.parse(data?.valor || '{}')); }
+  catch { return limpiarPermisos({}); }
+}
+
+// Permisos completos de un rol (con los valores por defecto aplicados)
+export function resolverPermisos(rol, guardados) {
+  const salida = {};
+  Object.entries(PERMISOS).forEach(([k, [defCoord, defBod]]) => {
+    if (rol === 'administrador') { salida[k] = true; return; }
+    const guardado = guardados?.[rol]?.[k];
+    salida[k] = typeof guardado === 'boolean' ? guardado : (rol === 'bodeguero' ? defBod : defCoord);
+  });
+  return salida;
+}
+
+export async function permisosDe(user) {
+  const rol = rolDe(user);
+  if (rol === 'administrador') return resolverPermisos(rol, null);
+  return resolverPermisos(rol, await leerPermisosGuardados());
+}
+
+/**
+ * Como requireUser, pero además exige el permiso (o el perfil administrador
+ * si permiso es null). Si falta, responde 403 y devuelve null.
+ */
+export async function requirePermiso(req, res, permiso) {
+  const user = await requireUser(req, res);
+  if (!user) return null;
+  const rol = rolDe(user);
+  if (rol === 'administrador') return user;
+  if (permiso && (await permisosDe(user))[permiso]) return user;
+  res.status(403).json({ error: 'Tu perfil no tiene permiso para esta acción', codigo: 'sin_permiso' });
+  return null;
+}
+
+export function requireAdmin(req, res) {
+  return requirePermiso(req, res, null);
+}
