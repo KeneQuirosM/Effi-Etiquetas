@@ -50,6 +50,41 @@ export const PERMISOS = {
   'nav-reporte':      [true, false]
 };
 
+// Nombre visible (user_metadata.nombre); sin nombre se usa el correo
+export function nombreDe(user) {
+  const n = String(user?.user_metadata?.nombre || '').trim();
+  return n || user?.email || '';
+}
+
+/**
+ * Cierre de sesión por inactividad: minutos por perfil en
+ * configuracion.inactividad_roles ({ administrador: 0, coordinador: 0, bodeguero: 30 }).
+ * 0 = nunca. Lo aplica el navegador (index.js); el servidor solo lo guarda y
+ * lo entrega con GET /api/users?accion=yo.
+ */
+export const INACTIVIDAD_CLAVE = 'inactividad_roles';
+export const INACTIVIDAD_OPCIONES = [0, 5, 10, 15, 30, 60, 120, 240];
+
+export function limpiarInactividad(entrada) {
+  const salida = {};
+  ROLES.forEach(rol => {
+    const v = Number(entrada?.[rol]);
+    salida[rol] = INACTIVIDAD_OPCIONES.includes(v) ? v : 0;
+  });
+  return salida;
+}
+
+export async function leerInactividad() {
+  const { data, error } = await supabaseAdmin
+    .from('configuracion')
+    .select('valor')
+    .eq('clave', INACTIVIDAD_CLAVE)
+    .maybeSingle();
+  if (error) throw error;
+  try { return limpiarInactividad(JSON.parse(data?.valor || '{}')); }
+  catch { return limpiarInactividad({}); }
+}
+
 export function rolDe(user) {
   const rol = user?.app_metadata?.rol;
   return ROLES.includes(rol) ? rol : 'administrador';
@@ -98,14 +133,19 @@ export async function permisosDe(user) {
 
 /**
  * Como requireUser, pero además exige el permiso (o el perfil administrador
- * si permiso es null). Si falta, responde 403 y devuelve null.
+ * si permiso es null). Con una lista basta con tener uno de ellos. Si falta,
+ * responde 403 y devuelve null.
  */
 export async function requirePermiso(req, res, permiso) {
   const user = await requireUser(req, res);
   if (!user) return null;
   const rol = rolDe(user);
   if (rol === 'administrador') return user;
-  if (permiso && (await permisosDe(user))[permiso]) return user;
+  const lista = [].concat(permiso || []);
+  if (lista.length) {
+    const permisos = await permisosDe(user);
+    if (lista.some(p => permisos[p])) return user;
+  }
   res.status(403).json({ error: 'Tu perfil no tiene permiso para esta acción', codigo: 'sin_permiso' });
   return null;
 }

@@ -1662,6 +1662,20 @@ body {
 .perm-grupo { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 6px 12px; }
 .perm-grupo-titulo { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 2px; font-size: 12px; font-weight: 600; color: var(--text); }
 
+/* Nombre visible y cierre por inactividad */
+.coord-saludo { margin-top: 4px; font-size: 13px; color: var(--muted); }
+#users-list .user-ident { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+#users-list .user-nombre {
+  border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent;
+  padding: 3px 6px; margin-left: -6px; font: inherit; font-size: 13px; font-weight: 600; color: var(--text); max-width: 260px;
+}
+#users-list .user-nombre:hover { border-color: var(--border); }
+#users-list .user-nombre:focus { border-color: var(--accent); background: var(--panel); }
+#users-list .user-nombre::placeholder { color: var(--muted); font-weight: 400; font-style: italic; }
+#users-list .user-email { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.inact-lista { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 2px 12px; }
+.inact-select { padding: 4px 8px; font: inherit; font-size: 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--panel); color: var(--text); }
+
 /* ── Dispositivos vinculados (Configuración) ── */
 .disp-qr { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 14px; padding: 12px; border: 1.5px solid var(--border); border-radius: var(--radius-md); }
 .disp-qr[hidden] { display: none; }

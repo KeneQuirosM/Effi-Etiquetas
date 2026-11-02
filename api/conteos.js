@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
-import { requireUser } from './_auth.js';
+import { requirePermiso } from './_permisos.js';
 import { rateLimit } from './_rateLimit.js';
 import { sheetsHabilitado, enviarConteoASheets, eliminarConteoDeSheets } from './_sheets.js';
 import { exigirDispositivo } from './_dispositivo.js';
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
     //   POST ?accion=impreso {id}             -> marca impreso_en solo si nadie
     //     lo marcó antes; { reclamado } evita imprimir dos veces.
     if (req.method === 'GET' && req.query?.accion === 'por_imprimir') {
-      const user = await requireUser(req, res);
+      const user = await requirePermiso(req, res, 'tab-impresion');
       if (!user) return;
 
       if (req.query.despues_de === undefined && req.query.desde === undefined) {
@@ -146,7 +146,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST' && req.query?.accion === 'impreso') {
-      const user = await requireUser(req, res);
+      const user = await requirePermiso(req, res, 'tab-impresion');
       if (!user) return;
 
       const id = Number((req.body || {}).id);
@@ -168,7 +168,7 @@ export default async function handler(req, res) {
     // TRASLADO_LOTE por llamada (el panel envía en tandas). Registra cada
     // movimiento en conteos_traslados y mueve la fila en Google Sheets.
     if (req.method === 'POST' && req.query?.accion === 'trasladar') {
-      const user = await requireUser(req, res);
+      const user = await requirePermiso(req, res, 'tab-conteos');
       if (!user) return;
 
       const b = req.body || {};
@@ -326,7 +326,7 @@ export default async function handler(req, res) {
     // no llegaron (Google caído, o anteriores a configurar la hoja). Solo
     // coordinador; procesa un lote por llamada y el panel repite hasta 0.
     if (req.method === 'POST' && req.query?.accion === 'sincronizar') {
-      const user = await requireUser(req, res);
+      const user = await requirePermiso(req, res, 'tab-conteos');
       if (!user) return;
       if (!sheetsHabilitado()) return res.status(400).json({ error: 'Google Sheets no está configurado' });
 
@@ -493,7 +493,7 @@ export default async function handler(req, res) {
 
     // ── GET: conteos en un rango (solo coordinador) ──
     if (req.method === 'GET') {
-      const user = await requireUser(req, res);
+      const user = await requirePermiso(req, res, 'tab-conteos');
       if (!user) return;
 
       const { desde, hasta, tienda_id } = req.query || {};
@@ -551,7 +551,7 @@ export default async function handler(req, res) {
 
     // ── DELETE: borrar un conteo y su foto (solo coordinador) ──
     if (req.method === 'DELETE') {
-      const user = await requireUser(req, res);
+      const user = await requirePermiso(req, res, 'tab-conteos');
       if (!user) return;
 
       const id = Number((req.body || {}).id);

@@ -191,6 +191,8 @@ function activateCoord(token, refreshToken) {
   // Primero el perfil guardado (sin parpadeo), después el del servidor
   try { perfil = JSON.parse(localStorage.getItem(PERFIL_KEY) || 'null'); } catch { perfil = null; }
   aplicarPerfil();
+  // Sesión restaurada tras mucho rato sin uso: se cierra antes de mostrar nada
+  if (revisarInactividad()) return;
   if (puede('tab-impresion')) restaurarEstacion();
   cargarPerfil();
 }
@@ -217,6 +219,7 @@ async function checkPin() {
   errorEl.textContent = '';
   try {
     const data = await apiRequestJSON(API + '/api/auth', { method: 'POST', body: { email, password } });
+    registrarActividad(true);
     activateCoord(data.token, data.refresh_token);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
@@ -397,7 +400,7 @@ function switchTab(id) {
   document.getElementById(id).classList.add('active');
   document.querySelector(`.tab-btn[data-tab="${id}"]`)?.classList.add('active');
   if (id === 'tab-add-tienda') populateTiendas();
-  if (id === 'tab-users') { loadUsers(); cargarPermisos(); }
+  if (id === 'tab-users') { loadUsers(); cargarPermisos(); cargarInactividad(); }
   if (id === 'tab-devol' && !devolDias) devolPreset('semana');
   if (id === 'tab-conteos') { populateConteoTiendas(); if (!conteos) conteoPreset('semana'); }
   if (id === 'tab-config') {
@@ -653,8 +656,9 @@ function toggleCoordMode() {
   }
 }
 
-function lockCoord() {
+function lockCoord(motivo) {
   enviarBorradosPendientesYa();
+  cerrarAvisoInactividad();
   cancelarVinculoDispositivo();
   coordToken = null;
   coordUnlocked = false;
@@ -674,7 +678,8 @@ function lockCoord() {
   document.getElementById('coord-icon').textContent = '';
   document.getElementById('coord-label').textContent = 'Modo Coordinador';
   document.getElementById('coord-panel').classList.remove('visible');
-  notify('Sesión de coordinador cerrada');
+  if (motivo === 'inactividad') notify('Sesión cerrada por inactividad', 'warn', 8000);
+  else notify('Sesión de coordinador cerrada');
 }
 
 /* ── LOGO ───────────────────────────────────────────── */
@@ -2091,10 +2096,13 @@ async function loadUsers() {
       .map(([k, n]) => `<option value="${k}"${k === rol ? ' selected' : ''}>${n}</option>`).join('');
     container.innerHTML = users.map(u => `
       <div class="inv-item">
-        <span class="item-name">${esc(u.email)}${u.yo ? ' <span class="user-yo">(tú)</span>' : ''}</span>
-        <span style="font-size:11px;color:var(--muted);margin-left:8px">
-          ${new Date(u.created_at).toLocaleDateString('es-CR')}
-        </span>
+        <div class="user-ident">
+          <input type="text" class="user-nombre" maxlength="60" placeholder="Sin nombre"
+            value="${esc(u.nombre || '')}" data-id="${esc(String(u.id))}" data-nombre="${esc(u.nombre || '')}"
+            aria-label="Nombre de ${esc(u.email)}" title="Escribe el nombre y presiona Enter">
+          <span class="user-email">${esc(u.email)}${u.yo ? ' <span class="user-yo">(tú)</span>' : ''}
+            · ${new Date(u.created_at).toLocaleDateString('es-CR')}</span>
+        </div>
         <select class="user-rol" data-id="${esc(String(u.id))}" data-email="${esc(u.email)}" data-rol="${esc(u.rol)}"
           aria-label="Perfil de ${esc(u.email)}" ${u.yo ? 'disabled title="No puedes cambiar tu propio perfil"' : ''}
           onchange="cambiarRolUsuario(this)">${opciones(u.rol)}</select>
@@ -2159,17 +2167,19 @@ async function createUser() {
   const pass    = document.getElementById('u-password').value;
   const confirm = document.getElementById('u-password-confirm').value;
   const rol     = document.getElementById('u-rol').value;
+  const nombre  = document.getElementById('u-nombre').value.trim();
 
   if (!email)              return notify('Email requerido', 'danger');
   if (!pass || pass.length < 6) return notify('Contraseña mínimo 6 caracteres', 'danger');
   if (pass !== confirm)    return notify('Las contraseñas no coinciden', 'danger');
 
   try {
-    await apiPost('/api/users', { email, password: pass, rol });
+    await apiPost('/api/users', { email, password: pass, rol, nombre });
+    document.getElementById('u-nombre').value = '';
     document.getElementById('u-email').value = '';
     document.getElementById('u-password').value = '';
     document.getElementById('u-password-confirm').value = '';
-    notify(`${ROL_NOMBRES[rol]} "${email}" creado`, 'success');
+    notify(`${ROL_NOMBRES[rol]} "${nombre || email}" creado`, 'success');
     loadUsers();
   } catch (e) {
     if (e.message !== 'Sesión expirada') notify(e.message || 'Error al crear usuario', 'danger');
@@ -2185,6 +2195,33 @@ async function deleteUser(id, email) {
     if (e.message !== 'Sesión expirada') notify(e.message || 'Error al eliminar', 'danger');
   }
 }
+
+// Nombre visible: se guarda al presionar Enter o al salir del campo
+async function guardarNombreUsuario(input) {
+  const nombre = input.value.trim().replace(/\s+/g, ' ');
+  if (nombre === input.dataset.nombre) { input.value = nombre; return; }
+  input.disabled = true;
+  try {
+    await apiPatch('/api/users', { id: input.dataset.id, nombre });
+    input.dataset.nombre = nombre;
+    input.value = nombre;
+    notify(nombre ? `Nombre guardado: ${nombre}` : 'Nombre quitado', 'success', 1800);
+    if (input.closest('.inv-item')?.querySelector('.user-yo')) cargarPerfil();   // el propio: actualizar el saludo
+  } catch (e) {
+    input.value = input.dataset.nombre;
+    if (e.message !== 'Sesión expirada') notify(e.message || 'No se pudo guardar el nombre', 'danger');
+  } finally {
+    input.disabled = false;
+  }
+}
+document.getElementById('users-list')?.addEventListener('change', e => {
+  if (e.target.classList.contains('user-nombre')) guardarNombreUsuario(e.target);
+});
+document.getElementById('users-list')?.addEventListener('keydown', e => {
+  if (!e.target.classList.contains('user-nombre')) return;
+  if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+  if (e.key === 'Escape') { e.target.value = e.target.dataset.nombre; e.target.blur(); }
+});
 
 async function cambiarRolUsuario(sel) {
   const { id, email, rol: anterior } = sel.dataset;
@@ -2723,6 +2760,12 @@ function aplicarPerfil() {
   });
   const badge = document.getElementById('coord-badge');
   if (badge) badge.textContent = (conSesion && perfil ? ROL_NOMBRES[perfil.rol] : 'Administrador').toUpperCase();
+  const saludo = document.getElementById('coord-saludo');
+  if (saludo) {
+    const nombre = conSesion && perfil?.nombre;
+    saludo.hidden = !nombre;
+    saludo.textContent = nombre ? `Hola, ${nombre}` : '';
+  }
 
   if (!conSesion) return;
   // Si la pestaña abierta quedó oculta, pasar a la primera visible
@@ -2741,7 +2784,12 @@ async function cargarPerfil() {
   try {
     const data = await apiFetch('GET', '/api/users?accion=yo');
     if (!coordUnlocked) return;   // se cerró la sesión mientras tanto
-    perfil = { rol: data.rol, permisos: data.permisos || {} };
+    perfil = {
+      rol: data.rol,
+      permisos: data.permisos || {},
+      nombre: data.nombre || '',
+      inactividadMin: Number(data.inactividad_min) || 0
+    };
     try { localStorage.setItem(PERFIL_KEY, JSON.stringify(perfil)); } catch (_) {}
     aplicarPerfil();
   } catch (_) { /* sin conexión: queda el perfil guardado */ }
@@ -2829,6 +2877,110 @@ document.getElementById('perm-lista')?.addEventListener('change', async e => {
     permisosRoles[rol][k] = anterior;
     renderPermisos();
     if (err.message !== 'Sesión expirada') notify(err.message || 'No se pudieron guardar los permisos', 'danger');
+  }
+});
+
+/* ── CIERRE DE SESIÓN POR INACTIVIDAD ─────────────────
+ * Minutos por perfil (0 = nunca) en /api/config inactividad_roles, editados
+ * por el administrador en Usuarios y permisos; llegan con el perfil
+ * (perfil.inactividadMin). La última actividad se guarda en localStorage para
+ * que cuente la de todas las pestañas y para cerrar al volver a abrir la
+ * página después de mucho rato. Un minuto antes se avisa con "Seguir
+ * conectado". La estación de impresión activa cuenta como actividad (es una
+ * PC desatendida que debe seguir imprimiendo).
+ */
+const ACTIVIDAD_KEY = 'effi_coord_actividad_v1';
+const AVISO_INACTIVIDAD_MS = 60 * 1000;
+const INACTIVIDAD_OPCIONES = [0, 5, 10, 15, 30, 60, 120, 240];   // igual que en api/_permisos.js
+let ultimaActividadGuardada = 0;
+let avisoInactividad = null;
+
+function registrarActividad(forzar) {
+  const ahora = Date.now();
+  // Escribir a localStorage como mucho cada 5 s (mousemove dispara muchísimo)
+  if (!forzar && ahora - ultimaActividadGuardada < 5000) return;
+  ultimaActividadGuardada = ahora;
+  try { localStorage.setItem(ACTIVIDAD_KEY, String(ahora)); } catch (_) {}
+  cerrarAvisoInactividad();
+}
+
+function ultimaActividad() {
+  let v = 0;
+  try { v = Number(localStorage.getItem(ACTIVIDAD_KEY)) || 0; } catch (_) {}
+  return Math.max(v, ultimaActividadGuardada);
+}
+
+function cerrarAvisoInactividad() {
+  if (avisoInactividad) { avisoInactividad.cerrar(); avisoInactividad = null; }
+}
+
+// Devuelve true si cerró la sesión
+function revisarInactividad() {
+  const min = coordUnlocked && perfil ? perfil.inactividadMin : 0;
+  if (!min) { cerrarAvisoInactividad(); return false; }
+  if (estacion.activa) { registrarActividad(); return false; }
+  const ultima = ultimaActividad();
+  if (!ultima) { registrarActividad(true); return false; }   // primera vez con límite
+  const restante = min * 60 * 1000 - (Date.now() - ultima);
+  if (restante <= 0) { lockCoord('inactividad'); return true; }
+  if (restante > AVISO_INACTIVIDAD_MS) cerrarAvisoInactividad();   // hubo actividad en otra pestaña
+  if (restante <= AVISO_INACTIVIDAD_MS && !avisoInactividad) {
+    avisoInactividad = notify('Tu sesión se cerrará en un minuto por inactividad', 'warn', AVISO_INACTIVIDAD_MS,
+      { texto: 'Seguir conectado', alHacer: () => { avisoInactividad = null; registrarActividad(true); } });
+  }
+  return false;
+}
+
+['pointerdown', 'keydown', 'wheel', 'touchstart', 'mousemove'].forEach(ev =>
+  document.addEventListener(ev, () => { if (coordUnlocked) registrarActividad(); }, { passive: true, capture: true }));
+setInterval(revisarInactividad, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) revisarInactividad(); });
+
+// Editor (Usuarios y permisos, solo administrador)
+let inactividadRoles = null;
+
+async function cargarInactividad() {
+  const cont = document.getElementById('inact-lista');
+  if (!cont) return;
+  try {
+    inactividadRoles = await apiFetch('GET', '/api/users?accion=inactividad');
+    renderInactividad();
+  } catch (e) {
+    if (e.message === 'Sesión expirada') return;
+    cont.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--danger)">No se pudo cargar</span></div>';
+  }
+}
+
+function textoMinutos(m) {
+  if (!m) return 'Nunca';
+  return m < 60 ? `${m} minutos` : `${m / 60} hora${m === 60 ? '' : 's'}`;
+}
+
+function renderInactividad() {
+  const cont = document.getElementById('inact-lista');
+  if (!cont || !inactividadRoles) return;
+  cont.innerHTML = Object.entries(ROL_NOMBRES).map(([rol, nombre]) => `
+    <label class="nav-toggle-row" for="inact-${rol}">
+      <span>${esc(nombre)}</span>
+      <select id="inact-${rol}" class="inact-select" data-rol="${rol}">
+        ${INACTIVIDAD_OPCIONES.map(m => `<option value="${m}"${m === inactividadRoles[rol] ? ' selected' : ''}>${textoMinutos(m)}</option>`).join('')}
+      </select>
+    </label>`).join('');
+}
+
+document.getElementById('inact-lista')?.addEventListener('change', async e => {
+  const rol = e.target.dataset.rol;
+  if (!rol || !inactividadRoles) return;
+  const anterior = inactividadRoles[rol];
+  inactividadRoles[rol] = Number(e.target.value);
+  try {
+    await apiPost('/api/users?accion=inactividad', { inactividad: inactividadRoles });
+    notify(`${ROL_NOMBRES[rol]}: ${inactividadRoles[rol] ? 'cierre tras ' + textoMinutos(inactividadRoles[rol]) : 'sin cierre por inactividad'}`, 'success', 2200);
+    if (perfil?.rol === rol) cargarPerfil();
+  } catch (err) {
+    inactividadRoles[rol] = anterior;
+    renderInactividad();
+    if (err.message !== 'Sesión expirada') notify(err.message || 'No se pudo guardar', 'danger');
   }
 });
 
@@ -3079,13 +3231,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isTokenExpired(savedToken)) {
       // Token vigente — restaurar sin llamada al servidor
       activateCoord(savedToken, localStorage.getItem(REFRESH_KEY));
-      notify('Sesión restaurada', 'success');
+      if (coordUnlocked) notify('Sesión restaurada', 'success');   // false = se cerró por inactividad
     } else {
       // Token expirado — intentar renovar con el refresh_token
       const renewed = await tryRefreshToken();
       if (renewed) {
         activateCoord(coordToken, localStorage.getItem(REFRESH_KEY));
-        notify('Sesión renovada', 'success');
+        if (coordUnlocked) notify('Sesión renovada', 'success');
       }
       // Si falla, lockCoord() ya limpió localStorage
     }

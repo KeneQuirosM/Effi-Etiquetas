@@ -1,6 +1,13 @@
 import { supabaseAdmin, selectAll } from './_supabase.js';
 import { setCors } from './_cors.js';
-import { requireUser } from './_auth.js';
+import { requirePermiso } from './_permisos.js';
+
+// Crear: Nueva Tienda o importación JSON. Renombrar: Nueva Tienda. Eliminar: Gestionar Inventario.
+const PERMISO_METODO = {
+  POST:   ['tab-add-tienda', 'cfg-json'],
+  PATCH:  ['tab-add-tienda'],
+  DELETE: ['tab-manage']
+};
 
 export default async function handler(req, res) {
   setCors(req, res, 'GET, POST, PATCH, DELETE, OPTIONS');
@@ -55,7 +62,8 @@ export default async function handler(req, res) {
     }
 
     // Validar token para rutas protegidas
-    const user = await requireUser(req, res);
+    if (!PERMISO_METODO[req.method]) return res.status(405).json({ error: 'Método no permitido' });
+    const user = await requirePermiso(req, res, PERMISO_METODO[req.method]);
     if (!user) return;
 
     // ── POST: crear tienda ──

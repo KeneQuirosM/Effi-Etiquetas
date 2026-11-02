@@ -1,6 +1,6 @@
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
-import { requireUser } from './_auth.js';
+import { requirePermiso } from './_permisos.js';
 import { rateLimit } from './_rateLimit.js';
 import { exigirDispositivo } from './_dispositivo.js';
 
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
 
     // ── GET: conteo por día en un rango (solo coordinador) ──
     if (req.method === 'GET') {
-      const user = await requireUser(req, res);
+      const user = await requirePermiso(req, res, 'tab-devol');
       if (!user) return;
 
       const { desde, hasta } = req.query || {};

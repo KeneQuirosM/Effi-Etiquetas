@@ -120,7 +120,10 @@
   <!-- COORDINATOR PANEL -->
   <div id="coord-panel">
     <div class="coord-header">
-      <h2>Panel de Coordinador <span class="coord-badge" id="coord-badge">ADMIN</span></h2>
+      <div>
+        <h2>Panel de Coordinador <span class="coord-badge" id="coord-badge">ADMIN</span></h2>
+        <p class="coord-saludo" id="coord-saludo" hidden></p>
+      </div>
       <button class="btn-action btn-ghost" onclick="lockCoord()">Cerrar sesión</button>
     </div>
 
@@ -479,6 +482,12 @@
       </div>
       <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
       <p class="section-label" style="margin-bottom:10px">Nuevo usuario</p>
+      <div class="form-row single" style="margin-bottom:12px">
+        <div class="form-group">
+          <label for="u-nombre">Nombre</label>
+          <input type="text" id="u-nombre" maxlength="60" placeholder="Ej: Juan Pérez" autocomplete="off">
+        </div>
+      </div>
       <div class="form-row" style="margin-bottom:12px">
         <div class="form-group">
           <label for="u-email">Email</label>
@@ -523,6 +532,12 @@
         <div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>
       </div>
       <p style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:22px">Apagado, ese perfil no ve la pestaña, la sección o el botón al entrar al modo coordinador. El administrador siempre ve todo, y esta pestaña solo la ve él. Un botón del menú que está oculto en Configuración &gt; Botones del menú sigue oculto para todos. Los cambios aplican la próxima vez que la persona abra el panel o recargue la página.</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+      <p class="section-label" style="margin-bottom:10px">Cerrar sesión por inactividad</p>
+      <!-- Un selector por perfil; lo llena renderInactividad() en index.js -->
+      <div id="inact-lista" class="inact-lista"></div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:22px">Si nadie usa la página durante ese tiempo, la sesión se cierra sola; un minuto antes aparece un aviso para seguir conectado. Cuenta la actividad de todas las pestañas abiertas del mismo navegador. No se cierra mientras la estación de impresión está activa.</p>
     </div>
 
     <!-- TAB: Reporte de devoluciones (registradas al exportar en devoluciones.html) -->

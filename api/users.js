@@ -2,18 +2,27 @@ import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requireUser } from './_auth.js';
 import {
-  ROLES, PERMISOS_CLAVE, rolDe, permisosDe, requireAdmin,
-  leerPermisosGuardados, limpiarPermisos, resolverPermisos
+  ROLES, PERMISOS_CLAVE, rolDe, nombreDe, permisosDe, requireAdmin,
+  leerPermisosGuardados, limpiarPermisos, resolverPermisos,
+  INACTIVIDAD_CLAVE, leerInactividad, limpiarInactividad
 } from './_permisos.js';
+
+const NOMBRE_MAX = 60;
+// Recorta y colapsa espacios; '' = sin nombre (se muestra el correo)
+function limpiarNombre(v) {
+  return String(v ?? '').trim().replace(/\s+/g, ' ');
+}
 
 /**
  * Usuarios del modo coordinador y sus perfiles.
- *   GET    ?accion=yo        (cualquier sesión) { email, rol, permisos } de quien pregunta
+ *   GET    ?accion=yo        (cualquier sesión) { email, nombre, rol, permisos, inactividad_min }
  *   GET    ?accion=permisos  (admin) { coordinador: {...}, bodeguero: {...} } ya resueltos
  *   POST   ?accion=permisos  (admin) { permisos: { coordinador, bodeguero } } los guarda
- *   GET                      (admin) lista de usuarios con su rol
- *   POST                     (admin) { email, password, rol } crea un usuario
- *   PATCH                    (admin) { id, rol } cambia el perfil de otro usuario
+ *   GET    ?accion=inactividad (admin) { administrador, coordinador, bodeguero } en minutos (0 = nunca)
+ *   POST   ?accion=inactividad (admin) { inactividad: {...} } los guarda
+ *   GET                      (admin) lista de usuarios con su nombre y rol
+ *   POST                     (admin) { email, password, rol, nombre } crea un usuario
+ *   PATCH                    (admin) { id, rol?, nombre? } cambia perfil (no el propio) o nombre
  *   DELETE                   (admin) { id } elimina a otro usuario
  * Nadie puede cambiarse el perfil ni eliminarse a sí mismo, así siempre queda
  * al menos un administrador (el que hace el cambio).
@@ -30,10 +39,14 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && accion === 'yo') {
       const user = await requireUser(req, res);
       if (!user) return;
+      const rol = rolDe(user);
+      const [permisos, inactividad] = await Promise.all([permisosDe(user), leerInactividad()]);
       return res.status(200).json({
         email: user.email,
-        rol: rolDe(user),
-        permisos: await permisosDe(user)
+        nombre: nombreDe(user),
+        rol,
+        permisos,
+        inactividad_min: inactividad[rol] || 0
       });
     }
 
@@ -64,6 +77,23 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Método no permitido' });
     }
 
+    // ── Cierre por inactividad por perfil ──
+    if (accion === 'inactividad') {
+      if (req.method === 'GET') return res.status(200).json(await leerInactividad());
+      if (req.method === 'POST') {
+        const { error } = await supabaseAdmin.rpc('upsert_config', {
+          p_clave: INACTIVIDAD_CLAVE,
+          p_valor: JSON.stringify(limpiarInactividad(req.body?.inactividad))
+        });
+        if (error) {
+          console.error('POST inactividad error:', error);
+          return res.status(500).json({ error: 'No se pudo guardar el tiempo de inactividad' });
+        }
+        return res.status(200).json({ ok: true });
+      }
+      return res.status(405).json({ error: 'Método no permitido' });
+    }
+
     // ── GET: listar usuarios ──
     if (req.method === 'GET') {
       // listUsers() de Supabase pagina internamente (50 por página por
@@ -87,6 +117,7 @@ export default async function handler(req, res) {
         users: allUsers.map(u => ({
           id:         u.id,
           email:      u.email,
+          nombre:     limpiarNombre(u.user_metadata?.nombre),
           created_at: u.created_at,
           rol:        rolDe(u),
           yo:         u.id === user.id
@@ -98,6 +129,8 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const { email, password } = req.body || {};
       const rol = req.body?.rol || 'coordinador';
+      const nombre = limpiarNombre(req.body?.nombre);
+      if (nombre.length > NOMBRE_MAX) return res.status(400).json({ error: `Nombre máximo ${NOMBRE_MAX} caracteres` });
 
       if (!email?.trim()) return res.status(400).json({ error: 'Email requerido' });
       if (!password || password.length < 6) {
@@ -109,7 +142,8 @@ export default async function handler(req, res) {
         email:          email.trim(),
         password,
         email_confirm:  true,   // sin necesidad de verificar email
-        app_metadata:   { rol }
+        app_metadata:   { rol },
+        user_metadata:  nombre ? { nombre } : {}
       });
 
       if (error) {
@@ -118,29 +152,37 @@ export default async function handler(req, res) {
       }
 
       return res.status(201).json({
-        user: { id: data.user.id, email: data.user.email, rol }
+        user: { id: data.user.id, email: data.user.email, rol, nombre }
       });
     }
 
-    // ── PATCH: cambiar perfil ──
+    // ── PATCH: cambiar perfil y/o nombre ──
     if (req.method === 'PATCH') {
-      const { id, rol } = req.body || {};
+      const { id } = req.body || {};
+      const cambiaRol = req.body?.rol !== undefined;
+      const cambiaNombre = req.body?.nombre !== undefined;
       if (!id) return res.status(400).json({ error: 'ID requerido' });
-      if (!ROLES.includes(rol)) return res.status(400).json({ error: 'Perfil no válido' });
-      if (id === user.id) {
+      if (!cambiaRol && !cambiaNombre) return res.status(400).json({ error: 'Nada que cambiar' });
+      if (cambiaRol && !ROLES.includes(req.body.rol)) return res.status(400).json({ error: 'Perfil no válido' });
+      if (cambiaRol && id === user.id) {
         return res.status(400).json({ error: 'No puedes cambiar tu propio perfil' });
       }
+      const nombre = limpiarNombre(req.body?.nombre);
+      if (cambiaNombre && nombre.length > NOMBRE_MAX) {
+        return res.status(400).json({ error: `Nombre máximo ${NOMBRE_MAX} caracteres` });
+      }
 
-      // app_metadata se reemplaza por clave: se conserva lo que ya tenga
+      // app_metadata y user_metadata se reemplazan por clave: se conserva lo que ya tengan
       const { data: actual, error: errGet } = await supabaseAdmin.auth.admin.getUserById(id);
       if (errGet || !actual?.user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(id, {
-        app_metadata: { ...(actual.user.app_metadata || {}), rol }
-      });
+      const cambios = {};
+      if (cambiaRol) cambios.app_metadata = { ...(actual.user.app_metadata || {}), rol: req.body.rol };
+      if (cambiaNombre) cambios.user_metadata = { ...(actual.user.user_metadata || {}), nombre };
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(id, cambios);
       if (error) {
         console.error('PATCH users error:', error);
-        return res.status(400).json({ error: 'No se pudo cambiar el perfil' });
+        return res.status(400).json({ error: 'No se pudo guardar el cambio' });
       }
       return res.status(200).json({ ok: true });
     }

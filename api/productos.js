@@ -1,6 +1,13 @@
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
-import { requireUser } from './_auth.js';
+import { requirePermiso } from './_permisos.js';
+
+// Agregar: pestaña Agregar Producto o importación JSON. Editar y borrar: Gestionar Inventario.
+const PERMISO_METODO = {
+  POST:   ['tab-add-item', 'cfg-json'],
+  PATCH:  ['tab-manage'],
+  DELETE: ['tab-manage']
+};
 
 // Postgres: 23505 = viola UNIQUE(tienda_id, codigo), 23503 = tienda_id no existe.
 // Antes todo salía como 400 genérico y la importación JSON no podía
@@ -21,7 +28,8 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const user = await requireUser(req, res);
+    if (!PERMISO_METODO[req.method]) return res.status(405).json({ error: 'Método no permitido' });
+    const user = await requirePermiso(req, res, PERMISO_METODO[req.method]);
     if (!user) return;
 
     // ── POST: agregar producto ──
