@@ -1676,6 +1676,50 @@ body {
 .inact-lista { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 2px 12px; }
 .inact-select { padding: 4px 8px; font: inherit; font-size: 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--panel); color: var(--text); }
 
+/* Contraseña nueva para otro usuario (fila de Usuarios) */
+#users-list .inv-item .user-pw-btn {
+  display: flex; align-items: center; justify-content: center;
+  margin-left: 8px; padding: 4px; color: var(--muted);
+  border-radius: var(--radius-sm); transition: color .15s, background .15s;
+}
+#users-list .inv-item .user-pw-btn:hover { color: var(--primary); background: var(--accent-50); }
+#users-list .inv-item .user-pw-btn + .user-del-btn { margin-left: 4px; }
+#users-list .inv-item.user-confirm.user-pw { flex-wrap: wrap; background: var(--accent-50); box-shadow: inset 0 0 0 1px var(--accent-light); }
+#users-list .inv-item.user-confirm.user-pw .user-confirm-text { color: var(--primary); flex-basis: 100%; }
+#users-list .inv-item.user-pw .user-pw-field { flex: 1; min-width: 180px; }
+#users-list .inv-item.user-pw .user-pw-field input {
+  width: 100%; padding: 7px 36px 7px 10px; font: inherit; font-size: 13px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--panel); color: var(--text);
+}
+#users-list .inv-item.user-pw .user-pw-field input:focus { border-color: var(--accent); outline: none; }
+#users-list .inv-item.user-confirm .pw-toggle { padding: 0; background: none; border: none; font-size: inherit; }
+#users-list .inv-item.user-confirm .user-confirm-ok { background: var(--primary); color: #fff; border: 1px solid var(--primary); }
+#users-list .inv-item.user-confirm .user-confirm-ok:disabled { opacity: .6; cursor: default; }
+
+/* Bitácora */
+.bita-filtros { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) { .bita-filtros { grid-template-columns: 1fr 1fr; } }
+.bita-lista { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.bita-lista:empty { display: none; }
+.bita-fila {
+  display: grid; grid-template-columns: 128px 104px 1fr; gap: 12px; align-items: start;
+  padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.bita-fila:last-child { border-bottom: none; }
+.bita-cuando { font-family: var(--mono); font-size: 11px; color: var(--muted); padding-top: 2px; }
+.bita-tipo { justify-self: start; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--bg); color: var(--text); }
+.bita-tipo.bita-ok   { background: var(--success-bg, #e7f6ec); color: var(--success); }
+.bita-tipo.bita-edit { background: var(--accent-50); color: var(--primary); }
+.bita-tipo.bita-del  { background: var(--danger-bg, #fdecec); color: var(--danger); }
+.bita-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bita-quien { font-weight: 600; color: var(--text); }
+.bita-email { font-weight: 400; font-size: 11px; color: var(--muted); margin-left: 4px; }
+.bita-detalle { color: var(--text); overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .bita-fila { grid-template-columns: 1fr auto; }
+  .bita-texto { grid-column: 1 / -1; }
+}
+
 /* ── Dispositivos vinculados (Configuración) ── */
 .disp-qr { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 14px; padding: 12px; border: 1.5px solid var(--border); border-radius: var(--radius-md); }
 .disp-qr[hidden] { display: none; }

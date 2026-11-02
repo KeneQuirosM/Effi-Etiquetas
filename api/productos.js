@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requirePermiso } from './_permisos.js';
+import { registrar, nombreTienda } from './_bitacora.js';
 
 // Agregar: pestaña Agregar Producto o importación JSON. Editar y borrar: Gestionar Inventario.
 const PERMISO_METODO = {
@@ -58,6 +59,9 @@ export default async function handler(req, res) {
         return errorProducto(res, error, 'crear');
       }
 
+      await registrar(user, 'producto_crear',
+        `Creó el producto ${data.codigo} "${data.nombre}" en ${await nombreTienda(tienda_id) || 'tienda ' + tienda_id}`,
+        { producto_id: data.id, tienda_id });
       return res.status(201).json(data);
     }
 
@@ -75,6 +79,10 @@ export default async function handler(req, res) {
       if (nombre !== undefined) updates.nombre = nombre.trim();
       if (ubicacion !== undefined) updates.ubicacion = ubicacion?.trim() || null;
 
+      // Valores anteriores, solo para la bitácora
+      const { data: antes } = await supabaseAdmin
+        .from('productos').select('codigo, nombre, ubicacion').eq('id', id).maybeSingle();
+
       const { data, error } = await supabaseAdmin
         .from('productos')
         .update(updates)
@@ -87,6 +95,15 @@ export default async function handler(req, res) {
         return errorProducto(res, error, 'editar');
       }
 
+      const etiquetas = { codigo: 'ID', nombre: 'nombre', ubicacion: 'ubicación' };
+      const cambios = Object.keys(updates)
+        .filter(k => (antes?.[k] ?? null) !== (data[k] ?? null))
+        .map(k => `${etiquetas[k]} "${antes?.[k] ?? ''}" → "${data[k] ?? ''}"`);
+      if (cambios.length) {
+        await registrar(user, 'producto_editar',
+          `Editó el producto ${data.codigo} "${data.nombre}" en ${await nombreTienda(data.tienda_id) || 'tienda ' + data.tienda_id}: ${cambios.join(', ')}`,
+          { producto_id: data.id, tienda_id: data.tienda_id, antes, despues: updates });
+      }
       return res.status(200).json(data);
     }
 
@@ -98,14 +115,22 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'ID requerido' });
       }
 
-      const { error } = await supabaseAdmin
+      const { data: borrados, error } = await supabaseAdmin
         .from('productos')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select('codigo, nombre, tienda_id');
 
       if (error) {
         console.error('DELETE producto error:', error);
         return res.status(400).json({ error: 'No se pudo eliminar el producto' });
+      }
+
+      const b = borrados?.[0];
+      if (b) {
+        await registrar(user, 'producto_borrar',
+          `Borró el producto ${b.codigo} "${b.nombre}" de ${await nombreTienda(b.tienda_id) || 'tienda ' + b.tienda_id}`,
+          { producto_id: id, tienda_id: b.tienda_id });
       }
 
       return res.status(200).json({ ok: true });

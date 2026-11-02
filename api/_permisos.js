@@ -21,33 +21,33 @@ export const ROLES = ['administrador', 'coordinador', 'bodeguero'];
 export const ROLES_EDITABLES = ['coordinador', 'bodeguero'];
 export const PERMISOS_CLAVE = 'permisos_roles';
 
-// clave: [defecto coordinador, defecto bodeguero]
+// clave: [defecto coordinador, defecto bodeguero, nombre para la bitácora]
 export const PERMISOS = {
   // Pestañas del panel
-  'tab-add-item':     [true, false],
-  'tab-add-tienda':   [true, false],
-  'tab-manage':       [true, false],
-  'tab-devol':        [true, false],
-  'tab-conteos':      [true, true],
-  'tab-impresion':    [true, true],
+  'tab-add-item':     [true, false, 'Pestaña Agregar Producto'],
+  'tab-add-tienda':   [true, false, 'Pestaña Nueva Tienda'],
+  'tab-manage':       [true, false, 'Pestaña Gestionar Inventario'],
+  'tab-devol':        [true, false, 'Pestaña Devoluciones'],
+  'tab-conteos':      [true, true, 'Pestaña Conteos'],
+  'tab-impresion':    [true, true, 'Pestaña Impresión'],
   // Secciones de Configuración (Cambiar contraseña siempre está)
-  'cfg-logos':        [true, false],
-  'cfg-qr':           [true, false],
-  'cfg-grupo':        [true, false],
-  'cfg-nav':          [true, false],
-  'cfg-decoracion':   [true, false],
-  'cfg-conteos':      [true, false],
-  'cfg-disp':         [true, false],
-  'cfg-json':         [true, false],
+  'cfg-logos':        [true, false, 'Configuración: Logos'],
+  'cfg-qr':           [true, false, 'Configuración: QR de ubicación'],
+  'cfg-grupo':        [true, false, 'Configuración: Imprimir por grupo'],
+  'cfg-nav':          [true, false, 'Configuración: Botones del menú'],
+  'cfg-decoracion':   [true, false, 'Configuración: Decoración'],
+  'cfg-conteos':      [true, false, 'Configuración: Conteos'],
+  'cfg-disp':         [true, false, 'Configuración: Dispositivos'],
+  'cfg-json':         [true, false, 'Configuración: Datos JSON'],
   // Botones del menú lateral (con sesión iniciada)
-  'nav-masiva':       [true, true],
-  'nav-almacen':      [true, true],
-  'nav-devoluciones': [true, true],
-  'nav-manifiestos':  [true, true],
-  'nav-alistamiento': [true, true],
-  'nav-conteos':      [true, true],
-  'nav-trazabilidad': [true, true],
-  'nav-reporte':      [true, false]
+  'nav-masiva':       [true, true, 'Menú: Impresión Masiva'],
+  'nav-almacen':      [true, true, 'Menú: Gestión de Almacén'],
+  'nav-devoluciones': [true, true, 'Menú: Gestión de Devoluciones'],
+  'nav-manifiestos':  [true, true, 'Menú: Gestión de Manifiestos'],
+  'nav-alistamiento': [true, true, 'Menú: Alistamiento'],
+  'nav-conteos':      [true, true, 'Menú: Conteos'],
+  'nav-trazabilidad': [true, true, 'Menú: Trazabilidad'],
+  'nav-reporte':      [true, false, 'Menú: Reporte']
 };
 
 // Nombre visible (user_metadata.nombre); sin nombre se usa el correo

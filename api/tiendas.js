@@ -1,6 +1,7 @@
 import { supabaseAdmin, selectAll } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requirePermiso } from './_permisos.js';
+import { registrar, nombreTienda } from './_bitacora.js';
 
 // Crear: Nueva Tienda o importación JSON. Renombrar: Nueva Tienda. Eliminar: Gestionar Inventario.
 const PERMISO_METODO = {
@@ -86,6 +87,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No se pudo crear la tienda' });
       }
 
+      await registrar(user, 'tienda_crear', `Creó la tienda "${data.nombre}"`, { tienda_id: data.id });
       return res.status(201).json(data);
     }
 
@@ -97,6 +99,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'ID y nombre requeridos' });
       }
 
+      const anterior = await nombreTienda(id);   // para la bitácora
       const { data, error } = await supabaseAdmin
         .from('tiendas')
         .update({ nombre: nombre.trim() })
@@ -110,6 +113,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No se pudo renombrar la tienda' });
       }
 
+      if (anterior !== data.nombre) {
+        await registrar(user, 'tienda_renombrar', `Renombró la tienda "${anterior ?? id}" a "${data.nombre}"`, { tienda_id: data.id });
+      }
       return res.status(200).json(data);
     }
 
@@ -121,14 +127,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'ID requerido' });
       }
 
-      const { error } = await supabaseAdmin
+      const { data: borradas, error } = await supabaseAdmin
         .from('tiendas')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select('nombre');
 
       if (error) {
         console.error('Error eliminando tienda:', error);
         return res.status(400).json({ error: 'No se pudo eliminar la tienda' });
+      }
+
+      if (borradas?.[0]) {
+        await registrar(user, 'tienda_borrar', `Eliminó la tienda "${borradas[0].nombre}" con todos sus productos`, { tienda_id: id });
       }
 
       return res.status(200).json({ ok: true });

@@ -101,6 +101,9 @@ async function apiFetch(method, path, body) {
     const e = await r.json().catch(() => ({}));
     const err = new Error(e.error || `Error del servidor (${r.status})`);
     err.status = r.status;
+    err.codigo = e.codigo || null;
+    // Le quitaron un permiso mientras tenía el panel abierto: ocultar ya lo que no puede usar
+    if (err.codigo === 'sin_permiso') cargarPerfil();
     throw err;
   }
   return r.json();
@@ -401,6 +404,7 @@ function switchTab(id) {
   document.querySelector(`.tab-btn[data-tab="${id}"]`)?.classList.add('active');
   if (id === 'tab-add-tienda') populateTiendas();
   if (id === 'tab-users') { loadUsers(); cargarPermisos(); cargarInactividad(); }
+  if (id === 'tab-bitacora') abrirBitacora();
   if (id === 'tab-devol' && !devolDias) devolPreset('semana');
   if (id === 'tab-conteos') { populateConteoTiendas(); if (!conteos) conteoPreset('semana'); }
   if (id === 'tab-config') {
@@ -670,6 +674,8 @@ function lockCoord(motivo) {
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
   devolDias = null;
   conteos = null;
+  bitacoraAbierta = false;
+  document.getElementById('bita-lista').innerHTML = '';
   detenerEstacion(false);
   document.getElementById('conteo-list').innerHTML = '';
   document.getElementById('conteo-resumen').innerHTML = '';
@@ -2074,6 +2080,8 @@ function restaurarEstacion() {
 /* ── GESTIÓN DE USUARIOS COORDINADORES ─────────────────── */
 const TRASH_ICON_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 
+const KEY_ICON_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3"/><path d="m16 6 3 3"/><path d="m14 8 2 2"/></svg>';
+
 async function loadUsers() {
   const container = document.getElementById('users-list');
   if (!container) return;
@@ -2106,6 +2114,9 @@ async function loadUsers() {
         <select class="user-rol" data-id="${esc(String(u.id))}" data-email="${esc(u.email)}" data-rol="${esc(u.rol)}"
           aria-label="Perfil de ${esc(u.email)}" ${u.yo ? 'disabled title="No puedes cambiar tu propio perfil"' : ''}
           onchange="cambiarRolUsuario(this)">${opciones(u.rol)}</select>
+        ${u.yo ? '' : `<button type="button" class="user-pw-btn" onclick="askPasswordUser(this)"
+          data-id="${esc(String(u.id))}" data-email="${esc(u.email)}"
+          title="Poner contraseña nueva" aria-label="Poner contraseña nueva a ${esc(u.email)}">${KEY_ICON_SVG}</button>`}
         ${u.yo ? '' : `<button type="button" class="user-del-btn" onclick="askDeleteUser(this)"
           data-id="${esc(String(u.id))}" data-email="${esc(u.email)}"
           title="Eliminar usuario" aria-label="Eliminar usuario ${esc(u.email)}">${TRASH_ICON_SVG}</button>`}
@@ -2122,7 +2133,7 @@ async function loadUsers() {
 function cancelDeleteUser() {
   const row = document.querySelector('#users-list .inv-item.user-confirm');
   if (!row) return;
-  row.classList.remove('user-confirm');
+  row.classList.remove('user-confirm', 'user-pw');
   row.innerHTML = row._originalHTML;
   delete row._originalHTML;
 }
@@ -2149,6 +2160,50 @@ function askDeleteUser(btn) {
     if (row.isConnected) cancelDeleteUser();
   });
   delBtn.focus();
+}
+
+// Contraseña nueva para otro usuario (el que la olvidó): la fila pasa a un
+// campo con Guardar/Cancelar, igual que la confirmación de borrado.
+function askPasswordUser(btn) {
+  const row = btn.closest('.inv-item');
+  if (!row) return;
+  const { id, email } = btn.dataset;
+  cancelDeleteUser();
+
+  row._originalHTML = row.innerHTML;
+  row.classList.add('user-confirm', 'user-pw');
+  row.innerHTML = `
+    <span class="user-confirm-text">Contraseña nueva para ${esc(email)}</span>
+    <div class="pw-field user-pw-field">
+      <input type="password" class="user-pw-input" maxlength="72" placeholder="Mínimo 6 caracteres" autocomplete="new-password" aria-label="Contraseña nueva">
+      <button type="button" class="pw-toggle" onclick="togglePasswordVisibility(this)" aria-label="Mostrar contraseña" title="Mostrar contraseña">${document.querySelector('.pw-toggle')?.innerHTML || ''}</button>
+    </div>
+    <button type="button" class="user-confirm-cancel">Cancelar</button>
+    <button type="button" class="user-confirm-ok">Guardar</button>
+  `;
+  const input = row.querySelector('.user-pw-input');
+  const okBtn = row.querySelector('.user-confirm-ok');
+  const cancelar = () => { row.classList.remove('user-pw'); cancelDeleteUser(); };
+  row.querySelector('.user-confirm-cancel').addEventListener('click', cancelar);
+  const guardar = async () => {
+    const password = input.value;
+    if (password.length < 6) { notify('La contraseña debe tener al menos 6 caracteres', 'warn'); input.focus(); return; }
+    okBtn.disabled = true;
+    try {
+      await apiPatch('/api/users', { id, password });
+      notify(`Contraseña de ${email} actualizada. Pásasela en persona.`, 'success', 5000);
+      cancelar();
+    } catch (e) {
+      okBtn.disabled = false;
+      if (e.message !== 'Sesión expirada') notify(e.message || 'No se pudo cambiar la contraseña', 'danger');
+    }
+  };
+  okBtn.addEventListener('click', guardar);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') guardar();
+    if (e.key === 'Escape') cancelar();
+  });
+  input.focus();
 }
 
 function togglePasswordVisibility(btn) {
@@ -2784,6 +2839,7 @@ async function cargarPerfil() {
   try {
     const data = await apiFetch('GET', '/api/users?accion=yo');
     if (!coordUnlocked) return;   // se cerró la sesión mientras tanto
+    const anterior = perfil;
     perfil = {
       rol: data.rol,
       permisos: data.permisos || {},
@@ -2792,8 +2848,24 @@ async function cargarPerfil() {
     };
     try { localStorage.setItem(PERFIL_KEY, JSON.stringify(perfil)); } catch (_) {}
     aplicarPerfil();
+    // Cambió mientras estaba conectado (el administrador lo editó): avisar
+    if (anterior && anterior.rol && anterior.rol !== perfil.rol) {
+      notify(`Tu perfil ahora es ${ROL_NOMBRES[perfil.rol]}`, 'info', 5000);
+    } else if (anterior && anterior.permisos && JSON.stringify(anterior.permisos) !== JSON.stringify(perfil.permisos)) {
+      notify('El administrador actualizó tus permisos', 'info', 5000);
+    }
   } catch (_) { /* sin conexión: queda el perfil guardado */ }
 }
+
+// Los cambios de perfil y permisos llegan solos: cada 2 minutos con la
+// pestaña a la vista y en cuanto se vuelve a ella. Una sola consulta a la vez.
+let perfilEnCurso = null;
+function refrescarPerfil() {
+  if (!coordUnlocked || document.hidden || perfilEnCurso) return;
+  perfilEnCurso = cargarPerfil().finally(() => { perfilEnCurso = null; });
+}
+setInterval(refrescarPerfil, 2 * 60 * 1000);
+document.addEventListener('visibilitychange', refrescarPerfil);
 
 // Editor de permisos (pestaña Usuarios y permisos, solo administrador)
 function permisosUI() {
@@ -2879,6 +2951,109 @@ document.getElementById('perm-lista')?.addEventListener('change', async e => {
     if (err.message !== 'Sesión expirada') notify(err.message || 'No se pudieron guardar los permisos', 'danger');
   }
 });
+
+/* ── BITÁCORA ──────────────────────────────────────────
+ * Pestaña solo para el administrador. GET /api/users?accion=bitacora trae
+ * de 100 en 100 (del más nuevo al más viejo); "Cargar más" pide los
+ * anteriores al último id mostrado. Las fechas del filtro son locales y se
+ * mandan como instantes ISO (desde 00:00 hasta el día siguiente 00:00).
+ * Los códigos de acción vienen de ACCIONES en api/_bitacora.js.
+ */
+const BITACORA_ACCIONES = {
+  sesion_iniciar:          ['Sesión', 'info'],
+  producto_crear:          ['Producto', 'ok'],
+  producto_editar:         ['Producto', 'edit'],
+  producto_borrar:         ['Producto', 'del'],
+  tienda_crear:            ['Tienda', 'ok'],
+  tienda_renombrar:        ['Tienda', 'edit'],
+  tienda_borrar:           ['Tienda', 'del'],
+  conteo_trasladar:        ['Conteo', 'edit'],
+  conteo_borrar:           ['Conteo', 'del'],
+  config_cambiar:          ['Configuración', 'edit'],
+  dispositivo_vincular:    ['Dispositivo', 'ok'],
+  dispositivo_desvincular: ['Dispositivo', 'del'],
+  usuario_crear:           ['Usuario', 'ok'],
+  usuario_perfil:          ['Usuario', 'edit'],
+  usuario_nombre:          ['Usuario', 'edit'],
+  usuario_contrasena:      ['Usuario', 'edit'],
+  usuario_borrar:          ['Usuario', 'del'],
+  permisos_cambiar:        ['Permisos', 'edit'],
+  inactividad_cambiar:     ['Permisos', 'edit']
+};
+let bitacoraAbierta = false;
+let bitacoraUltimoId = null;
+
+async function abrirBitacora() {
+  if (!bitacoraAbierta) {
+    bitacoraAbierta = true;
+    const hoy = new Date();
+    document.getElementById('bt-desde').value = fechaLocalISO(sumarDias(hoy, -6));
+    document.getElementById('bt-hasta').value = fechaLocalISO(hoy);
+    // Lista de usuarios para el filtro (los eliminados igual salen con "Todos")
+    try {
+      const { users } = await apiFetch('GET', '/api/users');
+      const sel = document.getElementById('bt-usuario');
+      sel.innerHTML = '<option value="">Todos</option>' + (users || [])
+        .map(u => `<option value="${esc(u.id)}">${esc(u.nombre || u.email)}</option>`).join('');
+    } catch (_) { /* sin la lista se puede filtrar igual por texto */ }
+  }
+  cargarBitacora();
+}
+
+async function cargarBitacora(mas = false) {
+  const lista = document.getElementById('bita-lista');
+  const btnMas = document.getElementById('bita-mas');
+  const desde = document.getElementById('bt-desde').value;
+  const hasta = document.getElementById('bt-hasta').value;
+  if (desde && hasta && desde > hasta) return notify('La fecha "desde" es posterior a "hasta"', 'warn');
+
+  const params = new URLSearchParams({ accion: 'bitacora' });
+  if (desde) params.set('desde', new Date(`${desde}T00:00:00`).toISOString());
+  if (hasta) params.set('hasta', sumarDias(new Date(`${hasta}T00:00:00`), 1).toISOString());
+  const usuario = document.getElementById('bt-usuario').value;
+  const grupo = document.getElementById('bt-grupo').value;
+  const q = document.getElementById('bt-q').value.trim();
+  if (usuario) params.set('usuario', usuario);
+  if (grupo) params.set('grupo', grupo);
+  if (q) params.set('q', q);
+  if (mas && bitacoraUltimoId) params.set('antes', bitacoraUltimoId);
+
+  if (!mas) lista.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>';
+  btnMas.disabled = true;
+  try {
+    const { registros, mas: hayMas } = await apiFetch('GET', `/api/users?${params}`);
+    const html = registros.map(filaBitacora).join('');
+    if (mas) lista.insertAdjacentHTML('beforeend', html);
+    else lista.innerHTML = html || '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Sin actividad con esos filtros</span></div>';
+    if (registros.length) bitacoraUltimoId = registros[registros.length - 1].id;
+    btnMas.hidden = !hayMas;
+  } catch (e) {
+    if (e.message === 'Sesión expirada') return;
+    if (!mas) lista.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--danger)">${esc(e.message || 'No se pudo cargar la bitácora')}</span></div>`;
+    else notify(e.message || 'No se pudo cargar', 'danger');
+  } finally {
+    btnMas.disabled = false;
+  }
+}
+
+function filaBitacora(r) {
+  const [tipo, tono] = BITACORA_ACCIONES[r.accion] || [r.accion, 'info'];
+  const cuando = new Date(r.creado_en).toLocaleString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const quien = r.usuario_nombre && r.usuario_nombre !== r.usuario_email
+    ? `${esc(r.usuario_nombre)} <span class="bita-email">${esc(r.usuario_email || '')}</span>`
+    : esc(r.usuario_email || 'Desconocido');
+  return `
+    <div class="bita-fila">
+      <span class="bita-cuando">${esc(cuando)}</span>
+      <span class="bita-tipo bita-${tono}">${esc(tipo)}</span>
+      <div class="bita-texto">
+        <span class="bita-quien">${quien}</span>
+        <span class="bita-detalle">${esc(r.detalle)}</span>
+      </div>
+    </div>`;
+}
+
+document.getElementById('bt-q')?.addEventListener('keydown', e => { if (e.key === 'Enter') cargarBitacora(); });
 
 /* ── CIERRE DE SESIÓN POR INACTIVIDAD ─────────────────
  * Minutos por perfil (0 = nunca) en /api/config inactividad_roles, editados

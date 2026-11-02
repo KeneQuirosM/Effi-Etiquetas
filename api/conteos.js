@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requirePermiso } from './_permisos.js';
+import { registrar } from './_bitacora.js';
 import { rateLimit } from './_rateLimit.js';
 import { sheetsHabilitado, enviarConteoASheets, eliminarConteoDeSheets } from './_sheets.js';
 import { exigirDispositivo } from './_dispositivo.js';
@@ -319,6 +320,15 @@ export default async function handler(req, res) {
         });
       }
 
+      // Bitácora: un registro por llamada con los conteos que sí se movieron
+      const movidos = resultados.filter(r => r.ok && !r.sin_cambios);
+      if (movidos.length) {
+        const lista = movidos.map(r =>
+          `#${r.id} ${r.de.tienda} ID ${r.de.codigo} → ID ${r.a.codigo}${r.parcial ? ` (${r.cantidad} de ${r.total} u.)` : ` (${r.cantidad} u.)`}`);
+        await registrar(user, 'conteo_trasladar',
+          `Trasladó ${movidos.length} conteo${movidos.length === 1 ? '' : 's'} a ${destino.nombre}: ${lista.join('; ')}`,
+          { destino_tienda_id: destino.id, conteos: movidos.map(r => r.id) });
+      }
       return res.status(200).json({ destino: destino.nombre, resultados });
     }
 
@@ -558,7 +568,8 @@ export default async function handler(req, res) {
       if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido' });
 
       const { data, error } = await supabaseAdmin
-        .from('conteos').delete().eq('id', id).select('foto_path').maybeSingle();
+        .from('conteos').delete().eq('id', id)
+        .select('foto_path, tienda_nombre, producto_codigo, producto_nombre, cantidad').maybeSingle();
       if (error) {
         console.error('Error borrando conteo:', error);
         return res.status(500).json({ error: 'No se pudo borrar el conteo' });
@@ -576,6 +587,9 @@ export default async function handler(req, res) {
 
       await eliminarConteoDeSheets(id);
 
+      await registrar(user, 'conteo_borrar',
+        `Borró el conteo #${id}: ${data.tienda_nombre} ID ${data.producto_codigo}${data.producto_nombre ? ` "${data.producto_nombre}"` : ''}, ${data.cantidad} u.`,
+        { conteo_id: id });
       return res.status(200).json({ ok: true });
     }
 

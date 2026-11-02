@@ -133,6 +133,7 @@
       <button class="tab-btn" data-tab="tab-manage" data-permiso="tab-manage" onclick="switchTab('tab-manage')">Gestionar Inventario</button>
       <button class="tab-btn" data-tab="tab-config" onclick="switchTab('tab-config')">Configuración</button>
       <button class="tab-btn" data-tab="tab-users" data-solo-admin onclick="switchTab('tab-users')">Usuarios y permisos</button>
+      <button class="tab-btn" data-tab="tab-bitacora" data-solo-admin onclick="switchTab('tab-bitacora')">Bitácora</button>
       <button class="tab-btn" data-tab="tab-devol" data-permiso="tab-devol" onclick="switchTab('tab-devol')">Devoluciones</button>
       <button class="tab-btn" data-tab="tab-conteos" data-permiso="tab-conteos" onclick="switchTab('tab-conteos')">Conteos</button>
       <button class="tab-btn" data-tab="tab-impresion" data-permiso="tab-impresion" onclick="switchTab('tab-impresion')">Impresión</button>
@@ -538,6 +539,46 @@
       <!-- Un selector por perfil; lo llena renderInactividad() en index.js -->
       <div id="inact-lista" class="inact-lista"></div>
       <p style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:22px">Si nadie usa la página durante ese tiempo, la sesión se cierra sola; un minuto antes aparece un aviso para seguir conectado. Cuenta la actividad de todas las pestañas abiertas del mismo navegador. No se cierra mientras la estación de impresión está activa.</p>
+    </div>
+
+    <!-- TAB: Bitácora (solo perfil administrador). La llena cargarBitacora() en index.js -->
+    <div id="tab-bitacora" class="tab-content">
+      <p class="section-label" style="margin-bottom:10px">Quién hizo qué y cuándo</p>
+      <div class="devol-filtros bita-filtros">
+        <div class="form-group">
+          <label for="bt-desde">Desde</label>
+          <input type="date" id="bt-desde">
+        </div>
+        <div class="form-group">
+          <label for="bt-hasta">Hasta</label>
+          <input type="date" id="bt-hasta">
+        </div>
+        <div class="form-group">
+          <label for="bt-usuario">Usuario</label>
+          <select id="bt-usuario"><option value="">Todos</option></select>
+        </div>
+        <div class="form-group">
+          <label for="bt-grupo">Tipo</label>
+          <select id="bt-grupo">
+            <option value="">Todos</option>
+            <option value="sesiones">Inicios de sesión</option>
+            <option value="productos">Productos</option>
+            <option value="tiendas">Tiendas</option>
+            <option value="conteos">Conteos</option>
+            <option value="config">Configuración</option>
+            <option value="dispositivos">Dispositivos</option>
+            <option value="usuarios">Usuarios y permisos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="bt-q">Buscar</label>
+          <input type="search" id="bt-q" maxlength="100" placeholder="Ej: 1234, Tienda X">
+        </div>
+        <button type="button" class="btn-action btn-primary" onclick="cargarBitacora()">Consultar</button>
+      </div>
+      <div id="bita-lista" class="bita-lista"></div>
+      <button type="button" class="btn-action btn-ghost" id="bita-mas" onclick="cargarBitacora(true)" hidden style="margin-top:10px">Cargar más</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:22px">Se registran los cambios hechos desde el modo coordinador: productos, tiendas, traslados y borrados de conteos, configuración, dispositivos, usuarios y permisos, además de cada inicio de sesión. No se registran los conteos ni las devoluciones que se envían desde los celulares.</p>
     </div>
 
     <!-- TAB: Reporte de devoluciones (registradas al exportar en devoluciones.html) -->

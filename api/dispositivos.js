@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requirePermiso } from './_permisos.js';
+import { registrar } from './_bitacora.js';
 import { rateLimit } from './_rateLimit.js';
 import { sha256, tokenAleatorio, exigirActivo, dispositivoDeLaPeticion } from './_dispositivo.js';
 
@@ -81,6 +82,7 @@ export default async function handler(req, res) {
         .from('dispositivos').insert({ nombre, vinculo_hash: sha256(token), vinculo_expira: expira })
         .select('id').single();
       if (error) return errorBase(res, error, 'Error creando vínculo:');
+      await registrar(user, 'dispositivo_vincular', `Generó el QR para vincular el dispositivo "${nombre}"`, { dispositivo_id: data.id });
       return res.status(201).json({ id: data.id, token, expira });
     }
 
@@ -103,9 +105,10 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const id = String((req.body || {}).id || '');
       if (!UUID_RE.test(id)) return res.status(400).json({ error: 'ID inválido' });
-      const { data, error } = await supabaseAdmin.from('dispositivos').delete().eq('id', id).select('id').maybeSingle();
+      const { data, error } = await supabaseAdmin.from('dispositivos').delete().eq('id', id).select('id, nombre').maybeSingle();
       if (error) return errorBase(res, error, 'Error desvinculando:');
       if (!data) return res.status(404).json({ error: 'El dispositivo no existe' });
+      await registrar(user, 'dispositivo_desvincular', `Desvinculó el dispositivo "${data.nombre}"`, { dispositivo_id: id });
       return res.status(200).json({ ok: true });
     }
 

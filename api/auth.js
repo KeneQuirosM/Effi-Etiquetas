@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { setCors } from './_cors.js';
 import { rateLimit } from './_rateLimit.js';
 import { respuestaErrorLogin } from './_auth.js';
+import { registrar } from './_bitacora.js';
 
 // Cliente público para login
 const supabase = createClient(
@@ -39,6 +40,8 @@ export default async function handler(req, res) {
       const [status, mensaje] = respuestaErrorLogin(error);
       return res.status(status).json({ error: mensaje });
     }
+
+    await registrar(data.user, 'sesion_iniciar', 'Inició sesión');
 
     return res.status(200).json({
       token: data.session.access_token,
