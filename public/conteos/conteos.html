@@ -161,6 +161,13 @@
             </label>
         </section>
 
+        <!-- Si el guardado falla (p. ej. Supabase caído): no perder el registro -->
+        <section class="card error-guardar" id="error-guardar" hidden>
+            <p><strong>No se pudo guardar el conteo.</strong> <span id="error-guardar-txt"></span></p>
+            <p class="hint">Intenta guardar otra vez en un momento. Para no perder el registro mientras tanto, puedes compartirlo ya por WhatsApp con la foto (no queda guardado en el sistema).</p>
+            <button type="button" class="btn btn-wa btn-block" onclick="compartirSinGuardar()">Compartir en WhatsApp sin guardar</button>
+        </section>
+
         <div class="bottom-bar">
             <button type="submit" class="btn btn-primary btn-block" id="btn-guardar">Guardar conteo</button>
         </div>

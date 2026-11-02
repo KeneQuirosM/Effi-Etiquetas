@@ -9,6 +9,7 @@ import { exigirDispositivo } from './_dispositivo.js';
 
 const BUCKET = 'conteos';
 const MAX_FOTO_BYTES = 3 * 1024 * 1024;   // ya llega comprimida desde el navegador
+const FOTO_TIMEOUT_MS = 8000;              // si Storage no responde en este tiempo, se guarda sin foto
 const MAX_RANGO_DIAS = 400;
 const MAX_FILAS = 1000;
 const URL_FIRMADA_SEG = 60 * 60;
@@ -450,8 +451,13 @@ export default async function handler(req, res) {
         // Mes de Costa Rica, como la columna fecha (en UTC, desde las 18:00 del último día ya sería el mes siguiente)
         const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Costa_Rica', year: 'numeric', month: '2-digit' }).format(new Date());
         fotoPath = `${hoy}/${randomUUID()}.${EXT[foto.tipo]}`;
-        const { error: upErr } = await supabaseAdmin.storage
-          .from(BUCKET).upload(fotoPath, foto.buffer, { contentType: foto.tipo, upsert: false });
+        // Con Storage caído la respuesta (Gateway Timeout) tarda tanto que
+        // Vercel cortaba la función antes de guardar el conteo: se limita la espera
+        let timer;
+        const { error: upErr } = await Promise.race([
+          supabaseAdmin.storage.from(BUCKET).upload(fotoPath, foto.buffer, { contentType: foto.tipo, upsert: false }),
+          new Promise(resolve => { timer = setTimeout(() => resolve({ error: { message: 'el almacenamiento de fotos no respondió a tiempo' } }), FOTO_TIMEOUT_MS); })
+        ]).finally(() => clearTimeout(timer));
         // Si el almacenamiento falla (cuota llena, bucket, etc.) el conteo se
         // guarda igual sin foto: perder la foto es mejor que frenar el conteo.
         // El motivo vuelve al celular para poder diagnosticarlo.

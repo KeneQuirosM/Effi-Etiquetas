@@ -273,3 +273,8 @@ body {
 .dlg-avisos ul { padding-left: 20px; margin-bottom: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
 .dlg-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dlg-acciones .btn { width: 100%; }
+
+/* Aviso cuando el guardado falla */
+.error-guardar { border-color: var(--danger-border); background: var(--danger-bg); gap: 8px; }
+.error-guardar p { font-size: 14px; color: var(--danger-text); overflow-wrap: anywhere; }
+.error-guardar .hint { color: var(--neutral-800); }

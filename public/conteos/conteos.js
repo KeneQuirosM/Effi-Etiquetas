@@ -481,17 +481,42 @@ async function guardarConteo(e) {
     $('ok-sub').textContent = `Registro #${res.conteo?.id ?? ''}${fotoGuardada ? ' · con foto' : ' · sin foto'}${datos.imprimir ? ' · etiqueta enviada a imprimir' : ''}`;
     // La foto no se subió pero el conteo sí: avisar (sigue disponible para WhatsApp)
     if (res.aviso_foto) notify(res.aviso_foto, 'warn', 12000);
+    $('error-guardar').hidden = true;
     $('form-conteo').hidden = true;
     $('vista-ok').hidden = false;
     window.scrollTo(0, 0);
   } catch (err) {
     manejarNoVinculado(err);
-    notify(err.message || 'No se pudo guardar el conteo. Revisa la conexión e intenta de nuevo.', 'error');
+    const motivo = err.message && err.message !== 'Error'
+      ? err.message
+      : err.status ? `el servidor no respondió bien (código ${err.status})` : 'sin conexión';
+    notify(`No se pudo guardar el conteo: ${motivo}`, 'error');
+    // Respaldo: ofrecer compartirlo por WhatsApp sin guardar (botón = toque
+    // directo, así el menú de compartir no queda bloqueado en iPhone)
+    $('error-guardar-txt').textContent = `(${motivo})`;
+    $('error-guardar').hidden = false;
+    $('error-guardar').scrollIntoView({ block: 'center', behavior: 'smooth' });
   } finally {
     guardando = false;
     btn.disabled = false;
     btn.textContent = 'Guardar conteo';
   }
+}
+
+/* ── COMPARTIR SIN GUARDAR ──
+ * Si el servidor falla, el conteo se puede mandar igual por WhatsApp con
+ * la foto, avisando en el mensaje que no quedó en el sistema.
+ */
+function compartirSinGuardar() {
+  const { datos } = leerFormulario();
+  const tienda = tiendaActual();
+  const nombreProd = productoPorCodigo(datos.producto_codigo)?.producto || '';
+  ultimoMensaje = armarMensaje(datos, tienda ? tienda.nombre : '', nombreProd) +
+    '\n\n*Nota:* no se pudo guardar en el sistema; registrarlo cuando vuelva a funcionar.';
+  ultimaFoto = fotoBlob
+    ? new File([fotoBlob], `conteo-${String(datos.producto_codigo).replace(/[^\w-]+/g, '_')}.jpg`, { type: 'image/jpeg' })
+    : null;
+  compartirWhatsApp();
 }
 
 /* ── COMPARTIR ── */
@@ -551,6 +576,7 @@ function nuevoConteo() {
   ['f-codigo', 'f-cantidad', 'f-cajas', 'f-ancho', 'f-largo', 'f-alto', 'f-lote', 'f-venc', 'f-inicio', 'f-cierre']
     .forEach(id => { $(id).value = ''; });
   CASILLAS_SIN.forEach(([casilla]) => { $(casilla).checked = false; });
+  $('error-guardar').hidden = true;
   aplicarCasillasSin();
   document.querySelectorAll('.field.invalid').forEach(f => f.classList.remove('invalid'));
   quitarFoto();
