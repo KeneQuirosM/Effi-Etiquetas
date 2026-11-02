@@ -172,13 +172,6 @@
             box-shadow: 0 0 0 4px rgba(46,125,50,.2);
         }
 
-        /* Pistola Honeywell por serial */
-        .pistola-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-        .pistola-row:has(#pistolaBtn[hidden]) { display: none; }
-        .pistola-estado { font-size: 12px; color: var(--neutral-600); }
-        .pistola-estado.is-ok { color: var(--success-mid); font-weight: 600; }
-        .pistola-estado.is-error { color: var(--danger-mid); font-weight: 600; }
-
         /* Interruptor "Sonido" — igual al de manifiesto */
         .scan-sound {
             display: inline-flex; align-items: center; gap: 8px;
