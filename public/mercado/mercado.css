@@ -246,6 +246,32 @@ input:disabled, select:disabled { background: var(--neutral-50); color: var(--ne
 
 .mk-print-head { display: none; }
 
+/* ── Hoja de mercado impresa (formato de la hoja de Google) ── */
+.mk-hoja { display: none; }
+@page hoja { size: landscape; margin: 8mm; }
+.hoja-sec { page: hoja; break-after: page; font-size: 8.5pt; color: #000; }
+.hoja-sec:last-child { break-after: auto; }
+.hoja-cab { display: flex; gap: 16px; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 2px; margin-bottom: 4px; }
+.hoja-cab strong { font-size: 11pt; }
+.hoja-cab span:last-child { margin-left: auto; }
+.hoja-tabla { width: 100%; border-collapse: collapse; }
+.hoja-tabla th, .hoja-tabla td { border: 1px solid #555; padding: 1px 4px; line-height: 1.25; }
+.hoja-tabla th { background: #d9d9d9; font-size: 7.5pt; text-transform: uppercase; text-align: left; }
+.hoja-tabla .c { text-align: center; }
+.hoja-tabla td { white-space: nowrap; }
+.hoja-tabla td.w { white-space: normal; }
+.hoja-tabla tbody tr:nth-child(even) td { background: #f2f2f2; }
+.hoja-tabla tfoot td { font-weight: 700; background: #e7e7e7; }
+.hoja-tabla tr { break-inside: avoid; }
+.hoja-tabla th, .hoja-tabla td, .hoja-cab { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.hoja-firmas { display: grid; grid-template-columns: 1fr 1fr .8fr 1.6fr; gap: 14px; align-items: start; margin: 10px 0; break-inside: avoid; }
+.hf-tit { font-weight: 700; font-style: italic; }
+.hf-linea { display: flex; gap: 6px; margin-top: 7px; font-size: 7.5pt; font-weight: 600; }
+.hf-valor { flex: 1; border-bottom: 1px solid #000; font-size: 9pt; font-weight: 600; min-height: 13px; }
+.hf-datos p { display: flex; justify-content: space-between; gap: 8px; font-size: 8pt; margin-top: 4px; }
+.hf-check { width: 22px; }
+.hoja-sub { font-weight: 700; font-style: italic; margin: 4px 0 2px; }
+
 /* ── Celular ── */
 @media (max-width: 640px) {
   body { font-size: 14px; }
@@ -275,6 +301,9 @@ input:disabled, select:disabled { background: var(--neutral-50); color: var(--ne
   .mk-tabla tr { break-inside: avoid; }
   .mk-tabla tr.g1 td, .mk-tabla tr.g2 td, .mk-lista-cab { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   /* Solo se imprime lo que se pidió */
+  body[data-imprimir="hoja"] .mk-main { display: none !important; }
+  body[data-imprimir="hoja"] .mk-hoja { display: block; }
+  #__notify_container { display: none !important; }
   body[data-imprimir="corte"] .mk-panel:not(#panel-corte) { display: none !important; }
   body[data-imprimir="persona"] .mk-panel:not(#panel-persona) { display: none !important; }
   body[data-imprimir="persona"] .mk-print-head { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 6px; }

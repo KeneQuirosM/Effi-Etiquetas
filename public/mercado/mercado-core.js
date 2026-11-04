@@ -50,6 +50,11 @@
     anulacion:    'Fecha de anulación transacción'
   };
 
+  // Opcionales: si faltan, el cálculo sigue (la hoja de alistamiento las muestra vacías)
+  const COLUMNAS_OPCIONALES = {
+    destinatario: 'Destinatario'
+  };
+
   // Motivos por los que una fila queda FUERA del mercado
   const MOTIVOS = {
     anulada:         'Fila anulada',
@@ -194,6 +199,10 @@
     if (faltan.length) {
       throw new Error(`Faltan columnas en el Excel: ${faltan.join(', ')}. ¿Es el export del corte?`);
     }
+    Object.entries(COLUMNAS_OPCIONALES).forEach(([k, nombre]) => {
+      const i = enc.indexOf(clave(nombre));
+      if (i >= 0) col[k] = i;
+    });
 
     const detalle = [];
     for (let i = 1; i < filas.length; i++) {
@@ -206,6 +215,7 @@
       const cantidad = cantidadANumero(f[col.cantidad]);
       const idArticulo = idTexto(f[col.idArticulo]);
       const descripcion = normEspacios(f[col.descripcion]);
+      const destinatario = col.destinatario === undefined ? '' : normEspacios(f[col.destinatario]);
       const vigencia = normEspacios(f[col.vigencia]);
       const anulacion = f[col.anulacion];
       const motivos = [];
@@ -234,7 +244,7 @@
       }
 
       detalle.push({
-        fila, inventario, guia, guiaTexto, transportadora, idArticulo, descripcion,
+        fila, inventario, guia, guiaTexto, transportadora, idArticulo, descripcion, destinatario,
         cantidad: cantidad ?? 0, cantidadTexto: normEspacios(f[col.cantidad]),
         vigencia, ubicacion, tabla, motivos, avisos,
         incluida: motivos.length === 0
@@ -242,7 +252,9 @@
     }
 
     // Mercado: suma de Cantidad por transportadora/inventario/descripción/ID/ubicación
+    // Alistamiento: suma por guía (la hoja de alistamiento, una fila por guía y artículo)
     const grupos = new Map();
+    const porGuia = new Map();
     const base = new Map();
     let unidadesExcel = 0, unidadesMercado = 0;
     const guiasTodas = new Set();
@@ -262,6 +274,15 @@
       g.cantidad += d.cantidad;
       g.filas++;
 
+      const ka = [d.transportadora, d.inventario, d.guia, d.destinatario, d.descripcion, d.idArticulo].join('\u0001');
+      let a = porGuia.get(ka);
+      if (!a) {
+        a = { transportadora: d.transportadora, inventario: d.inventario, guia: d.guiaTexto, destinatario: d.destinatario,
+              descripcion: d.descripcion, idArticulo: d.idArticulo, cantidad: 0, _g: d.guia };
+        porGuia.set(ka, a);
+      }
+      a.cantidad += d.cantidad;
+
       const kb = d.transportadora + '\u0001' + d.inventario;
       let b = base.get(kb);
       if (!b) {
@@ -280,6 +301,12 @@
       a.descripcion.localeCompare(b.descripcion, 'es') ||
       a.idArticulo.localeCompare(b.idArticulo, 'es', { numeric: true }));
 
+    const alistamiento = [...porGuia.values()].sort((a, b) =>
+      compararTransportadora(a.transportadora, b.transportadora) ||
+      a.inventario.localeCompare(b.inventario, 'es') ||
+      a._g - b._g ||
+      a.descripcion.localeCompare(b.descripcion, 'es')).map(({ _g, ...a }) => a);
+
     const resumen = [...base.values()].map(b => ({
       transportadora: b.transportadora, inventario: b.inventario,
       unidades: b.unidades, guias: b._guias.size, articulos: b._art.size
@@ -294,7 +321,7 @@
     const conAviso = detalle.filter(d => d.incluida && d.avisos.length);
 
     return {
-      detalle, lineas, base: resumen, porInventario, excluidas, conAviso,
+      detalle, lineas, alistamiento, base: resumen, porInventario, excluidas, conAviso,
       totales: {
         filasExcel: detalle.length,
         filasMercado: detalle.length - excluidas.length,
@@ -364,7 +391,7 @@
   }
 
   const api = {
-    RANGOS_DEFECTO, TABLAS_DEFECTO, DESCONOCIDA, COLUMNAS, MOTIVOS, AVISOS,
+    RANGOS_DEFECTO, TABLAS_DEFECTO, DESCONOCIDA, COLUMNAS, COLUMNAS_OPCIONALES, MOTIVOS, AVISOS,
     normEspacios, clave, guiaANumero, idTexto, inventarioDe, transportadoraDe, limpiarRangos,
     compararUbicacion, compararTransportadora, leerTablaUbicaciones,
     procesarCorte, sugerirReparto, revisarAsignacion

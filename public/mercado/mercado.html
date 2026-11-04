@@ -75,7 +75,7 @@
           <div class="mk-acciones">
             <input type="search" id="buscar-mercado" class="mk-input-sm" placeholder="Buscar artículo, ID, tienda...">
             <button type="button" class="mk-btn" id="btn-export-corte">Exportar Excel</button>
-            <button type="button" class="mk-btn" id="btn-print-corte">Imprimir</button>
+            <button type="button" class="mk-btn" id="btn-print-corte">Imprimir hojas</button>
           </div>
         </div>
         <div id="tabla-mercado" class="mk-tabla-wrap"></div>
@@ -137,9 +137,10 @@
               <button type="button" class="mk-seg-btn" data-orden="transportadora" aria-pressed="false">Por transportadora</button>
             </div>
             <label class="mk-check-inline"><input type="checkbox" id="per-ocultar-listos"> Ocultar alistados</label>
-            <button type="button" class="mk-btn" id="btn-per-print">Imprimir</button>
+            <button type="button" class="mk-btn mk-btn-primary" id="btn-per-print">Imprimir hoja</button>
             <button type="button" class="mk-btn" id="btn-per-pdf">PDF</button>
             <button type="button" class="mk-btn" id="btn-per-excel">Excel</button>
+            <button type="button" class="mk-btn" id="btn-per-lista">Imprimir lista con casillas</button>
           </div>
         </div>
         <div class="mk-progreso" id="per-progreso"></div>
@@ -216,6 +217,9 @@
   </section>
 
 </main>
+
+<!-- Hoja de mercado para imprimir (solo se ve al imprimir) -->
+<div id="hoja-print" class="mk-hoja" aria-hidden="true"></div>
 
 <script src="/shared/dom-utils.js"></script>
 <script src="/shared/api.js"></script>

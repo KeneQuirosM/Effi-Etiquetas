@@ -195,3 +195,23 @@ test('HOJA-CORTE: mercado y BASE iguales a las tablas dinámicas de la hoja', ()
     r.base.map(b => [b.transportadora, b.inventario, b.unidades, b.guias]),
     base.map(b => [b.transportadora, b.inventario, b.unidades, b.guias]));
 });
+
+test('alistamiento por guía: misma suma que el mercado y una fila por guía y artículo', () => {
+  const r = M.procesarCorte(leerExcel(fx('CORTE041102.xlsx')));
+  assert.equal(suma(r.alistamiento, a => a.cantidad), r.totales.unidadesMercado);
+  const claves = r.alistamiento.map(a => `${a.guia}|${a.idArticulo}|${a.descripcion}`);
+  assert.equal(new Set(claves).size, claves.length);
+  // ordenado por guía dentro de cada inventario
+  const linea = r.alistamiento.filter(a => a.inventario === '57215 - DISTRIBUCIONES LINEA VERDE C.R DS').map(a => Number(a.guia));
+  assert.deepEqual(linea, [...linea].sort((x, y) => x - y));
+  assert.equal(new Set(linea).size, r.base.filter(b => b.inventario === '57215 - DISTRIBUCIONES LINEA VERDE C.R DS')
+    .reduce((s, b) => s + b.guias, 0));
+});
+
+test('destinatario es opcional y se lee si viene', () => {
+  const enc = [...ENC, 'Destinatario'];
+  const r = M.procesarCorte([enc, [...fila({}), '  Ana   Pérez '], [...fila({ 'Guía transportadora': '1000000002' }), null]]);
+  assert.deepEqual(r.alistamiento.map(a => a.destinatario), ['Ana Pérez', '']);
+  const sin = M.procesarCorte([ENC, fila({})]);
+  assert.equal(sin.alistamiento[0].destinatario, '');
+});

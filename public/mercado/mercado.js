@@ -269,7 +269,7 @@ function resultadoDeGuardado(c) {
   const porInventario = {};
   (c.lineas || []).forEach(l => { porInventario[l.inventario] = (porInventario[l.inventario] || 0) + l.cantidad; });
   return {
-    lineas: c.lineas || [], base: c.base || [], porInventario,
+    lineas: c.lineas || [], alistamiento: c.alistamiento || [], base: c.base || [], porInventario,
     excluidas: c.validacion?.excluidas || [], conAviso: c.validacion?.conAviso || [],
     totales: c.totales || {}
   };
@@ -410,7 +410,7 @@ document.querySelectorAll('[data-vista]').forEach(b => b.addEventListener('click
 }));
 $('buscar-mercado').addEventListener('input', debounce(renderTablas, 150));
 $('btn-export-corte').addEventListener('click', exportarCorte);
-$('btn-print-corte').addEventListener('click', () => imprimir('corte'));
+$('btn-print-corte').addEventListener('click', () => imprimirHoja('todas'));
 
 function renderCorte() {
   const hay = !!S.corte;
@@ -583,7 +583,8 @@ function exportarCorte() {
   c.resultado.lineas.forEach(l => merc.push([transpTxt(l.transportadora), l.inventario, l.descripcion, l.idArticulo, l.ubicacion, l.cantidad,
     c.asignaciones[l.inventario] ? nombrePersona(c.asignaciones[l.inventario]) : 'SIN ASIGNAR']));
   merc.push(['Total', '', '', '', '', c.resultado.totales.unidadesMercado, '']);
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(merc), 'MERCADO Y ALISTAMIENTO');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(merc), 'MERCADO');
+  XLSX.utils.book_append_sheet(wb, hojaAlistamiento(inventariosDe('todas')), 'ALISTAMIENTO');
   const base = [['HORARIO', c.horario || ''], ['FECHA', fechaTexto(c.fecha)], ['RESPONSABLE CORTE', c.responsable_corte || ''],
     ['RESPONSABLE IMPRESION GUIAS Y GENERACION RELACION DESPACHOS', c.responsable_impresion || ''], [],
     ['TRANSPORTADORA', 'TIENDA', 'UNIDADES', 'CANT-GUIAS', 'ARTICULOS']];
@@ -605,6 +606,75 @@ function imprimir(modo) {
   window.addEventListener('afterprint', limpiar);
   window.print();
   setTimeout(limpiar, 1000);
+}
+
+/* ── HOJA DE MERCADO IMPRESA ──────────────────────────────
+ * Mismo formato que la hoja de Google: por cada tienda, el MERCADO
+ * (artículos con su ubicación), el bloque para firmar quién hizo el
+ * mercado y el alistamiento con horas, y el ALISTAMIENTO por guía con su
+ * destinatario. Una tienda por página, horizontal.
+ */
+function inventariosDe(sel) {
+  const c = S.corte;
+  const todos = Object.keys(c.resultado.porInventario);
+  if (sel === 'todas') return todos;
+  if (sel === 'sin') return todos.filter(inv => !c.personas.includes(Number(c.asignaciones[inv])));
+  return todos.filter(inv => Number(c.asignaciones[inv]) === Number(sel));
+}
+
+function hojaMercadoHTML(sel) {
+  const c = S.corte;
+  const r = c.resultado;
+  const invs = inventariosDe(sel).sort((a, b) => a.localeCompare(b, 'es'));
+  const fecha = fechaTexto(c.fecha);
+  return invs.map(inv => {
+    const lineas = r.lineas.filter(l => l.inventario === inv);
+    const guias = r.alistamiento.filter(a => a.inventario === inv);
+    const persona = c.asignaciones[inv] ? nombrePersona(c.asignaciones[inv]) : '';
+    const porTransp = {};
+    guias.forEach(a => { (porTransp[a.transportadora] ||= new Set()).add(a.guia); });
+    const nGuias = Object.values(porTransp).reduce((s, g) => s + g.size, 0);
+    const total = lineas.reduce((s, l) => s + l.cantidad, 0);
+    const alias = aliasDe(inv);
+    const linea = (etq, valor) => `<div class="hf-linea"><span>${etq}</span><span class="hf-valor">${esc(valor || '')}</span></div>`;
+    return `
+    <section class="hoja-sec">
+      <div class="hoja-cab"><strong>MERCADO</strong><span>${esc(alias ? `${alias} · ${inv}` : inv)}</span><span>${esc(fecha)}${c.horario ? ' · ' + esc(c.horario) : ''}</span></div>
+      <table class="hoja-tabla">
+        <thead><tr><th>Transportadora</th><th>Inventario</th><th>Descripción original artículo</th><th>ID artículo</th><th>Ubicación</th><th class="num">SUM de Cantidad</th></tr></thead>
+        <tbody>${lineas.map(l => `<tr><td>${esc(transpTxt(l.transportadora))}</td><td>${esc(l.inventario)}</td><td class="w">${esc(l.descripcion)}</td>
+          <td class="c">${esc(l.idArticulo)}</td><td class="c">${esc(l.ubicacion)}</td><td class="c"><strong>${fmt(l.cantidad)}</strong></td></tr>`).join('')}</tbody>
+        <tfoot><tr><td colspan="5">Total</td><td class="c">${fmt(total)}</td></tr></tfoot>
+      </table>
+
+      <div class="hoja-firmas">
+        <div><p class="hf-tit">MERCADO</p>${linea('REALIZADO POR:', persona)}${linea('HORA INICIO:')}${linea('HORA FIN:')}</div>
+        <div><p class="hf-tit">ALISTAMIENTO</p>${linea('REALIZADO POR:')}${linea('HORA INICIO:')}${linea('HORA FIN:')}</div>
+        <div class="hf-datos"><p><span>GUÍAS:</span><strong>${fmt(nGuias)}</strong></p><p><span>HORARIO:</span><strong>${esc(c.horario || '')}</strong></p><p><span>FECHA:</span><strong>${esc(fecha)}</strong></p></div>
+        <table class="hoja-tabla hf-mini"><thead><tr><th>Transportadora</th><th>Inventario</th><th class="num">Guías</th></tr></thead>
+          <tbody>${Object.entries(porTransp).map(([t, g]) => `<tr><td>${esc(transpTxt(t))}</td><td>${esc(inv)}</td><td class="c">${fmt(g.size)}</td></tr>`).join('')}</tbody></table>
+      </div>
+
+      <p class="hoja-sub">ALISTAMIENTO</p>
+      <table class="hoja-tabla">
+        <thead><tr><th>Transportadora</th><th>Inventario</th><th>Guía transportadora</th><th>Destinatario</th><th>Descripción original artículo</th><th>ID artículo</th><th class="num">SUM de Cantidad</th><th class="hf-check">✓</th></tr></thead>
+        <tbody>${guias.map(a => `<tr><td>${esc(transpTxt(a.transportadora))}</td><td>${esc(a.inventario)}</td><td class="c mono">${esc(a.guia)}</td>
+          <td class="w">${esc(a.destinatario)}</td><td class="w">${esc(a.descripcion)}</td><td class="c">${esc(a.idArticulo)}</td><td class="c"><strong>${fmt(a.cantidad)}</strong></td><td class="hf-check"></td></tr>`).join('')}</tbody>
+      </table>
+    </section>`;
+  }).join('');
+}
+
+function imprimirHoja(sel) {
+  if (!S.corte) return;
+  if (!S.corte.resultado.alistamiento?.length) {
+    notify('Este corte se guardó antes de que existiera la hoja por guía: vuelve a subir el Excel para imprimirla', 'warn', 8000);
+    return;
+  }
+  const html = hojaMercadoHTML(sel);
+  if (!html) { notify('No hay tiendas para imprimir en esta selección', 'warn'); return; }
+  $('hoja-print').innerHTML = html;
+  imprimir('hoja');
 }
 
 /* ── ASIGNACIÓN ─────────────────────────────────────────── */
@@ -766,7 +836,7 @@ async function guardarCorte() {
         idArticulo: d.idArticulo, cantidad: d.cantidad, cantidadTexto: d.cantidadTexto, motivos: d.motivos, avisos: d.avisos, tabla: d.tabla });
       const nuevo = {
         id: Local.siguienteId(), ...comunes, personas: personasInfo(c.personas), archivo: c.archivo,
-        totales: c.resultado.totales, lineas: c.resultado.lineas, base: c.resultado.base,
+        totales: c.resultado.totales, lineas: c.resultado.lineas, alistamiento: c.resultado.alistamiento, base: c.resultado.base,
         validacion: { excluidas: c.resultado.excluidas.map(compacta), conAviso: c.resultado.conAviso.map(compacta) },
         alistado: {}, creado_por: S.perfil?.nombre || '', creado_en: new Date().toISOString()
       };
@@ -809,11 +879,12 @@ document.querySelectorAll('[data-orden]').forEach(b => b.addEventListener('click
   renderPersona();
 }));
 $('per-ocultar-listos').addEventListener('change', renderPersona);
-$('btn-per-print').addEventListener('click', () => imprimir('persona'));
+$('btn-per-print').addEventListener('click', () => imprimirHoja(String(S.personaSel)));
 $('btn-per-pdf').addEventListener('click', () => {
   notify('En la ventana de impresión elige "Guardar como PDF"', 'info', 5000);
-  setTimeout(() => imprimir('persona'), 400);
+  setTimeout(() => imprimirHoja(String(S.personaSel)), 400);
 });
+$('btn-per-lista').addEventListener('click', () => imprimir('persona'));
 $('btn-per-excel').addEventListener('click', exportarPersona);
 $('per-lista').addEventListener('change', e => {
   const linea = Number(e.target.dataset.linea);
@@ -921,6 +992,15 @@ async function marcarAlistado(linea, valor, input) {
   }
 }
 
+// Hoja de Excel con el alistamiento por guía de esos inventarios
+function hojaAlistamiento(invs) {
+  const set = new Set(invs);
+  const filas = [['TRANSPORTADORA', 'INVENTARIO', 'Guía transportadora', 'Destinatario', 'Descripción original artículo', 'ID artículo', 'Cantidad']];
+  (S.corte.resultado.alistamiento || []).filter(a => set.has(a.inventario)).forEach(a =>
+    filas.push([transpTxt(a.transportadora), a.inventario, a.guia, a.destinatario, a.descripcion, a.idArticulo, a.cantidad]));
+  return XLSX.utils.aoa_to_sheet(filas);
+}
+
 function exportarPersona() {
   if (!S.corte || typeof XLSX === 'undefined') return;
   const sel = String(S.personaSel);
@@ -933,7 +1013,8 @@ function exportarPersona() {
   });
   filas.push(['', 'Total', '', '', '', lineas.reduce((s, l) => s + l.cantidad, 0), '', '']);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filas), String(titulo).slice(0, 31).replace(/[\\/?*[\]:]/g, ' '));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filas), 'MERCADO');
+  XLSX.utils.book_append_sheet(wb, hojaAlistamiento(inventariosDe(sel)), 'ALISTAMIENTO');
   XLSX.writeFile(wb, nombreArchivo(String(titulo).replace(/\s+/g, '_')));
 }
 

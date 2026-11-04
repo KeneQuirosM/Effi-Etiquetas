@@ -86,7 +86,8 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 - La "Guía transportadora" se convierte siempre a número (viene como texto); los espacios dobles de los nombres se normalizan; las filas anuladas o con fecha de anulación quedan fuera
 - Comprobación al procesar: unidades del Excel = unidades del mercado = unidades asignadas. Lo que no cuadre se lista en rojo fila por fila con su motivo (anulada, guía no numérica, cantidad no válida, sin asignar, transportadora desconocida, ubicación no encontrada, tabla de ubicaciones no cargada)
 - Asignación: se escoge quién hace el mercado y la app sugiere un reparto equilibrado por unidades (respetando la persona habitual de cada tienda), editable tienda por tienda
-- Vista por persona: su lista ordenada por ubicación, casilla de alistado por artículo y barra de avance; imprimir, PDF y Excel (así se le entrega la lista a cada persona)
+- Vista por persona: su lista ordenada por ubicación, casilla de alistado por artículo y barra de avance
+- "Imprimir hoja" (o PDF) saca el mismo formato de la hoja de Google, una tienda por página en horizontal: MERCADO (artículo, ID, ubicación, cantidad), bloque para anotar quién hizo el mercado y el alistamiento con hora de inicio y fin, guías/horario/fecha, y ALISTAMIENTO con una fila por guía, destinatario y artículo. El Excel trae las pestañas MERCADO y ALISTAMIENTO
 - Historial de cortes con responsables, asignaciones y avance
 - Configuración: personas, tiendas (nombre corto y persona habitual), rangos de transportadora, qué inventario usa qué tabla de ubicaciones, y carga de las tablas (MIIA, DONNA, BOCALI, LANEA) subiendo la hoja como .xlsx
 - Sin base de datos: todo corre en el navegador y se guarda en ese navegador (localStorage): personas, tiendas, configuración, tablas de ubicaciones, los últimos 30 cortes y las casillas de alistado. Otro computador o celular no ve esos datos
