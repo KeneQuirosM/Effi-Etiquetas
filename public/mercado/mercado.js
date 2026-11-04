@@ -634,6 +634,9 @@ function hojaMercadoHTML(sel) {
     const porTransp = {};
     guias.forEach(a => { (porTransp[a.transportadora] ||= new Set()).add(a.guia); });
     const nGuias = Object.values(porTransp).reduce((s, g) => s + g.size, 0);
+    // Guías con más de un artículo: se resaltan igual que en la hoja de Google
+    const filasPorGuia = {};
+    guias.forEach(a => { filasPorGuia[a.guia] = (filasPorGuia[a.guia] || 0) + 1; });
     const total = lineas.reduce((s, l) => s + l.cantidad, 0);
     const alias = aliasDe(inv);
     const linea = (etq, valor) => `<div class="hf-linea"><span>${etq}</span><span class="hf-valor">${esc(valor || '')}</span></div>`;
@@ -658,7 +661,7 @@ function hojaMercadoHTML(sel) {
       <p class="hoja-sub">ALISTAMIENTO</p>
       <table class="hoja-tabla">
         <thead><tr><th>Transportadora</th><th>Inventario</th><th>Guía transportadora</th><th>Destinatario</th><th>Descripción original artículo</th><th>ID artículo</th><th class="num">SUM de Cantidad</th><th class="hf-check">✓</th></tr></thead>
-        <tbody>${guias.map(a => `<tr><td>${esc(transpTxt(a.transportadora))}</td><td>${esc(a.inventario)}</td><td class="c mono">${esc(a.guia)}</td>
+        <tbody>${guias.map(a => `<tr><td>${esc(transpTxt(a.transportadora))}</td><td>${esc(a.inventario)}</td><td class="c mono${filasPorGuia[a.guia] > 1 ? ' hf-multi' : ''}">${esc(a.guia)}</td>
           <td class="w">${esc(a.destinatario)}</td><td class="w">${esc(a.descripcion)}</td><td class="c">${esc(a.idArticulo)}</td><td class="c"><strong>${fmt(a.cantidad)}</strong></td><td class="hf-check"></td></tr>`).join('')}</tbody>
       </table>
     </section>`;
