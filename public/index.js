@@ -2983,13 +2983,7 @@ const BITACORA_ACCIONES = {
   usuario_contrasena:      ['Usuario', 'edit'],
   usuario_borrar:          ['Usuario', 'del'],
   permisos_cambiar:        ['Permisos', 'edit'],
-  inactividad_cambiar:     ['Permisos', 'edit'],
-  mercado_corte_crear:     ['Mercado', 'ok'],
-  mercado_corte_asignar:   ['Mercado', 'edit'],
-  mercado_corte_borrar:    ['Mercado', 'del'],
-  mercado_persona:         ['Mercado', 'edit'],
-  mercado_config:          ['Mercado', 'edit'],
-  mercado_ubicaciones:     ['Mercado', 'edit']
+  inactividad_cambiar:     ['Permisos', 'edit']
 };
 let bitacoraAbierta = false;
 let bitacoraUltimoId = null;

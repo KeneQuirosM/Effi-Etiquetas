@@ -86,9 +86,10 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 - La "Guía transportadora" se convierte siempre a número (viene como texto); los espacios dobles de los nombres se normalizan; las filas anuladas o con fecha de anulación quedan fuera
 - Comprobación al procesar: unidades del Excel = unidades del mercado = unidades asignadas. Lo que no cuadre se lista en rojo fila por fila con su motivo (anulada, guía no numérica, cantidad no válida, sin asignar, transportadora desconocida, ubicación no encontrada, tabla de ubicaciones no cargada)
 - Asignación: se escoge quién hace el mercado y la app sugiere un reparto equilibrado por unidades (respetando la persona habitual de cada tienda), editable tienda por tienda
-- Vista por persona para el celular: su lista ordenada por ubicación, casilla de alistado por artículo (se guarda al instante y se ve en los demás equipos) y barra de avance; imprimir, PDF y Excel
+- Vista por persona: su lista ordenada por ubicación, casilla de alistado por artículo y barra de avance; imprimir, PDF y Excel (así se le entrega la lista a cada persona)
 - Historial de cortes con responsables, asignaciones y avance
 - Configuración: personas, tiendas (nombre corto y persona habitual), rangos de transportadora, qué inventario usa qué tabla de ubicaciones, y carga de las tablas (MIIA, DONNA, BOCALI, LANEA) subiendo la hoja como .xlsx
+- Sin base de datos: todo corre en el navegador y se guarda en ese navegador (localStorage): personas, tiendas, configuración, tablas de ubicaciones, los últimos 30 cortes y las casillas de alistado. Otro computador o celular no ve esos datos
 - Requiere sesión de coordinador; el botón del menú está oculto para todos hasta activarlo en Configuración > Botones del menú. Permisos: "Menú: Mercado y Alistamiento" (ver y marcar alistados) y "Subir cortes, asignar y configurar"
 
 ---
@@ -122,12 +123,6 @@ El guardado del almacén reemplaza el estado completo en una sola transacción c
 
 **Dispositivos vinculados** — `supabase/dispositivos.sql`:
 - `dispositivos` — equipos autorizados a enviar Conteos y Devoluciones (nombre y hash de su credencial). Sin acceso público: solo la API la lee
-
-**Mercado y Alistamiento** — `supabase/mercado.sql`:
-- `mercado_personas`, `mercado_inventarios` — quién hace el mercado y las tiendas (con su persona habitual)
-- `mercado_ubicaciones`, `mercado_ubicaciones_cargas` — tablas de ubicaciones por ID artículo (se reemplazan con la función `mercado_reemplazar_ubicaciones`)
-- `mercado_cortes`, `mercado_alistado` — cada corte guardado (mercado, BASE, validación, asignaciones) y los artículos marcados como alistados
-- Los rangos de transportadora y las tablas por inventario se guardan en `configuracion.mercado_config`
 
 El campo `skus.producto_id` vincula STOCKFORGE con el catálogo de etiquetas. Cuando un SKU tiene `producto_id`, al guardar el almacén se actualiza automáticamente `productos.ubicacion` con la posición física.
 
@@ -220,7 +215,6 @@ El coordinador usa el mismo usuario en el generador de etiquetas y en STOCKFORGE
    3. `supabase/devoluciones_registro.sql`
    4. `supabase/conteos.sql`
    5. `supabase/dispositivos.sql`
-   6. `supabase/mercado.sql`
 3. Ir a **Authentication → Users → Invite User** → crear el coordinador (luego se pueden agregar más desde la pestaña Usuarios)
 4. Copiar desde **Project Settings → API**:
    - Project URL → `SUPABASE_URL`
