@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Efficommerce | Mercado y Alistamiento</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/tokens.css">
+  <link rel="stylesheet" href="mercado.css">
+</head>
+<body>
+
+<header class="mk-header">
+  <div class="mk-header-row">
+    <button type="button" class="mk-back" onclick="goBackToApp()" aria-label="Volver" title="Volver"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>
+    <div class="mk-titles">
+      <h1>Mercado y Alistamiento</h1>
+      <span class="mk-sub" id="mk-usuario">Packing · Corte</span>
+    </div>
+  </div>
+  <div class="mk-corte-bar" id="corte-bar" hidden>
+    <span class="mk-corte-txt" id="corte-bar-txt"></span>
+    <span class="mk-pill" id="corte-bar-estado"></span>
+  </div>
+  <nav class="mk-tabs" role="tablist" aria-label="Secciones">
+    <button type="button" class="mk-tab active" role="tab" data-tab="corte" aria-selected="true">Corte</button>
+    <button type="button" class="mk-tab" role="tab" data-tab="asignacion" aria-selected="false">Asignación</button>
+    <button type="button" class="mk-tab" role="tab" data-tab="persona" aria-selected="false">Por persona</button>
+    <button type="button" class="mk-tab" role="tab" data-tab="historial" aria-selected="false">Historial</button>
+    <button type="button" class="mk-tab solo-gestion" role="tab" data-tab="config" aria-selected="false">Configuración</button>
+  </nav>
+</header>
+
+<main class="mk-main">
+
+  <!-- ══ CORTE ══ -->
+  <section class="mk-panel" id="panel-corte" role="tabpanel">
+
+    <label class="mk-drop solo-gestion" id="drop-corte" for="file-corte">
+      <input type="file" id="file-corte" accept=".xlsx,.xls,.csv" hidden>
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
+      <strong>Arrastra aquí el Excel del corte</strong>
+      <span>o toca para elegirlo (.xlsx exportado, columnas A:AH)</span>
+    </label>
+
+    <div class="mk-vacio" id="corte-vacio">
+      <p>Todavía no hay un corte abierto.</p>
+      <p class="mk-muted">Abre un corte del <button type="button" class="mk-link" data-ir="historial">historial</button><span class="solo-gestion"> o sube el Excel del corte</span>.</p>
+    </div>
+
+    <div id="corte-contenido" hidden>
+      <!-- Encabezado (BASE) -->
+      <div class="mk-card">
+        <h2 class="mk-h2">Encabezado del corte</h2>
+        <div class="mk-form-grid">
+          <label class="mk-field"><span>Fecha</span><input type="date" id="enc-fecha"></label>
+          <label class="mk-field"><span>Horario</span><input type="text" id="enc-horario" placeholder="Ej. 12:00 PM" maxlength="40"></label>
+          <label class="mk-field"><span>Responsable del corte</span><input type="text" id="enc-resp-corte" maxlength="100"></label>
+          <label class="mk-field"><span>Responsable de impresión de guías y relación de despachos</span><input type="text" id="enc-resp-impresion" maxlength="100"></label>
+        </div>
+      </div>
+
+      <!-- Validaciones -->
+      <div class="mk-card" id="validacion"></div>
+
+      <!-- Mercado / Base -->
+      <div class="mk-card">
+        <div class="mk-card-head">
+          <div class="mk-seg" role="group" aria-label="Vista">
+            <button type="button" class="mk-seg-btn active" data-vista="mercado" aria-pressed="true">Mercado</button>
+            <button type="button" class="mk-seg-btn" data-vista="base" aria-pressed="false">Resumen (BASE)</button>
+          </div>
+          <div class="mk-acciones">
+            <input type="search" id="buscar-mercado" class="mk-input-sm" placeholder="Buscar artículo, ID, tienda...">
+            <button type="button" class="mk-btn" id="btn-export-corte">Exportar Excel</button>
+            <button type="button" class="mk-btn" id="btn-print-corte">Imprimir</button>
+          </div>
+        </div>
+        <div id="tabla-mercado" class="mk-tabla-wrap"></div>
+        <div id="tabla-base" class="mk-tabla-wrap" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ ASIGNACIÓN ══ -->
+  <section class="mk-panel" id="panel-asignacion" role="tabpanel" hidden>
+    <div class="mk-vacio" id="asig-vacio"><p>Abre o sube un corte para asignar el mercado.</p></div>
+    <div id="asig-contenido" hidden>
+      <div class="mk-card">
+        <div class="mk-card-head">
+          <h2 class="mk-h2">¿Quién hace el mercado?</h2>
+          <button type="button" class="mk-link solo-gestion" data-ir="config">Gestionar personas</button>
+        </div>
+        <div class="mk-chips" id="asig-personas"></div>
+        <p class="mk-muted mk-small" id="asig-personas-hint"></p>
+      </div>
+
+      <div class="mk-card">
+        <div class="mk-card-head">
+          <h2 class="mk-h2">Reparto por persona</h2>
+          <div class="mk-acciones solo-gestion">
+            <button type="button" class="mk-btn" id="btn-sugerir">Sugerir reparto equilibrado</button>
+            <button type="button" class="mk-btn mk-btn-primary" id="btn-guardar-corte">Guardar corte</button>
+          </div>
+        </div>
+        <div id="asig-check"></div>
+        <div class="mk-carga" id="asig-carga"></div>
+      </div>
+
+      <div class="mk-card">
+        <h2 class="mk-h2">Tiendas / inventarios del corte</h2>
+        <p class="mk-muted mk-small">Una tienda va a una sola persona; una persona puede tener varias. Cambia la persona con la lista de cada fila.</p>
+        <div id="asig-tabla" class="mk-tabla-wrap"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ POR PERSONA ══ -->
+  <section class="mk-panel" id="panel-persona" role="tabpanel" hidden>
+    <div class="mk-vacio" id="per-vacio"><p>Abre un corte para ver la lista de cada persona.</p></div>
+    <div id="per-contenido" hidden>
+      <div class="mk-card mk-no-print">
+        <div class="mk-chips" id="per-selector" role="group" aria-label="Persona"></div>
+      </div>
+      <div class="mk-card" id="per-hoja">
+        <div class="mk-print-head" id="per-print-head"></div>
+        <div class="mk-card-head">
+          <div>
+            <h2 class="mk-h2" id="per-titulo"></h2>
+            <p class="mk-muted mk-small" id="per-tiendas"></p>
+          </div>
+          <div class="mk-acciones mk-no-print">
+            <div class="mk-seg" role="group" aria-label="Orden">
+              <button type="button" class="mk-seg-btn active" data-orden="ubicacion" aria-pressed="true">Por ubicación</button>
+              <button type="button" class="mk-seg-btn" data-orden="transportadora" aria-pressed="false">Por transportadora</button>
+            </div>
+            <label class="mk-check-inline"><input type="checkbox" id="per-ocultar-listos"> Ocultar alistados</label>
+            <button type="button" class="mk-btn" id="btn-per-print">Imprimir</button>
+            <button type="button" class="mk-btn" id="btn-per-pdf">PDF</button>
+            <button type="button" class="mk-btn" id="btn-per-excel">Excel</button>
+          </div>
+        </div>
+        <div class="mk-progreso" id="per-progreso"></div>
+        <p class="mk-aviso" id="per-sin-guardar" hidden>Guarda el corte (pestaña Asignación) para poder marcar artículos como alistados.</p>
+        <ul class="mk-lista" id="per-lista"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ HISTORIAL ══ -->
+  <section class="mk-panel" id="panel-historial" role="tabpanel" hidden>
+    <div class="mk-card">
+      <div class="mk-card-head">
+        <h2 class="mk-h2">Cortes anteriores</h2>
+        <button type="button" class="mk-btn" id="btn-hist-recargar">Actualizar</button>
+      </div>
+      <div id="hist-lista" class="mk-tabla-wrap"></div>
+      <button type="button" class="mk-btn" id="btn-hist-mas" hidden>Cargar más</button>
+    </div>
+  </section>
+
+  <!-- ══ CONFIGURACIÓN ══ -->
+  <section class="mk-panel" id="panel-config" role="tabpanel" hidden>
+    <div class="mk-card">
+      <h2 class="mk-h2">Personas</h2>
+      <form class="mk-inline-form" id="form-persona">
+        <input type="text" id="persona-nombre" placeholder="Nombre de la persona" maxlength="80" required>
+        <button type="submit" class="mk-btn mk-btn-primary">Agregar</button>
+      </form>
+      <div id="cfg-personas"></div>
+    </div>
+
+    <div class="mk-card">
+      <h2 class="mk-h2">Tiendas / inventarios</h2>
+      <p class="mk-muted mk-small">Se agregan solos al guardar un corte. La persona habitual se propone primero al asignar; el nombre corto es el que se ve en la lista de bodega.</p>
+      <input type="search" id="buscar-inv" class="mk-input-sm" placeholder="Buscar tienda...">
+      <div id="cfg-inventarios" class="mk-tabla-wrap"></div>
+    </div>
+
+    <div class="mk-card">
+      <h2 class="mk-h2">Ubicaciones (MIIA, DONNA, BOCALI, LANEA...)</h2>
+      <p class="mk-muted mk-small">Sube la hoja de Google descargada como .xlsx (o cualquier Excel) con una pestaña por tabla: columna A = ID, B = artículo, C = ubicación. Cada pestaña con el nombre de una tabla reemplaza la que está guardada.</p>
+      <div id="cfg-ubic-estado"></div>
+      <label class="mk-drop mk-drop-sm" id="drop-ubic" for="file-ubic">
+        <input type="file" id="file-ubic" accept=".xlsx,.xls" hidden>
+        <strong>Subir archivo de ubicaciones</strong>
+        <span>Arrastra el Excel o toca para elegirlo</span>
+      </label>
+      <div id="cfg-ubic-preview"></div>
+    </div>
+
+    <div class="mk-card">
+      <h2 class="mk-h2">Inventario → tabla de ubicaciones</h2>
+      <p class="mk-muted mk-small">Para estos inventarios la ubicación se busca por ID artículo en la tabla indicada; los demás quedan sin ubicación.</p>
+      <div id="cfg-tablas"></div>
+      <div class="mk-acciones">
+        <button type="button" class="mk-btn" id="btn-tabla-agregar">Agregar inventario</button>
+      </div>
+    </div>
+
+    <div class="mk-card">
+      <h2 class="mk-h2">Rangos de transportadora</h2>
+      <p class="mk-muted mk-small">Según el número de "Guía transportadora": gana la primera fila con guía menor o igual a "Hasta". Nombre vacío = sin transportadora. Una guía mayor que el último rango sale como DESCONOCIDA.</p>
+      <div id="cfg-rangos"></div>
+      <div class="mk-acciones">
+        <button type="button" class="mk-btn" id="btn-rango-agregar">Agregar rango</button>
+        <button type="button" class="mk-btn" id="btn-rango-defecto">Restaurar valores de la hoja</button>
+      </div>
+    </div>
+
+    <div class="mk-card mk-guardar-config">
+      <p class="mk-muted mk-small" id="cfg-config-estado">Los rangos y las tablas se guardan juntos.</p>
+      <button type="button" class="mk-btn mk-btn-primary" id="btn-config-guardar">Guardar rangos y tablas</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="/shared/dom-utils.js"></script>
+<script src="/shared/api.js"></script>
+<script src="mercado-core.js"></script>
+<script src="mercado.js"></script>
+</body>
+</html>

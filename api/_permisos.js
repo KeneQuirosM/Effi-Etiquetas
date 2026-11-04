@@ -47,7 +47,11 @@ export const PERMISOS = {
   'nav-alistamiento': [true, true, 'Menú: Alistamiento'],
   'nav-conteos':      [true, true, 'Menú: Conteos'],
   'nav-trazabilidad': [true, true, 'Menú: Trazabilidad'],
-  'nav-reporte':      [true, false, 'Menú: Reporte']
+  'nav-reporte':      [true, false, 'Menú: Reporte'],
+  'nav-mercado':      [true, true, 'Menú: Mercado y Alistamiento'],
+  // Mercado y Alistamiento: subir cortes, asignar, borrar y configurar
+  // (con solo nav-mercado se ve el mercado y se marcan artículos alistados)
+  'mercado-gestion':  [true, false, 'Mercado: subir cortes, asignar y configurar']
 };
 
 // Nombre visible (user_metadata.nombre); sin nombre se usa el correo

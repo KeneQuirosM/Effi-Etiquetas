@@ -4,9 +4,13 @@
   "description": "Generador de Etiquetas y STOCKFORGE",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.0"
+  },
+  "devDependencies": {
+    "xlsx": "0.18.5"
   }
 }

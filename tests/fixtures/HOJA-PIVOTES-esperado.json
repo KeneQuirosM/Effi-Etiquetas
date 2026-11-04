@@ -1,0 +1,284 @@
+{
+ "mercado": [
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "40633 - UNMERCO COSTA RICA DS",
+   "descripcion": "MAMMOTH",
+   "idArticulo": "2",
+   "ubicacion": "",
+   "cantidad": 2
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "41601 - COMPRONAT CR DS",
+   "descripcion": "ASHWAGANDHA 6000MG - 2 EN 1 X90",
+   "idArticulo": "39",
+   "ubicacion": "",
+   "cantidad": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "41601 - COMPRONAT CR DS",
+   "descripcion": "LEMME BURN X60",
+   "idArticulo": "41",
+   "ubicacion": "",
+   "cantidad": 2
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "41601 - COMPRONAT CR DS",
+   "descripcion": "ZAPATOS COLOR MOSTAZA TALLA 43",
+   "idArticulo": "48",
+   "ubicacion": "",
+   "cantidad": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "52048 - Steak and Beer Costa Rica",
+   "descripcion": "Barril Mediano 28 Libras",
+   "idArticulo": "2",
+   "ubicacion": "",
+   "cantidad": 3
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "52048 - Steak and Beer Costa Rica",
+   "descripcion": "Pollo grande",
+   "idArticulo": "19",
+   "ubicacion": "",
+   "cantidad": 2
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "52048 - Steak and Beer Costa Rica",
+   "descripcion": "Portatapa",
+   "idArticulo": "18",
+   "ubicacion": "",
+   "cantidad": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "52048 - Steak and Beer Costa Rica",
+   "descripcion": "Saca parrilla",
+   "idArticulo": "8",
+   "ubicacion": "",
+   "cantidad": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "Astaxanthin",
+   "idArticulo": "94",
+   "ubicacion": "",
+   "cantidad": 3
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "Balsamo Purpura Dr. Melaxin",
+   "idArticulo": "98",
+   "ubicacion": "",
+   "cantidad": 5
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "ECOMFIVE-PRV-009",
+   "idArticulo": "103",
+   "ubicacion": "",
+   "cantidad": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "Ethiopian",
+   "idArticulo": "110",
+   "ubicacion": "",
+   "cantidad": 2
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "EVIL GOODS! - HONEY BALM",
+   "idArticulo": "65",
+   "ubicacion": "",
+   "cantidad": 3
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "Fiber Gummies",
+   "idArticulo": "109",
+   "ubicacion": "",
+   "cantidad": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "Limpiador a vapor",
+   "idArticulo": "103",
+   "ubicacion": "",
+   "cantidad": 2
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "MULTI COLLAGEN COMPLEX",
+   "idArticulo": "68",
+   "ubicacion": "",
+   "cantidad": 6
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "Shilajit Ultra Verde 60 Capsulas",
+   "idArticulo": "50",
+   "ubicacion": "",
+   "cantidad": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "descripcion": "Spray JJLBRO Mens",
+   "idArticulo": "108",
+   "ubicacion": "",
+   "cantidad": 2
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "56197 - Lumia Colombia SAS",
+   "descripcion": "Depiladora Láser Lummia IPL Pro - Bronze",
+   "idArticulo": "3",
+   "ubicacion": "",
+   "cantidad": 2
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "56197 - Lumia Colombia SAS",
+   "descripcion": "Depiladora Láser Lummia IPL Pro - Gold",
+   "idArticulo": "2",
+   "ubicacion": "",
+   "cantidad": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "56197 - Lumia Colombia SAS",
+   "descripcion": "Depiladora Láser Lummia IPL Pro - Rose",
+   "idArticulo": "4",
+   "ubicacion": "",
+   "cantidad": 5
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "56233 - DORAL TIENDA",
+   "descripcion": "COMBO X5 LUZ LED SANTA",
+   "idArticulo": "7",
+   "ubicacion": "",
+   "cantidad": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "56233 - DORAL TIENDA",
+   "descripcion": "COMBO X5 LUZ LED SANTA",
+   "idArticulo": "7",
+   "ubicacion": "",
+   "cantidad": 6
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "57215 - DISTRIBUCIONES LINEA VERDE C.R DS",
+   "descripcion": "DRENAJE LINFATICO LINFOVIT 60 CAPSULAS",
+   "idArticulo": "22",
+   "ubicacion": "",
+   "cantidad": 18
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "57215 - DISTRIBUCIONES LINEA VERDE C.R DS",
+   "descripcion": "SHILAJIT ULTRA POTENCY",
+   "idArticulo": "13",
+   "ubicacion": "",
+   "cantidad": 27
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "57215 - DISTRIBUCIONES LINEA VERDE C.R DS",
+   "descripcion": "TURKESTERONE",
+   "idArticulo": "14",
+   "ubicacion": "",
+   "cantidad": 26
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "57359 - ECOMLAB SAS DS",
+   "descripcion": "Neocell Colageno",
+   "idArticulo": "2",
+   "ubicacion": "",
+   "cantidad": 6
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "58425 - Steak and Beer Costa Rica",
+   "descripcion": "Barril Pequeño 20 LIBRAS",
+   "idArticulo": "2",
+   "ubicacion": "",
+   "cantidad": 1
+  }
+ ],
+ "base": [
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "40633 - UNMERCO COSTA RICA DS",
+   "unidades": 2,
+   "guias": 1
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "41601 - COMPRONAT CR DS",
+   "unidades": 4,
+   "guias": 3
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "52048 - Steak and Beer Costa Rica",
+   "unidades": 7,
+   "guias": 3
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "55868 - ECOMFIVE DS",
+   "unidades": 26,
+   "guias": 20
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "56197 - Lumia Colombia SAS",
+   "unidades": 8,
+   "guias": 8
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "56233 - DORAL TIENDA",
+   "unidades": 7,
+   "guias": 4
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "57215 - DISTRIBUCIONES LINEA VERDE C.R DS",
+   "unidades": 71,
+   "guias": 41
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "57359 - ECOMLAB SAS DS",
+   "unidades": 6,
+   "guias": 5
+  },
+  {
+   "transportadora": "EFFI MENSAJERIA",
+   "inventario": "58425 - Steak and Beer Costa Rica",
+   "unidades": 1,
+   "guias": 1
+  }
+ ]
+}

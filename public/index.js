@@ -2694,8 +2694,8 @@ async function saveGroupPrintToggle(value) {
 
 /* ── BOTONES DEL MENÚ LATERAL ─────────────────────────
  * Configuración > "Botones del menú": un interruptor por botón, guardado en
- * /api/config como 'true'/'false'. Devoluciones y Trazabilidad conservan su
- * clave y siguen ocultos salvo que se activen; el resto está visible salvo
+ * /api/config como 'true'/'false'. Devoluciones, Trazabilidad y Mercado y
+ * Alistamiento están ocultos salvo que se activen; el resto está visible salvo
  * que se desactive. Se ocultan con la clase .nav-oculto (display:none
  * !important) para no chocar con .coord-only, que usa style.display (Reporte
  * se ve solo con sesión de coordinador Y el interruptor encendido).
@@ -2708,7 +2708,9 @@ const NAV_BOTONES = {
   alistamiento: { clave: 'mostrar_btn_alistamiento', nombre: 'Alistamiento',            defecto: true },
   conteos:      { clave: 'mostrar_btn_conteos',      nombre: 'Conteos',                 defecto: true },
   trazabilidad: { clave: 'mostrar_btn_trazabilidad', nombre: 'Trazabilidad',            defecto: false },
-  reporte:      { clave: 'mostrar_btn_reporte',      nombre: 'Reporte',                 defecto: true }
+  reporte:      { clave: 'mostrar_btn_reporte',      nombre: 'Reporte',                 defecto: true },
+  // Nuevo: oculto para todos hasta que se encienda en Configuración > Botones del menú
+  mercado:      { clave: 'mostrar_btn_mercado',      nombre: 'Mercado y Alistamiento',  defecto: false }
 };
 const navButtonsVisibles = Object.fromEntries(Object.entries(NAV_BOTONES).map(([k, b]) => [k, b.defecto]));
 
@@ -2882,7 +2884,10 @@ function permisosUI() {
       ['cfg-json', 'Datos de inventario (JSON)']
     ] },
     { titulo: 'Botones del menú lateral', items:
-      Object.entries(NAV_BOTONES).map(([k, b]) => [`nav-${k}`, b.nombre]) }
+      Object.entries(NAV_BOTONES).map(([k, b]) => [`nav-${k}`, b.nombre]) },
+    { titulo: 'Mercado y Alistamiento', items: [
+      ['mercado-gestion', 'Subir cortes, asignar y configurar']
+    ] }
   ];
 }
 let permisosRoles = null;          // { coordinador: {...}, bodeguero: {...} }
@@ -2978,7 +2983,13 @@ const BITACORA_ACCIONES = {
   usuario_contrasena:      ['Usuario', 'edit'],
   usuario_borrar:          ['Usuario', 'del'],
   permisos_cambiar:        ['Permisos', 'edit'],
-  inactividad_cambiar:     ['Permisos', 'edit']
+  inactividad_cambiar:     ['Permisos', 'edit'],
+  mercado_corte_crear:     ['Mercado', 'ok'],
+  mercado_corte_asignar:   ['Mercado', 'edit'],
+  mercado_corte_borrar:    ['Mercado', 'del'],
+  mercado_persona:         ['Mercado', 'edit'],
+  mercado_config:          ['Mercado', 'edit'],
+  mercado_ubicaciones:     ['Mercado', 'edit']
 };
 let bitacoraAbierta = false;
 let bitacoraUltimoId = null;
