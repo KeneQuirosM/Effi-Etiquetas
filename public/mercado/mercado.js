@@ -1,15 +1,15 @@
 /* ── MERCADO Y ALISTAMIENTO ────────────────────────────────
- * Reemplaza la hoja "PACKING / CORTE". Todo corre en el navegador, sin
- * base de datos propia: el Excel se procesa aquí (mercado-core.js) y
- * tiendas, configuración, tablas de ubicaciones, historial de cortes y
- * casillas de alistado se guardan en localStorage (ver ALMACÉN LOCAL).
- * Cada navegador tiene sus propios datos. Las personas son las mismas de
+ * Reemplaza la hoja "PACKING / CORTE". El Excel se procesa aquí
+ * (mercado-core.js); /api/mercado guarda en la base cortes (mercado,
+ * guías, asignaciones), avance de alistado, tiendas, configuración y
+ * tablas de ubicaciones, así se comparten entre equipos y se pueden
+ * auditar (supabase/mercado.sql). Las personas son las mismas de
  * Conteos (panel de coordinador > Configuración > "Conteos: personas y
  * mesas"), leídas de GET /api/conteos?accion=opciones; cada persona se
  * identifica por su nombre.
  *
  * Sesión: la misma del panel de coordinador (localStorage, como index.js),
- * con su propio refresco de token; solo se usa para leer el perfil.
+ * con su propio refresco de token.
  * Permisos: 'nav-mercado' para ver y marcar alistados; 'mercado-gestion'
  * para subir, asignar y configurar.
  */
@@ -19,10 +19,8 @@ const M = window.MercadoCore;
 const SESSION_KEY = STORAGE_KEYS.COORD_SESSION;
 const REFRESH_KEY = 'effi_coord_refresh_v1';
 const PREFS_KEY = 'effi_mercado_prefs_v1';     // pestaña/persona/orden de este navegador
-const LS_DATOS = 'effi_mercado_datos_v1';      // { config, personasConteos (copia), inventarios, seq }
-const LS_UBIC = 'effi_mercado_ubicaciones_v1';  // { ubicaciones: { tabla: { id: ubic } }, cargas: [] }
-const LS_CORTES = 'effi_mercado_cortes_v1';     // [corte guardado], el más nuevo primero
-const MAX_CORTES = 30;                          // historial que se conserva
+const LS_PERSONAS = 'effi_mercado_personas_v1'; // copia de las personas de Conteos (por si falla la red)
+const SONDEO_MS = 20000;                        // refresco del avance en "Por persona"
 
 const S = {
   token: localStorage.getItem(SESSION_KEY),
@@ -37,7 +35,7 @@ const S = {
   vista: 'mercado',
   orden: 'ubicacion',
   personaSel: null,
-  hist: [],
+  hist: [], histMas: false,
   cfgEdit: null,
   ubicPreview: null
 };
@@ -111,86 +109,6 @@ function horaActual() {
   return new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
 }
 
-/* ── ALMACÉN LOCAL ──────────────────────────────────────────
- * Reemplaza a una API: lee y escribe JSON en localStorage. Si el
- * navegador no deja guardar (modo privado, sin espacio) se avisa y se
- * sigue trabajando en memoria.
- */
-const Local = {
-  leer(clave, defecto) {
-    try { return JSON.parse(localStorage.getItem(clave)) ?? defecto; } catch { return defecto; }
-  },
-  escribir(clave, valor) {
-    try { localStorage.setItem(clave, JSON.stringify(valor)); return true; }
-    catch {
-      notify('El navegador no dejó guardar los datos (sin espacio o modo privado). Borra cortes viejos del historial.', 'error', 8000);
-      return false;
-    }
-  },
-  datos() {
-    const d = Local.leer(LS_DATOS, {});
-    return { config: d.config || null, personasConteos: d.personasConteos || [], inventarios: d.inventarios || [], seq: d.seq || 0 };
-  },
-  guardarDatos(cambios) {
-    return Local.escribir(LS_DATOS, { ...Local.datos(), ...cambios });
-  },
-  siguienteId() {
-    const d = Local.datos();
-    d.seq += 1;
-    Local.guardarDatos({ seq: d.seq });
-    return d.seq;
-  },
-  cortes() { return Local.leer(LS_CORTES, []); },
-  // Guarda la lista; si no cabe, quita los cortes más viejos y reintenta
-  guardarCortes(lista) {
-    lista = lista.slice(0, MAX_CORTES);
-    while (lista.length) {
-      try { localStorage.setItem(LS_CORTES, JSON.stringify(lista)); return true; }
-      catch {
-        if (lista.length === 1) break;
-        lista = lista.slice(0, -1);
-        notify('Sin espacio en el navegador: se borró el corte más viejo del historial', 'warn', 6000);
-      }
-    }
-    notify('El navegador no dejó guardar el corte (sin espacio o modo privado)', 'error', 8000);
-    return false;
-  },
-  corte(id) { return Local.cortes().find(c => c.id === Number(id)) || null; },
-  actualizarCorte(id, fn) {
-    const lista = Local.cortes();
-    const c = lista.find(x => x.id === Number(id));
-    if (!c) return null;
-    fn(c);
-    return Local.guardarCortes(lista) ? c : null;
-  }
-};
-
-// Recuerda quién hizo cada tienda (la próxima vez se propone primero)
-function recordarInventarios(lineas, asignaciones) {
-  const ahora = new Date().toISOString();
-  const lista = Local.datos().inventarios;
-  [...new Set(lineas.map(l => l.inventario))].forEach(nombre => {
-    let fila = lista.find(i => i.nombre === nombre);
-    if (!fila) { fila = { nombre, alias: null, persona_id: null }; lista.push(fila); }
-    fila.visto_en = ahora;
-    if (asignaciones[nombre]) fila.persona_id = String(asignaciones[nombre]);
-  });
-  lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-  Local.guardarDatos({ inventarios: lista });
-}
-
-// Otra pestaña del mismo navegador cambió los datos
-window.addEventListener('storage', e => {
-  if (![LS_DATOS, LS_UBIC, LS_CORTES].includes(e.key)) return;
-  cargarInicio();
-  if (e.key === LS_CORTES && S.corte?.id && !S.corte.sucio) {
-    const c = Local.corte(S.corte.id);
-    if (c) S.alistado = new Map(Object.entries(c.alistado || {}).map(([k, v]) => [Number(k), v]));
-  }
-  if (S.tab === 'historial') cargarHistorial();
-  render();
-});
-
 /* ── ARRANQUE ───────────────────────────────────────────── */
 (async function iniciar() {
   try {
@@ -212,8 +130,7 @@ window.addEventListener('storage', e => {
   S.orden = prefs.orden === 'transportadora' ? 'transportadora' : 'ubicacion';
   S.personaSel = prefs.persona ?? null;
 
-  cargarInicio();
-  await cargarPersonas();
+  await Promise.all([cargarInicio(), cargarPersonas()]);
 
   const idUrl = Number(new URLSearchParams(location.search).get('corte'));
   const idAbrir = idUrl > 0 ? idUrl : null;
@@ -222,24 +139,30 @@ window.addEventListener('storage', e => {
   render();
 })();
 
-function cargarInicio() {
-  const d = Local.datos();
-  if (d.config?.rangos?.length) S.config.rangos = M.limpiarRangos(d.config.rangos);
-  if (d.config?.tablas) S.config.tablas = d.config.tablas;
-  S.personas = d.personasConteos.map(nombre => ({ id: nombre, nombre }));
-  S.inventarios = d.inventarios;
-  const u = Local.leer(LS_UBIC, {});
-  S.ubicaciones = u.ubicaciones || {};
-  S.cargas = u.cargas || [];
+async function cargarInicio() {
+  try {
+    const d = await api('GET', '/api/mercado?accion=inicio');
+    if (d.config?.rangos?.length) S.config.rangos = M.limpiarRangos(d.config.rangos);
+    if (d.config?.tablas) S.config.tablas = d.config.tablas;
+    S.inventarios = d.inventarios || [];
+    S.ubicaciones = d.ubicaciones || {};
+    S.cargas = d.cargas || [];
+  } catch (err) {
+    notify(err.message || 'No se pudo cargar el módulo', 'error', 10000);
+  }
 }
 
 // Personas de Conteos. Se guarda una copia para trabajar sin conexión.
 async function cargarPersonas() {
   try {
+    const copia = JSON.parse(localStorage.getItem(LS_PERSONAS) || '[]');
+    if (Array.isArray(copia) && copia.length && !S.personas.length) S.personas = copia.map(nombre => ({ id: nombre, nombre }));
+  } catch { /* sin copia */ }
+  try {
     const d = await apiRequestJSON('/api/conteos?accion=opciones');
     const lista = [...new Set((d.personas || []).map(n => M.normEspacios(n)).filter(Boolean))];
     if (lista.length) {
-      Local.guardarDatos({ personasConteos: lista });
+      try { localStorage.setItem(LS_PERSONAS, JSON.stringify(lista)); } catch { /* sin storage */ }
       S.personas = lista.map(nombre => ({ id: nombre, nombre }));
     }
   } catch {
@@ -249,8 +172,10 @@ async function cargarPersonas() {
 }
 
 async function abrirUltimoCorte() {
-  const cortes = Local.cortes();
-  if (cortes.length) await abrirCorte(cortes[0].id, 'persona');
+  try {
+    const d = await api('GET', '/api/mercado?accion=cortes');
+    if (d.cortes?.length) await abrirCorte(d.cortes[0].id, 'persona');
+  } catch { /* sin historial */ }
 }
 
 /* ── PESTAÑAS ───────────────────────────────────────────── */
@@ -270,6 +195,7 @@ function irA(tab) {
   });
   document.querySelectorAll('.mk-panel').forEach(p => { p.hidden = p.id !== `panel-${tab}`; });
   if (tab === 'historial') cargarHistorial();
+  if (tab === 'persona') refrescarAlistado();
   if (tab === 'config') { S.cfgEdit = null; renderConfig(); }
   render();
   window.scrollTo({ top: 0 });
@@ -299,7 +225,7 @@ function nuevoCorte(archivo, resultado) {
     id: null, archivo, resultado,
     fecha: fechaLocalISO(), horario: horaActual(),
     responsable_corte: S.perfil?.nombre || '', responsable_impresion: '',
-    personas: [], personasInfo: [], asignaciones: {}, asigManual: false, sucio: true
+    personas: [], asignaciones: {}, asigManual: false, sucio: true
   };
   S.alistado = new Map();
   history.replaceState(null, '', location.pathname);
@@ -308,28 +234,23 @@ function nuevoCorte(archivo, resultado) {
 async function abrirCorte(id, tab) {
   if (!confirmarDescartar()) return;
   try {
-    const c = Local.corte(id);
-    if (!c) throw new Error('Ese corte ya no está en el historial de este navegador');
+    const d = await api('GET', `/api/mercado?accion=corte&id=${id}`);
+    const c = d.corte;
     S.filasExcel = null;
     S.corte = {
-      id: c.id, archivo: c.archivo, resultado: resultadoDeGuardado(c),
+      id: c.id, archivo: c.archivo,
+      resultado: resultadoDeGuardado({ ...c, lineas: d.lineas, alistamiento: d.guias }),
       fecha: c.fecha, horario: c.horario || '', responsable_corte: c.responsable_corte || '',
       responsable_impresion: c.responsable_impresion || '',
-      personas: (c.personas || []).map(p => p.nombre), personasInfo: c.personas || [],
-      asignaciones: asignacionesPorNombre(c), asigManual: true, sucio: false, creado_por: c.creado_por
+      personas: c.personas || [], asignaciones: d.asignaciones || {},
+      asigManual: true, sucio: false, creado_por: c.creado_por
     };
-    S.alistado = new Map(Object.entries(c.alistado || {}).map(([k, v]) => [Number(k), v]));
+    S.alistado = new Map((d.alistado || []).map(a => [a.linea, a]));
     history.replaceState(null, '', `${location.pathname}?corte=${c.id}`);
     if (tab) irA(tab); else render();
   } catch (err) {
     notify(err.message || 'No se pudo abrir el corte', 'error');
   }
-}
-
-// Cortes guardados antes de usar las personas de Conteos tenían ids numéricos
-function asignacionesPorNombre(c) {
-  const nombre = Object.fromEntries((c.personas || []).map(p => [String(p.id), p.nombre]));
-  return Object.fromEntries(Object.entries(c.asignaciones || {}).map(([inv, p]) => [inv, nombre[String(p)] ?? String(p)]));
 }
 
 function confirmarDescartar() {
@@ -837,7 +758,7 @@ function sugerirInicial() {
   const c = S.corte;
   const habituales = {};
   Object.keys(c.resultado.porInventario).forEach(inv => {
-    const p = S.inventarios.find(i => i.nombre === inv)?.persona_id;
+    const p = S.inventarios.find(i => i.nombre === inv)?.persona;
     if (p && S.personas.some(x => x.id === p)) habituales[inv] = p;
   });
   c.personas = [...new Set(Object.values(habituales))];
@@ -877,7 +798,7 @@ function repartir(respetar) {
   const fijas = {};
   if (respetar) {
     Object.keys(c.resultado.porInventario).forEach(inv => {
-      const p = S.inventarios.find(i => i.nombre === inv)?.persona_id;
+      const p = S.inventarios.find(i => i.nombre === inv)?.persona;
       if (p && c.personas.includes(p)) fijas[inv] = p;
     });
   }
@@ -951,11 +872,6 @@ function renderAsignacion() {
   btn.disabled = !!c.id && !c.sucio;
 }
 
-// [{ id, nombre }] de las personas del corte (el nombre queda en el historial)
-function personasInfo(ids) {
-  return ids.map(id => ({ id, nombre: id }));
-}
-
 let guardando = false;
 async function guardarCorte() {
   const c = S.corte;
@@ -980,29 +896,24 @@ async function guardarCorte() {
     if (!c.id) {
       const compacta = d => ({ fila: d.fila, guiaTexto: d.guiaTexto, inventario: d.inventario, descripcion: d.descripcion,
         idArticulo: d.idArticulo, cantidad: d.cantidad, cantidadTexto: d.cantidadTexto, motivos: d.motivos, avisos: d.avisos, tabla: d.tabla });
-      const nuevo = {
-        id: Local.siguienteId(), ...comunes, personas: personasInfo(c.personas), archivo: c.archivo,
-        totales: c.resultado.totales, lineas: c.resultado.lineas, alistamiento: c.resultado.alistamiento, base: c.resultado.base,
-        validacion: { excluidas: c.resultado.excluidas.map(compacta), conAviso: c.resultado.conAviso.map(compacta) },
-        alistado: {}, creado_por: S.perfil?.nombre || '', creado_en: new Date().toISOString()
-      };
-      if (!Local.guardarCortes([nuevo, ...Local.cortes()])) return;
-      c.id = nuevo.id;
-      c.personasInfo = nuevo.personas;
+      const d = await api('POST', '/api/mercado?accion=corte', {
+        ...comunes, archivo: c.archivo, totales: c.resultado.totales, lineas: c.resultado.lineas,
+        guias: c.resultado.alistamiento, base: c.resultado.base,
+        validacion: { excluidas: c.resultado.excluidas.map(compacta), conAviso: c.resultado.conAviso.map(compacta) }
+      });
+      c.id = d.id;
+      c.asignaciones = d.asignaciones;
       S.filasExcel = null;
       history.replaceState(null, '', `${location.pathname}?corte=${c.id}`);
       notify(`Corte guardado (#${c.id})`, 'success');
     } else {
-      const ok = Local.actualizarCorte(c.id, x => Object.assign(x, comunes, {
-        personas: personasInfo(c.personas), actualizado_en: new Date().toISOString()
-      }));
-      if (!ok) throw new Error('Ese corte ya no está en el historial de este navegador');
-      c.personasInfo = ok.personas;
+      const d = await api('POST', '/api/mercado?accion=asignar', { id: c.id, ...comunes });
+      c.asignaciones = d.asignaciones;
       notify('Cambios guardados', 'success');
     }
     c.sucio = false;
-    recordarInventarios(c.resultado.lineas, c.asignaciones);
-    cargarInicio();
+    // La persona habitual de cada tienda cambió en la base
+    cargarInicio().then(render);
   } catch (err) {
     notify(err.message || 'No se pudo guardar', 'error', 8000);
   } finally {
@@ -1124,16 +1035,28 @@ async function marcarAlistado(linea, valor, input) {
   const previo = S.alistado.get(linea);
   if (valor) S.alistado.set(linea, { por: S.perfil?.nombre || '' }); else S.alistado.delete(linea);
   renderPersona();
-  const ok = Local.actualizarCorte(c.id, x => {
-    x.alistado ||= {};
-    if (valor) x.alistado[linea] = { por: S.perfil?.nombre || '', en: new Date().toISOString() };
-    else delete x.alistado[linea];
-  });
-  if (!ok) {
+  try {
+    await api('POST', '/api/mercado?accion=alistar', { id: c.id, linea, alistado: valor });
+  } catch (err) {
     if (previo) S.alistado.set(linea, previo); else S.alistado.delete(linea);
     renderPersona();
+    notify(err.message || 'No se pudo guardar la marca', 'error');
   }
 }
+
+// Lo que marcan otros equipos aparece solo mientras se ve "Por persona"
+async function refrescarAlistado() {
+  const c = S.corte;
+  if (!c?.id || document.hidden || S.tab !== 'persona') return;
+  try {
+    const d = await api('GET', `/api/mercado?accion=alistado&id=${c.id}`);
+    if (S.corte?.id !== c.id) return;
+    S.alistado = new Map((d.alistado || []).map(a => [a.linea, a]));
+    renderPersona();
+  } catch { /* se reintenta en el próximo sondeo */ }
+}
+setInterval(refrescarAlistado, SONDEO_MS);
+document.addEventListener('visibilitychange', refrescarAlistado);
 
 // Hoja de Excel con el alistamiento por guía de esos inventarios
 function hojaAlistamiento(invs) {
@@ -1170,35 +1093,42 @@ $('hist-lista').addEventListener('click', async e => {
   if (b.dataset.accion === 'abrir') abrirCorte(id, S.gestion ? 'corte' : 'persona');
   if (b.dataset.accion === 'borrar') {
     if (!confirm(`¿Borrar el corte #${id} con sus asignaciones y su avance? No se puede deshacer.`)) return;
-    if (!Local.guardarCortes(Local.cortes().filter(c => c.id !== id))) return;
-    notify('Corte borrado', 'success');
-    if (S.corte?.id === id) { S.corte = null; history.replaceState(null, '', location.pathname); }
-    cargarHistorial();
-    render();
+    try {
+      await api('DELETE', `/api/mercado?accion=corte&id=${id}`);
+      notify('Corte borrado', 'success');
+      if (S.corte?.id === id) { S.corte = null; history.replaceState(null, '', location.pathname); }
+      cargarHistorial();
+      render();
+    } catch (err) { notify(err.message || 'No se pudo borrar', 'error'); }
   }
 });
 
-function cargarHistorial() {
-  S.hist = Local.cortes().map(c => ({
-    id: c.id, fecha: c.fecha, horario: c.horario, archivo: c.archivo,
-    responsable_corte: c.responsable_corte, responsable_impresion: c.responsable_impresion,
-    totales: c.totales, personas: c.personas, alistadas: Object.keys(c.alistado || {}).length
-  }));
-  renderHistorial();
+async function cargarHistorial(mas) {
+  try {
+    const antes = mas && S.hist.length ? `&antes=${S.hist[S.hist.length - 1].id}` : '';
+    const d = await api('GET', `/api/mercado?accion=cortes${antes}`);
+    S.hist = mas ? [...S.hist, ...d.cortes] : d.cortes;
+    S.histMas = d.mas;
+    renderHistorial();
+  } catch (err) {
+    $('hist-lista').innerHTML = `<p class="mk-bad-txt">${esc(err.message || 'No se pudo leer el historial')}</p>`;
+  }
 }
+$('btn-hist-mas').addEventListener('click', () => cargarHistorial(true));
 
 function renderHistorial() {
+  $('btn-hist-mas').hidden = !S.histMas;
   if (!S.hist.length) { $('hist-lista').innerHTML = '<p class="mk-muted">Todavía no hay cortes guardados.</p>'; return; }
   $('hist-lista').innerHTML = `<table class="mk-tabla"><thead><tr><th>Fecha</th><th class="hide-sm">Archivo</th><th class="num">Unidades</th><th>Personas</th><th class="hide-sm">Responsables</th><th>Avance</th><th></th></tr></thead><tbody>
     ${S.hist.map(h => {
-      const lineas = h.totales?.lineas || 0;
+      const lineas = h.lineas || 0;
       const pct = lineas ? Math.round(h.alistadas * 100 / lineas) : 0;
       const actual = S.corte?.id === h.id;
       return `<tr${actual ? ' class="actual"' : ''}>
         <td><strong>${esc(fechaTexto(h.fecha))}</strong><br><span class="mk-small mk-muted">${esc(h.horario || '')} #${h.id}</span></td>
         <td class="hide-sm mk-small">${esc(h.archivo || '')}</td>
-        <td class="num">${fmt(h.totales?.unidadesMercado)}</td>
-        <td class="mk-small">${(h.personas || []).map(p => esc(p.nombre)).join(', ') || '<span class="mk-muted">-</span>'}</td>
+        <td class="num">${fmt(h.unidades_mercado)}</td>
+        <td class="mk-small">${(h.personas || []).map(p => esc(p)).join(', ') || '<span class="mk-muted">-</span>'}</td>
         <td class="hide-sm mk-small">Corte: ${esc(h.responsable_corte || '-')}<br>Impresión: ${esc(h.responsable_impresion || '-')}</td>
         <td><div class="mk-bar"><span style="width:${pct}%"></span></div><span class="mk-small">${h.alistadas}/${lineas}</span></td>
         <td class="mk-acc-celda"><button type="button" class="mk-btn mk-btn-sm" data-accion="abrir" data-id="${h.id}">Abrir</button>
@@ -1209,19 +1139,20 @@ function renderHistorial() {
 
 /* ── CONFIGURACIÓN ──────────────────────────────────────── */
 $('buscar-inv').addEventListener('input', debounce(() => renderInventarios(), 150));
-$('cfg-inventarios').addEventListener('change', e => {
+$('cfg-inventarios').addEventListener('change', async e => {
   const inv = e.target.dataset.inv;
   if (inv === undefined) return;
   const fila = S.inventarios.find(i => i.nombre === inv);
   if (!fila) return;
   const cambio = e.target.dataset.campo === 'alias'
     ? { alias: e.target.value.trim() || null }
-    : { persona_id: e.target.value || null };
-  if (cambio.alias) cambio.alias = cambio.alias.slice(0, 60);
-  const inventarios = Local.datos().inventarios.map(i => (i.nombre === inv ? { ...i, ...cambio } : i));
-  if (Local.guardarDatos({ inventarios })) notify('Tienda guardada', 'success', 1500);
-  cargarInicio();
-  render();
+    : { persona: e.target.value || null };
+  try {
+    await api('POST', '/api/mercado?accion=inventario', { nombre: inv, alias: fila.alias, persona: fila.persona, ...cambio });
+    Object.assign(fila, cambio);
+    notify('Tienda guardada', 'success', 1500);
+    render();
+  } catch (err) { notify(err.message || 'No se pudo guardar', 'error'); renderInventarios(); }
 });
 
 function renderConfig() {
@@ -1246,8 +1177,8 @@ function renderInventarios() {
       <td><input type="text" value="${esc(i.alias || '')}" data-inv="${esc(i.nombre)}" data-campo="alias" maxlength="60" aria-label="Nombre corto"></td>
       <td><select data-inv="${esc(i.nombre)}" data-campo="persona" aria-label="Persona habitual">
         <option value="">-- Ninguna --</option>
-        ${[...activas, ...(i.persona_id && !activas.some(p => p.id === i.persona_id) ? [{ id: i.persona_id, nombre: `${i.persona_id} (ya no está en Conteos)` }] : [])].map(p =>
-          `<option value="${esc(p.id)}"${p.id === i.persona_id ? ' selected' : ''}>${esc(p.nombre)}</option>`).join('')}
+        ${[...activas, ...(i.persona && !activas.some(p => p.id === i.persona) ? [{ id: i.persona, nombre: `${i.persona} (ya no está en Conteos)` }] : [])].map(p =>
+          `<option value="${esc(p.id)}"${p.id === i.persona ? ' selected' : ''}>${esc(p.nombre)}</option>`).join('')}
       </select></td></tr>`).join('')}</tbody></table>`;
 }
 
@@ -1313,21 +1244,16 @@ $('cfg-ubic-preview').addEventListener('click', async e => {
   if (new Set(destinos).size !== destinos.length) { notify('Dos pestañas van a la misma tabla', 'warn'); return; }
   if (!confirm(`Se reemplazarán las tablas ${destinos.join(', ')}. ¿Continuar?`)) return;
   e.target.disabled = true;
-  const u = Local.leer(LS_UBIC, {});
-  const ubicaciones = u.ubicaciones || {};
-  let cargas = u.cargas || [];
+  let ok = 0;
   for (const h of elegidas) {
-    // Solo ID → ubicación: es lo único que usa el cálculo y ocupa menos espacio
-    ubicaciones[h.destino] = Object.fromEntries(h.filas.map(f => [f.id_articulo, f.ubicacion]));
-    cargas = cargas.filter(c => c.tabla !== h.destino).concat({
-      tabla: h.destino, archivo: S.ubicPreview.archivo, filas: h.filas.length,
-      cargado_por: S.perfil?.nombre || '', cargado_en: new Date().toISOString()
-    });
+    try {
+      const d = await api('POST', '/api/mercado?accion=ubicaciones', { tabla: h.destino, archivo: S.ubicPreview.archivo, filas: h.filas });
+      ok++;
+      notify(`Tabla ${d.tabla}: ${fmt(d.filas)} artículos`, 'success');
+    } catch (err) { notify(`${h.destino}: ${err.message || 'no se pudo cargar'}`, 'error', 8000); }
   }
-  const ok = Local.escribir(LS_UBIC, { ubicaciones, cargas });
-  if (ok) elegidas.forEach(h => notify(`Tabla ${h.destino}: ${fmt(h.filas.length)} artículos`, 'success'));
   S.ubicPreview = null;
-  cargarInicio();
+  await cargarInicio();
   if (ok) recalcularSiHaceFalta();
   renderConfig();
   renderUbicPreview();
@@ -1409,9 +1335,8 @@ $('btn-config-guardar').addEventListener('click', async () => {
     if (rangos.some(r => !Number.isSafeInteger(r.hasta) || r.hasta <= 0)) throw new Error('Hay un "Hasta" que no es un número válido');
     if (new Set(rangos.map(r => r.hasta)).size !== rangos.length) throw new Error('Hay límites "Hasta" repetidos');
     if (Object.values(tablas).some(t => !/^[A-Z0-9_]{1,30}$/.test(t))) throw new Error('Nombre de tabla no válido: usa letras, números o _');
-    const config = { rangos: M.limpiarRangos(rangos), tablas };
-    if (!Local.guardarDatos({ config })) return;
-    S.config = config;
+    const d = await api('POST', '/api/mercado?accion=config', { rangos, tablas });
+    S.config = { rangos: M.limpiarRangos(d.config.rangos), tablas: d.config.tablas };
     S.cfgEdit = null;
     $('cfg-config-estado').textContent = 'Guardado.';
     $('cfg-config-estado').classList.remove('mk-warn-txt');
