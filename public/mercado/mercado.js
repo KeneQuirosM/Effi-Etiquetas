@@ -493,7 +493,8 @@ function renderValidacion() {
 
 function lineasFiltradas() {
   const q = M.clave($('buscar-mercado').value);
-  const lineas = S.corte.resultado.lineas.map((l, i) => ({ ...l, i }));
+  // Copia ordenada: el índice i (clave del alistado) no cambia
+  const lineas = S.corte.resultado.lineas.map((l, i) => ({ ...l, i })).sort(M.compararLineas);
   if (!q) return lineas;
   return lineas.filter(l => M.clave(`${l.transportadora} ${l.inventario} ${aliasDe(l.inventario)} ${l.descripcion} ${l.idArticulo} ${l.ubicacion}`).includes(q));
 }
@@ -571,7 +572,7 @@ function exportarCorte() {
   const c = S.corte;
   const wb = XLSX.utils.book_new();
   const merc = [['TRANSPORTADORA', 'INVENTARIO', 'Descripción original artículo', 'ID artículo', 'Ubicación', 'Cantidad', 'Persona']];
-  c.resultado.lineas.forEach(l => merc.push([transpTxt(l.transportadora), l.inventario, l.descripcion, l.idArticulo, l.ubicacion, l.cantidad,
+  [...c.resultado.lineas].sort(M.compararLineas).forEach(l => merc.push([transpTxt(l.transportadora), l.inventario, l.descripcion, l.idArticulo, l.ubicacion, l.cantidad,
     c.asignaciones[l.inventario] ? nombrePersona(c.asignaciones[l.inventario]) : 'SIN ASIGNAR']));
   merc.push(['Total', '', '', '', '', c.resultado.totales.unidadesMercado, '']);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(merc), 'MERCADO');
@@ -655,7 +656,7 @@ function hojaSeccionHTML(invs) {
   let total = 0, nGuias = 0;
   let filasMercado = '', filasAlist = '';
   invs.forEach(inv => {
-    const lineas = r.lineas.filter(l => l.inventario === inv);
+    const lineas = r.lineas.filter(l => l.inventario === inv).sort(M.compararLineas);
     const guias = r.alistamiento.filter(a => a.inventario === inv);
     const sub = lineas.reduce((s, l) => s + l.cantidad, 0);
     const porTransp = {};
@@ -1004,7 +1005,8 @@ function lineasDePersona(sel) {
   else if (sel === SEL_SIN) lista = lineas.filter(l => !c.personas.includes(c.asignaciones[l.inventario]));
   else lista = lineas.filter(l => c.asignaciones[l.inventario] === sel);
   const porUbic = (a, b) => M.compararUbicacion(a.ubicacion, b.ubicacion) ||
-    a.inventario.localeCompare(b.inventario, 'es') || a.descripcion.localeCompare(b.descripcion, 'es');
+    a.inventario.localeCompare(b.inventario, 'es') || M.compararId(a.idArticulo, b.idArticulo) ||
+    a.descripcion.localeCompare(b.descripcion, 'es');
   return lista.sort(S.orden === 'transportadora'
     ? (a, b) => M.compararTransportadora(a.transportadora, b.transportadora) || porUbic(a, b)
     : porUbic);

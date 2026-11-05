@@ -146,6 +146,25 @@
     return 0;
   }
 
+  // ID artículo en orden numérico (2, 11, 100); los que no son número, al final
+  function compararId(a, b) {
+    const sa = String(a ?? ''), sb = String(b ?? '');
+    const na = /^\d+$/.test(sa), nb = /^\d+$/.test(sb);
+    if (na && nb) return Number(sa) - Number(sb) || sa.length - sb.length;
+    if (na !== nb) return na ? -1 : 1;
+    return sa.localeCompare(sb, 'es', { numeric: true });
+  }
+
+  // Orden del mercado: transportadora, tienda, ubicación (recorrido de la
+  // bodega; vacías al final), ID artículo numérico y descripción
+  function compararLineas(a, b) {
+    return compararTransportadora(a.transportadora, b.transportadora) ||
+      a.inventario.localeCompare(b.inventario, 'es') ||
+      compararUbicacion(a.ubicacion, b.ubicacion) ||
+      compararId(a.idArticulo, b.idArticulo) ||
+      a.descripcion.localeCompare(b.descripcion, 'es');
+  }
+
   // '' (sin transportadora) primero y DESCONOCIDA al final, el resto alfabético
   function compararTransportadora(a, b) {
     const pa = a === '' ? 0 : a === DESCONOCIDA ? 2 : 1;
@@ -306,12 +325,7 @@
       b._art.add(d.idArticulo);
     }
 
-    const lineas = [...grupos.values()].sort((a, b) =>
-      compararTransportadora(a.transportadora, b.transportadora) ||
-      a.inventario.localeCompare(b.inventario, 'es') ||
-      compararUbicacion(a.ubicacion, b.ubicacion) ||
-      a.descripcion.localeCompare(b.descripcion, 'es') ||
-      a.idArticulo.localeCompare(b.idArticulo, 'es', { numeric: true }));
+    const lineas = [...grupos.values()].sort(compararLineas);
 
     const alistamiento = [...porGuia.values()].sort((a, b) =>
       compararTransportadora(a.transportadora, b.transportadora) ||
@@ -416,7 +430,7 @@
   const api = {
     RANGOS_DEFECTO, TABLAS_DEFECTO, DESCONOCIDA, COLUMNAS, COLUMNAS_OPCIONALES, MOTIVOS, AVISOS,
     normEspacios, clave, propio, filaEncabezados, guiaANumero, idTexto, inventarioDe, transportadoraDe, limpiarRangos,
-    compararUbicacion, compararTransportadora, leerTablaUbicaciones,
+    compararUbicacion, compararTransportadora, compararId, compararLineas, leerTablaUbicaciones,
     procesarCorte, sugerirReparto, revisarAsignacion
   };
   globalThis.MercadoCore = api;

@@ -248,3 +248,15 @@ test('una tienda llamada "constructor" se reparte y se cuenta como cualquier otr
   const rev = M.revisarAsignacion({ porInventario: porInv, lineas: [] }, {}, ['p1']);
   assert.equal(rev.sinAsignar.length, 2);
 });
+
+test('mercado: dentro de cada tienda va por ubicación y luego por ID numérico (2, 11, 100; no alfabético)', () => {
+  const r = M.procesarCorte([ENC,
+    fila({ 'ID artículo': 100, 'Descripción original artículo': 'AAA' }),
+    fila({ 'ID artículo': 2, 'Descripción original artículo': 'ZZZ' }),
+    fila({ 'ID artículo': '11', 'Descripción original artículo': 'MMM' })
+  ]);
+  assert.deepEqual(r.lineas.map(l => l.idArticulo), ['2', '11', '100']);
+  // la misma regla sirve para ordenar líneas ya guardadas
+  const desordenadas = [...r.lineas].reverse();
+  assert.deepEqual(desordenadas.sort(M.compararLineas).map(l => l.idArticulo), ['2', '11', '100']);
+});
