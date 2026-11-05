@@ -19,6 +19,11 @@ const M = window.MercadoCore;
 const SESSION_KEY = STORAGE_KEYS.COORD_SESSION;
 const REFRESH_KEY = 'effi_coord_refresh_v1';
 const PREFS_KEY = 'effi_mercado_prefs_v1';     // pestaña/persona/orden de este navegador
+
+// La primera versión guardaba todo en el navegador; ahora está en la base
+['effi_mercado_datos_v1', 'effi_mercado_ubicaciones_v1', 'effi_mercado_cortes_v1'].forEach(k => {
+  try { localStorage.removeItem(k); } catch { /* sin storage */ }
+});
 const LS_PERSONAS = 'effi_mercado_personas_v1'; // copia de las personas de Conteos (por si falla la red)
 const SONDEO_MS = 20000;                        // refresco del avance en "Por persona"
 

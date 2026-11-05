@@ -34,6 +34,12 @@
       ]
     },
     {
+      "source": "/mercado/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    },
+    {
       "source": "/trazabilidad.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, must-revalidate" }
