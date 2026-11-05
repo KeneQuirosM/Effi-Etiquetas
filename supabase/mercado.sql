@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS mercado_cortes (
   actualizado_en         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_mercado_cortes_fecha ON mercado_cortes (fecha DESC, id DESC);
+-- Clave que manda el navegador al guardar: si la respuesta se pierde y se
+-- reintenta, el corte no se duplica (mercado_guardar_corte devuelve el mismo id)
+ALTER TABLE mercado_cortes ADD COLUMN IF NOT EXISTS clave TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mercado_cortes_clave ON mercado_cortes (clave) WHERE clave IS NOT NULL;
 
 -- El mercado: una fila por artículo (transportadora/inventario/artículo/ubicación).
 -- linea = posición en la lista; es la clave de mercado_alistado.
@@ -156,15 +160,22 @@ BEGIN
     RAISE EXCEPTION 'El corte no tiene líneas de mercado';
   END IF;
 
+  -- Reintento del mismo guardado: devolver el corte que ya existe
+  IF coalesce(p->>'clave', '') <> '' THEN
+    SELECT id INTO v_id FROM mercado_cortes WHERE clave = p->>'clave';
+    IF FOUND THEN RETURN v_id; END IF;
+  END IF;
+
   INSERT INTO mercado_cortes (fecha, horario, archivo, responsable_corte, responsable_impresion, personas,
-                              filas_excel, unidades_excel, unidades_mercado, guias, totales, base, validacion, creado_por)
+                              filas_excel, unidades_excel, unidades_mercado, guias, totales, base, validacion, creado_por, clave)
   VALUES ((p->>'fecha')::date, p->>'horario', p->>'archivo', p->>'responsable_corte', p->>'responsable_impresion',
           COALESCE(ARRAY(SELECT jsonb_array_elements_text(p->'personas')), '{}'),
           COALESCE((p->'totales'->>'filasExcel')::int, 0),
           COALESCE((p->'totales'->>'unidadesExcel')::numeric, 0),
           COALESCE((p->'totales'->>'unidadesMercado')::numeric, 0),
           COALESCE((p->'totales'->>'guias')::int, 0),
-          COALESCE(p->'totales', '{}'::jsonb), COALESCE(p->'base', '[]'::jsonb), p->'validacion', p->>'creado_por')
+          COALESCE(p->'totales', '{}'::jsonb), COALESCE(p->'base', '[]'::jsonb), p->'validacion', p->>'creado_por',
+          nullif(p->>'clave', ''))
   RETURNING id INTO v_id;
 
   INSERT INTO mercado_lineas (corte_id, linea, transportadora, inventario, descripcion, id_articulo, ubicacion, cantidad, filas, aviso)

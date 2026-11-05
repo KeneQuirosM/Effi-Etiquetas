@@ -58,6 +58,7 @@
   // Motivos por los que una fila queda FUERA del mercado
   const MOTIVOS = {
     anulada:         'Fila anulada',
+    sin_inventario:  'Sin distribuidor ni proveedor',
     guia_no_numerica:'Guía no numérica',
     cantidad:        'Cantidad no válida'
   };
@@ -76,6 +77,11 @@
   // Para comparar nombres de columnas e inventarios sin importar tildes/mayúsculas
   function clave(v) {
     return normEspacios(v).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  }
+  // Lectura segura de un objeto usado como diccionario: un ID como
+  // "toString" o "__proto__" no debe devolver algo heredado
+  function propio(obj, k) {
+    return obj && Object.prototype.hasOwnProperty.call(obj, k) ? obj[k] : undefined;
   }
   function vacio(v) {
     return v === null || v === undefined || normEspacios(v) === '';
@@ -182,14 +188,18 @@
   function procesarCorte(filas, opciones = {}) {
     if (!Array.isArray(filas) || !filas.length) throw new Error('El archivo está vacío');
     const rangos = limpiarRangos(opciones.rangos);
-    const tablas = {};
+    const tablas = Object.create(null);
     Object.entries(opciones.tablas || TABLAS_DEFECTO).forEach(([inv, t]) => {
       if (normEspacios(t)) tablas[clave(inv)] = normEspacios(t).toUpperCase();
     });
     const ubicaciones = opciones.ubicaciones || {};
 
-    // Encabezados
-    const enc = (filas[0] || []).map(clave);
+    // Encabezados: normalmente la fila 1, pero se buscan en las primeras 20
+    // por si el archivo trae títulos arriba
+    // por si el archivo trae títulos arriba (si no se encuentran, la fila 1
+    // y el error de abajo dice qué columnas faltan)
+    const inicio = Math.max(0, filaEncabezados(filas));
+    const enc = (filas[inicio] || []).map(clave);
     const col = {};
     const faltan = [];
     Object.entries(COLUMNAS).forEach(([k, nombre]) => {
@@ -205,7 +215,7 @@
     });
 
     const detalle = [];
-    for (let i = 1; i < filas.length; i++) {
+    for (let i = inicio + 1; i < filas.length; i++) {
       const f = filas[i] || [];
       if (f.every(vacio)) continue;
       const fila = i + 1;   // número de fila en Excel
@@ -222,6 +232,7 @@
       const avisos = [];
 
       if ((vigencia && clave(vigencia) !== 'VIGENTE') || !vacio(anulacion)) motivos.push('anulada');
+      if (!inventario) motivos.push('sin_inventario');
       if (guia === null) motivos.push('guia_no_numerica');
       if (cantidad === null || cantidad <= 0) motivos.push('cantidad');
 
@@ -233,12 +244,13 @@
       }
 
       let ubicacion = '';
-      const tabla = tablas[clave(inventario)] || null;
+      const tabla = propio(tablas, clave(inventario)) || null;
       if (tabla) {
-        const t = ubicaciones[tabla];
+        const t = propio(ubicaciones, tabla);
         if (!t) avisos.push('tabla_no_cargada');
         else {
-          ubicacion = normEspacios(t[idArticulo]);
+          const u = propio(t, idArticulo);
+          ubicacion = typeof u === 'string' || typeof u === 'number' ? normEspacios(u) : '';
           if (!ubicacion) avisos.push('sin_ubicacion');
         }
       }
@@ -314,7 +326,7 @@
                        a.inventario.localeCompare(b.inventario, 'es'));
 
     // Unidades por inventario (para asignar)
-    const porInventario = {};
+    const porInventario = Object.create(null);
     lineas.forEach(l => { porInventario[l.inventario] = (porInventario[l.inventario] || 0) + l.cantidad; });
 
     const excluidas = detalle.filter(d => !d.incluida);
@@ -336,6 +348,16 @@
 
   function redondear(n) { return Math.round(n * 1000) / 1000; }
 
+  // Índice de la fila con los encabezados (la que tiene Guía transportadora y Cantidad)
+  function filaEncabezados(filas) {
+    const g = clave(COLUMNAS.guia), c = clave(COLUMNAS.cantidad);
+    for (let i = 0; i < Math.min(filas.length, 20); i++) {
+      const enc = (filas[i] || []).map(clave);
+      if (enc.includes(g) && enc.includes(c)) return i;
+    }
+    return -1;
+  }
+
   /**
    * Repartición equilibrada por unidades (el inventario más grande va a la
    * persona con menos carga). fijas = { inventario: personaId } se respetan
@@ -345,21 +367,22 @@
     const ids = [...personaIds];
     const asignacion = {};
     if (!ids.length) return asignacion;
-    const carga = Object.fromEntries(ids.map(id => [id, 0]));
+    const carga = new Map(ids.map(id => [id, 0]));
+    const esInv = inv => Object.prototype.hasOwnProperty.call(porInventario, inv);
     Object.entries(fijas).forEach(([inv, p]) => {
-      if (inv in porInventario && p in carga) {
+      if (esInv(inv) && carga.has(p)) {
         asignacion[inv] = p;
-        carga[p] += porInventario[inv];
+        carga.set(p, carga.get(p) + porInventario[inv]);
       }
     });
     const pendientes = Object.keys(porInventario)
-      .filter(inv => !(inv in asignacion))
+      .filter(inv => !Object.prototype.hasOwnProperty.call(asignacion, inv))
       .sort((a, b) => porInventario[b] - porInventario[a] || a.localeCompare(b, 'es'));
     for (const inv of pendientes) {
       let mejor = ids[0];
-      for (const id of ids) if (carga[id] < carga[mejor]) mejor = id;
+      for (const id of ids) if (carga.get(id) < carga.get(mejor)) mejor = id;
       asignacion[inv] = mejor;
-      carga[mejor] += porInventario[inv];
+      carga.set(mejor, carga.get(mejor) + porInventario[inv]);
     }
     return asignacion;
   }
@@ -374,7 +397,7 @@
     const sinAsignar = [];
     let asignado = 0;
     Object.entries(resultado.porInventario).forEach(([inv, unidades]) => {
-      const p = asignacion[inv];
+      const p = propio(asignacion, inv);
       if (p !== undefined && validos.has(p)) {
         porPersona[p].unidades += unidades;
         porPersona[p].inventarios++;
@@ -384,7 +407,7 @@
       }
     });
     resultado.lineas.forEach(l => {
-      const p = asignacion[l.inventario];
+      const p = propio(asignacion, l.inventario);
       if (p !== undefined && validos.has(p)) porPersona[p].lineas++;
     });
     return { asignado: redondear(asignado), sinAsignar, porPersona };
@@ -392,7 +415,7 @@
 
   const api = {
     RANGOS_DEFECTO, TABLAS_DEFECTO, DESCONOCIDA, COLUMNAS, COLUMNAS_OPCIONALES, MOTIVOS, AVISOS,
-    normEspacios, clave, guiaANumero, idTexto, inventarioDe, transportadoraDe, limpiarRangos,
+    normEspacios, clave, propio, filaEncabezados, guiaANumero, idTexto, inventarioDe, transportadoraDe, limpiarRangos,
     compararUbicacion, compararTransportadora, leerTablaUbicaciones,
     procesarCorte, sugerirReparto, revisarAsignacion
   };

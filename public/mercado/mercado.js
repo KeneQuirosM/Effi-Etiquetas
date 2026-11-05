@@ -26,6 +26,9 @@ const PREFS_KEY = 'effi_mercado_prefs_v1';     // pestaña/persona/orden de este
 });
 const LS_PERSONAS = 'effi_mercado_personas_v1'; // copia de las personas de Conteos (por si falla la red)
 const SONDEO_MS = 20000;                        // refresco del avance en "Por persona"
+// Opciones de "Por persona" que no son una persona (no pueden chocar con un nombre)
+const SEL_SIN = '\u2063sin';
+const SEL_TODAS = '\u2063todas';
 
 const S = {
   token: localStorage.getItem(SESSION_KEY),
@@ -41,6 +44,7 @@ const S = {
   orden: 'ubicacion',
   personaSel: null,
   hist: [], histMas: false,
+  inicioOk: false,    // config, tiendas y ubicaciones cargadas (sin esto no se procesa un corte)
   cfgEdit: null,
   ubicPreview: null
 };
@@ -152,6 +156,7 @@ async function cargarInicio() {
     S.inventarios = d.inventarios || [];
     S.ubicaciones = d.ubicaciones || {};
     S.cargas = d.cargas || [];
+    S.inicioOk = true;
   } catch (err) {
     notify(err.message || 'No se pudo cargar el módulo', 'error', 10000);
   }
@@ -230,7 +235,9 @@ function nuevoCorte(archivo, resultado) {
     id: null, archivo, resultado,
     fecha: fechaLocalISO(), horario: horaActual(),
     responsable_corte: S.perfil?.nombre || '', responsable_impresion: '',
-    personas: [], asignaciones: {}, asigManual: false, sucio: true
+    personas: [], asignaciones: {}, asigManual: false, sucio: true,
+    // Identifica este guardado: si se reintenta, el servidor no duplica el corte
+    clave: (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9-]/g, '')
   };
   S.alistado = new Map();
   history.replaceState(null, '', location.pathname);
@@ -306,13 +313,22 @@ const filasDe = ws => XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, ra
 
 async function procesarArchivoCorte(file) {
   if (!S.gestion) return;
+  // Sin la configuración (rangos, tablas de ubicaciones) el cálculo saldría con valores por defecto
+  if (!S.inicioOk) {
+    await cargarInicio();
+    if (!S.inicioOk) { notify('No se pudo cargar la configuración del mercado. Revisa la conexión y vuelve a intentar.', 'error', 8000); return; }
+  }
   if (!confirmarDescartar()) return;
   try {
     const wb = await leerLibro(file);
-    // El export trae una sola hoja; si suben la hoja de Google completa se usa la pestaña CORTE
-    const nombre = wb.SheetNames.find(n => M.clave(n) === 'CORTE') || wb.SheetNames[0];
+    // El export trae una sola hoja; si suben la hoja de Google completa se usa la
+    // pestaña CORTE; si no, la primera que tenga los encabezados del corte
+    const nombre = wb.SheetNames.find(n => M.clave(n) === 'CORTE')
+      || wb.SheetNames.find(n => M.filaEncabezados(filasDe(wb.Sheets[n])) >= 0)
+      || wb.SheetNames[0];
     const filas = filasDe(wb.Sheets[nombre]);
     const resultado = calcular(filas);
+    if (!resultado.totales.filasExcel) throw new Error('El Excel no tiene filas de guías');
     S.filasExcel = filas;
     nuevoCorte(file.name, resultado);
     sugerirInicial();
@@ -320,9 +336,26 @@ async function procesarArchivoCorte(file) {
     irA('corte');
     const t = resultado.totales;
     notify(`Corte procesado: ${fmt(t.filasExcel)} filas, ${fmt(t.unidadesExcel)} unidades`, 'success');
+    revisarGuiasRepetidas(S.corte);
   } catch (err) {
     notify(err.message || 'No se pudo leer el archivo', 'error', 8000);
   }
+}
+
+// Guías de este Excel que ya salieron en un corte guardado (por ejemplo, el
+// mismo export subido dos veces). No bloquea: se muestra como aviso.
+async function revisarGuiasRepetidas(corte) {
+  const guias = [...new Set(corte.resultado.alistamiento.map(a => a.guia))];
+  if (!guias.length) return;
+  try {
+    const d = await api('POST', '/api/mercado?accion=guias_repetidas', { guias });
+    if (S.corte !== corte) return;
+    corte.repetidas = d.repetidas || [];
+    if (corte.repetidas.length) {
+      notify(`${corte.repetidas.length} guías de este Excel ya están en otro corte guardado. Revisa la comprobación.`, 'warn', 8000);
+    }
+    render();
+  } catch { /* si falla la revisión, el corte se puede usar igual */ }
 }
 
 function calcular(filas) {
@@ -441,6 +474,13 @@ function renderValidacion() {
     ['sin_ubicacion', 'bad', 'Ubicación no encontrada (el ID no está en la tabla o no tiene ubicación)'],
     ['sin_transportadora', 'warn', 'Sin transportadora (guía menor o igual al primer rango)']
   ];
+  const rep = S.corte.repetidas || [];
+  if (rep.length) {
+    html += `<details class="mk-det bad" open><summary>${fmt(rep.length)} guías ya salieron en otro corte guardado (¿se subió el mismo Excel dos veces?)</summary>
+      <div class="mk-tabla-wrap"><table class="mk-tabla mk-tabla-err"><thead><tr><th>Guía</th><th>Corte anterior</th></tr></thead><tbody>
+      ${rep.slice(0, 500).map(g => `<tr><td class="mono">${esc(g.guia)}</td><td>${g.cortes.map(c => `#${esc(c.corte_id)} · ${esc(fechaTexto(c.fecha))}${c.horario ? ' ' + esc(c.horario) : ''}`).join(', ')}</td></tr>`).join('')}
+      </tbody></table></div></details>`;
+  }
   bloques.forEach(([k, tono, titulo]) => {
     const lista = v.avisos[k] || [];
     if (!lista.length) return;
@@ -535,7 +575,7 @@ function exportarCorte() {
     c.asignaciones[l.inventario] ? nombrePersona(c.asignaciones[l.inventario]) : 'SIN ASIGNAR']));
   merc.push(['Total', '', '', '', '', c.resultado.totales.unidadesMercado, '']);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(merc), 'MERCADO');
-  XLSX.utils.book_append_sheet(wb, hojaAlistamiento(inventariosDe('todas')), 'ALISTAMIENTO');
+  XLSX.utils.book_append_sheet(wb, hojaAlistamiento(inventariosDe(SEL_TODAS)), 'ALISTAMIENTO');
   const base = [['HORARIO', c.horario || ''], ['FECHA', fechaTexto(c.fecha)], ['RESPONSABLE CORTE', c.responsable_corte || ''],
     ['RESPONSABLE IMPRESION GUIAS Y GENERACION RELACION DESPACHOS', c.responsable_impresion || ''], [],
     ['TRANSPORTADORA', 'TIENDA', 'UNIDADES', 'CANT-GUIAS', 'ARTICULOS']];
@@ -551,12 +591,15 @@ function exportarCorte() {
   XLSX.writeFile(wb, nombreArchivo());
 }
 
+// data-imprimir solo cambia lo que sale en papel (las reglas están en
+// @media print), así que se quita en afterprint y no con un temporizador:
+// en celulares window.print() no espera y el temporizador lo quitaba antes
+// de imprimir, y salía la pantalla en vez de la hoja.
 function imprimir(modo) {
   document.body.dataset.imprimir = modo;
   const limpiar = () => { delete document.body.dataset.imprimir; window.removeEventListener('afterprint', limpiar); };
   window.addEventListener('afterprint', limpiar);
   window.print();
-  setTimeout(limpiar, 1000);
 }
 
 /* ── HOJA DE MERCADO IMPRESA ──────────────────────────────
@@ -568,8 +611,8 @@ function imprimir(modo) {
 function inventariosDe(sel) {
   const c = S.corte;
   const todos = Object.keys(c.resultado.porInventario);
-  if (sel === 'todas') return todos;
-  if (sel === 'sin') return todos.filter(inv => !c.personas.includes(c.asignaciones[inv]));
+  if (sel === SEL_TODAS) return todos;
+  if (sel === SEL_SIN) return todos.filter(inv => !c.personas.includes(c.asignaciones[inv]));
   return todos.filter(inv => c.asignaciones[inv] === sel);
 }
 
@@ -686,7 +729,7 @@ function abrirSelectorImpresion(contexto) {
     return;
   }
   const todos = Object.keys(c.resultado.porInventario);
-  impSel = new Set(contexto === 'asignados' || contexto === 'todas'
+  impSel = new Set(contexto === 'asignados' || contexto === SEL_TODAS
     ? todos.filter(inv => c.personas.includes(c.asignaciones[inv]))
     : inventariosDe(contexto));
   $('dlg-imp-juntar').checked = leerPrefs().juntarHojas !== false;
@@ -891,6 +934,8 @@ async function guardarCorte() {
     if (sinUbic) partes.push(`${sinUbic} filas sin ubicación`);
     if (!confirm(`La comprobación no está completa: ${partes.join(', ')}.\n\n¿Guardar de todos modos?`)) return;
   }
+  if (!c.id && (c.repetidas || []).length &&
+      !confirm(`${c.repetidas.length} guías de este Excel ya están en otro corte guardado. ¿Guardarlo de todos modos?`)) return;
   guardando = true;
   $('btn-guardar-corte').disabled = true;
   try {
@@ -902,7 +947,7 @@ async function guardarCorte() {
       const compacta = d => ({ fila: d.fila, guiaTexto: d.guiaTexto, inventario: d.inventario, descripcion: d.descripcion,
         idArticulo: d.idArticulo, cantidad: d.cantidad, cantidadTexto: d.cantidadTexto, motivos: d.motivos, avisos: d.avisos, tabla: d.tabla });
       const d = await api('POST', '/api/mercado?accion=corte', {
-        ...comunes, archivo: c.archivo, totales: c.resultado.totales, lineas: c.resultado.lineas,
+        ...comunes, clave: c.clave, archivo: c.archivo, totales: c.resultado.totales, lineas: c.resultado.lineas,
         guias: c.resultado.alistamiento, base: c.resultado.base,
         validacion: { excluidas: c.resultado.excluidas.map(compacta), conAviso: c.resultado.conAviso.map(compacta) }
       });
@@ -955,8 +1000,8 @@ function lineasDePersona(sel) {
   const c = S.corte;
   const lineas = c.resultado.lineas.map((l, i) => ({ ...l, i }));
   let lista;
-  if (sel === 'todas') lista = lineas;
-  else if (sel === 'sin') lista = lineas.filter(l => !c.personas.includes(c.asignaciones[l.inventario]));
+  if (sel === SEL_TODAS) lista = lineas;
+  else if (sel === SEL_SIN) lista = lineas.filter(l => !c.personas.includes(c.asignaciones[l.inventario]));
   else lista = lineas.filter(l => c.asignaciones[l.inventario] === sel);
   const porUbic = (a, b) => M.compararUbicacion(a.ubicacion, b.ubicacion) ||
     a.inventario.localeCompare(b.inventario, 'es') || a.descripcion.localeCompare(b.descripcion, 'es');
@@ -978,14 +1023,14 @@ function renderPersona() {
   if (!hay) return;
   const c = S.corte;
   const opciones = c.personas.map(id => ({ sel: String(id), nombre: nombrePersona(id) }));
-  if (lineasDePersona('sin').length) opciones.push({ sel: 'sin', nombre: 'Sin asignar' });
-  opciones.push({ sel: 'todas', nombre: 'Todo el mercado' });
+  if (lineasDePersona(SEL_SIN).length) opciones.push({ sel: SEL_SIN, nombre: 'Sin asignar' });
+  opciones.push({ sel: SEL_TODAS, nombre: 'Todo el mercado' });
   if (!opciones.some(o => o.sel === String(S.personaSel))) S.personaSel = opciones[0].sel;
 
   $('per-selector').innerHTML = opciones.map(o => {
     const a = avanceDe(lineasDePersona(o.sel));
     const on = o.sel === String(S.personaSel);
-    return `<button type="button" class="mk-chip mk-chip-btn${on ? ' on' : ''}${o.sel === 'sin' ? ' bad' : ''}" data-sel="${esc(o.sel)}" aria-pressed="${on}">
+    return `<button type="button" class="mk-chip mk-chip-btn${on ? ' on' : ''}${o.sel === SEL_SIN ? ' bad' : ''}" data-sel="${esc(o.sel)}" aria-pressed="${on}">
       ${esc(o.nombre)} <span class="mk-chip-n">${a.listas}/${a.total}</span></button>`;
   }).join('');
 
@@ -1034,30 +1079,45 @@ function renderPersona() {
   }).join('') : `<li class="mk-vacio">${ocultar && lineas.length ? 'Todo alistado.' : 'Sin artículos.'}</li>`;
 }
 
+// Cada marca sube este contador; un refresco que empezó antes de la marca
+// se descarta (si no, podía desmarcar en pantalla lo que se acaba de marcar)
+let marcasSeq = 0;
+let marcasPendientes = 0;
 async function marcarAlistado(linea, valor, input) {
   const c = S.corte;
   if (!c?.id) return;
+  marcasSeq++;
+  marcasPendientes++;
   const previo = S.alistado.get(linea);
   if (valor) S.alistado.set(linea, { por: S.perfil?.nombre || '' }); else S.alistado.delete(linea);
   renderPersona();
   try {
     await api('POST', '/api/mercado?accion=alistar', { id: c.id, linea, alistado: valor });
   } catch (err) {
-    if (previo) S.alistado.set(linea, previo); else S.alistado.delete(linea);
-    renderPersona();
+    if (S.corte === c) {
+      if (previo) S.alistado.set(linea, previo); else S.alistado.delete(linea);
+      renderPersona();
+    }
     notify(err.message || 'No se pudo guardar la marca', 'error');
+  } finally {
+    marcasPendientes--;
+    marcasSeq++;
   }
 }
 
 // Lo que marcan otros equipos aparece solo mientras se ve "Por persona"
 async function refrescarAlistado() {
   const c = S.corte;
-  if (!c?.id || document.hidden || S.tab !== 'persona') return;
+  if (!c?.id || document.hidden || S.tab !== 'persona' || marcasPendientes) return;
+  const seq = marcasSeq;
   try {
     const d = await api('GET', `/api/mercado?accion=alistado&id=${c.id}`);
-    if (S.corte?.id !== c.id) return;
-    S.alistado = new Map((d.alistado || []).map(a => [a.linea, a]));
-    renderPersona();
+    if (S.corte !== c || seq !== marcasSeq || marcasPendientes) return;
+    const nuevo = new Map((d.alistado || []).map(a => [a.linea, a]));
+    // Solo se vuelve a dibujar si cambió algo (no mover la lista mientras alguien toca)
+    const igual = nuevo.size === S.alistado.size && [...nuevo].every(([k, v]) => S.alistado.get(k)?.por === v.por);
+    S.alistado = nuevo;
+    if (!igual) renderPersona();
   } catch { /* se reintenta en el próximo sondeo */ }
 }
 setInterval(refrescarAlistado, SONDEO_MS);
@@ -1076,7 +1136,7 @@ function exportarPersona() {
   if (!S.corte || typeof XLSX === 'undefined') return;
   const sel = String(S.personaSel);
   const lineas = lineasDePersona(sel);
-  const titulo = sel === 'todas' ? 'todas' : sel === 'sin' ? 'sin_asignar' : nombrePersona(sel);
+  const titulo = sel === SEL_TODAS ? 'todas' : sel === SEL_SIN ? 'sin_asignar' : nombrePersona(sel).replace(/[^\p{L}\p{N} _-]/gu, '');
   const filas = [['Ubicación', 'Descripción original artículo', 'ID artículo', 'Inventario', 'Transportadora', 'Cantidad', 'Alistado', 'Alistó']];
   lineas.forEach(l => {
     const al = S.alistado.get(l.i);

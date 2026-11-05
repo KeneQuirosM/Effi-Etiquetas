@@ -215,3 +215,36 @@ test('destinatario es opcional y se lee si viene', () => {
   const sin = M.procesarCorte([ENC, fila({})]);
   assert.equal(sin.alistamiento[0].destinatario, '');
 });
+
+test('fila sin distribuidor ni proveedor: queda fuera con su motivo (no como tienda vacía)', () => {
+  const r = M.procesarCorte([ENC, fila({}), fila({ Distribuidor: '   ', Cantidad: 3 })]);
+  assert.equal(r.excluidas.length, 1);
+  assert.deepEqual(r.excluidas[0].motivos, ['sin_inventario']);
+  assert.ok(!('' in r.porInventario));
+  assert.equal(r.totales.unidadesExcluidas, 3);
+});
+
+test('encabezados que no están en la fila 1 (títulos arriba) y número de fila correcto', () => {
+  const r = M.procesarCorte([['REPORTE DE GUÍAS'], [], ENC, fila({ Cantidad: 2 }), fila({ Vigencia: 'Anulada' })]);
+  assert.equal(r.totales.filasExcel, 2);
+  assert.equal(r.totales.unidadesMercado, 2);
+  assert.equal(r.excluidas[0].fila, 5);
+});
+
+test('un ID como "toString" o "__proto__" no saca una ubicación falsa', () => {
+  const ubic = { MIIA: { 1: '1-1-1' } };
+  const r = M.procesarCorte([ENC,
+    fila({ Distribuidor: '1131 - MIIA OUTERWEAR', 'ID artículo': 'toString' }),
+    fila({ Distribuidor: '1131 - MIIA OUTERWEAR', 'ID artículo': '__proto__' })
+  ], { ubicaciones: ubic });
+  assert.deepEqual(r.lineas.map(l => l.ubicacion), ['', '']);
+  assert.equal(r.conAviso.filter(d => d.avisos.includes('sin_ubicacion')).length, 2);
+});
+
+test('una tienda llamada "constructor" se reparte y se cuenta como cualquier otra', () => {
+  const porInv = { constructor: 5, B: 3 };
+  const rep = M.sugerirReparto(porInv, ['p1']);
+  assert.deepEqual(rep, { constructor: 'p1', B: 'p1' });
+  const rev = M.revisarAsignacion({ porInventario: porInv, lineas: [] }, {}, ['p1']);
+  assert.equal(rev.sinAsignar.length, 2);
+});

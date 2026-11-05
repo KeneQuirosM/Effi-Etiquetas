@@ -18,6 +18,7 @@ import { registrar } from './_bitacora.js';
  *   GET    ?accion=corte&id=N          un corte completo + alistado
  *   GET    ?accion=alistado&id=N       solo el avance (para refrescar)
  *   POST   ?accion=alistar             { id, linea, alistado }           (nav-mercado)
+ *   POST   ?accion=guias_repetidas     { guias: [texto] } → las que ya salieron en otro corte
  *   POST   ?accion=corte               guarda un corte nuevo             (gestión)
  *   POST   ?accion=asignar             { id, personas, asignaciones, ...} (gestión)
  *   POST   ?accion=inventario          { nombre, alias, persona }        (gestión)
@@ -38,9 +39,20 @@ const txt = (v, max = 300) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(
 const num = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const idValido = v => Number.isSafeInteger(Number(v)) && Number(v) > 0;
 
+// Solo "no existe la tabla/función" (si no, un error de datos se confundiría
+// con "falta ejecutar el SQL")
 function faltaTabla(error) {
-  return ['42P01', 'PGRST205', 'PGRST202', '42883'].includes(error?.code) || /mercado_/.test(error?.message || '');
+  return ['42P01', 'PGRST205', 'PGRST202', '42883'].includes(error?.code);
 }
+// AAAA-MM-DD y que sea una fecha real (no 2026-13-45)
+function fechaValida(v) {
+  const s = String(v ?? '');
+  if (!FECHA_RE.test(s)) return false;
+  const d = new Date(s + 'T00:00:00Z');
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+const CLAVE_RE = /^[A-Za-z0-9-]{8,64}$/;
+const iguales = (a, b) => Math.abs(a - b) < 1e-6;
 function errorBD(res, error, mensaje) {
   console.error('mercado:', mensaje, error);
   return res.status(500).json({
@@ -143,8 +155,9 @@ export default async function handler(req, res) {
           supabaseAdmin.from('mercado_ubicaciones_cargas').select('tabla, archivo, filas, cargado_por, cargado_en')
         ]);
         for (const r of [inventarios, ubic, cargas]) if (r.error) return errorBD(res, r.error, 'No se pudo cargar el módulo');
-        const ubicaciones = {};
-        ubic.data.forEach(u => { (ubicaciones[u.tabla] ||= {})[u.id_articulo] = u.ubicacion || ''; });
+        // Sin prototipo: un ID como "__proto__" queda como dato, no como propiedad especial
+        const ubicaciones = Object.create(null);
+        ubic.data.forEach(u => { (ubicaciones[u.tabla] ||= Object.create(null))[u.id_articulo] = u.ubicacion || ''; });
         return res.status(200).json({ config, inventarios: inventarios.data, ubicaciones, cargas: cargas.data });
       }
 
@@ -191,6 +204,37 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Acción no válida' });
     }
 
+    // ════ GUÍAS QUE YA SALIERON EN OTRO CORTE (al subir un Excel) ════
+    if (req.method === 'POST' && accion === 'guias_repetidas') {
+      const user = await requirePermiso(req, res, [VER, GESTION]);
+      if (!user) return;
+      const guias = [...new Set((Array.isArray(req.body?.guias) ? req.body.guias : []).map(g => txt(g, 60)).filter(Boolean))];
+      if (guias.length > MAX_LINEAS) return res.status(400).json({ error: 'Demasiadas guías' });
+      const encontradas = [];
+      for (let i = 0; i < guias.length; i += 200) {
+        const { data, error } = await selectAll(() => supabaseAdmin.from('mercado_guias')
+          .select('guia, corte_id, n').in('guia', guias.slice(i, i + 200)).order('corte_id').order('n'));
+        if (error) return errorBD(res, error, 'No se pudieron revisar las guías');
+        encontradas.push(...data);
+      }
+      const ids = [...new Set(encontradas.map(g => g.corte_id))];
+      const cortes = {};
+      if (ids.length) {
+        const { data, error } = await supabaseAdmin.from('mercado_cortes').select('id, fecha, horario').in('id', ids);
+        if (error) return errorBD(res, error, 'No se pudieron revisar las guías');
+        data.forEach(c => { cortes[c.id] = c; });
+      }
+      const porGuia = new Map();
+      encontradas.forEach(g => {
+        const c = cortes[g.corte_id];
+        if (!c) return;
+        const lista = porGuia.get(g.guia) || [];
+        if (!lista.some(x => x.corte_id === c.id)) lista.push({ corte_id: c.id, fecha: c.fecha, horario: c.horario });
+        porGuia.set(g.guia, lista);
+      });
+      return res.status(200).json({ repetidas: [...porGuia].map(([guia, cortes]) => ({ guia, cortes })) });
+    }
+
     // ════ MARCAR ALISTADO (cualquiera con acceso al módulo) ════
     if (req.method === 'POST' && accion === 'alistar') {
       const user = await requirePermiso(req, res, [VER, GESTION]);
@@ -222,8 +266,19 @@ export default async function handler(req, res) {
       const b = req.body || {};
       const lineas = limpiarLineas(b.lineas);
       if (!lineas) return res.status(400).json({ error: 'El corte no tiene líneas de mercado' });
-      if (!FECHA_RE.test(String(b.fecha))) return res.status(400).json({ error: 'Fecha no válida' });
+      if (!fechaValida(b.fecha)) return res.status(400).json({ error: 'Fecha no válida' });
       const guias = limpiarGuias(b.guias);
+      // El corte tiene que cuadrar: mercado = alistamiento por guía = total
+      // calculado. Si algo se perdió en el camino, no se guarda.
+      const sumaLineas = lineas.reduce((s, l) => s + l.cantidad, 0);
+      const sumaGuias = guias.reduce((s, g) => s + g.cantidad, 0);
+      const totalMercado = num(b.totales?.unidadesMercado);
+      if (lineas.some(l => !l.inventario || !(l.cantidad > 0)) || guias.some(g => !(g.cantidad > 0))) {
+        return res.status(400).json({ error: 'El corte trae líneas sin tienda o con cantidad no válida; vuelve a subir el Excel' });
+      }
+      if (!iguales(sumaLineas, totalMercado) || !iguales(sumaGuias, sumaLineas)) {
+        return res.status(400).json({ error: `El corte no cuadra (mercado ${sumaLineas}, guías ${sumaGuias}, total ${totalMercado}); vuelve a subir el Excel` });
+      }
       const { personas, asignaciones } = limpiarAsignacion(b, new Set(lineas.map(l => l.inventario)));
       let validacion = b.validacion && typeof b.validacion === 'object' ? b.validacion : null;
       if (JSON.stringify(validacion || {}).length > 500000) validacion = { recortada: true };
@@ -237,7 +292,9 @@ export default async function handler(req, res) {
         totales: b.totales && typeof b.totales === 'object' ? b.totales : {},
         base: Array.isArray(b.base) ? b.base.slice(0, 5000) : [],
         validacion,
-        creado_por: nombreDe(user)
+        creado_por: nombreDe(user),
+        // Si la respuesta se pierde y el navegador reintenta, no se duplica el corte
+        clave: CLAVE_RE.test(String(b.clave || '')) ? String(b.clave) : null
       } });
       if (error) return errorBD(res, error, 'No se pudo guardar el corte');
       const unidades = lineas.reduce((s, l) => s + l.cantidad, 0);
@@ -260,7 +317,7 @@ export default async function handler(req, res) {
       ['horario', 'responsable_corte', 'responsable_impresion'].forEach(k => {
         if (k in b) p[k] = txt(b[k], k === 'horario' ? 40 : 100) || null;
       });
-      if (FECHA_RE.test(String(b.fecha))) p.fecha = b.fecha;
+      if (fechaValida(b.fecha)) p.fecha = b.fecha;
       const { error } = await supabaseAdmin.rpc('mercado_asignar', { p_corte: id, p });
       if (error) return errorBD(res, error, 'No se pudo guardar la asignación');
       await registrar(user, 'mercado_corte_asignar', `Cambió la asignación del corte #${id}`, { corte_id: id, asignaciones });
