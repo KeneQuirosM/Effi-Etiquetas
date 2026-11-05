@@ -119,15 +119,22 @@ CREATE TABLE IF NOT EXISTS mercado_ubicaciones_cargas (
 );
 
 -- Sin acceso público: solo la API (service role)
-DO $$
-DECLARE t TEXT;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['mercado_cortes','mercado_lineas','mercado_guias','mercado_asignaciones',
-                           'mercado_alistado','mercado_inventarios','mercado_ubicaciones','mercado_ubicaciones_cargas'] LOOP
-    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
-    EXECUTE format('REVOKE ALL ON %I FROM anon, authenticated', t);
-  END LOOP;
-END $$;
+ALTER TABLE mercado_cortes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mercado_lineas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mercado_guias ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mercado_asignaciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mercado_alistado ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mercado_inventarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mercado_ubicaciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mercado_ubicaciones_cargas ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON mercado_cortes FROM anon, authenticated;
+REVOKE ALL ON mercado_lineas FROM anon, authenticated;
+REVOKE ALL ON mercado_guias FROM anon, authenticated;
+REVOKE ALL ON mercado_asignaciones FROM anon, authenticated;
+REVOKE ALL ON mercado_alistado FROM anon, authenticated;
+REVOKE ALL ON mercado_inventarios FROM anon, authenticated;
+REVOKE ALL ON mercado_ubicaciones FROM anon, authenticated;
+REVOKE ALL ON mercado_ubicaciones_cargas FROM anon, authenticated;
 
 -- ── Guarda un corte completo en una sola transacción ──
 -- p = { fecha, horario, archivo, responsable_corte, responsable_impresion,
