@@ -246,6 +246,27 @@ input:disabled, select:disabled { background: var(--neutral-50); color: var(--ne
 
 .mk-print-head { display: none; }
 
+/* ── Ventana: escoger qué imprimir ── */
+.mk-dialog {
+  width: min(680px, calc(100vw - 24px)); max-height: calc(100vh - 32px);
+  margin: auto; padding: 0; border: none; border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .3); color: inherit;
+}
+.mk-dialog::backdrop { background: rgba(7, 16, 74, .45); }
+.mk-dialog-cuerpo { display: flex; flex-direction: column; gap: 12px; padding: 16px; max-height: calc(100vh - 32px); }
+.mk-imp-lista { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; min-height: 80px; }
+.mk-imp-grupo { border: 1.5px solid var(--neutral-200); border-radius: 8px; padding: 6px 10px 8px; }
+.mk-imp-grupo.sin { border-color: var(--danger-border); }
+.mk-imp-grupo legend { padding: 0 4px; }
+.mk-imp-item { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 6px 2px; border-top: 1px solid var(--neutral-100); cursor: pointer; font-size: .88rem; }
+.mk-imp-item input { width: 18px; height: 18px; }
+.mk-dialog-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--neutral-200); padding-top: 12px; }
+.mk-dialog-pie span { margin-right: auto; }
+@media (max-width: 640px) {
+  .mk-imp-item { grid-template-columns: 22px 1fr; }
+  .mk-imp-item > span:last-child { grid-column: 2; }
+}
+
 /* ── Hoja de mercado impresa (formato de la hoja de Google) ── */
 .mk-hoja { display: none; }
 @page hoja { size: landscape; margin: 8mm; }
@@ -305,6 +326,7 @@ input:disabled, select:disabled { background: var(--neutral-50); color: var(--ne
   body[data-imprimir="hoja"] .mk-main { display: none !important; }
   body[data-imprimir="hoja"] .mk-hoja { display: block; }
   #__notify_container { display: none !important; }
+  .mk-dialog { display: none !important; }
   body[data-imprimir="corte"] .mk-panel:not(#panel-corte) { display: none !important; }
   body[data-imprimir="persona"] .mk-panel:not(#panel-persona) { display: none !important; }
   body[data-imprimir="persona"] .mk-print-head { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 6px; }

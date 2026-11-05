@@ -91,7 +91,7 @@
       <div class="mk-card">
         <div class="mk-card-head">
           <h2 class="mk-h2">¿Quién hace el mercado?</h2>
-          <button type="button" class="mk-link solo-gestion" data-ir="config">Gestionar personas</button>
+          <span class="mk-muted mk-small">Lista de Conteos (panel de coordinador > Configuración > Conteos: personas y mesas)</span>
         </div>
         <div class="mk-chips" id="asig-personas"></div>
         <p class="mk-muted mk-small" id="asig-personas-hint"></p>
@@ -165,10 +165,7 @@
   <section class="mk-panel" id="panel-config" role="tabpanel" hidden>
     <div class="mk-card">
       <h2 class="mk-h2">Personas</h2>
-      <form class="mk-inline-form" id="form-persona">
-        <input type="text" id="persona-nombre" placeholder="Nombre de la persona" maxlength="80" required>
-        <button type="submit" class="mk-btn mk-btn-primary">Agregar</button>
-      </form>
+      <p class="mk-muted mk-small">Son las mismas de Conteos. Para agregar o quitar personas ve al panel de coordinador > Configuración > "Conteos: personas y mesas".</p>
       <div id="cfg-personas"></div>
     </div>
 
@@ -217,6 +214,27 @@
   </section>
 
 </main>
+
+<!-- Escoger qué mercados imprimir -->
+<dialog id="dlg-imprimir" class="mk-dialog" aria-labelledby="dlg-imp-tit">
+  <div class="mk-dialog-cuerpo">
+    <div class="mk-card-head">
+      <h2 id="dlg-imp-tit" class="mk-h2">¿Qué mercados quieres imprimir?</h2>
+      <button type="button" class="mk-btn mk-btn-sm" id="dlg-imp-cerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="mk-acciones">
+      <button type="button" class="mk-btn mk-btn-sm" data-imp-rapido="asignados">Solo asignados</button>
+      <button type="button" class="mk-btn mk-btn-sm" data-imp-rapido="todos">Todos</button>
+      <button type="button" class="mk-btn mk-btn-sm" data-imp-rapido="ninguno">Ninguno</button>
+    </div>
+    <div id="dlg-imp-lista" class="mk-imp-lista"></div>
+    <div class="mk-dialog-pie">
+      <span id="dlg-imp-resumen" class="mk-muted mk-small"></span>
+      <button type="button" class="mk-btn" data-imp-ir="pdf">PDF</button>
+      <button type="button" class="mk-btn mk-btn-primary" data-imp-ir="imprimir">Imprimir</button>
+    </div>
+  </div>
+</dialog>
 
 <!-- Hoja de mercado para imprimir (solo se ve al imprimir) -->
 <div id="hoja-print" class="mk-hoja" aria-hidden="true"></div>

@@ -1,9 +1,12 @@
 /* ── MERCADO Y ALISTAMIENTO ────────────────────────────────
  * Reemplaza la hoja "PACKING / CORTE". Todo corre en el navegador, sin
- * base de datos: el Excel se procesa aquí (mercado-core.js) y personas,
+ * base de datos propia: el Excel se procesa aquí (mercado-core.js) y
  * tiendas, configuración, tablas de ubicaciones, historial de cortes y
  * casillas de alistado se guardan en localStorage (ver ALMACÉN LOCAL).
- * Cada navegador tiene sus propios datos.
+ * Cada navegador tiene sus propios datos. Las personas son las mismas de
+ * Conteos (panel de coordinador > Configuración > "Conteos: personas y
+ * mesas"), leídas de GET /api/conteos?accion=opciones; cada persona se
+ * identifica por su nombre.
  *
  * Sesión: la misma del panel de coordinador (localStorage, como index.js),
  * con su propio refresco de token; solo se usa para leer el perfil.
@@ -16,7 +19,7 @@ const M = window.MercadoCore;
 const SESSION_KEY = STORAGE_KEYS.COORD_SESSION;
 const REFRESH_KEY = 'effi_coord_refresh_v1';
 const PREFS_KEY = 'effi_mercado_prefs_v1';     // pestaña/persona/orden de este navegador
-const LS_DATOS = 'effi_mercado_datos_v1';      // { config, personas, inventarios, seq }
+const LS_DATOS = 'effi_mercado_datos_v1';      // { config, personasConteos (copia), inventarios, seq }
 const LS_UBIC = 'effi_mercado_ubicaciones_v1';  // { ubicaciones: { tabla: { id: ubic } }, cargas: [] }
 const LS_CORTES = 'effi_mercado_cortes_v1';     // [corte guardado], el más nuevo primero
 const MAX_CORTES = 30;                          // historial que se conserva
@@ -89,8 +92,8 @@ function puede(permiso) {
 /* ── UTILIDADES ─────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
 const fmt = n => Number(n || 0).toLocaleString('es-CR', { maximumFractionDigits: 2 });
-const nombrePersona = id => S.personas.find(p => p.id === Number(id))?.nombre
-  || S.corte?.personasInfo?.find(p => p.id === Number(id))?.nombre || `Persona ${id}`;
+// La persona se identifica por su nombre (lista de Conteos)
+const nombrePersona = id => String(id ?? '');
 const transpTxt = t => (t === '' ? 'SIN TRANSPORTADORA' : t);
 function aliasDe(inv) {
   return S.inventarios.find(i => i.nombre === inv)?.alias || '';
@@ -126,7 +129,7 @@ const Local = {
   },
   datos() {
     const d = Local.leer(LS_DATOS, {});
-    return { config: d.config || null, personas: d.personas || [], inventarios: d.inventarios || [], seq: d.seq || 0 };
+    return { config: d.config || null, personasConteos: d.personasConteos || [], inventarios: d.inventarios || [], seq: d.seq || 0 };
   },
   guardarDatos(cambios) {
     return Local.escribir(LS_DATOS, { ...Local.datos(), ...cambios });
@@ -170,7 +173,7 @@ function recordarInventarios(lineas, asignaciones) {
     let fila = lista.find(i => i.nombre === nombre);
     if (!fila) { fila = { nombre, alias: null, persona_id: null }; lista.push(fila); }
     fila.visto_en = ahora;
-    if (asignaciones[nombre]) fila.persona_id = Number(asignaciones[nombre]);
+    if (asignaciones[nombre]) fila.persona_id = String(asignaciones[nombre]);
   });
   lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   Local.guardarDatos({ inventarios: lista });
@@ -209,7 +212,8 @@ window.addEventListener('storage', e => {
   S.orden = prefs.orden === 'transportadora' ? 'transportadora' : 'ubicacion';
   S.personaSel = prefs.persona ?? null;
 
-  await cargarInicio();
+  cargarInicio();
+  await cargarPersonas();
 
   const idUrl = Number(new URLSearchParams(location.search).get('corte'));
   const idAbrir = idUrl > 0 ? idUrl : null;
@@ -222,11 +226,26 @@ function cargarInicio() {
   const d = Local.datos();
   if (d.config?.rangos?.length) S.config.rangos = M.limpiarRangos(d.config.rangos);
   if (d.config?.tablas) S.config.tablas = d.config.tablas;
-  S.personas = d.personas;
+  S.personas = d.personasConteos.map(nombre => ({ id: nombre, nombre }));
   S.inventarios = d.inventarios;
   const u = Local.leer(LS_UBIC, {});
   S.ubicaciones = u.ubicaciones || {};
   S.cargas = u.cargas || [];
+}
+
+// Personas de Conteos. Se guarda una copia para trabajar sin conexión.
+async function cargarPersonas() {
+  try {
+    const d = await apiRequestJSON('/api/conteos?accion=opciones');
+    const lista = [...new Set((d.personas || []).map(n => M.normEspacios(n)).filter(Boolean))];
+    if (lista.length) {
+      Local.guardarDatos({ personasConteos: lista });
+      S.personas = lista.map(nombre => ({ id: nombre, nombre }));
+    }
+  } catch {
+    if (S.personas.length) notify('No se pudo leer la lista de personas de Conteos; se usa la última guardada', 'warn');
+    else notify('No se pudo leer la lista de personas de Conteos. Revisa la conexión y recarga la página.', 'error', 8000);
+  }
 }
 
 async function abrirUltimoCorte() {
@@ -296,8 +315,8 @@ async function abrirCorte(id, tab) {
       id: c.id, archivo: c.archivo, resultado: resultadoDeGuardado(c),
       fecha: c.fecha, horario: c.horario || '', responsable_corte: c.responsable_corte || '',
       responsable_impresion: c.responsable_impresion || '',
-      personas: (c.personas || []).map(p => p.id), personasInfo: c.personas || [],
-      asignaciones: c.asignaciones || {}, asigManual: true, sucio: false, creado_por: c.creado_por
+      personas: (c.personas || []).map(p => p.nombre), personasInfo: c.personas || [],
+      asignaciones: asignacionesPorNombre(c), asigManual: true, sucio: false, creado_por: c.creado_por
     };
     S.alistado = new Map(Object.entries(c.alistado || {}).map(([k, v]) => [Number(k), v]));
     history.replaceState(null, '', `${location.pathname}?corte=${c.id}`);
@@ -305,6 +324,12 @@ async function abrirCorte(id, tab) {
   } catch (err) {
     notify(err.message || 'No se pudo abrir el corte', 'error');
   }
+}
+
+// Cortes guardados antes de usar las personas de Conteos tenían ids numéricos
+function asignacionesPorNombre(c) {
+  const nombre = Object.fromEntries((c.personas || []).map(p => [String(p.id), p.nombre]));
+  return Object.fromEntries(Object.entries(c.asignaciones || {}).map(([inv, p]) => [inv, nombre[String(p)] ?? String(p)]));
 }
 
 function confirmarDescartar() {
@@ -410,7 +435,7 @@ document.querySelectorAll('[data-vista]').forEach(b => b.addEventListener('click
 }));
 $('buscar-mercado').addEventListener('input', debounce(renderTablas, 150));
 $('btn-export-corte').addEventListener('click', exportarCorte);
-$('btn-print-corte').addEventListener('click', () => imprimirHoja('todas'));
+$('btn-print-corte').addEventListener('click', () => abrirSelectorImpresion('asignados'));
 
 function renderCorte() {
   const hay = !!S.corte;
@@ -618,14 +643,13 @@ function inventariosDe(sel) {
   const c = S.corte;
   const todos = Object.keys(c.resultado.porInventario);
   if (sel === 'todas') return todos;
-  if (sel === 'sin') return todos.filter(inv => !c.personas.includes(Number(c.asignaciones[inv])));
-  return todos.filter(inv => Number(c.asignaciones[inv]) === Number(sel));
+  if (sel === 'sin') return todos.filter(inv => !c.personas.includes(c.asignaciones[inv]));
+  return todos.filter(inv => c.asignaciones[inv] === sel);
 }
 
-function hojaMercadoHTML(sel) {
+function hojaMercadoHTML(invs) {
   const c = S.corte;
   const r = c.resultado;
-  const invs = inventariosDe(sel).sort((a, b) => a.localeCompare(b, 'es'));
   const fecha = fechaTexto(c.fecha);
   return invs.map(inv => {
     const lineas = r.lineas.filter(l => l.inventario === inv);
@@ -668,24 +692,92 @@ function hojaMercadoHTML(sel) {
   }).join('');
 }
 
-function imprimirHoja(sel) {
-  if (!S.corte) return;
-  if (!S.corte.resultado.alistamiento?.length) {
+/* ── ESCOGER QUÉ MERCADOS IMPRIMIR ────────────────────────
+ * Ventana con las tiendas del corte agrupadas por persona. Viene marcado
+ * lo asignado (o, desde "Por persona", las tiendas de esa persona) y se
+ * puede marcar o desmarcar cada tienda o una persona completa. Las hojas
+ * salen agrupadas por persona, en el orden de la lista.
+ */
+let impSel = new Set();
+
+function gruposImpresion() {
+  const c = S.corte;
+  const todos = Object.keys(c.resultado.porInventario).sort((a, b) => a.localeCompare(b, 'es'));
+  const grupos = c.personas.map(p => ({ clave: p, titulo: nombrePersona(p), invs: todos.filter(inv => c.asignaciones[inv] === p) }))
+    .filter(g => g.invs.length);
+  const sin = todos.filter(inv => !c.personas.includes(c.asignaciones[inv]));
+  if (sin.length) grupos.push({ clave: '', titulo: 'Sin asignar', invs: sin, sin: true });
+  return grupos;
+}
+
+function abrirSelectorImpresion(contexto) {
+  const c = S.corte;
+  if (!c) return;
+  if (!c.resultado.alistamiento?.length) {
     notify('Este corte se guardó antes de que existiera la hoja por guía: vuelve a subir el Excel para imprimirla', 'warn', 8000);
     return;
   }
-  const html = hojaMercadoHTML(sel);
-  if (!html) { notify('No hay tiendas para imprimir en esta selección', 'warn'); return; }
-  $('hoja-print').innerHTML = html;
-  imprimir('hoja');
+  const todos = Object.keys(c.resultado.porInventario);
+  impSel = new Set(contexto === 'asignados' || contexto === 'todas'
+    ? todos.filter(inv => c.personas.includes(c.asignaciones[inv]))
+    : inventariosDe(contexto));
+  renderSelectorImpresion();
+  $('dlg-imprimir').showModal();
 }
 
+function renderSelectorImpresion() {
+  const r = S.corte.resultado;
+  const guiasDe = inv => new Set(r.alistamiento.filter(a => a.inventario === inv).map(a => a.guia)).size;
+  $('dlg-imp-lista').innerHTML = gruposImpresion().map((g, gi) => {
+    const marcadas = g.invs.filter(inv => impSel.has(inv)).length;
+    return `<fieldset class="mk-imp-grupo${g.sin ? ' sin' : ''}">
+      <legend><label class="mk-check-inline"><input type="checkbox" data-imp-grupo="${gi}"${marcadas === g.invs.length ? ' checked' : ''}${marcadas && marcadas < g.invs.length ? ' data-mixto' : ''}>
+        <strong>${esc(g.titulo)}</strong> <span class="mk-muted mk-small">${marcadas}/${g.invs.length}</span></label></legend>
+      ${g.invs.map(inv => `<label class="mk-imp-item">
+        <input type="checkbox" data-imp-inv="${esc(inv)}"${impSel.has(inv) ? ' checked' : ''}>
+        <span>${invHTML(inv)}</span>
+        <span class="mk-muted mk-small">${fmt(r.porInventario[inv])} u. · ${fmt(guiasDe(inv))} ${guiasDe(inv) === 1 ? 'guía' : 'guías'}</span>
+      </label>`).join('')}
+    </fieldset>`;
+  }).join('');
+  $('dlg-imp-lista').querySelectorAll('[data-mixto]').forEach(x => { x.indeterminate = true; });
+  const n = impSel.size;
+  $('dlg-imp-resumen').textContent = n ? `${n} ${n === 1 ? 'mercado' : 'mercados'} (una hoja por tienda)` : 'Escoge al menos un mercado';
+  document.querySelectorAll('[data-imp-ir]').forEach(b => { b.disabled = !n; });
+}
+
+$('dlg-imp-lista').addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.impInv !== undefined) {
+    if (t.checked) impSel.add(t.dataset.impInv); else impSel.delete(t.dataset.impInv);
+  } else if (t.dataset.impGrupo !== undefined) {
+    gruposImpresion()[Number(t.dataset.impGrupo)].invs.forEach(inv => { if (t.checked) impSel.add(inv); else impSel.delete(inv); });
+  }
+  renderSelectorImpresion();
+});
+document.querySelectorAll('[data-imp-rapido]').forEach(b => b.addEventListener('click', () => {
+  const c = S.corte;
+  const todos = Object.keys(c.resultado.porInventario);
+  impSel = new Set(b.dataset.impRapido === 'todos' ? todos
+    : b.dataset.impRapido === 'asignados' ? todos.filter(inv => c.personas.includes(c.asignaciones[inv])) : []);
+  renderSelectorImpresion();
+}));
+$('dlg-imp-cerrar').addEventListener('click', () => $('dlg-imprimir').close());
+document.querySelectorAll('[data-imp-ir]').forEach(b => b.addEventListener('click', () => {
+  // En el orden de la ventana: por persona y luego tienda
+  const invs = gruposImpresion().flatMap(g => g.invs).filter(inv => impSel.has(inv));
+  if (!invs.length) return;
+  $('dlg-imprimir').close();
+  $('hoja-print').innerHTML = hojaMercadoHTML(invs);
+  if (b.dataset.impIr === 'pdf') notify('En la ventana de impresión elige "Guardar como PDF"', 'info', 5000);
+  setTimeout(() => imprimir('hoja'), b.dataset.impIr === 'pdf' ? 400 : 50);
+}));
+
 /* ── ASIGNACIÓN ─────────────────────────────────────────── */
-// Personas activas + las del corte aunque ya estén inactivas
+// Personas de Conteos + las del corte que ya no estén en esa lista
 function personasDisponibles() {
-  const ids = new Set(S.corte?.personas || []);
-  const lista = S.personas.filter(p => p.activo || ids.has(p.id));
-  (S.corte?.personasInfo || []).forEach(p => { if (!lista.some(x => x.id === p.id)) lista.push({ ...p, activo: false }); });
+  const lista = S.personas.map(p => ({ ...p, activo: true }));
+  (S.corte?.personas || []).forEach(id => { if (!lista.some(x => x.id === id)) lista.push({ id, nombre: id, activo: false }); });
   return lista;
 }
 
@@ -695,14 +787,14 @@ function sugerirInicial() {
   const habituales = {};
   Object.keys(c.resultado.porInventario).forEach(inv => {
     const p = S.inventarios.find(i => i.nombre === inv)?.persona_id;
-    if (p && S.personas.some(x => x.id === p && x.activo)) habituales[inv] = p;
+    if (p && S.personas.some(x => x.id === p)) habituales[inv] = p;
   });
   c.personas = [...new Set(Object.values(habituales))];
   c.asignaciones = c.personas.length ? M.sugerirReparto(c.resultado.porInventario, c.personas, habituales) : {};
 }
 
 $('asig-personas').addEventListener('change', e => {
-  const id = Number(e.target.dataset.persona);
+  const id = e.target.dataset.persona;
   if (!id || !S.corte) return;
   const c = S.corte;
   if (e.target.checked) {
@@ -744,7 +836,7 @@ function repartir(respetar) {
 $('asig-tabla').addEventListener('change', e => {
   const inv = e.target.dataset.inv;
   if (inv === undefined || !S.corte) return;
-  const v = Number(e.target.value);
+  const v = e.target.value;
   if (v) S.corte.asignaciones[inv] = v; else delete S.corte.asignaciones[inv];
   S.corte.asigManual = true;
   marcarSucio();
@@ -763,10 +855,10 @@ function renderAsignacion() {
   $('asig-personas').innerHTML = disponibles.length
     ? disponibles.map(p => `
       <label class="mk-chip${c.personas.includes(p.id) ? ' on' : ''}">
-        <input type="checkbox" data-persona="${p.id}"${c.personas.includes(p.id) ? ' checked' : ''}${S.gestion ? '' : ' disabled'}>
-        ${esc(p.nombre)}${p.activo ? '' : ' <span class="mk-small">(inactiva)</span>'}
+        <input type="checkbox" data-persona="${esc(p.id)}"${c.personas.includes(p.id) ? ' checked' : ''}${S.gestion ? '' : ' disabled'}>
+        ${esc(p.nombre)}${p.activo ? '' : ' <span class="mk-small">(ya no está en Conteos)</span>'}
       </label>`).join('')
-    : '<p class="mk-muted">No hay personas. Agrégalas en Configuración.</p>';
+    : '<p class="mk-muted">No hay personas. Agrégalas en el panel de coordinador > Configuración > Conteos: personas y mesas.</p>';
   $('asig-personas-hint').textContent = c.personas.length
     ? `${c.personas.length} ${c.personas.length === 1 ? 'persona' : 'personas'} en este corte.`
     : 'Marca quién hace el mercado en este corte.';
@@ -794,7 +886,7 @@ function renderAsignacion() {
   const guiasPorInv = {};
   c.resultado.base.forEach(b => { guiasPorInv[b.inventario] = (guiasPorInv[b.inventario] || 0) + b.guias; });
   const opciones = sel => `<option value="">-- Sin asignar --</option>` + c.personas.map(id =>
-    `<option value="${id}"${Number(sel) === id ? ' selected' : ''}>${esc(nombrePersona(id))}</option>`).join('');
+    `<option value="${esc(id)}"${sel === id ? ' selected' : ''}>${esc(nombrePersona(id))}</option>`).join('');
   $('asig-tabla').innerHTML = `<table class="mk-tabla"><thead><tr><th>Tienda / inventario</th><th class="num">Unidades</th><th class="num hide-sm">Guías</th><th class="num hide-sm">Artículos</th><th>Persona</th></tr></thead><tbody>
     ${filas.map(([inv, u]) => {
       const p = c.asignaciones[inv];
@@ -810,7 +902,7 @@ function renderAsignacion() {
 
 // [{ id, nombre }] de las personas del corte (el nombre queda en el historial)
 function personasInfo(ids) {
-  return ids.map(id => ({ id, nombre: nombrePersona(id) }));
+  return ids.map(id => ({ id, nombre: id }));
 }
 
 let guardando = false;
@@ -882,11 +974,8 @@ document.querySelectorAll('[data-orden]').forEach(b => b.addEventListener('click
   renderPersona();
 }));
 $('per-ocultar-listos').addEventListener('change', renderPersona);
-$('btn-per-print').addEventListener('click', () => imprimirHoja(String(S.personaSel)));
-$('btn-per-pdf').addEventListener('click', () => {
-  notify('En la ventana de impresión elige "Guardar como PDF"', 'info', 5000);
-  setTimeout(() => imprimirHoja(String(S.personaSel)), 400);
-});
+$('btn-per-print').addEventListener('click', () => abrirSelectorImpresion(String(S.personaSel)));
+$('btn-per-pdf').addEventListener('click', () => abrirSelectorImpresion(String(S.personaSel)));
 $('btn-per-lista').addEventListener('click', () => imprimir('persona'));
 $('btn-per-excel').addEventListener('click', exportarPersona);
 $('per-lista').addEventListener('change', e => {
@@ -900,8 +989,8 @@ function lineasDePersona(sel) {
   const lineas = c.resultado.lineas.map((l, i) => ({ ...l, i }));
   let lista;
   if (sel === 'todas') lista = lineas;
-  else if (sel === 'sin') lista = lineas.filter(l => !c.personas.includes(Number(c.asignaciones[l.inventario])));
-  else lista = lineas.filter(l => Number(c.asignaciones[l.inventario]) === Number(sel));
+  else if (sel === 'sin') lista = lineas.filter(l => !c.personas.includes(c.asignaciones[l.inventario]));
+  else lista = lineas.filter(l => c.asignaciones[l.inventario] === sel);
   const porUbic = (a, b) => M.compararUbicacion(a.ubicacion, b.ubicacion) ||
     a.inventario.localeCompare(b.inventario, 'es') || a.descripcion.localeCompare(b.descripcion, 'es');
   return lista.sort(S.orden === 'transportadora'
@@ -1068,57 +1157,6 @@ function renderHistorial() {
 }
 
 /* ── CONFIGURACIÓN ──────────────────────────────────────── */
-$('form-persona').addEventListener('submit', async e => {
-  e.preventDefault();
-  const nombre = $('persona-nombre').value.trim();
-  if (!nombre) return;
-  if (nombreRepetido(nombre)) { notify(`Ya existe una persona llamada ${nombre}`, 'warn'); return; }
-  const persona = { id: Local.siguienteId(), nombre: M.normEspacios(nombre).slice(0, 80), activo: true };
-  const personas = [...Local.datos().personas, persona].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-  if (!Local.guardarDatos({ personas })) return;
-  cargarInicio();
-  $('persona-nombre').value = '';
-  notify(`${persona.nombre} agregada`, 'success');
-  renderConfig();
-});
-
-$('cfg-personas').addEventListener('change', async e => {
-  const id = Number(e.target.dataset.pnombre);
-  if (!id) return;
-  const p = S.personas.find(x => x.id === id);
-  const nombre = e.target.value.trim();
-  if (!p || !nombre || nombre === p.nombre) { e.target.value = p?.nombre || ''; return; }
-  await guardarPersona(p, { nombre });
-});
-$('cfg-personas').addEventListener('click', async e => {
-  const b = e.target.closest('[data-pactivo]');
-  if (!b) return;
-  const p = S.personas.find(x => x.id === Number(b.dataset.pactivo));
-  if (p) await guardarPersona(p, { activo: !p.activo });
-});
-
-function nombreRepetido(nombre, excepto) {
-  const k = M.clave(nombre);
-  return S.personas.some(p => p.id !== excepto && M.clave(p.nombre) === k);
-}
-
-async function guardarPersona(p, cambios) {
-  if (cambios.nombre !== undefined) {
-    cambios.nombre = M.normEspacios(cambios.nombre).slice(0, 80);
-    if (nombreRepetido(cambios.nombre, p.id)) {
-      notify(`Ya existe una persona llamada ${cambios.nombre}`, 'warn');
-      renderConfig();
-      return;
-    }
-  }
-  const personas = Local.datos().personas.map(x => (x.id === p.id ? { ...x, ...cambios } : x))
-    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-  if (Local.guardarDatos({ personas })) notify('Persona guardada', 'success', 1800);
-  cargarInicio();
-  renderConfig();
-  render();
-}
-
 $('buscar-inv').addEventListener('input', debounce(() => renderInventarios(), 150));
 $('cfg-inventarios').addEventListener('change', e => {
   const inv = e.target.dataset.inv;
@@ -1127,7 +1165,7 @@ $('cfg-inventarios').addEventListener('change', e => {
   if (!fila) return;
   const cambio = e.target.dataset.campo === 'alias'
     ? { alias: e.target.value.trim() || null }
-    : { persona_id: Number(e.target.value) || null };
+    : { persona_id: e.target.value || null };
   if (cambio.alias) cambio.alias = cambio.alias.slice(0, 60);
   const inventarios = Local.datos().inventarios.map(i => (i.nombre === inv ? { ...i, ...cambio } : i));
   if (Local.guardarDatos({ inventarios })) notify('Tienda guardada', 'success', 1500);
@@ -1138,12 +1176,9 @@ $('cfg-inventarios').addEventListener('change', e => {
 function renderConfig() {
   if (!S.gestion) return;
   if (!S.cfgEdit) S.cfgEdit = { rangos: S.config.rangos.map(r => ({ ...r })), tablas: Object.entries(S.config.tablas).map(([inv, t]) => ({ inv, t })) };
-  $('cfg-personas').innerHTML = S.personas.length ? `<ul class="mk-personas">${S.personas.map(p => `
-    <li class="${p.activo ? '' : 'inactiva'}">
-      <input type="text" value="${esc(p.nombre)}" data-pnombre="${p.id}" maxlength="80" aria-label="Nombre">
-      <span class="mk-pill ${p.activo ? 'mk-pill-ok' : 'mk-pill-off'}">${p.activo ? 'Activa' : 'Inactiva'}</span>
-      <button type="button" class="mk-btn mk-btn-sm" data-pactivo="${p.id}">${p.activo ? 'Desactivar' : 'Activar'}</button>
-    </li>`).join('')}</ul>` : '<p class="mk-muted">Todavía no hay personas.</p>';
+  $('cfg-personas').innerHTML = S.personas.length
+    ? `<div class="mk-chips">${S.personas.map(p => `<span class="mk-chip">${esc(p.nombre)}</span>`).join('')}</div>`
+    : '<p class="mk-muted">No se pudo leer la lista.</p>';
   renderInventarios();
   renderUbicEstado();
   renderTablasCfg();
@@ -1154,14 +1189,14 @@ function renderInventarios() {
   const q = M.clave($('buscar-inv').value);
   const lista = S.inventarios.filter(i => !q || M.clave(`${i.nombre} ${i.alias || ''}`).includes(q));
   if (!S.inventarios.length) { $('cfg-inventarios').innerHTML = '<p class="mk-muted">Aparecen al guardar el primer corte.</p>'; return; }
-  const activas = S.personas.filter(p => p.activo);
+  const activas = S.personas;
   $('cfg-inventarios').innerHTML = `<table class="mk-tabla"><thead><tr><th>Inventario</th><th>Nombre corto</th><th>Persona habitual</th></tr></thead><tbody>
     ${lista.map(i => `<tr><td>${esc(i.nombre)}<br><span class="mk-small mk-muted">Último corte: ${esc(fechaTexto(String(i.visto_en || '').slice(0, 10)))}</span></td>
       <td><input type="text" value="${esc(i.alias || '')}" data-inv="${esc(i.nombre)}" data-campo="alias" maxlength="60" aria-label="Nombre corto"></td>
       <td><select data-inv="${esc(i.nombre)}" data-campo="persona" aria-label="Persona habitual">
         <option value="">-- Ninguna --</option>
-        ${[...activas, ...S.personas.filter(p => !p.activo && p.id === i.persona_id)].map(p =>
-          `<option value="${p.id}"${p.id === i.persona_id ? ' selected' : ''}>${esc(p.nombre)}</option>`).join('')}
+        ${[...activas, ...(i.persona_id && !activas.some(p => p.id === i.persona_id) ? [{ id: i.persona_id, nombre: `${i.persona_id} (ya no está en Conteos)` }] : [])].map(p =>
+          `<option value="${esc(p.id)}"${p.id === i.persona_id ? ' selected' : ''}>${esc(p.nombre)}</option>`).join('')}
       </select></td></tr>`).join('')}</tbody></table>`;
 }
 
