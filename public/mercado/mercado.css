@@ -293,6 +293,8 @@ input:disabled, select:disabled { background: var(--neutral-50); color: var(--ne
 .hf-check { width: 22px; }
 .hoja-tabla tbody tr td.hf-multi { background: #9e9e9e; font-weight: 700; }
 .hoja-sub { font-weight: 700; font-style: italic; margin: 4px 0 2px; }
+.hoja-tabla tbody tr.hoja-banda td { background: #404040; color: #fff; font-weight: 700; border-top: 2px solid #000; }
+.hoja-tabla tbody tr.hoja-subt td { background: #e7e7e7; font-weight: 700; }
 
 /* ── Celular ── */
 @media (max-width: 640px) {

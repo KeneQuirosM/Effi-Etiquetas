@@ -647,30 +647,73 @@ function inventariosDe(sel) {
   return todos.filter(inv => c.asignaciones[inv] === sel);
 }
 
-function hojaMercadoHTML(invs) {
+// Hojas a imprimir: con "juntar", una por persona con todas sus tiendas
+// (las sin asignar van una por tienda); sin "juntar", una por tienda.
+// invs viene en el orden de la ventana (por persona y luego tienda).
+function hojasAImprimir(invs, juntar) {
+  const c = S.corte;
+  if (!juntar) return invs.map(inv => [inv]);
+  const hojas = [];
+  const porPersona = new Map();
+  invs.forEach(inv => {
+    const p = c.asignaciones[inv];
+    if (!p || !c.personas.includes(p)) { hojas.push([inv]); return; }
+    if (!porPersona.has(p)) { porPersona.set(p, []); hojas.push(porPersona.get(p)); }
+    porPersona.get(p).push(inv);
+  });
+  return hojas;
+}
+
+function hojaMercadoHTML(invs, juntar) {
+  return hojasAImprimir(invs, juntar).map(hojaSeccionHTML).join('');
+}
+
+// Una hoja: MERCADO, bloque para anotar y ALISTAMIENTO de esas tiendas.
+// Con varias tiendas van una tras otra (cada una con su franja y subtotal).
+function hojaSeccionHTML(invs) {
   const c = S.corte;
   const r = c.resultado;
   const fecha = fechaTexto(c.fecha);
-  return invs.map(inv => {
+  const varias = invs.length > 1;
+  const p = c.asignaciones[invs[0]];
+  const persona = p && invs.every(inv => c.asignaciones[inv] === p) ? nombrePersona(p) : '';
+  const nombreInv = inv => (aliasDe(inv) ? `${aliasDe(inv)} · ${inv}` : inv);
+  const guiasTodas = r.alistamiento.filter(a => invs.includes(a.inventario));
+  // Guías con más de un artículo: se resaltan igual que en la hoja de Google
+  const filasPorGuia = {};
+  guiasTodas.forEach(a => { filasPorGuia[a.guia] = (filasPorGuia[a.guia] || 0) + 1; });
+  const mini = [];
+  let total = 0, nGuias = 0;
+  let filasMercado = '', filasAlist = '';
+  invs.forEach(inv => {
     const lineas = r.lineas.filter(l => l.inventario === inv);
     const guias = r.alistamiento.filter(a => a.inventario === inv);
-    const persona = c.asignaciones[inv] ? nombrePersona(c.asignaciones[inv]) : '';
+    const sub = lineas.reduce((s, l) => s + l.cantidad, 0);
     const porTransp = {};
     guias.forEach(a => { (porTransp[a.transportadora] ||= new Set()).add(a.guia); });
-    const nGuias = Object.values(porTransp).reduce((s, g) => s + g.size, 0);
-    // Guías con más de un artículo: se resaltan igual que en la hoja de Google
-    const filasPorGuia = {};
-    guias.forEach(a => { filasPorGuia[a.guia] = (filasPorGuia[a.guia] || 0) + 1; });
-    const total = lineas.reduce((s, l) => s + l.cantidad, 0);
-    const alias = aliasDe(inv);
-    const linea = (etq, valor) => `<div class="hf-linea"><span>${etq}</span><span class="hf-valor">${esc(valor || '')}</span></div>`;
-    return `
+    const n = Object.values(porTransp).reduce((s, g) => s + g.size, 0);
+    Object.entries(porTransp).forEach(([t, g]) => mini.push([t, inv, g.size]));
+    total += sub; nGuias += n;
+    if (varias) {
+      filasMercado += `<tr class="hoja-banda"><td colspan="6">${esc(nombreInv(inv))}</td></tr>`;
+      filasAlist += `<tr class="hoja-banda"><td colspan="8">${esc(nombreInv(inv))} · ${fmt(n)} ${n === 1 ? 'guía' : 'guías'}</td></tr>`;
+    }
+    filasMercado += lineas.map(l => `<tr><td>${esc(transpTxt(l.transportadora))}</td><td>${esc(l.inventario)}</td><td class="w">${esc(l.descripcion)}</td>
+      <td class="c">${esc(l.idArticulo)}</td><td class="c">${esc(l.ubicacion)}</td><td class="c"><strong>${fmt(l.cantidad)}</strong></td></tr>`).join('');
+    if (varias) filasMercado += `<tr class="hoja-subt"><td colspan="5">Subtotal ${esc(aliasDe(inv) || inv)}</td><td class="c">${fmt(sub)}</td></tr>`;
+    filasAlist += guias.map(a => `<tr><td>${esc(transpTxt(a.transportadora))}</td><td>${esc(a.inventario)}</td><td class="c mono${filasPorGuia[a.guia] > 1 ? ' hf-multi' : ''}">${esc(a.guia)}</td>
+      <td class="w">${esc(a.destinatario)}</td><td class="w">${esc(a.descripcion)}</td><td class="c">${esc(a.idArticulo)}</td><td class="c"><strong>${fmt(a.cantidad)}</strong></td><td class="hf-check"></td></tr>`).join('');
+  });
+  const titulo = varias
+    ? `${persona || 'Varias tiendas'} · ${invs.length} tiendas`
+    : nombreInv(invs[0]) + (persona ? ` · ${persona}` : '');
+  const linea = (etq, valor) => `<div class="hf-linea"><span>${etq}</span><span class="hf-valor">${esc(valor || '')}</span></div>`;
+  return `
     <section class="hoja-sec">
-      <div class="hoja-cab"><strong>MERCADO</strong><span>${esc(alias ? `${alias} · ${inv}` : inv)}</span><span>${esc(fecha)}${c.horario ? ' · ' + esc(c.horario) : ''}</span></div>
+      <div class="hoja-cab"><strong>MERCADO</strong><span>${esc(titulo)}</span><span>${esc(fecha)}${c.horario ? ' · ' + esc(c.horario) : ''}</span></div>
       <table class="hoja-tabla">
         <thead><tr><th>Transportadora</th><th>Inventario</th><th>Descripción original artículo</th><th>ID artículo</th><th>Ubicación</th><th class="num">SUM de Cantidad</th></tr></thead>
-        <tbody>${lineas.map(l => `<tr><td>${esc(transpTxt(l.transportadora))}</td><td>${esc(l.inventario)}</td><td class="w">${esc(l.descripcion)}</td>
-          <td class="c">${esc(l.idArticulo)}</td><td class="c">${esc(l.ubicacion)}</td><td class="c"><strong>${fmt(l.cantidad)}</strong></td></tr>`).join('')}</tbody>
+        <tbody>${filasMercado}</tbody>
         <tfoot><tr><td colspan="5">Total</td><td class="c">${fmt(total)}</td></tr></tfoot>
       </table>
 
@@ -679,17 +722,16 @@ function hojaMercadoHTML(invs) {
         <div><p class="hf-tit">ALISTAMIENTO</p>${linea('REALIZADO POR:')}${linea('HORA INICIO:')}${linea('HORA FIN:')}</div>
         <div class="hf-datos"><p><span>GUÍAS:</span><strong>${fmt(nGuias)}</strong></p><p><span>HORARIO:</span><strong>${esc(c.horario || '')}</strong></p><p><span>FECHA:</span><strong>${esc(fecha)}</strong></p></div>
         <table class="hoja-tabla hf-mini"><thead><tr><th>Transportadora</th><th>Inventario</th><th class="num">Guías</th></tr></thead>
-          <tbody>${Object.entries(porTransp).map(([t, g]) => `<tr><td>${esc(transpTxt(t))}</td><td>${esc(inv)}</td><td class="c">${fmt(g.size)}</td></tr>`).join('')}</tbody></table>
+          <tbody>${mini.map(([t, inv, g]) => `<tr><td>${esc(transpTxt(t))}</td><td>${esc(inv)}</td><td class="c">${fmt(g)}</td></tr>`).join('')}</tbody>
+          ${varias ? `<tfoot><tr><td colspan="2">Total</td><td class="c">${fmt(nGuias)}</td></tr></tfoot>` : ''}</table>
       </div>
 
       <p class="hoja-sub">ALISTAMIENTO</p>
       <table class="hoja-tabla">
         <thead><tr><th>Transportadora</th><th>Inventario</th><th>Guía transportadora</th><th>Destinatario</th><th>Descripción original artículo</th><th>ID artículo</th><th class="num">SUM de Cantidad</th><th class="hf-check">✓</th></tr></thead>
-        <tbody>${guias.map(a => `<tr><td>${esc(transpTxt(a.transportadora))}</td><td>${esc(a.inventario)}</td><td class="c mono${filasPorGuia[a.guia] > 1 ? ' hf-multi' : ''}">${esc(a.guia)}</td>
-          <td class="w">${esc(a.destinatario)}</td><td class="w">${esc(a.descripcion)}</td><td class="c">${esc(a.idArticulo)}</td><td class="c"><strong>${fmt(a.cantidad)}</strong></td><td class="hf-check"></td></tr>`).join('')}</tbody>
+        <tbody>${filasAlist}</tbody>
       </table>
     </section>`;
-  }).join('');
 }
 
 /* ── ESCOGER QUÉ MERCADOS IMPRIMIR ────────────────────────
@@ -721,6 +763,7 @@ function abrirSelectorImpresion(contexto) {
   impSel = new Set(contexto === 'asignados' || contexto === 'todas'
     ? todos.filter(inv => c.personas.includes(c.asignaciones[inv]))
     : inventariosDe(contexto));
+  $('dlg-imp-juntar').checked = leerPrefs().juntarHojas !== false;
   renderSelectorImpresion();
   $('dlg-imprimir').showModal();
 }
@@ -742,7 +785,11 @@ function renderSelectorImpresion() {
   }).join('');
   $('dlg-imp-lista').querySelectorAll('[data-mixto]').forEach(x => { x.indeterminate = true; });
   const n = impSel.size;
-  $('dlg-imp-resumen').textContent = n ? `${n} ${n === 1 ? 'mercado' : 'mercados'} (una hoja por tienda)` : 'Escoge al menos un mercado';
+  const invs = gruposImpresion().flatMap(g => g.invs).filter(inv => impSel.has(inv));
+  const hojas = hojasAImprimir(invs, $('dlg-imp-juntar').checked).length;
+  $('dlg-imp-resumen').textContent = n
+    ? `${n} ${n === 1 ? 'mercado' : 'mercados'} en ${hojas} ${hojas === 1 ? 'hoja' : 'hojas'}`
+    : 'Escoge al menos un mercado';
   document.querySelectorAll('[data-imp-ir]').forEach(b => { b.disabled = !n; });
 }
 
@@ -763,12 +810,16 @@ document.querySelectorAll('[data-imp-rapido]').forEach(b => b.addEventListener('
   renderSelectorImpresion();
 }));
 $('dlg-imp-cerrar').addEventListener('click', () => $('dlg-imprimir').close());
+$('dlg-imp-juntar').addEventListener('change', e => {
+  guardarPrefs({ juntarHojas: e.target.checked });
+  renderSelectorImpresion();
+});
 document.querySelectorAll('[data-imp-ir]').forEach(b => b.addEventListener('click', () => {
   // En el orden de la ventana: por persona y luego tienda
   const invs = gruposImpresion().flatMap(g => g.invs).filter(inv => impSel.has(inv));
   if (!invs.length) return;
   $('dlg-imprimir').close();
-  $('hoja-print').innerHTML = hojaMercadoHTML(invs);
+  $('hoja-print').innerHTML = hojaMercadoHTML(invs, $('dlg-imp-juntar').checked);
   if (b.dataset.impIr === 'pdf') notify('En la ventana de impresión elige "Guardar como PDF"', 'info', 5000);
   setTimeout(() => imprimir('hoja'), b.dataset.impIr === 'pdf' ? 400 : 50);
 }));
