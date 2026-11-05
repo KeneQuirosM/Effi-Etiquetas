@@ -93,7 +93,7 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 - Historial de cortes con responsables, asignaciones y avance
 - Configuración: personas, tiendas (nombre corto y persona habitual), rangos de transportadora, qué inventario usa qué tabla de ubicaciones, y carga de las tablas (MIIA, DONNA, BOCALI, LANEA) subiendo la hoja como .xlsx
 - Los cortes se guardan en la base (sin límite de historial), cada dato en su fila para poder auditar: el mercado, el alistamiento por guía (con destinatario), las asignaciones por persona y lo marcado como alistado. También tiendas, configuración y tablas de ubicaciones, así todo se comparte entre equipos
-- Requiere sesión de coordinador; el botón del menú está oculto para todos hasta activarlo en Configuración > Botones del menú. Permisos: "Menú: Mercado y Alistamiento" (ver y marcar alistados) y "Subir cortes, asignar y configurar"
+- Público, como Conteos (sin iniciar sesión): cualquiera sube el corte, asigna, guarda, marca alistados e imprime. Al entrar se escoge "¿Quién eres?" de la lista de personas de Conteos (se recuerda en el equipo) y ese nombre queda en cada corte y en cada artículo marcado; el responsable del corte es obligatorio para guardar. Borrar cortes y la Configuración (rangos, ubicaciones, tiendas) piden sesión de coordinador con el permiso "Subir cortes, asignar y configurar". Con "Exigir dispositivo vinculado" encendido, solo los equipos vinculados pueden usarlo (también para ver, porque tiene nombres de clientes). El botón del menú está visible para todos; se puede ocultar en Configuración > Botones del menú
 
 ---
 

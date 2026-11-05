@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { CLAVE_PERSONAS, PERSONAS_DEFECTO, limpiarPersonas } from './_personas.js';
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requirePermiso } from './_permisos.js';
@@ -26,10 +27,8 @@ const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 // valores mientras nadie las cambie. conteos.html las pide con
 // GET ?accion=opciones y el POST valida contra los mismos valores.
 const CLAVE_MESAS = 'conteos_mesas';
-const CLAVE_PERSONAS = 'conteos_personas';
 const MESAS_DEFECTO = 4;
 const MESAS_MAX = 50;
-const PERSONAS_DEFECTO = ['Elianeth Martinez', 'Kene Quiros', 'Cesar Navarro', 'Alexander Alvarez'];
 const VENC_ANIO_MIN = 2000, VENC_ANIO_MAX = 2100;   // fuera de esto es un error de tipeo (p. ej. 0202)
 
 async function leerOpciones() {
@@ -42,13 +41,8 @@ async function leerOpciones() {
       const n = Number(valor);
       if (Number.isInteger(n) && n >= 1 && n <= MESAS_MAX) opciones.mesas = n;
     } else if (clave === CLAVE_PERSONAS) {
-      try {
-        const lista = JSON.parse(valor);
-        if (Array.isArray(lista)) {
-          const limpia = lista.map(x => String(x ?? '').trim()).filter(x => x && x.length <= 80);
-          if (limpia.length) opciones.personas = limpia;
-        }
-      } catch (_) { /* valor corrupto: quedan los de por defecto */ }
+      const limpia = limpiarPersonas(valor);
+      if (limpia) opciones.personas = limpia;
     }
   }
   return opciones;

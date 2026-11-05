@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/shared/tokens.css">
-  <link rel="stylesheet" href="mercado.css?v=20261107">
+  <link rel="stylesheet" href="mercado.css?v=20261108">
 </head>
 <body>
 
@@ -19,6 +19,9 @@
       <h1>Mercado y Alistamiento</h1>
       <span class="mk-sub" id="mk-usuario">Packing · Corte</span>
     </div>
+    <button type="button" class="mk-quien" id="btn-quien" title="Cambiar quién está usando este equipo">
+      <span class="mk-quien-lbl">Usando:</span> <strong id="quien-nombre">-- Escoge tu nombre --</strong>
+    </button>
   </div>
   <div class="mk-corte-bar" id="corte-bar" hidden>
     <span class="mk-corte-txt" id="corte-bar-txt"></span>
@@ -38,7 +41,7 @@
   <!-- ══ CORTE ══ -->
   <section class="mk-panel" id="panel-corte" role="tabpanel">
 
-    <label class="mk-drop solo-gestion" id="drop-corte" for="file-corte">
+    <label class="mk-drop" id="drop-corte" for="file-corte">
       <input type="file" id="file-corte" accept=".xlsx,.xls,.csv" hidden>
       <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
       <strong>Arrastra aquí el Excel del corte</strong>
@@ -47,7 +50,7 @@
 
     <div class="mk-vacio" id="corte-vacio">
       <p>Todavía no hay un corte abierto.</p>
-      <p class="mk-muted">Abre un corte del <button type="button" class="mk-link" data-ir="historial">historial</button><span class="solo-gestion"> o sube el Excel del corte</span>.</p>
+      <p class="mk-muted">Abre un corte del <button type="button" class="mk-link" data-ir="historial">historial</button><span> o sube el Excel del corte</span>.</p>
     </div>
 
     <div id="corte-contenido" hidden>
@@ -57,7 +60,7 @@
         <div class="mk-form-grid">
           <label class="mk-field"><span>Fecha</span><input type="date" id="enc-fecha"></label>
           <label class="mk-field"><span>Horario</span><input type="text" id="enc-horario" placeholder="Ej. 12:00 PM" maxlength="40"></label>
-          <label class="mk-field"><span>Responsable del corte</span><input type="text" id="enc-resp-corte" maxlength="100"></label>
+          <label class="mk-field"><span>Responsable del corte (obligatorio)</span><select id="enc-resp-corte"></select></label>
           <label class="mk-field"><span>Responsable de impresión de guías y relación de despachos</span><input type="text" id="enc-resp-impresion" maxlength="100"></label>
         </div>
       </div>
@@ -100,7 +103,7 @@
       <div class="mk-card">
         <div class="mk-card-head">
           <h2 class="mk-h2">Reparto por persona</h2>
-          <div class="mk-acciones solo-gestion">
+          <div class="mk-acciones">
             <button type="button" class="mk-btn" id="btn-sugerir">Sugerir reparto equilibrado</button>
             <button type="button" class="mk-btn mk-btn-primary" id="btn-guardar-corte">Guardar corte</button>
           </div>
@@ -238,13 +241,23 @@
   </div>
 </dialog>
 
+<!-- Quién está usando este equipo (personas de Conteos) -->
+<dialog id="dlg-quien" class="mk-dialog" aria-labelledby="dlg-quien-tit">
+  <div class="mk-dialog-cuerpo">
+    <h2 id="dlg-quien-tit" class="mk-h2">¿Quién eres?</h2>
+    <p class="mk-muted mk-small">Tu nombre queda en los cortes que guardes y en los artículos que marques. Se recuerda en este equipo.</p>
+    <div class="mk-chips mk-quien-lista" id="dlg-quien-lista"></div>
+  </div>
+</dialog>
+
 <!-- Hoja de mercado para imprimir (solo se ve al imprimir) -->
 <div id="hoja-print" class="mk-hoja" aria-hidden="true"></div>
 
 <script src="/shared/dom-utils.js"></script>
 <script src="/shared/api.js"></script>
+<script src="/shared/dispositivo.js"></script>
 <!-- ?v=: cambiarlo al modificar estos archivos para que el navegador no use la copia vieja -->
-<script src="mercado-core.js?v=20261107"></script>
-<script src="mercado.js?v=20261107"></script>
+<script src="mercado-core.js?v=20261108"></script>
+<script src="mercado.js?v=20261108"></script>
 </body>
 </html>

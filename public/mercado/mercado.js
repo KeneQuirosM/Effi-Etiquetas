@@ -8,12 +8,15 @@
  * mesas"), leídas de GET /api/conteos?accion=opciones; cada persona se
  * identifica por su nombre.
  *
- * Sesión: la misma del panel de coordinador (localStorage, como index.js),
- * con su propio refresco de token.
- * Permisos: 'nav-mercado' para ver y marcar alistados; 'mercado-gestion'
- * para subir, asignar y configurar.
+ * Acceso: público, como Conteos. Cualquiera ve, sube, asigna, guarda,
+ * marca e imprime; al entrar escoge "¿Quién eres?" (personas de Conteos,
+ * se recuerda en el equipo) y ese nombre viaja con cada escritura. El
+ * responsable del corte es obligatorio. Si hay sesión de coordinador
+ * (localStorage, como index.js, con su propio refresco de token) y tiene
+ * 'mercado-gestion', además puede borrar cortes y ver Configuración. Si el
+ * coordinador exige dispositivo vinculado, cada petición manda X-Dispositivo
+ * (shared/dispositivo.js).
  */
-guardProtectedPage();
 
 const M = window.MercadoCore;
 const SESSION_KEY = STORAGE_KEYS.COORD_SESSION;
@@ -25,6 +28,7 @@ const PREFS_KEY = 'effi_mercado_prefs_v1';     // pestaña/persona/orden de este
   try { localStorage.removeItem(k); } catch { /* sin storage */ }
 });
 const LS_PERSONAS = 'effi_mercado_personas_v1'; // copia de las personas de Conteos (por si falla la red)
+const LS_QUIEN = 'effi_mercado_quien_v1';       // quién usa este equipo
 const SONDEO_MS = 20000;                        // refresco del avance en "Por persona"
 // Opciones de "Por persona" que no son una persona (no pueden chocar con un nombre)
 const SEL_SIN = '\u2063sin';
@@ -44,7 +48,8 @@ const S = {
   orden: 'ubicacion',
   personaSel: null,
   hist: [], histMas: false,
-  inicioOk: false,    // config, tiendas y ubicaciones cargadas (sin esto no se procesa un corte)
+  inicioOk: false,
+  quien: '',          // persona de Conteos que usa este equipo (va en cada escritura)    // config, tiendas y ubicaciones cargadas (sin esto no se procesa un corte)
   cfgEdit: null,
   ubicPreview: null
 };
@@ -76,24 +81,65 @@ function renovarToken() {
   return refreshEnCurso;
 }
 
+// La sesión de coordinador es opcional: si hay token se manda (para lo de
+// gestión); siempre va la credencial del dispositivo si existe.
 async function api(method, path, body) {
-  // Otra pestaña pudo renovar el token
-  S.token = localStorage.getItem(SESSION_KEY) || S.token;
+  // Otra pestaña pudo iniciar, renovar o cerrar la sesión
+  try { S.token = localStorage.getItem(SESSION_KEY) || null; } catch { S.token = null; }
+  const opts = () => ({ method, token: S.token, body, headers: headersDispositivo() });
   try {
-    return await apiRequestJSON(path, { method, token: S.token, body });
+    return await apiRequestJSON(path, opts());
   } catch (err) {
+    if (manejarNoVinculado(err)) throw err;
     if (err.status !== 401) throw err;
-    if (!(await renovarToken())) {
-      notify('La sesión expiró. Vuelve a iniciar sesión en el panel de coordinador.', 'error', 8000);
-      throw err;
+    if (!S.token || !(await renovarToken())) {
+      throw Object.assign(new Error('Esto lo puede hacer solo un coordinador: inicia sesión en el panel de coordinador.'), { status: 401 });
     }
-    return apiRequestJSON(path, { method, token: S.token, body });
+    return apiRequestJSON(path, opts());
   }
 }
 
+// Permisos de la sesión de coordinador (sin sesión: ninguno de gestión)
 function puede(permiso) {
-  if (!S.perfil || S.perfil.rol === 'administrador') return true;
+  if (!S.perfil) return false;
+  if (S.perfil.rol === 'administrador') return true;
   return S.perfil.permisos?.[permiso] !== false;
+}
+
+/* ── QUIÉN USA ESTE EQUIPO ──────────────────────────────── */
+function leerQuien() {
+  try { return localStorage.getItem(LS_QUIEN) || ''; } catch { return ''; }
+}
+function ponerQuien(nombre) {
+  S.quien = nombre;
+  try { localStorage.setItem(LS_QUIEN, nombre); } catch { /* sin storage: dura esta sesión */ }
+  renderQuien();
+  if (S.corte && !S.corte.id && !S.corte.responsable_corte) { S.corte.responsable_corte = nombre; }
+  render();
+}
+function renderQuien() {
+  $('quien-nombre').textContent = S.quien || '-- Escoge tu nombre --';
+  $('btn-quien').classList.toggle('falta', !S.quien);
+}
+function abrirQuien() {
+  $('dlg-quien-lista').innerHTML = S.personas.length
+    ? S.personas.map(p => `<button type="button" class="mk-chip mk-chip-btn${p.id === S.quien ? ' on' : ''}" data-quien="${esc(p.id)}">${esc(p.nombre)}</button>`).join('')
+    : '<p class="mk-bad-txt">No se pudo leer la lista de personas. Revisa la conexión y recarga la página.</p>';
+  if (!$('dlg-quien').open) $('dlg-quien').showModal();
+}
+document.getElementById('btn-quien').addEventListener('click', abrirQuien);
+document.getElementById('dlg-quien-lista').addEventListener('click', e => {
+  const b = e.target.closest('[data-quien]');
+  if (!b) return;
+  ponerQuien(b.dataset.quien);
+  $('dlg-quien').close();
+});
+// Antes de escribir: hace falta el nombre (si no, se pide y no sigue)
+function tengoQuien() {
+  if (S.quien && S.personas.some(p => p.id === S.quien)) return true;
+  notify('Escoge tu nombre primero', 'warn');
+  abrirQuien();
+  return false;
 }
 
 /* ── UTILIDADES ─────────────────────────────────────────── */
@@ -119,32 +165,34 @@ function horaActual() {
 }
 
 /* ── ARRANQUE ───────────────────────────────────────────── */
+// En celular la vista útil es "Por persona"; en computador, el corte
+const pestanaDeCorte = () => (window.matchMedia('(max-width: 640px)').matches ? 'persona' : 'corte');
+
 (async function iniciar() {
-  try {
-    S.perfil = await api('GET', '/api/users?accion=yo');
-  } catch (err) {
-    if (err.status === 401) { setTimeout(() => window.location.replace('/'), 1500); return; }
-    notify('No se pudo leer tu perfil: ' + err.message, 'error');
-  }
-  if (!puede('nav-mercado') && !puede('mercado-gestion')) {
-    document.querySelector('.mk-main').innerHTML =
-      '<div class="mk-card mk-vacio"><p>Tu perfil no tiene acceso a Mercado y Alistamiento.</p></div>';
-    return;
+  document.body.classList.add('sin-gestion');
+  // Canjea el QR de vinculación si viene y avisa si hace falta vincular el equipo
+  revisarDispositivo().catch(() => {});
+  // Sesión de coordinador opcional (solo para borrar cortes y Configuración)
+  if (localStorage.getItem(SESSION_KEY) || localStorage.getItem(REFRESH_KEY)) {
+    try { S.perfil = await api('GET', '/api/users?accion=yo'); } catch { S.perfil = null; }
   }
   S.gestion = puede('mercado-gestion');
   document.body.classList.toggle('sin-gestion', !S.gestion);
-  $('mk-usuario').textContent = `Packing · Corte${S.perfil?.nombre ? ' · ' + S.perfil.nombre : ''}`;
+  $('mk-usuario').textContent = `Packing · Corte${S.gestion ? ' · Coordinador: ' + (S.perfil?.nombre || '') : ''}`;
 
   const prefs = leerPrefs();
   S.orden = prefs.orden === 'transportadora' ? 'transportadora' : 'ubicacion';
   S.personaSel = prefs.persona ?? null;
 
   await Promise.all([cargarInicio(), cargarPersonas()]);
+  S.quien = leerQuien();
+  if (S.quien && S.personas.length && !S.personas.some(p => p.id === S.quien)) S.quien = '';   // ya no está en Conteos
+  renderQuien();
+  if (!S.quien) abrirQuien();
 
   const idUrl = Number(new URLSearchParams(location.search).get('corte'));
-  const idAbrir = idUrl > 0 ? idUrl : null;
-  if (idAbrir) await abrirCorte(idAbrir, S.gestion ? 'corte' : 'persona');
-  else if (!S.gestion) await abrirUltimoCorte();
+  if (idUrl > 0) await abrirCorte(idUrl, pestanaDeCorte());
+  else await abrirUltimoCorte();
   render();
 })();
 
@@ -184,7 +232,7 @@ async function cargarPersonas() {
 async function abrirUltimoCorte() {
   try {
     const d = await api('GET', '/api/mercado?accion=cortes');
-    if (d.cortes?.length) await abrirCorte(d.cortes[0].id, 'persona');
+    if (d.cortes?.length) await abrirCorte(d.cortes[0].id, pestanaDeCorte());
   } catch { /* sin historial */ }
 }
 
@@ -234,7 +282,7 @@ function nuevoCorte(archivo, resultado) {
   S.corte = {
     id: null, archivo, resultado,
     fecha: fechaLocalISO(), horario: horaActual(),
-    responsable_corte: S.perfil?.nombre || '', responsable_impresion: '',
+    responsable_corte: S.quien || '', responsable_impresion: '',
     personas: [], asignaciones: {}, asigManual: false, sucio: true,
     // Identifica este guardado: si se reintenta, el servidor no duplica el corte
     clave: (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9-]/g, '')
@@ -312,7 +360,6 @@ async function leerLibro(file) {
 const filasDe = ws => XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
 
 async function procesarArchivoCorte(file) {
-  if (!S.gestion) return;
   // Sin la configuración (rangos, tablas de ubicaciones) el cálculo saldría con valores por defecto
   if (!S.inicioOk) {
     await cargarInicio();
@@ -405,9 +452,14 @@ function renderCorte() {
   const c = S.corte;
   $('enc-fecha').value = c.fecha || '';
   $('enc-horario').value = c.horario || '';
-  $('enc-resp-corte').value = c.responsable_corte || '';
+  // Responsable del corte: persona de Conteos (obligatorio para guardar)
+  const resp = c.responsable_corte || '';
+  const opcionesResp = S.personas.map(p => p.id);
+  if (resp && !opcionesResp.includes(resp)) opcionesResp.push(resp);
+  $('enc-resp-corte').innerHTML = `<option value="">-- Selecciona --</option>` +
+    opcionesResp.map(n => `<option value="${esc(n)}"${n === resp ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  $('enc-resp-corte').classList.toggle('falta', !resp);
   $('enc-resp-impresion').value = c.responsable_impresion || '';
-  ['enc-fecha', 'enc-horario', 'enc-resp-corte', 'enc-resp-impresion'].forEach(id => { $(id).disabled = !S.gestion; });
   renderValidacion();
   renderTablas();
 }
@@ -876,7 +928,7 @@ function renderAsignacion() {
   $('asig-personas').innerHTML = disponibles.length
     ? disponibles.map(p => `
       <label class="mk-chip${c.personas.includes(p.id) ? ' on' : ''}">
-        <input type="checkbox" data-persona="${esc(p.id)}"${c.personas.includes(p.id) ? ' checked' : ''}${S.gestion ? '' : ' disabled'}>
+        <input type="checkbox" data-persona="${esc(p.id)}"${c.personas.includes(p.id) ? ' checked' : ''}>
         ${esc(p.nombre)}${p.activo ? '' : ' <span class="mk-small">(ya no está en Conteos)</span>'}
       </label>`).join('')
     : '<p class="mk-muted">No hay personas. Agrégalas en el panel de coordinador > Configuración > Conteos: personas y mesas.</p>';
@@ -891,7 +943,7 @@ function renderAsignacion() {
     : `<p class="mk-bad-line">Asignado ${fmt(v.rev.asignado)} de ${fmt(total)} unidades: faltan ${fmt(total - v.rev.asignado)} (${v.rev.sinAsignar.length} tiendas sin persona).</p>`;
 
   const respetarPrev = $('asig-respetar')?.checked ?? true;
-  $('asig-carga').innerHTML = (S.gestion ? `<label class="mk-check-inline"><input type="checkbox" id="asig-respetar"${respetarPrev ? ' checked' : ''}> Al sugerir, dejar cada tienda con su persona habitual</label>` : '') +
+  $('asig-carga').innerHTML = `<label class="mk-check-inline"><input type="checkbox" id="asig-respetar"${respetarPrev ? ' checked' : ''}> Al sugerir, dejar cada tienda con su persona habitual</label>` +
     c.personas.map(id => {
       const x = v.rev.porPersona[id] || { unidades: 0, lineas: 0, inventarios: 0 };
       const pct = total ? Math.round(x.unidades * 100 / total) : 0;
@@ -913,7 +965,7 @@ function renderAsignacion() {
       const p = c.asignaciones[inv];
       return `<tr${p ? '' : ' class="sin-asignar"'}><td>${invHTML(inv)}</td><td class="num"><strong>${fmt(u)}</strong></td>
         <td class="num hide-sm">${fmt(guiasPorInv[inv])}</td><td class="num hide-sm">${fmt(lineasPorInv[inv])}</td>
-        <td><select data-inv="${esc(inv)}" aria-label="Persona para ${esc(inv)}"${S.gestion && c.personas.length ? '' : ' disabled'}>${opciones(p)}</select></td></tr>`;
+        <td><select data-inv="${esc(inv)}" aria-label="Persona para ${esc(inv)}"${c.personas.length ? '' : ' disabled'}>${opciones(p)}</select></td></tr>`;
     }).join('')}</tbody></table>`;
 
   const btn = $('btn-guardar-corte');
@@ -925,6 +977,13 @@ let guardando = false;
 async function guardarCorte() {
   const c = S.corte;
   if (!c || guardando) return;
+  if (!tengoQuien()) return;
+  if (!c.responsable_corte) {
+    notify('Escoge quién realiza el corte (Responsable del corte) antes de guardar', 'warn', 6000);
+    irA('corte');
+    $('enc-resp-corte').focus();
+    return;
+  }
   const v = estadoValidacion();
   if (!v.ok) {
     const partes = [];
@@ -942,7 +1001,8 @@ async function guardarCorte() {
   try {
     const comunes = {
       fecha: c.fecha, horario: c.horario, responsable_corte: c.responsable_corte,
-      responsable_impresion: c.responsable_impresion, personas: c.personas, asignaciones: c.asignaciones
+      responsable_impresion: c.responsable_impresion, personas: c.personas, asignaciones: c.asignaciones,
+      quien: S.quien
     };
     if (!c.id) {
       const compacta = d => ({ fila: d.fila, guiaTexto: d.guiaTexto, inventario: d.inventario, descripcion: d.descripcion,
@@ -1088,13 +1148,14 @@ let marcasPendientes = 0;
 async function marcarAlistado(linea, valor, input) {
   const c = S.corte;
   if (!c?.id) return;
+  if (!tengoQuien()) { if (input) input.checked = !valor; return; }
   marcasSeq++;
   marcasPendientes++;
   const previo = S.alistado.get(linea);
-  if (valor) S.alistado.set(linea, { por: S.perfil?.nombre || '' }); else S.alistado.delete(linea);
+  if (valor) S.alistado.set(linea, { por: S.quien }); else S.alistado.delete(linea);
   renderPersona();
   try {
-    await api('POST', '/api/mercado?accion=alistar', { id: c.id, linea, alistado: valor });
+    await api('POST', '/api/mercado?accion=alistar', { id: c.id, linea, alistado: valor, quien: S.quien });
   } catch (err) {
     if (S.corte === c) {
       if (previo) S.alistado.set(linea, previo); else S.alistado.delete(linea);
@@ -1157,7 +1218,7 @@ $('hist-lista').addEventListener('click', async e => {
   const b = e.target.closest('button[data-accion]');
   if (!b) return;
   const id = Number(b.dataset.id);
-  if (b.dataset.accion === 'abrir') abrirCorte(id, S.gestion ? 'corte' : 'persona');
+  if (b.dataset.accion === 'abrir') abrirCorte(id, pestanaDeCorte());
   if (b.dataset.accion === 'borrar') {
     if (!confirm(`¿Borrar el corte #${id} con sus asignaciones y su avance? No se puede deshacer.`)) return;
     try {

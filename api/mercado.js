@@ -2,6 +2,9 @@ import { supabaseAdmin, selectAll } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requirePermiso, nombreDe } from './_permisos.js';
 import { registrar } from './_bitacora.js';
+import { rateLimit } from './_rateLimit.js';
+import { exigirDispositivo } from './_dispositivo.js';
+import { leerPersonas, normalizarNombre } from './_personas.js';
 
 /**
  * Mercado y Alistamiento (public/mercado/). El Excel del corte se procesa
@@ -10,23 +13,27 @@ import { registrar } from './_bitacora.js';
  * público (mercado_guias trae nombres de clientes): solo esta API las lee.
  * Las lecturas que pueden pasar de 1000 filas van con selectAll().
  *
- * Permisos: 'nav-mercado' para ver y marcar alistados; 'mercado-gestion'
- * para guardar cortes, asignar, borrar y configurar.
+ * Acceso: el trabajo diario es PÚBLICO, como Conteos (sin sesión): ver,
+ * guardar cortes, asignar, marcar alistados e imprimir. Cada escritura
+ * trae "quien" (y el corte, su responsable), que tiene que ser una persona
+ * de Conteos. Va con límite de peticiones por IP y, si el coordinador
+ * encendió "Exigir dispositivo vinculado", solo desde equipos vinculados
+ * (también para leer, porque hay nombres de clientes). Borrar cortes,
+ * tiendas, rangos y ubicaciones piden sesión con 'mercado-gestion'.
  *
  *   GET    ?accion=inicio              config + inventarios + ubicaciones
  *   GET    ?accion=cortes[&antes=id]   historial con avance
  *   GET    ?accion=corte&id=N          un corte completo + alistado
  *   GET    ?accion=alistado&id=N       solo el avance (para refrescar)
- *   POST   ?accion=alistar             { id, linea, alistado }           (nav-mercado)
+ *   POST   ?accion=alistar             { id, linea, alistado, quien }    (público)
  *   POST   ?accion=guias_repetidas     { guias: [texto] } → las que ya salieron en otro corte
- *   POST   ?accion=corte               guarda un corte nuevo             (gestión)
- *   POST   ?accion=asignar             { id, personas, asignaciones, ...} (gestión)
+ *   POST   ?accion=corte               guarda un corte nuevo, con quien  (público)
+ *   POST   ?accion=asignar             { id, personas, asignaciones, quien, ...} (público)
  *   POST   ?accion=inventario          { nombre, alias, persona }        (gestión)
  *   POST   ?accion=config              { rangos, tablas }                (gestión)
  *   POST   ?accion=ubicaciones         { tabla, archivo, filas }         (gestión)
  *   DELETE ?accion=corte&id=N                                            (gestión)
  */
-const VER = 'nav-mercado';
 const GESTION = 'mercado-gestion';
 const CONFIG_CLAVE = 'mercado_config';
 const LIMITE_CORTES = 50;
@@ -53,6 +60,20 @@ function fechaValida(v) {
 }
 const CLAVE_RE = /^[A-Za-z0-9-]{8,64}$/;
 const iguales = (a, b) => Math.abs(a - b) < 1e-6;
+
+// Peticiones públicas: límite por IP (una bodega con varios equipos sale
+// con la misma IP y "Por persona" refresca cada 20 s) y dispositivo
+// vinculado si está activado. Si no se puede seguir, ya respondió.
+async function accesoPublico(req, res, max) {
+  if (!rateLimit(req, res, { max, windowMs: 60000 })) return false;
+  return exigirDispositivo(req, res);
+}
+
+// Nombre de una persona de Conteos, escrito como está en la lista; null si no está
+function personaDeLista(lista, nombre) {
+  const n = normalizarNombre(nombre);
+  return n ? lista.find(p => normalizarNombre(p) === n) || null : null;
+}
 function errorBD(res, error, mensaje) {
   console.error('mercado:', mensaje, error);
   return res.status(500).json({
@@ -120,15 +141,16 @@ function limpiarGuias(guias) {
   })).filter(g => g.guia && g.inventario);
 }
 
-// Personas (nombres) y asignaciones solo hacia esas personas y a inventarios del corte
-function limpiarAsignacion(body, inventarios) {
+// Personas (solo de la lista permitida, escritas como en ella) y asignaciones
+// solo hacia esas personas y a inventarios del corte
+function limpiarAsignacion(body, inventarios, permitidas) {
   const personas = [...new Set((Array.isArray(body?.personas) ? body.personas : [])
-    .map(p => txt(p, 80)).filter(Boolean))].slice(0, 100);
+    .map(p => personaDeLista(permitidas, p)).filter(Boolean))].slice(0, 100);
   const validas = new Set(personas);
   const asignaciones = {};
   Object.entries(body?.asignaciones && typeof body.asignaciones === 'object' ? body.asignaciones : {})
     .forEach(([inv, p]) => {
-      const persona = txt(p, 80);
+      const persona = personaDeLista(permitidas, p);
       if (inventarios.has(inv) && validas.has(persona)) asignaciones[inv] = persona;
     });
   return { personas, asignaciones };
@@ -143,8 +165,7 @@ export default async function handler(req, res) {
   try {
     // ════ LECTURAS ════
     if (req.method === 'GET') {
-      const user = await requirePermiso(req, res, [VER, GESTION]);
-      if (!user) return;
+      if (!(await accesoPublico(req, res, 600))) return;
 
       if (accion === 'inicio') {
         const [config, inventarios, ubic, cargas] = await Promise.all([
@@ -206,8 +227,7 @@ export default async function handler(req, res) {
 
     // ════ GUÍAS QUE YA SALIERON EN OTRO CORTE (al subir un Excel) ════
     if (req.method === 'POST' && accion === 'guias_repetidas') {
-      const user = await requirePermiso(req, res, [VER, GESTION]);
-      if (!user) return;
+      if (!(await accesoPublico(req, res, 60))) return;
       const guias = [...new Set((Array.isArray(req.body?.guias) ? req.body.guias : []).map(g => txt(g, 60)).filter(Boolean))];
       if (guias.length > MAX_LINEAS) return res.status(400).json({ error: 'Demasiadas guías' });
       const encontradas = [];
@@ -235,17 +255,18 @@ export default async function handler(req, res) {
       return res.status(200).json({ repetidas: [...porGuia].map(([guia, cortes]) => ({ guia, cortes })) });
     }
 
-    // ════ MARCAR ALISTADO (cualquiera con acceso al módulo) ════
+    // ════ MARCAR ALISTADO (público, con nombre) ════
     if (req.method === 'POST' && accion === 'alistar') {
-      const user = await requirePermiso(req, res, [VER, GESTION]);
-      if (!user) return;
+      if (!(await accesoPublico(req, res, 600))) return;
       const { id, linea, alistado } = req.body || {};
+      const quien = personaDeLista(await leerPersonas(), req.body?.quien);
+      if (!quien) return res.status(400).json({ error: 'Escoge tu nombre antes de marcar', codigo: 'falta_nombre' });
       if (!idValido(id) || !Number.isInteger(linea) || linea < 0) {
         return res.status(400).json({ error: 'Datos no válidos' });
       }
       if (alistado) {
         const { error } = await supabaseAdmin.from('mercado_alistado')
-          .upsert({ corte_id: Number(id), linea, por: nombreDe(user), en: new Date().toISOString() },
+          .upsert({ corte_id: Number(id), linea, por: quien, en: new Date().toISOString() },
                   { onConflict: 'corte_id,linea' });
         if (error) {
           if (error.code === '23503') return res.status(404).json({ error: 'Ese corte o esa línea ya no existe' });
@@ -255,15 +276,21 @@ export default async function handler(req, res) {
         const { error } = await supabaseAdmin.from('mercado_alistado').delete().eq('corte_id', Number(id)).eq('linea', linea);
         if (error) return errorBD(res, error, 'No se pudo guardar');
       }
-      return res.status(200).json({ ok: true, por: alistado ? nombreDe(user) : null });
+      return res.status(200).json({ ok: true, por: alistado ? quien : null });
     }
 
-    // ════ GESTIÓN ════
-    const user = await requirePermiso(req, res, GESTION);
-    if (!user) return;
+    // ════ GUARDAR CORTE Y ASIGNAR (público, con nombre) ════
+    if (req.method === 'POST' && (accion === 'corte' || accion === 'asignar')) {
+      if (!(await accesoPublico(req, res, 60))) return;
+    }
 
     if (req.method === 'POST' && accion === 'corte') {
       const b = req.body || {};
+      const lista = await leerPersonas();
+      const quien = personaDeLista(lista, b.quien);
+      if (!quien) return res.status(400).json({ error: 'Escoge tu nombre antes de guardar', codigo: 'falta_nombre' });
+      const responsable = personaDeLista(lista, b.responsable_corte);
+      if (!responsable) return res.status(400).json({ error: 'Escoge quién realiza el corte (Responsable del corte)' });
       const lineas = limpiarLineas(b.lineas);
       if (!lineas) return res.status(400).json({ error: 'El corte no tiene líneas de mercado' });
       if (!fechaValida(b.fecha)) return res.status(400).json({ error: 'Fecha no válida' });
@@ -279,28 +306,28 @@ export default async function handler(req, res) {
       if (!iguales(sumaLineas, totalMercado) || !iguales(sumaGuias, sumaLineas)) {
         return res.status(400).json({ error: `El corte no cuadra (mercado ${sumaLineas}, guías ${sumaGuias}, total ${totalMercado}); vuelve a subir el Excel` });
       }
-      const { personas, asignaciones } = limpiarAsignacion(b, new Set(lineas.map(l => l.inventario)));
+      const { personas, asignaciones } = limpiarAsignacion(b, new Set(lineas.map(l => l.inventario)), lista);
       let validacion = b.validacion && typeof b.validacion === 'object' ? b.validacion : null;
       if (JSON.stringify(validacion || {}).length > 500000) validacion = { recortada: true };
       const { data: id, error } = await supabaseAdmin.rpc('mercado_guardar_corte', { p: {
         fecha: b.fecha,
         horario: txt(b.horario, 40) || null,
         archivo: txt(b.archivo, 200) || null,
-        responsable_corte: txt(b.responsable_corte, 100) || null,
+        responsable_corte: responsable,
         responsable_impresion: txt(b.responsable_impresion, 100) || null,
         personas, asignaciones, lineas, guias,
         totales: b.totales && typeof b.totales === 'object' ? b.totales : {},
         base: Array.isArray(b.base) ? b.base.slice(0, 5000) : [],
         validacion,
-        creado_por: nombreDe(user),
+        creado_por: quien,
         // Si la respuesta se pierde y el navegador reintenta, no se duplica el corte
         clave: CLAVE_RE.test(String(b.clave || '')) ? String(b.clave) : null
       } });
       if (error) return errorBD(res, error, 'No se pudo guardar el corte');
       const unidades = lineas.reduce((s, l) => s + l.cantidad, 0);
-      await registrar(user, 'mercado_corte_crear',
-        `Guardó el corte ${b.fecha}${b.horario ? ' ' + txt(b.horario, 40) : ''} (${unidades} unidades, ${guias.length} filas de guías, ${personas.length} personas)`,
-        { corte_id: id, archivo: txt(b.archivo, 200) || null });
+      await registrar(null, 'mercado_corte_crear',
+        `${quien} guardó el corte ${b.fecha}${b.horario ? ' ' + txt(b.horario, 40) : ''} (responsable ${responsable}; ${unidades} unidades, ${guias.length} filas de guías, ${personas.length} personas)`,
+        { corte_id: id, archivo: txt(b.archivo, 200) || null, quien });
       return res.status(200).json({ id, personas, asignaciones });
     }
 
@@ -308,21 +335,38 @@ export default async function handler(req, res) {
       const b = req.body || {};
       if (!idValido(b.id)) return res.status(400).json({ error: 'id requerido' });
       const id = Number(b.id);
+      const lista = await leerPersonas();
+      const quien = personaDeLista(lista, b.quien);
+      if (!quien) return res.status(400).json({ error: 'Escoge tu nombre antes de guardar', codigo: 'falta_nombre' });
+      const { data: actual, error: e0 } = await supabaseAdmin.from('mercado_cortes').select('personas').eq('id', id).maybeSingle();
+      if (e0) return errorBD(res, e0, 'No se pudo guardar');
+      if (!actual) return res.status(404).json({ error: 'Ese corte no existe' });
       const { data: invs, error: e1 } = await selectAll(() => supabaseAdmin
         .from('mercado_lineas').select('inventario, linea').eq('corte_id', id).order('linea'));
       if (e1) return errorBD(res, e1, 'No se pudo guardar');
       if (!invs.length) return res.status(404).json({ error: 'Ese corte no existe' });
-      const { personas, asignaciones } = limpiarAsignacion(b, new Set(invs.map(l => l.inventario)));
+      // Se aceptan las personas de Conteos y las que ya tenía el corte (aunque hayan salido de la lista)
+      const { personas, asignaciones } = limpiarAsignacion(b, new Set(invs.map(l => l.inventario)),
+        [...lista, ...(actual.personas || [])]);
       const p = { personas, asignaciones };
-      ['horario', 'responsable_corte', 'responsable_impresion'].forEach(k => {
+      ['horario', 'responsable_impresion'].forEach(k => {
         if (k in b) p[k] = txt(b[k], k === 'horario' ? 40 : 100) || null;
       });
+      if ('responsable_corte' in b) {
+        const responsable = personaDeLista(lista, b.responsable_corte);
+        if (!responsable) return res.status(400).json({ error: 'Escoge quién realiza el corte (Responsable del corte)' });
+        p.responsable_corte = responsable;
+      }
       if (fechaValida(b.fecha)) p.fecha = b.fecha;
       const { error } = await supabaseAdmin.rpc('mercado_asignar', { p_corte: id, p });
       if (error) return errorBD(res, error, 'No se pudo guardar la asignación');
-      await registrar(user, 'mercado_corte_asignar', `Cambió la asignación del corte #${id}`, { corte_id: id, asignaciones });
+      await registrar(null, 'mercado_corte_asignar', `${quien} cambió la asignación del corte #${id}`, { corte_id: id, asignaciones, quien });
       return res.status(200).json({ ok: true, personas, asignaciones });
     }
+
+    // ════ GESTIÓN (sesión de coordinador con 'mercado-gestion') ════
+    const user = await requirePermiso(req, res, GESTION);
+    if (!user) return;
 
     if (req.method === 'DELETE' && accion === 'corte') {
       if (!idValido(req.query.id)) return res.status(400).json({ error: 'id requerido' });

@@ -46,6 +46,18 @@ body {
 .mk-back:hover { background: rgba(255, 255, 255, .12); }
 .mk-titles h1 { font-size: 1.05rem; font-weight: 600; line-height: 1.2; }
 .mk-sub { font-size: .78rem; color: #c7cdf5; }
+.mk-quien {
+  margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;
+  max-width: 50%; padding: 6px 12px; min-height: 36px; border-radius: 999px; cursor: pointer;
+  background: rgba(255, 255, 255, .12); color: #fff; border: 1px solid rgba(255, 255, 255, .35);
+  font: 500 .82rem var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mk-quien:hover { background: rgba(255, 255, 255, .22); }
+.mk-quien-lbl { color: #c7cdf5; }
+.mk-quien.falta { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning-border); }
+.mk-quien.falta .mk-quien-lbl { color: inherit; }
+.mk-quien-lista .mk-chip { font-size: 1rem; min-height: 48px; }
+@media (max-width: 640px) { .mk-quien-lbl { display: none; } }
 .mk-corte-bar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   padding: 6px 16px; background: rgba(0, 0, 0, .18); font-size: .8rem;
@@ -97,6 +109,7 @@ input[type="text"], input[type="date"], input[type="search"], select {
   background: #fff; border: 1.5px solid var(--neutral-200); border-radius: 8px;
 }
 input:focus, select:focus { border-color: var(--brand-500); outline: none; }
+select.falta { border-color: var(--warning-mid); background: var(--warning-bg); }
 input:disabled, select:disabled { background: var(--neutral-50); color: var(--neutral-600); }
 .mk-input-sm { width: 100%; }
 .mk-acciones .mk-input-sm { width: auto; min-width: 200px; flex: 1 1 200px; }
