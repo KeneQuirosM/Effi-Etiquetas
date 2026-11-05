@@ -161,7 +161,7 @@ effi-etiquetas/
 │   ├── stockforge.js         # estado completo del almacén (auth en POST)
 │   ├── devoluciones.js       # registro y conteo diario de guías devueltas
 │   ├── conteos.js            # conteos: alta, consulta, traslado, impresión, Sheets
-│   └── reporte-tiendas.js    # reporte de movimientos por tienda (sin conectar)
+│   └── mercado.js            # mercado y alistamiento: cortes, asignaciones, avance, ubicaciones
 ├── public/
 │   ├── index.html/js/css     # generador de etiquetas + panel de coordinador ("/")
 │   ├── decoracion.js         # decoración de temporada
@@ -294,7 +294,7 @@ Usan exports reales sin datos personales en `tests/fixtures/` y comparan contra 
 - Los endpoints públicos (`auth`, `refresh`, `devoluciones`, `conteos`) tienen rate limit en memoria por instancia: es una primera barrera, no un límite garantizado.
 - Las fotos de conteos están en un bucket privado; el panel las muestra con URLs firmadas de 1 hora.
 - Si falla la copia a Google Sheets, el conteo se guarda igual y queda pendiente para "Enviar pendientes".
-- `reporte-tiendas.js` está pendiente de conectar a una tabla de historial real (actualmente devuelve conteo 0 sin errores) y ningún módulo lo llama todavía.
+- Vercel en el plan Hobby permite máximo 12 funciones (archivos de `api/` sin `_` al inicio) por despliegue; con una más el despliegue falla y producción se queda en la versión anterior. Hoy hay 12. Para agregar un endpoint, súmalo como `?accion=` a uno existente. (`reporte-tiendas.js`, que nadie usaba, se quitó por eso; está en el historial de git.)
 - `public/shared/api.js` centraliza el fetch + parseo JSON + manejo de errores. Cada módulo conserva su propia lógica de autenticación/renovación de token.
 - Todo el contenido insertado dinámicamente en el DOM (nombres de producto, rack, tienda, responsable, notas, etc.) pasa por una función `esc()` antes de ir a `innerHTML` para prevenir XSS almacenado.
 - La CSP y los demás headers de seguridad están en `vercel.json`. Para agregar un script, hoja de estilos o fuente de otro CDN hay que añadir su origen a la directiva correspondiente o el navegador lo bloqueará en producción.

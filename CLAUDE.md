@@ -91,7 +91,7 @@ Replaces the Google Sheet "PACKING / CORTE". All business rules live in `mercado
 
 ### Known stub / inconsistency
 
-`api/reporte-tiendas.js` reads from a `historial_movimientos` table that doesn't exist yet (wrapped in try/catch so it silently returns 0 counts instead of erroring) — and it's currently **not called from any frontend file** (`public/reporte/reporte.js` only fetches `/api/tiendas` directly). Treat it as unfinished/orphaned rather than a maintained endpoint unless you're specifically wiring it up.
+**Vercel Hobby allows at most 12 Serverless Functions per deployment** (every `api/*.js` not starting with `_`). There are exactly 12 now. A 13th makes every deploy fail silently from the app's point of view: production keeps serving the last successful build (this happened when `api/mercado.js` was added; the orphaned `api/reporte-tiendas.js` was deleted to make room; it's in git history). Add new endpoints as an `?accion=` branch of an existing handler, never as a new file in `api/`.
 
 ## UI copy
 
