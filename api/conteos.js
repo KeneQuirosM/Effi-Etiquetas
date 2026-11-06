@@ -440,7 +440,7 @@ export default async function handler(req, res) {
     //   GET  ?accion=recepciones&estado=finalizadas|todas&desde&hasta[&tienda_id]
     //   POST ?accion=recepcion_ajuste    { id, ajuste_en: ISO | null }
     //   POST ?accion=recepcion_finalizar { id, finalizar: true | false }
-    // Las horas laborables (48 h desde el ajuste, con pausa fuera de horario)
+    // Las horas laborables (24 h desde el ajuste, con pausa fuera de horario)
     // las calcula el navegador con public/shared/horario-laboral.js; acá solo
     // se guardan los instantes. "ahora" permite corregir el reloj del navegador.
     if (req.method === 'GET' && req.query?.accion === 'recepciones') {

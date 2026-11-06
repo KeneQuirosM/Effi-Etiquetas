@@ -3503,7 +3503,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 /* ── RECEPCIONES DE MERCANCÍA ─────────────────────────────
  * Vista del coordinador de lo registrado en recepcion/recepcion.html. Por
  * cada recepción: horas laborables desde que llegó, la hora del ajuste de
- * inventario (la registra el coordinador; desde ahí corren 48 horas
+ * inventario (la registra el coordinador; desde ahí corren 24 horas
  * laborables) y "Dar por contado y finalizar", que deja fijo cuántas horas
  * después del ajuste se terminó. Las horas se calculan con
  * shared/horario-laboral.js (pausa fuera del horario de la empresa); el
@@ -3625,7 +3625,7 @@ function rcMedidorHTML(r, ahora) {
   if (!r.ajuste_en) {
     centro = rcHoras(c.desdeRecepcion);
     sub = 'desde que llegó';
-    lineas.push('<b>Esperando el ajuste de inventario.</b> El plazo de 48 h empieza al registrarlo.');
+    lineas.push('<b>Esperando el ajuste de inventario.</b> El plazo de 24 h empieza al registrarlo.');
   } else {
     centro = rcHoras(c.usadas);
     sub = `usadas de ${HL.PLAZO_HORAS} h`;
@@ -3763,13 +3763,13 @@ async function rcGuardarAjuste(id) {
   if (Date.parse(iso) > rcAhora() + 60000) return notify('El ajuste no puede ser en el futuro', 'warn');
   try {
     const res = await apiPost('/api/conteos?accion=recepcion_ajuste', { id, ajuste_en: iso });
-    notify('Ajuste de inventario registrado: corren las 48 h laborables', 'success');
+    notify('Ajuste de inventario registrado: corren las 24 h laborables', 'success');
     rcReemplazar(res.recepcion, res.ahora);
   } catch (e) { notify(e.message || 'No se pudo guardar el ajuste', 'error'); }
 }
 
 async function rcQuitarAjuste(id) {
-  if (!confirm('¿Quitar la hora del ajuste? El plazo de 48 h deja de contar hasta que la registres de nuevo.')) return;
+  if (!confirm('¿Quitar la hora del ajuste? El plazo de 24 h deja de contar hasta que la registres de nuevo.')) return;
   try {
     const res = await apiPost('/api/conteos?accion=recepcion_ajuste', { id, ajuste_en: null });
     rcReemplazar(res.recepcion, res.ahora);

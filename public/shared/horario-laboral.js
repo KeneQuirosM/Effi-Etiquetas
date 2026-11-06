@@ -25,7 +25,7 @@
     1: [450, 1020], 2: [450, 1020], 3: [450, 1020], 4: [450, 1020], 5: [450, 1020],
     6: [450, 780]
   };
-  const PLAZO_HORAS = 48;                  // desde que llega el ajuste de inventario
+  const PLAZO_HORAS = 24;                  // desde que llega el ajuste de inventario
   const MAX_DIAS = 3660;                   // tope de seguridad para los bucles
   let feriados = new Set();                // 'AAAA-MM-DD' en que no se trabaja
 

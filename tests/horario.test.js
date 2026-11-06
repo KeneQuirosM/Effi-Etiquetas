@@ -83,3 +83,11 @@ test('feriados de ley con Semana Santa móvil', () => {
   assert.equal(new Set(f26).size, f26.length);
   assert.deepEqual(f26, [...f26].sort());
 });
+
+test('el plazo de las recepciones es de 24 h laborables', () => {
+  assert.equal(H.PLAZO_HORAS, 24);
+  // Ajuste el lunes 7:30: lun 9,5 + mar 9,5 = 19 -> faltan 5 el miércoles -> 12:30
+  assert.equal(H.sumarHoras(cr(`${LUN}T07:30`), H.PLAZO_HORAS), cr('2026-11-04T12:30'));
+  // Ajuste el viernes 3 p. m.: vie 2 + sáb 5,5 + lun 9,5 = 17 -> faltan 7 el martes -> 14:30
+  assert.equal(H.sumarHoras(cr(`${VIE}T15:00`), H.PLAZO_HORAS), cr('2026-11-10T14:30'));
+});

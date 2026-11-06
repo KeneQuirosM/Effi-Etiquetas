@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS recepciones (
 );
 
 -- Seguimiento del coordinador (pestaña "Recepciones" del panel): cuándo
--- llegó el ajuste de inventario (desde ahí corren 48 horas laborables) y
+-- llegó el ajuste de inventario (desde ahí corren 24 horas laborables) y
 -- cuándo se dio por contado todo. Agregadas después de la primera versión:
 -- este archivo completo se puede volver a ejecutar sin perder datos.
 ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS ajuste_en      TIMESTAMPTZ;  -- llegada del ajuste de inventario
