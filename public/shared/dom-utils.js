@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   COORD_SESSION: 'effi_coord_session_v1',
   CONTEOS_PREFS: 'effi_conteos_prefs_v1',
   CONTEOS_BORRADOR: 'effi_conteos_borrador_v1',
+  RECEPCION_PREFS: 'effi_recepcion_prefs_v1',
   DECORACION: 'effi_decoracion_v1'
 };
 

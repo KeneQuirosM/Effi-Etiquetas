@@ -2707,6 +2707,7 @@ const NAV_BOTONES = {
   manifiestos:  { clave: 'mostrar_btn_manifiestos',  nombre: 'Gestión de Manifiestos',  defecto: true },
   alistamiento: { clave: 'mostrar_btn_alistamiento', nombre: 'Alistamiento',            defecto: true },
   conteos:      { clave: 'mostrar_btn_conteos',      nombre: 'Conteos',                 defecto: true },
+  recepcion:    { clave: 'mostrar_btn_recepcion',    nombre: 'Recepción de Mercancía',  defecto: true },
   trazabilidad: { clave: 'mostrar_btn_trazabilidad', nombre: 'Trazabilidad',            defecto: false },
   reporte:      { clave: 'mostrar_btn_reporte',      nombre: 'Reporte',                 defecto: true },
   // Público como Conteos (sin sesión); se puede ocultar en Configuración > Botones del menú

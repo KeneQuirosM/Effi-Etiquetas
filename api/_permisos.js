@@ -46,6 +46,7 @@ export const PERMISOS = {
   'nav-manifiestos':  [true, true, 'Menú: Gestión de Manifiestos'],
   'nav-alistamiento': [true, true, 'Menú: Alistamiento'],
   'nav-conteos':      [true, true, 'Menú: Conteos'],
+  'nav-recepcion':    [true, true, 'Menú: Recepción de Mercancía'],
   'nav-trazabilidad': [true, true, 'Menú: Trazabilidad'],
   'nav-reporte':      [true, false, 'Menú: Reporte'],
   'nav-mercado':      [true, true, 'Menú: Mercado y Alistamiento'],

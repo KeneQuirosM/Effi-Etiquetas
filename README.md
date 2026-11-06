@@ -4,7 +4,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 
 **Frontend**: HTML/CSS/JS vanilla (sin frameworks, sin build ni bundler)
 **Backend**: Vercel Serverless Functions (Node.js ESM)
-**Base de datos**: Supabase PostgreSQL (19 tablas) + Supabase Storage (fotos de conteos)
+**Base de datos**: Supabase PostgreSQL (20 tablas) + Supabase Storage (fotos de conteos y recepciones)
 **Deploy**: Vercel (producción automática desde `main`)
 
 ---
@@ -71,6 +71,13 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 - Traslado de conteos (Panel de Coordinador, pestaña Conteos): seleccionar uno o varios conteos, elegir la tienda destino y el ID de cada uno en esa tienda (p. ej. de una tienda transitoria a la real). Se puede trasladar solo parte de las unidades: el conteo se divide (el original se queda con el resto) con la función SQL `trasladar_parcial_conteo`. Queda historial en `conteos_traslados`, la fila de Google Sheets se mueve a la pestaña nueva y se genera el mensaje para WhatsApp. Si se pide imprimir al trasladar, la estación imprime la etiqueta nueva
 - El coordinador consulta los conteos en el Panel de Coordinador, pestaña "Conteos" (filtros por fecha/tienda, fotos, exportar a Excel con las fotos incrustadas, eliminar)
 
+### 6b. Recepción de Mercancía (`/recepcion/recepcion.html`)
+- Pantalla para celular, abierta para todos (sin login), hermana de Conteos, para avisar cada llegada de mercadería: tienda, cantidad de cajas, recibido por (las personas de bodega de Configuración > Conteos) y foto obligatoria
+- La fecha y la hora no se eligen: la página muestra la del sistema y se guarda la del servidor al registrar
+- Se guarda en la tabla `recepciones` (vía `POST /api/conteos?accion=recepcion`); la foto va al bucket `conteos`, carpeta `recepciones/`
+- Tras guardar, "Compartir en WhatsApp" abre el menú de compartir con la foto y el mensaje "Ingresa mercancía" (Tienda, Cantidad cajas, Recibido por, Fecha y hora)
+- Respeta "Exigir dispositivo vinculado"; se puede vincular un celular directo a esta pantalla desde Configuración > Dispositivos vinculados
+
 ### 7. Trazabilidad de Inventario (`/trazabilidad.html`)
 - Carga los Excel de Base, Movimientos y Devoluciones, detecta sus columnas por nombre y cruza los datos
 - Muestra los IDs con discrepancia de cantidades en Salidas y en Devoluciones, con filtros por tienda e ID de artículo y exportación de resultados
@@ -99,7 +106,7 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 
 ## Base de datos
 
-La BD tiene 19 tablas en Supabase PostgreSQL. Todas siguen el mismo patrón de RLS: lectura pública y escritura solo para usuarios autenticados.
+La BD tiene 20 tablas en Supabase PostgreSQL. Todas siguen el mismo patrón de RLS: lectura pública y escritura solo para usuarios autenticados.
 
 **Core (etiquetas e inventario)** — `supabase-schema.sql`:
 - `tiendas` — catálogo de tiendas
@@ -123,6 +130,9 @@ El guardado del almacén reemplaza el estado completo en una sola transacción c
 **Conteos** — `supabase/conteos.sql`:
 - `conteos` — un registro por conteo de mercancía. El script también crea el bucket privado `conteos` para las fotos y la función `trasladar_parcial_conteo`
 - `conteos_traslados` — historial de traslados de conteos entre tiendas/IDs (quién, cuándo, de dónde a dónde)
+
+**Recepciones** — `supabase/recepciones.sql`:
+- `recepciones` — una fila por recepción de mercancía (tienda, cajas, recibido por, foto, fecha y hora del servidor)
 
 **Dispositivos vinculados** — `supabase/dispositivos.sql`:
 - `dispositivos` — equipos autorizados a enviar Conteos y Devoluciones (nombre y hash de su credencial). Sin acceso público: solo la API la lee

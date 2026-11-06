@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { CLAVE_PERSONAS, PERSONAS_DEFECTO, limpiarPersonas } from './_personas.js';
+import { CLAVE_PERSONAS, PERSONAS_DEFECTO, limpiarPersonas, leerPersonas } from './_personas.js';
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
 import { requirePermiso } from './_permisos.js';
@@ -361,6 +361,78 @@ export default async function handler(req, res) {
         return res.status(502).json({ error: 'Google Sheets no respondió. Intenta más tarde.', pendientes: count ?? null });
       }
       return res.status(200).json({ enviados, pendientes: count ?? 0 });
+    }
+
+    // ── POST ?accion=recepcion: registrar una recepción de mercancía ──
+    // Pública como el conteo (recepcion.html, desde el celular). Va en este
+    // handler porque Vercel Hobby no admite más funciones (ver CLAUDE.md).
+    // Body: { tienda_id, cajas, recibido_por, foto }. La fecha y la hora
+    // las pone el servidor: no se pueden elegir ni mandar desde el celular.
+    if (req.method === 'POST' && req.query?.accion === 'recepcion') {
+      if (!rateLimit(req, res, { max: 20, windowMs: 60000 })) return;
+      if (!(await exigirDispositivo(req, res))) return;
+
+      const b = req.body || {};
+      const tiendaId = Number(b.tienda_id);
+      const cajas = entero(b.cajas, 100000);
+      const personas = await leerPersonas();
+      const recibidoPor = personas.find(p => normalizarNombre(p) === normalizarNombre(b.recibido_por)) || null;
+
+      if (!Number.isInteger(tiendaId) || tiendaId <= 0) return res.status(400).json({ error: 'Selecciona la tienda' });
+      if (!cajas) return res.status(400).json({ error: 'La cantidad de cajas debe ser un número entero de al menos 1' });
+      if (!recibidoPor) return res.status(400).json({ error: 'Elige quién recibió de la lista' });
+
+      const m = typeof b.foto === 'string' && b.foto.match(FOTO_RE);
+      if (!m) return res.status(400).json({ error: 'Toma la foto de la mercancía' });
+      const buffer = Buffer.from(m[2], 'base64');
+      if (!buffer.length || buffer.length > MAX_FOTO_BYTES) return res.status(400).json({ error: 'La foto es demasiado grande' });
+
+      const { data: tienda, error: tErr } = await supabaseAdmin
+        .from('tiendas').select('id, nombre').eq('id', tiendaId).maybeSingle();
+      if (tErr) {
+        console.error('Error buscando tienda (recepción):', tErr);
+        return res.status(500).json({ error: 'No se pudo validar la tienda' });
+      }
+      if (!tienda) return res.status(400).json({ error: 'La tienda no existe' });
+
+      // Misma lógica que la foto del conteo: si Storage falla, se guarda sin foto
+      const mes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Costa_Rica', year: 'numeric', month: '2-digit' }).format(new Date());
+      let fotoPath = `recepciones/${mes}/${randomUUID()}.${EXT[m[1]]}`;
+      let avisoFoto = null;
+      let timer;
+      const { error: upErr } = await Promise.race([
+        supabaseAdmin.storage.from(BUCKET).upload(fotoPath, buffer, { contentType: m[1], upsert: false }),
+        new Promise(resolve => { timer = setTimeout(() => resolve({ error: { message: 'el almacenamiento de fotos no respondió a tiempo' } }), FOTO_TIMEOUT_MS); })
+      ]).finally(() => clearTimeout(timer));
+      if (upErr) {
+        console.error('Error subiendo foto de recepción:', upErr);
+        avisoFoto = `La foto no se pudo guardar (${upErr.message || upErr.error || 'error de almacenamiento'}); la recepción se guardó sin foto.`;
+        fotoPath = null;
+      }
+
+      const { data, error } = await supabaseAdmin.from('recepciones').insert({
+        tienda_id: tienda.id,
+        tienda_nombre: tienda.nombre,
+        cajas,
+        recibido_por: recibidoPor,
+        foto_path: fotoPath
+      }).select('id, creado_en').single();
+      if (error) {
+        console.error('Error registrando recepción:', error);
+        if (fotoPath) await supabaseAdmin.storage.from(BUCKET).remove([fotoPath]);
+        const falta = /recepciones/.test(error.message || '') && /exist|relation|schema/i.test(error.message || '');
+        return res.status(500).json({ error: falta ? 'Falta ejecutar supabase/recepciones.sql' : 'No se pudo registrar la recepción' });
+      }
+
+      // Fecha y hora de Costa Rica para el mensaje (la del servidor, no la del celular)
+      const fechaHora = new Intl.DateTimeFormat('es-CR', {
+        timeZone: 'America/Costa_Rica', day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      }).format(new Date(data.creado_en));
+      return res.status(201).json({
+        recepcion: { id: data.id, creado_en: data.creado_en, fecha_hora: fechaHora, tienda_nombre: tienda.nombre, cajas, recibido_por: recibidoPor },
+        aviso_foto: avisoFoto
+      });
     }
 
     // ── POST: registrar un conteo ──
