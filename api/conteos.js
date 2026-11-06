@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { CLAVE_PERSONAS, PERSONAS_DEFECTO, limpiarPersonas, leerPersonas } from './_personas.js';
 import { supabaseAdmin } from './_supabase.js';
 import { setCors } from './_cors.js';
-import { requirePermiso } from './_permisos.js';
+import { requirePermiso, nombreDe } from './_permisos.js';
 import { registrar } from './_bitacora.js';
 import { rateLimit } from './_rateLimit.js';
 import { sheetsHabilitado, enviarConteoASheets, eliminarConteoDeSheets } from './_sheets.js';
@@ -433,6 +433,122 @@ export default async function handler(req, res) {
         recepcion: { id: data.id, creado_en: data.creado_en, fecha_hora: fechaHora, tienda_nombre: tienda.nombre, cajas, recibido_por: recibidoPor },
         aviso_foto: avisoFoto
       });
+    }
+
+    // ── RECEPCIONES: seguimiento del coordinador (pestaña "Recepciones") ──
+    //   GET  ?accion=recepciones&estado=abiertas            -> todas las no finalizadas
+    //   GET  ?accion=recepciones&estado=finalizadas|todas&desde&hasta[&tienda_id]
+    //   POST ?accion=recepcion_ajuste    { id, ajuste_en: ISO | null }
+    //   POST ?accion=recepcion_finalizar { id, finalizar: true | false }
+    // Las horas laborables (48 h desde el ajuste, con pausa fuera de horario)
+    // las calcula el navegador con public/shared/horario-laboral.js; acá solo
+    // se guardan los instantes. "ahora" permite corregir el reloj del navegador.
+    if (req.method === 'GET' && req.query?.accion === 'recepciones') {
+      const user = await requirePermiso(req, res, 'tab-recepciones');
+      if (!user) return;
+
+      const { estado = 'abiertas', desde, hasta, tienda_id } = req.query;
+      let q = supabaseAdmin.from('recepciones').select('*');
+      if (estado === 'abiertas') {
+        q = q.is('finalizado_en', null).order('creado_en', { ascending: true });
+      } else if (estado === 'finalizadas' || estado === 'todas') {
+        if (!esFechaValida(desde) || !esFechaValida(hasta) || desde > hasta) {
+          return res.status(400).json({ error: 'Fechas inválidas (formato AAAA-MM-DD)' });
+        }
+        if ((Date.parse(hasta) - Date.parse(desde)) / 86400000 > MAX_RANGO_DIAS) {
+          return res.status(400).json({ error: `El rango máximo es de ${MAX_RANGO_DIAS} días` });
+        }
+        q = q.gte('fecha', desde).lte('fecha', hasta).order('creado_en', { ascending: false });
+        if (estado === 'finalizadas') q = q.not('finalizado_en', 'is', null);
+      } else {
+        return res.status(400).json({ error: 'Estado inválido' });
+      }
+      if (tienda_id) {
+        const tid = Number(tienda_id);
+        if (!Number.isInteger(tid) || tid <= 0) return res.status(400).json({ error: 'Tienda inválida' });
+        q = q.eq('tienda_id', tid);
+      }
+      const { data, error } = await q.limit(MAX_FILAS);
+      if (error) {
+        console.error('Error consultando recepciones:', error);
+        const falta = /recepciones|ajuste_en|finalizado_en/.test(error.message || '');
+        return res.status(500).json({ error: falta ? 'Falta ejecutar supabase/recepciones.sql' : 'No se pudieron cargar las recepciones' });
+      }
+
+      const paths = data.map(r => r.foto_path).filter(Boolean);
+      const urls = new Map();
+      if (paths.length) {
+        const { data: firmadas, error: sErr } = await supabaseAdmin.storage.from(BUCKET).createSignedUrls(paths, URL_FIRMADA_SEG);
+        if (sErr) console.error('Error firmando fotos de recepciones:', sErr);
+        (firmadas || []).forEach(f => { if (f.signedUrl) urls.set(f.path, f.signedUrl); });
+      }
+      return res.status(200).json({
+        recepciones: data.map(({ foto_path, ...r }) => ({ ...r, foto_url: urls.get(foto_path) || null })),
+        truncado: data.length === MAX_FILAS,
+        ahora: new Date().toISOString()
+      });
+    }
+
+    if (req.method === 'POST' && (req.query?.accion === 'recepcion_ajuste' || req.query?.accion === 'recepcion_finalizar')) {
+      const user = await requirePermiso(req, res, 'tab-recepciones');
+      if (!user) return;
+
+      const b = req.body || {};
+      const id = Number(b.id);
+      if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido' });
+      const { data: r, error: rErr } = await supabaseAdmin.from('recepciones').select('*').eq('id', id).maybeSingle();
+      if (rErr) {
+        console.error('Error leyendo recepción:', rErr);
+        return res.status(500).json({ error: /ajuste_en|finalizado_en/.test(rErr.message || '') ? 'Falta ejecutar supabase/recepciones.sql' : 'No se pudo leer la recepción' });
+      }
+      if (!r) return res.status(404).json({ error: 'La recepción no existe' });
+      const quien = nombreDe(user) || null;
+      const desc = `#${id} ${r.tienda_nombre} (${r.cajas} caja${r.cajas === 1 ? '' : 's'})`;
+      const fmt = iso => new Intl.DateTimeFormat('es-CR', {
+        timeZone: 'America/Costa_Rica', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+      }).format(new Date(iso));
+
+      let cambios, accion, detalle;
+      if (req.query.accion === 'recepcion_ajuste') {
+        if (r.finalizado_en) return res.status(409).json({ error: 'La recepción ya está finalizada; reábrela para cambiar el ajuste' });
+        if (b.ajuste_en === null) {
+          cambios = { ajuste_en: null, ajuste_por: null };
+          accion = 'recepcion_ajuste';
+          detalle = `Quitó la hora del ajuste de inventario de la recepción ${desc}`;
+        } else {
+          const t = Date.parse(String(b.ajuste_en ?? ''));
+          if (!Number.isFinite(t)) return res.status(400).json({ error: 'Fecha y hora del ajuste inválidas' });
+          if (t > Date.now() + 5 * 60000) return res.status(400).json({ error: 'El ajuste no puede ser en el futuro' });
+          if (t < Date.parse(r.creado_en) - 30 * 86400000) return res.status(400).json({ error: 'El ajuste es más de 30 días anterior a la recepción; revisa la fecha' });
+          const ajusteEn = new Date(t).toISOString();
+          cambios = { ajuste_en: ajusteEn, ajuste_por: quien };
+          accion = 'recepcion_ajuste';
+          detalle = `Registró el ajuste de inventario de la recepción ${desc}: ${fmt(ajusteEn)}`;
+        }
+      } else if (b.finalizar === true) {
+        if (r.finalizado_en) return res.status(409).json({ error: 'La recepción ya estaba finalizada' });
+        if (!r.ajuste_en) return res.status(400).json({ error: 'Registra primero la hora del ajuste de inventario' });
+        cambios = { finalizado_en: new Date().toISOString(), finalizado_por: quien };
+        accion = 'recepcion_finalizar';
+        detalle = `Dio por contada y finalizó la recepción ${desc}`;
+      } else if (b.finalizar === false) {
+        if (!r.finalizado_en) return res.status(409).json({ error: 'La recepción no está finalizada' });
+        cambios = { finalizado_en: null, finalizado_por: null };
+        accion = 'recepcion_reabrir';
+        detalle = `Reabrió la recepción ${desc} (estaba finalizada desde ${fmt(r.finalizado_en)})`;
+      } else {
+        return res.status(400).json({ error: 'Indica si se finaliza o se reabre' });
+      }
+
+      const { data: nueva, error: uErr } = await supabaseAdmin
+        .from('recepciones').update(cambios).eq('id', id).select('*').single();
+      if (uErr) {
+        console.error('Error actualizando recepción:', uErr);
+        return res.status(500).json({ error: 'No se pudo guardar el cambio' });
+      }
+      await registrar(user, accion, detalle, { recepcion_id: id });
+      const { foto_path, ...resto } = nueva;
+      return res.status(200).json({ recepcion: resto, ahora: new Date().toISOString() });
     }
 
     // ── POST: registrar un conteo ──

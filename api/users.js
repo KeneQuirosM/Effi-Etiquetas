@@ -16,6 +16,7 @@ const GRUPOS_BITACORA = {
   productos:    ['producto_'],
   tiendas:      ['tienda_'],
   conteos:      ['conteo_'],
+  recepciones:  ['recepcion_'],
   config:       ['config_'],
   dispositivos: ['dispositivo_'],
   usuarios:     ['usuario_', 'permisos_', 'inactividad_'],

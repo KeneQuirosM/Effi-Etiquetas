@@ -407,6 +407,7 @@ function switchTab(id) {
   if (id === 'tab-bitacora') abrirBitacora();
   if (id === 'tab-devol' && !devolDias) devolPreset('semana');
   if (id === 'tab-conteos') { populateConteoTiendas(); if (!conteos) conteoPreset('semana'); }
+  if (id === 'tab-recepciones') { populateRcTiendas(); cargarRecepciones(); }
   if (id === 'tab-config') {
     if (puede('cfg-conteos')) cargarOpcionesConteos();
     if (puede('cfg-disp')) cargarDispositivos();
@@ -674,11 +675,14 @@ function lockCoord(motivo) {
   document.querySelectorAll('.coord-only').forEach(el => el.style.display = 'none');
   devolDias = null;
   conteos = null;
+  recepciones = null;
   bitacoraAbierta = false;
   document.getElementById('bita-lista').innerHTML = '';
   detenerEstacion(false);
   document.getElementById('conteo-list').innerHTML = '';
   document.getElementById('conteo-resumen').innerHTML = '';
+  document.getElementById('rc-lista').innerHTML = '';
+  document.getElementById('rc-resumen').innerHTML = '';
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
   document.getElementById('coord-icon').textContent = '';
@@ -2876,7 +2880,7 @@ function permisosUI() {
     { titulo: 'Pestañas del panel', items: [
       ['tab-add-item', 'Agregar Producto'], ['tab-add-tienda', 'Nueva Tienda'],
       ['tab-manage', 'Gestionar Inventario'], ['tab-devol', 'Devoluciones'],
-      ['tab-conteos', 'Conteos'], ['tab-impresion', 'Impresión']
+      ['tab-conteos', 'Conteos'], ['tab-impresion', 'Impresión'], ['tab-recepciones', 'Recepciones']
     ] },
     { titulo: 'Secciones de Configuración', items: [
       ['cfg-logos', 'Logos'], ['cfg-qr', 'QR de ubicación'], ['cfg-grupo', 'Imprimir por grupo (Alistamiento)'],
@@ -2975,6 +2979,9 @@ const BITACORA_ACCIONES = {
   tienda_borrar:           ['Tienda', 'del'],
   conteo_trasladar:        ['Conteo', 'edit'],
   conteo_borrar:           ['Conteo', 'del'],
+  recepcion_ajuste:        ['Recepción', 'edit'],
+  recepcion_finalizar:     ['Recepción', 'ok'],
+  recepcion_reabrir:       ['Recepción', 'edit'],
   config_cambiar:          ['Configuración', 'edit'],
   dispositivo_vincular:    ['Dispositivo', 'ok'],
   dispositivo_desvincular: ['Dispositivo', 'del'],
@@ -3489,3 +3496,293 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+
+/* ── RECEPCIONES DE MERCANCÍA ─────────────────────────────
+ * Vista del coordinador de lo registrado en recepcion/recepcion.html. Por
+ * cada recepción: horas laborables desde que llegó, la hora del ajuste de
+ * inventario (la registra el coordinador; desde ahí corren 48 horas
+ * laborables) y "Dar por contado y finalizar", que deja fijo cuántas horas
+ * después del ajuste se terminó. Las horas se calculan con
+ * shared/horario-laboral.js (pausa fuera del horario de la empresa); el
+ * servidor solo guarda los instantes. Los medidores se refrescan cada 30 s
+ * sin volver a pintar las tarjetas (no se pierde lo que se está escribiendo).
+ */
+const RC_RIESGO_HORAS = 8;          // quedan menos de esto: "por vencer"
+const RC_TZ = 'America/Costa_Rica';
+let recepciones = null;
+let rcEstadoActual = 'abiertas';
+let rcRelojDesfase = 0;              // hora del servidor - hora del navegador (ms)
+let rcCargadasEn = 0;
+let rcTimer = null;
+
+const rcAhora = () => Date.now() + rcRelojDesfase;
+
+function populateRcTiendas() {
+  const sel = document.getElementById('rc-tienda');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todas</option>';
+  appData.tiendas.forEach(t => sel.add(new Option(t.nombre, t.id)));
+  if (cur !== '') sel.value = cur;
+}
+
+function rcEstado(estado) {
+  rcEstadoActual = estado;
+  document.querySelectorAll('.rc-estados [data-estado]').forEach(b => b.classList.toggle('active', b.dataset.estado === estado));
+  document.querySelectorAll('.rc-fecha').forEach(el => { el.hidden = estado === 'abiertas'; });
+  if (estado !== 'abiertas' && !document.getElementById('rc-desde').value) {
+    document.getElementById('rc-desde').value = fechaLocalISO(sumarDias(new Date(), -29));
+    document.getElementById('rc-hasta').value = fechaLocalISO(new Date());
+  }
+  cargarRecepciones();
+}
+
+async function cargarRecepciones() {
+  const lista = document.getElementById('rc-lista');
+  let url = `/api/conteos?accion=recepciones&estado=${rcEstadoActual}`;
+  if (rcEstadoActual !== 'abiertas') {
+    const desde = document.getElementById('rc-desde').value, hasta = document.getElementById('rc-hasta').value;
+    if (!desde || !hasta) return notify('Selecciona las fechas desde y hasta', 'warn');
+    if (desde > hasta) return notify('La fecha "desde" es posterior a "hasta"', 'warn');
+    url += `&desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`;
+  }
+  const tienda = document.getElementById('rc-tienda').value;
+  if (tienda) url += `&tienda_id=${encodeURIComponent(tienda)}`;
+  if (!recepciones) lista.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>';
+  try {
+    const data = await apiFetch('GET', url);
+    recepciones = data.recepciones || [];
+    if (data.ahora) rcRelojDesfase = Date.parse(data.ahora) - Date.now();
+    rcCargadasEn = Date.now();
+    if (data.truncado) notify('Se muestran solo las 1000 recepciones más recientes', 'warn');
+    renderRecepciones();
+    iniciarRelojRecepciones();
+  } catch (e) {
+    recepciones = null;
+    document.getElementById('rc-resumen').innerHTML = '';
+    lista.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--danger)">${esc(e.message || 'Error al cargar recepciones')}</span></div>`;
+  }
+}
+
+// Refresca los medidores cada 30 s y vuelve a pedir la lista cada 2 min
+// (llegan recepciones nuevas), mientras la pestaña esté a la vista.
+function iniciarRelojRecepciones() {
+  if (rcTimer) return;
+  rcTimer = setInterval(() => {
+    const tab = document.getElementById('tab-recepciones');
+    if (!tab || !tab.classList.contains('active') || document.hidden || !coordUnlocked) return;
+    const escribiendo = tab.contains(document.activeElement) && document.activeElement.matches('input');
+    if (Date.now() - rcCargadasEn > 2 * 60000 && !escribiendo) cargarRecepciones();
+    else actualizarMedidores();
+  }, 30000);
+}
+
+/* Formatos */
+function rcFecha(ms, conDia) {
+  return new Intl.DateTimeFormat('es-CR', {
+    timeZone: RC_TZ, weekday: conDia ? 'short' : undefined, day: '2-digit', month: '2-digit',
+    year: conDia ? undefined : 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+  }).format(new Date(ms));
+}
+function rcHoras(h) {
+  const min = Math.round(Math.abs(h) * 60);
+  if (min < 60) return `${min} min`;
+  const hh = Math.floor(min / 60), mm = min % 60;
+  return mm ? `${hh} h ${mm} min` : `${hh} h`;
+}
+// Valor para <input type="datetime-local"> en hora de Costa Rica
+function rcValorLocal(ms) {
+  return new Date(ms - 6 * 3600000).toISOString().slice(0, 16);
+}
+
+// Estado calculado de una recepción en el instante "ahora"
+function rcCalculo(r, ahora) {
+  const HL = HorarioLaboral;
+  const recibido = Date.parse(r.creado_en);
+  const fin = r.finalizado_en ? Date.parse(r.finalizado_en) : ahora;
+  const c = { recibido, fin, finalizada: !!r.finalizado_en, desdeRecepcion: HL.horasLaborables(recibido, fin) };
+  if (!r.ajuste_en) {
+    c.tono = 'espera';
+    c.pct = Math.min(1, c.desdeRecepcion / HL.PLAZO_HORAS);
+    return c;
+  }
+  c.ajuste = Date.parse(r.ajuste_en);
+  c.usadas = HL.horasLaborables(c.ajuste, fin);
+  c.restan = HL.PLAZO_HORAS - c.usadas;
+  c.vence = HL.sumarHoras(c.ajuste, HL.PLAZO_HORAS);
+  c.pct = Math.min(1, c.usadas / HL.PLAZO_HORAS);
+  c.tono = c.restan < 0 ? 'vencida' : c.finalizada ? 'ok' : c.restan <= RC_RIESGO_HORAS ? 'riesgo' : 'ok';
+  return c;
+}
+
+function rcMedidorHTML(r, ahora) {
+  const c = rcCalculo(r, ahora);
+  const HL = HorarioLaboral;
+  const pausa = !c.finalizada && !HL.enHorario(ahora);
+  let centro, sub, lineas = [];
+  if (!r.ajuste_en) {
+    centro = rcHoras(c.desdeRecepcion);
+    sub = 'desde que llegó';
+    lineas.push('<b>Esperando el ajuste de inventario.</b> El plazo de 48 h empieza al registrarlo.');
+  } else {
+    centro = rcHoras(c.usadas);
+    sub = `usadas de ${HL.PLAZO_HORAS} h`;
+    if (c.finalizada) {
+      lineas.push(c.restan >= 0
+        ? `<b>Terminada ${esc(rcHoras(c.usadas))} laborables después del ajuste</b>, a tiempo (sobraron ${esc(rcHoras(c.restan))}).`
+        : `<b>Terminada ${esc(rcHoras(c.usadas))} laborables después del ajuste</b>, ${esc(rcHoras(-c.restan))} fuera del plazo.`);
+    } else if (c.restan >= 0) {
+      lineas.push(`<b>Quedan ${esc(rcHoras(c.restan))} laborables.</b> Vence el ${esc(rcFecha(c.vence, true))}`);
+    } else {
+      lineas.push(`<b>Vencida hace ${esc(rcHoras(-c.restan))} laborables</b> (venció ${esc(rcFecha(c.vence, true))}).`);
+    }
+  }
+  if (r.ajuste_en) lineas.push(`Desde la recepción: ${esc(rcHoras(c.desdeRecepcion))} laborables.`);
+  if (pausa) lineas.push(`<span class="rc-pausa">En pausa (fuera de horario), sigue el ${esc(rcFecha(HL.proximaApertura(ahora), true))}</span>`);
+
+  const etiqueta = c.finalizada ? 'Finalizada' : { espera: 'Sin ajuste', ok: 'En plazo', riesgo: 'Por vencer', vencida: 'Vencida' }[c.tono];
+  const pct = Math.round(c.pct * 1000) / 10;
+  return `
+    <div class="rc-gauge rc-${c.tono}" role="img" aria-label="${esc(`${centro} ${sub}`)}">
+      <svg viewBox="0 0 120 68" aria-hidden="true">
+        <path class="rc-gauge-pista" d="M10 62 A50 50 0 0 1 110 62" pathLength="100"/>
+        ${pct > 0 ? `<path class="rc-gauge-valor" d="M10 62 A50 50 0 0 1 110 62" pathLength="100" stroke-dasharray="${pct} 100"/>` : ''}
+      </svg>
+      <div class="rc-gauge-txt"><strong>${esc(centro)}</strong><span>${esc(sub)}</span></div>
+    </div>
+    <div class="rc-estado-txt">
+      <span class="rc-chip rc-chip-${c.finalizada && c.tono !== 'vencida' ? 'fin' : c.tono}">${esc(etiqueta)}</span>
+      ${lineas.map(l => `<p>${l}</p>`).join('')}
+    </div>`;
+}
+
+function rcAccionesHTML(r) {
+  const id = Number(r.id);
+  if (r.finalizado_en) {
+    return `<p class="rc-meta">Finalizada ${esc(rcFecha(Date.parse(r.finalizado_en)))}${r.finalizado_por ? ` por ${esc(r.finalizado_por)}` : ''}.</p>
+      <div class="rc-botones"><button type="button" class="btn-action btn-ghost" onclick="rcFinalizar(${id}, false)">Reabrir</button></div>`;
+  }
+  const max = rcValorLocal(rcAhora());
+  const valor = r.ajuste_en ? rcValorLocal(Date.parse(r.ajuste_en)) : max;
+  return `
+    <div class="rc-ajuste">
+      <label for="rc-aj-${id}">${r.ajuste_en ? 'Ajuste de inventario recibido' : 'Llegó el ajuste de inventario'}</label>
+      <div class="rc-ajuste-fila">
+        <input type="datetime-local" id="rc-aj-${id}" value="${esc(valor)}" max="${esc(max)}">
+        <button type="button" class="btn-action ${r.ajuste_en ? 'btn-ghost' : 'btn-primary'}" onclick="rcGuardarAjuste(${id})">${r.ajuste_en ? 'Cambiar' : 'Registrar ajuste'}</button>
+        ${r.ajuste_en ? `<button type="button" class="btn-action btn-ghost" onclick="rcQuitarAjuste(${id})">Quitar</button>` : ''}
+      </div>
+      ${r.ajuste_en && r.ajuste_por ? `<p class="rc-meta">Registrado por ${esc(r.ajuste_por)}.</p>` : ''}
+    </div>
+    <div class="rc-botones">
+      <button type="button" class="btn-action btn-primary" onclick="rcFinalizar(${id}, true)" ${r.ajuste_en ? '' : 'disabled title="Registra primero el ajuste de inventario"'}>Dar por contado y finalizar</button>
+    </div>`;
+}
+
+function renderRecepciones() {
+  const lista = document.getElementById('rc-lista');
+  if (!recepciones) return;
+  if (!recepciones.length) {
+    lista.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--muted)">${rcEstadoActual === 'abiertas' ? 'No hay recepciones abiertas' : 'No hay recepciones en ese rango'}</span></div>`;
+    actualizarMedidores();
+    return;
+  }
+  const ahora = rcAhora();
+  lista.innerHTML = recepciones.map(r => `
+    <article class="rc-card" data-id="${Number(r.id)}">
+      <div class="rc-cab">
+        <a class="rc-foto" ${r.foto_url ? `href="${esc(r.foto_url)}" target="_blank" rel="noopener"` : ''} aria-label="Foto de la recepción">
+          ${r.foto_url ? `<img src="${esc(r.foto_url)}" alt="" loading="lazy">` : '<span>Sin foto</span>'}
+        </a>
+        <div class="rc-info">
+          <strong class="rc-tienda">${esc(r.tienda_nombre)}</strong>
+          <span>${Number(r.cajas).toLocaleString('es-CR')} caja${Number(r.cajas) === 1 ? '' : 's'} · recibió ${esc(r.recibido_por)}</span>
+          <span class="rc-meta">Recibida ${esc(rcFecha(Date.parse(r.creado_en)))} · #${Number(r.id)}</span>
+        </div>
+      </div>
+      <div class="rc-medidor">${rcMedidorHTML(r, ahora)}</div>
+      ${rcAccionesHTML(r)}
+    </article>`).join('');
+  actualizarMedidores();
+}
+
+// Solo medidores, resumen y aviso de horario (sin tocar los inputs)
+function actualizarMedidores() {
+  if (!recepciones) return;
+  const ahora = rcAhora();
+  const HL = HorarioLaboral;
+  document.querySelectorAll('#rc-lista .rc-card').forEach(card => {
+    const r = recepciones.find(x => Number(x.id) === Number(card.dataset.id));
+    if (r) card.querySelector('.rc-medidor').innerHTML = rcMedidorHTML(r, ahora);
+  });
+
+  const reloj = document.getElementById('rc-reloj');
+  reloj.className = 'rc-reloj ' + (HL.enHorario(ahora) ? 'rc-reloj-corre' : 'rc-reloj-pausa');
+  reloj.textContent = HL.enHorario(ahora)
+    ? 'En horario laboral: los plazos están corriendo.'
+    : `Fuera de horario: los plazos están en pausa hasta el ${rcFecha(HL.proximaApertura(ahora), true)}`;
+
+  const calc = recepciones.map(r => rcCalculo(r, ahora));
+  const abiertas = calc.filter(c => !c.finalizada), fin = calc.filter(c => c.finalizada && c.ajuste);
+  const tarjeta = (n, txt, tono) => `<div class="rc-res rc-res-${tono}"><strong>${n}</strong><span>${esc(txt)}</span></div>`;
+  let html = '';
+  if (abiertas.length || rcEstadoActual === 'abiertas') {
+    html += tarjeta(abiertas.filter(c => c.tono === 'espera').length, 'Sin ajuste', 'espera') +
+      tarjeta(abiertas.filter(c => c.tono === 'ok').length, 'En plazo', 'ok') +
+      tarjeta(abiertas.filter(c => c.tono === 'riesgo').length, `Por vencer (< ${RC_RIESGO_HORAS} h)`, 'riesgo') +
+      tarjeta(abiertas.filter(c => c.tono === 'vencida').length, 'Vencidas', 'vencida');
+  }
+  if (fin.length) {
+    const aTiempo = fin.filter(c => c.restan >= 0).length;
+    const prom = fin.reduce((s, c) => s + c.usadas, 0) / fin.length;
+    html += tarjeta(`${aTiempo}/${fin.length}`, 'Finalizadas a tiempo', aTiempo === fin.length ? 'ok' : 'riesgo') +
+      tarjeta(rcHoras(prom), 'Promedio tras el ajuste', 'fin');
+  }
+  document.getElementById('rc-resumen').innerHTML = html;
+}
+
+function rcReemplazar(r, ahora) {
+  if (ahora) rcRelojDesfase = Date.parse(ahora) - Date.now();
+  const i = recepciones.findIndex(x => Number(x.id) === Number(r.id));
+  const sale = (rcEstadoActual === 'abiertas' && r.finalizado_en) || (rcEstadoActual === 'finalizadas' && !r.finalizado_en);
+  if (i >= 0) {
+    if (sale) recepciones.splice(i, 1);
+    else recepciones[i] = { ...recepciones[i], ...r };
+  }
+  renderRecepciones();
+}
+
+async function rcGuardarAjuste(id) {
+  const inp = document.getElementById(`rc-aj-${id}`);
+  if (!inp || !inp.value) return notify('Indica la fecha y la hora en que llegó el ajuste', 'warn');
+  const iso = new Date(`${inp.value}:00-06:00`).toISOString();   // lo escrito es hora de Costa Rica
+  if (Date.parse(iso) > rcAhora() + 60000) return notify('El ajuste no puede ser en el futuro', 'warn');
+  try {
+    const res = await apiPost('/api/conteos?accion=recepcion_ajuste', { id, ajuste_en: iso });
+    notify('Ajuste de inventario registrado: corren las 48 h laborables', 'success');
+    rcReemplazar(res.recepcion, res.ahora);
+  } catch (e) { notify(e.message || 'No se pudo guardar el ajuste', 'error'); }
+}
+
+async function rcQuitarAjuste(id) {
+  if (!confirm('¿Quitar la hora del ajuste? El plazo de 48 h deja de contar hasta que la registres de nuevo.')) return;
+  try {
+    const res = await apiPost('/api/conteos?accion=recepcion_ajuste', { id, ajuste_en: null });
+    rcReemplazar(res.recepcion, res.ahora);
+  } catch (e) { notify(e.message || 'No se pudo quitar el ajuste', 'error'); }
+}
+
+async function rcFinalizar(id, finalizar) {
+  const r = recepciones?.find(x => Number(x.id) === id);
+  const msg = finalizar
+    ? `¿Dar por contada y finalizar la recepción de ${r ? r.tienda_nombre : ''}? Se guarda la hora actual como cierre.`
+    : '¿Reabrir esta recepción? Se borra la hora de cierre y el plazo vuelve a correr.';
+  if (!confirm(msg)) return;
+  try {
+    const res = await apiPost('/api/conteos?accion=recepcion_finalizar', { id, finalizar });
+    const c = rcCalculo(res.recepcion, rcAhora());
+    notify(finalizar
+      ? `Recepción finalizada ${rcHoras(c.usadas)} laborables después del ajuste${c.restan >= 0 ? ', a tiempo' : ', fuera del plazo'}`
+      : 'Recepción reabierta', finalizar && c.restan < 0 ? 'warn' : 'success');
+    rcReemplazar(res.recepcion, res.ahora);
+  } catch (e) { notify(e.message || 'No se pudo guardar', 'error'); }
+}

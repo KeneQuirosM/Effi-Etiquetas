@@ -139,6 +139,7 @@
       <button class="tab-btn" data-tab="tab-devol" data-permiso="tab-devol" onclick="switchTab('tab-devol')">Devoluciones</button>
       <button class="tab-btn" data-tab="tab-conteos" data-permiso="tab-conteos" onclick="switchTab('tab-conteos')">Conteos</button>
       <button class="tab-btn" data-tab="tab-impresion" data-permiso="tab-impresion" onclick="switchTab('tab-impresion')">Impresión</button>
+      <button class="tab-btn" data-tab="tab-recepciones" data-permiso="tab-recepciones" onclick="switchTab('tab-recepciones')">Recepciones</button>
     </div>
 
     <!-- TAB: Agregar Producto -->
@@ -568,6 +569,7 @@
             <option value="productos">Productos</option>
             <option value="tiendas">Tiendas</option>
             <option value="conteos">Conteos</option>
+            <option value="recepciones">Recepciones</option>
             <option value="config">Configuración</option>
             <option value="dispositivos">Dispositivos</option>
             <option value="mercado">Mercado</option>
@@ -653,6 +655,38 @@
         </ol>
         <p>Con ese acceso directo Chrome imprime directo en la impresora predeterminada, sin mostrar el cuadro de impresión. No instala nada: usa un perfil de Chrome aparte para que la opción funcione aunque Chrome ya esté abierto. Si la PC usa Edge, cambia la ruta por <code>"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"</code>. Sin el acceso directo la estación también funciona, pero en cada conteo aparece el cuadro de impresión y hay que pulsar Imprimir.</p>
       </details>
+    </div>
+
+    <!-- TAB: Recepciones de mercancía (recepcion.html) con su plazo de 48 h laborables -->
+    <div id="tab-recepciones" class="tab-content">
+      <p class="section-label" style="margin-bottom:6px">Recepciones de mercancía</p>
+      <p class="rc-ayuda">Plazo: <b>48 horas laborables</b> desde que llega el ajuste de inventario. El reloj solo corre en horario (lunes a viernes de 7:30 a. m. a 5:00 p. m., sábado de 7:30 a. m. a 1:00 p. m.) y se pausa fuera de él.</p>
+      <div class="devol-presets rc-estados" role="group" aria-label="Estado">
+        <button type="button" class="btn-action btn-ghost active" data-estado="abiertas" onclick="rcEstado('abiertas')">Abiertas</button>
+        <button type="button" class="btn-action btn-ghost" data-estado="finalizadas" onclick="rcEstado('finalizadas')">Finalizadas</button>
+        <button type="button" class="btn-action btn-ghost" data-estado="todas" onclick="rcEstado('todas')">Todas</button>
+      </div>
+      <div class="devol-filtros">
+        <div class="form-group rc-fecha" hidden>
+          <label for="rc-desde">Desde</label>
+          <input type="date" id="rc-desde">
+        </div>
+        <div class="form-group rc-fecha" hidden>
+          <label for="rc-hasta">Hasta</label>
+          <input type="date" id="rc-hasta">
+        </div>
+        <div class="form-group">
+          <label for="rc-tienda">Tienda</label>
+          <select id="rc-tienda"><option value="">Todas</option></select>
+        </div>
+        <button type="button" class="btn-action btn-primary" onclick="cargarRecepciones()">Actualizar</button>
+      </div>
+      <div class="rc-reloj" id="rc-reloj" aria-live="polite"></div>
+      <div class="rc-resumen" id="rc-resumen"></div>
+      <div class="rc-lista" id="rc-lista">
+        <div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">Las recepciones se registran desde la pantalla "Recepción de Mercancía" (abierta para todos, pensada para el celular). No se toman en cuenta los feriados. Las fotos se abren con un enlace temporal de 1 hora.</p>
     </div>
 
     <!-- TAB: Conteos registrados desde conteos.html (pantalla móvil pública) -->
@@ -904,6 +938,7 @@
 
 <script src="/shared/dom-utils.js"></script>
 <script src="/shared/api.js"></script>
+<script src="/shared/horario-laboral.js"></script>
 <script src="/index.js"></script>
 <script src="/decoracion.js"></script>
 </body>

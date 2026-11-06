@@ -20,8 +20,18 @@ CREATE TABLE IF NOT EXISTS recepciones (
   creado_en      TIMESTAMPTZ NOT NULL DEFAULT NOW()   -- fecha y hora de la recepción
 );
 
+-- Seguimiento del coordinador (pestaña "Recepciones" del panel): cuándo
+-- llegó el ajuste de inventario (desde ahí corren 48 horas laborables) y
+-- cuándo se dio por contado todo. Agregadas después de la primera versión:
+-- este archivo completo se puede volver a ejecutar sin perder datos.
+ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS ajuste_en      TIMESTAMPTZ;  -- llegada del ajuste de inventario
+ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS ajuste_por     TEXT;         -- quién lo registró en el panel
+ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS finalizado_en  TIMESTAMPTZ;  -- se dio por contado todo (hora del servidor)
+ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS finalizado_por TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_recepciones_fecha  ON recepciones(fecha);
 CREATE INDEX IF NOT EXISTS idx_recepciones_tienda ON recepciones(tienda_id);
+CREATE INDEX IF NOT EXISTS idx_recepciones_abiertas ON recepciones(creado_en) WHERE finalizado_en IS NULL;
 
 ALTER TABLE recepciones ENABLE ROW LEVEL SECURITY;
 

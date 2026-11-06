@@ -77,6 +77,7 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 - Se guarda en la tabla `recepciones` (vía `POST /api/conteos?accion=recepcion`); la foto va al bucket `conteos`, carpeta `recepciones/`
 - Tras guardar, "Compartir en WhatsApp" abre el menú de compartir con la foto y el mensaje "Ingresa mercancía" (Tienda, Cantidad cajas, Recibido por, Fecha y hora)
 - Respeta "Exigir dispositivo vinculado"; se puede vincular un celular directo a esta pantalla desde Configuración > Dispositivos vinculados
+- Panel de Coordinador, pestaña "Recepciones": un medidor por recepción con las horas laborables transcurridas. El coordinador registra cuándo llegó el ajuste de inventario y desde ahí corren **48 horas laborables** (lunes a viernes 7:30 a. m. a 5:00 p. m., sábado 7:30 a. m. a 1:00 p. m.; fuera de horario el reloj se pausa, sin feriados). Muestra lo que queda y cuándo vence (en plazo, por vencer con menos de 8 h, vencida). "Dar por contado y finalizar" deja registrado cuántas horas laborables después del ajuste se terminó y si fue a tiempo; se puede reabrir. Los cambios quedan en la Bitácora
 
 ### 7. Trazabilidad de Inventario (`/trazabilidad.html`)
 - Carga los Excel de Base, Movimientos y Devoluciones, detecta sus columnas por nombre y cruza los datos
@@ -132,7 +133,7 @@ El guardado del almacén reemplaza el estado completo en una sola transacción c
 - `conteos_traslados` — historial de traslados de conteos entre tiendas/IDs (quién, cuándo, de dónde a dónde)
 
 **Recepciones** — `supabase/recepciones.sql`:
-- `recepciones` — una fila por recepción de mercancía (tienda, cajas, recibido por, foto, fecha y hora del servidor)
+- `recepciones` — una fila por recepción de mercancía (tienda, cajas, recibido por, foto, fecha y hora del servidor) y su seguimiento: llegada del ajuste de inventario y cierre (quién y cuándo)
 
 **Dispositivos vinculados** — `supabase/dispositivos.sql`:
 - `dispositivos` — equipos autorizados a enviar Conteos y Devoluciones (nombre y hash de su credencial). Sin acceso público: solo la API la lee

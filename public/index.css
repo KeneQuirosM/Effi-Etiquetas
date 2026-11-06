@@ -1729,3 +1729,75 @@ body {
 .disp-enlace input { flex: 1; min-width: 0; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 12px; font-family: var(--mono, monospace); }
 .disp-lista .inv-item { gap: 10px; }
 .disp-lista .disp-meta { font-size: 11px; color: var(--muted); }
+
+/* ══ RECEPCIONES: plazo de 48 h laborables (pestaña del coordinador) ══ */
+#tab-recepciones .rc-fecha[hidden] { display: none; }
+.rc-ayuda { font-size: 12px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+.rc-reloj { font-size: 12px; font-weight: 600; padding: 7px 10px; border-radius: var(--radius-sm); margin-bottom: 10px; }
+.rc-reloj:empty { display: none; }
+.rc-reloj-corre { background: var(--success-bg); color: var(--success-text); }
+.rc-reloj-pausa { background: var(--neutral-100); color: var(--text); border: 1px dashed var(--border); }
+.rc-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.rc-resumen:empty { display: none; }
+.rc-res { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: var(--radius-md); border: 1px solid var(--border); border-left-width: 4px; background: var(--panel); }
+.rc-res strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.rc-res span { font-size: 11px; color: var(--muted); }
+.rc-res-espera  { border-left-color: var(--accent); }
+.rc-res-ok      { border-left-color: var(--success); }
+.rc-res-riesgo  { border-left-color: var(--warning); }
+.rc-res-vencida { border-left-color: var(--danger); }
+.rc-res-fin     { border-left-color: var(--primary); }
+
+.rc-lista {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;
+  max-height: 640px; overflow-y: auto; padding-right: 2px;
+}
+.rc-lista > .inv-item { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.rc-card { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel); }
+.rc-cab { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.rc-foto {
+  flex-shrink: 0; width: 56px; height: 56px; border-radius: var(--radius-sm); overflow: hidden;
+  background: var(--bg); display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--muted);
+}
+.rc-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12.5px; }
+.rc-tienda { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-meta { font-size: 11px; color: var(--muted); }
+
+.rc-medidor { display: grid; grid-template-columns: 132px 1fr; gap: 12px; align-items: center; }
+.rc-gauge { position: relative; width: 132px; }
+.rc-gauge svg { width: 100%; display: block; overflow: visible; }
+.rc-gauge path { fill: none; stroke-width: 11; stroke-linecap: round; }
+.rc-gauge-pista { stroke: var(--neutral-200); }
+.rc-gauge-valor { stroke: var(--accent); transition: stroke-dasharray .4s ease; }
+.rc-ok .rc-gauge-valor      { stroke: var(--success); }
+.rc-riesgo .rc-gauge-valor  { stroke: var(--warning); }
+.rc-vencida .rc-gauge-valor { stroke: var(--danger); }
+.rc-gauge-txt {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; align-items: center; line-height: 1.15; text-align: center;
+}
+.rc-gauge-txt strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.rc-gauge-txt span { font-size: 9.5px; color: var(--muted); }
+.rc-estado-txt { display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 1.4; min-width: 0; }
+.rc-chip { align-self: flex-start; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 2px 8px; border-radius: 999px; }
+.rc-chip-espera  { background: var(--brand-50); color: var(--primary); }
+.rc-chip-ok      { background: var(--success-bg); color: var(--success-text); }
+.rc-chip-riesgo  { background: var(--warning-bg); color: var(--warning-text); }
+.rc-chip-vencida { background: var(--danger-bg); color: var(--danger-text); }
+.rc-chip-fin     { background: var(--primary); color: #fff; }
+.rc-pausa { color: var(--muted); font-style: italic; }
+
+.rc-ajuste { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--border); padding-top: 10px; }
+.rc-ajuste label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+.rc-ajuste-fila { display: flex; gap: 6px; flex-wrap: wrap; }
+.rc-ajuste-fila input { flex: 1 1 170px; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; font-size: 13px; }
+.rc-ajuste-fila .btn-action, .rc-botones .btn-action { padding: 6px 12px; font-size: 12px; }
+.rc-botones { display: flex; justify-content: flex-end; gap: 6px; }
+.rc-botones .btn-action:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 640px) {
+  .rc-lista { grid-template-columns: 1fr; max-height: none; }
+  .rc-medidor { grid-template-columns: 112px 1fr; }
+  .rc-gauge { width: 112px; }
+}

@@ -30,6 +30,7 @@ export const PERMISOS = {
   'tab-devol':        [true, false, 'Pestaña Devoluciones'],
   'tab-conteos':      [true, true, 'Pestaña Conteos'],
   'tab-impresion':    [true, true, 'Pestaña Impresión'],
+  'tab-recepciones':  [true, false, 'Pestaña Recepciones'],
   // Secciones de Configuración (Cambiar contraseña siempre está)
   'cfg-logos':        [true, false, 'Configuración: Logos'],
   'cfg-qr':           [true, false, 'Configuración: QR de ubicación'],
