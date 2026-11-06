@@ -58,3 +58,28 @@ test('enHorario y proximaApertura', () => {
   assert.equal(H.proximaApertura(cr(`${SAB}T14:00`)), cr(`${LUN2}T07:30`));
   assert.equal(H.proximaApertura(cr(`${LUN}T09:00`)), cr(`${LUN}T09:00`));
 });
+
+test('feriado cuenta como día cerrado', () => {
+  H.setFeriados([{ fecha: MAR, nombre: 'Prueba' }, 'basura', null]);
+  try {
+    assert.equal(H.esFeriado(MAR), true);
+    assert.equal(H.horasLaborables(cr(`${LUN}T00:00`), cr('2026-11-04T00:00')), 9.5);
+    assert.equal(H.enHorario(cr(`${MAR}T10:00`)), false);
+    assert.equal(H.proximaApertura(cr(`${LUN}T18:00`)), cr('2026-11-04T07:30'));
+    // Lunes 7:30 + 48 h saltando el martes: lun 9,5 + mié-vie 28,5 + sáb 5,5 = 43,5 -> faltan 4,5 el lunes siguiente
+    assert.equal(H.sumarHoras(cr(`${LUN}T07:30`), 48), cr(`${LUN2}T12:00`));
+  } finally {
+    H.setFeriados([]);
+  }
+  assert.equal(H.horasLaborables(cr(`${LUN}T00:00`), cr('2026-11-04T00:00')), 19);
+});
+
+test('feriados de ley con Semana Santa móvil', () => {
+  const f25 = H.feriadosDeLey(2025).map(f => f.fecha);
+  assert.ok(f25.includes('2025-04-17') && f25.includes('2025-04-18'));   // Pascua 2025: 20 de abril
+  const f26 = H.feriadosDeLey(2026).map(f => f.fecha);
+  assert.ok(f26.includes('2026-04-02') && f26.includes('2026-04-03'));   // Pascua 2026: 5 de abril
+  assert.ok(f26.includes('2026-09-15') && f26.includes('2026-12-25'));
+  assert.equal(new Set(f26).size, f26.length);
+  assert.deepEqual(f26, [...f26].sort());
+});

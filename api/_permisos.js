@@ -39,6 +39,7 @@ export const PERMISOS = {
   'cfg-decoracion':   [true, false, 'Configuración: Decoración'],
   'cfg-conteos':      [true, false, 'Configuración: Conteos'],
   'cfg-disp':         [true, false, 'Configuración: Dispositivos'],
+  'cfg-feriados':     [true, false, 'Configuración: Feriados'],
   'cfg-json':         [true, false, 'Configuración: Datos JSON'],
   // Botones del menú lateral (con sesión iniciada)
   'nav-masiva':       [true, true, 'Menú: Impresión Masiva'],

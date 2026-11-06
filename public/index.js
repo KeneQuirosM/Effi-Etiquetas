@@ -411,6 +411,7 @@ function switchTab(id) {
   if (id === 'tab-config') {
     if (puede('cfg-conteos')) cargarOpcionesConteos();
     if (puede('cfg-disp')) cargarDispositivos();
+    if (puede('cfg-feriados')) cargarFeriados();
   }
 }
 
@@ -2886,6 +2887,7 @@ function permisosUI() {
       ['cfg-logos', 'Logos'], ['cfg-qr', 'QR de ubicación'], ['cfg-grupo', 'Imprimir por grupo (Alistamiento)'],
       ['cfg-nav', 'Botones del menú'], ['cfg-decoracion', 'Decoración de temporada'],
       ['cfg-conteos', 'Conteos: personas y mesas'], ['cfg-disp', 'Dispositivos vinculados'],
+      ['cfg-feriados', 'Feriados'],
       ['cfg-json', 'Datos de inventario (JSON)']
     ] },
     { titulo: 'Botones del menú lateral', items:
@@ -3405,6 +3407,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadGroupPrintToggle(config);
   loadNavButtonToggles(config);
   loadDecoracionTema(config);
+  loadFeriados(config);
 
   // Referencias a elementos del DOM
   const selTienda = document.getElementById('select-tienda');
@@ -3717,9 +3720,11 @@ function actualizarMedidores() {
 
   const reloj = document.getElementById('rc-reloj');
   reloj.className = 'rc-reloj ' + (HL.enHorario(ahora) ? 'rc-reloj-corre' : 'rc-reloj-pausa');
+  const hoyCR = new Date(ahora - 6 * 3600000).toISOString().slice(0, 10);
+  const feriadoHoy = HL.esFeriado(hoyCR) ? feriadosLista.find(f => f.fecha === hoyCR) : null;
   reloj.textContent = HL.enHorario(ahora)
     ? 'En horario laboral: los plazos están corriendo.'
-    : `Fuera de horario: los plazos están en pausa hasta el ${rcFecha(HL.proximaApertura(ahora), true)}`;
+    : `${feriadoHoy ? `Hoy es feriado (${feriadoHoy.nombre || 'Feriado'})` : 'Fuera de horario'}: los plazos están en pausa hasta el ${rcFecha(HL.proximaApertura(ahora), true)}`;
 
   const calc = recepciones.map(r => rcCalculo(r, ahora));
   const abiertas = calc.filter(c => !c.finalizada), fin = calc.filter(c => c.finalizada && c.ajuste);
@@ -3785,4 +3790,120 @@ async function rcFinalizar(id, finalizar) {
       : 'Recepción reabierta', finalizar && c.restan < 0 ? 'warn' : 'success');
     rcReemplazar(res.recepcion, res.ahora);
   } catch (e) { notify(e.message || 'No se pudo guardar', 'error'); }
+}
+
+/* ── FERIADOS ─────────────────────────────────────────────
+ * Días sin trabajo para el plazo de las recepciones. Se guardan en
+ * /api/config (clave "feriados", JSON [{ fecha, nombre }]) y se pasan a
+ * HorarioLaboral.setFeriados(). La lista se edita en memoria y se guarda
+ * con un solo POST.
+ */
+const FERIADOS_KEY = 'feriados';
+let feriadosLista = [];          // lo guardado
+let feriadosEdicion = null;      // copia en edición (null = sin cambios)
+
+function parseFeriados(valor) {
+  try {
+    const l = JSON.parse(valor || '[]');
+    return Array.isArray(l) ? l.filter(f => f && /^\d{4}-\d{2}-\d{2}$/.test(f.fecha)).map(f => ({ fecha: f.fecha, nombre: String(f.nombre || '') })) : [];
+  } catch (_) { return []; }
+}
+
+function loadFeriados(config) {
+  feriadosLista = parseFeriados(config && config[FERIADOS_KEY]);
+  HorarioLaboral.setFeriados(feriadosLista);
+}
+
+async function cargarFeriados() {
+  try {
+    const config = await apiGet('/api/config');
+    if (!feriadosEdicion) loadFeriados(config);
+  } catch (_) { /* se queda con lo cargado al abrir la página */ }
+  const sel = document.getElementById('fer-anio');
+  if (sel && !sel.options.length) {
+    const anio = Number(fechaLocalISO().slice(0, 4));
+    [anio, anio + 1].forEach(a => sel.add(new Option(String(a), String(a))));
+  }
+  renderFeriados();
+}
+
+function feriadosActuales() { return feriadosEdicion || feriadosLista; }
+
+function editarFeriados(nueva) {
+  const unicos = new Map();
+  nueva.forEach(f => unicos.set(f.fecha, f));
+  feriadosEdicion = [...unicos.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  renderFeriados();
+}
+
+function renderFeriados() {
+  const cont = document.getElementById('fer-lista');
+  if (!cont) return;
+  const lista = feriadosActuales();
+  const hoy = fechaLocalISO();
+  const proximos = feriadosLista.filter(f => f.fecha >= hoy).length;
+  document.getElementById('cfg-feriados-resumen').textContent =
+    feriadosLista.length ? `${proximos} próximo${proximos === 1 ? '' : 's'}` : 'Sin feriados';
+  document.getElementById('fer-btn').disabled = !feriadosEdicion;
+  document.getElementById('fer-pendiente').hidden = !feriadosEdicion;
+  if (!lista.length) {
+    cont.innerHTML = '<p class="fer-vacio">No hay feriados. Agrega los de ley o uno por fecha.</p>';
+    return;
+  }
+  const fmt = new Intl.DateTimeFormat('es-CR', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  let anio = '';
+  cont.innerHTML = lista.map(f => {
+    const a = f.fecha.slice(0, 4);
+    const cab = a !== anio ? `<div class="fer-anio">${esc(a)}</div>` : '';
+    anio = a;
+    return `${cab}<div class="fer-fila${f.fecha < hoy ? ' fer-pasado' : ''}">
+        <span class="fer-fecha">${esc(fmt.format(new Date(f.fecha + 'T12:00:00Z')))}</span>
+        <span class="fer-nombre">${esc(f.nombre || 'Feriado')}</span>
+        <button type="button" class="fer-quitar" data-fecha="${esc(f.fecha)}" aria-label="Quitar ${esc(f.nombre || f.fecha)}" title="Quitar">✕</button>
+      </div>`;
+  }).join('');
+}
+
+document.getElementById('fer-lista')?.addEventListener('click', e => {
+  const b = e.target.closest('.fer-quitar');
+  if (b) editarFeriados(feriadosActuales().filter(f => f.fecha !== b.dataset.fecha));
+});
+
+function agregarFeriadosDeLey() {
+  const anio = Number(document.getElementById('fer-anio').value);
+  const ley = HorarioLaboral.feriadosDeLey(anio)
+    .map(f => ({ fecha: f.fecha, nombre: f.obligatorio ? f.nombre : `${f.nombre} (pago no obligatorio)` }));
+  const actuales = feriadosActuales();
+  const nuevos = ley.filter(f => !actuales.some(x => x.fecha === f.fecha));
+  if (!nuevos.length) return notify(`Los feriados de ley de ${anio} ya están en la lista`, 'info');
+  editarFeriados([...actuales, ...nuevos]);
+  notify(`${nuevos.length} feriado${nuevos.length === 1 ? '' : 's'} de ${anio} agregado${nuevos.length === 1 ? '' : 's'}. Revisa la lista y pulsa Guardar.`, 'info');
+}
+
+function agregarFeriado() {
+  const fecha = document.getElementById('fer-fecha').value;
+  const nombre = document.getElementById('fer-nombre').value.trim().replace(/\s+/g, ' ');
+  if (!fecha) return notify('Elige la fecha del feriado', 'warn');
+  if (feriadosActuales().some(f => f.fecha === fecha)) return notify('Esa fecha ya está en la lista', 'warn');
+  editarFeriados([...feriadosActuales(), { fecha, nombre: nombre || 'Feriado' }]);
+  document.getElementById('fer-fecha').value = '';
+  document.getElementById('fer-nombre').value = '';
+}
+
+async function guardarFeriados() {
+  if (guardOffline() || !feriadosEdicion) return;
+  const btn = document.getElementById('fer-btn');
+  btn.disabled = true;
+  try {
+    await apiPost('/api/config', { clave: FERIADOS_KEY, valor: JSON.stringify(feriadosEdicion) });
+    feriadosLista = feriadosEdicion;
+    feriadosEdicion = null;
+    HorarioLaboral.setFeriados(feriadosLista);
+    if (recepciones) renderRecepciones();
+    notify('Feriados guardados', 'success');
+  } catch (e) {
+    notify(e.message || 'No se pudieron guardar los feriados', 'error');
+  } finally {
+    renderFeriados();
+  }
 }

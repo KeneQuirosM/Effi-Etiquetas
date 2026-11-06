@@ -13,7 +13,8 @@ const PERMISO_DE_CLAVE = {
   decoracion_tema:             'cfg-decoracion',
   conteos_personas:            'cfg-conteos',
   conteos_mesas:               'cfg-conteos',
-  exigir_dispositivo:          'cfg-disp'
+  exigir_dispositivo:          'cfg-disp',
+  feriados:                    'cfg-feriados'
 };
 // Cómo se ve cada clave en la bitácora (las demás, por su clave)
 const NOMBRE_CLAVE = {
@@ -24,16 +25,40 @@ const NOMBRE_CLAVE = {
   decoracion_tema: 'Decoración de temporada',
   conteos_personas: 'Conteos: personas',
   conteos_mesas: 'Conteos: mesas',
-  exigir_dispositivo: 'Exigir dispositivo vinculado'
+  exigir_dispositivo: 'Exigir dispositivo vinculado',
+  feriados: 'Feriados'
 };
 function detalleConfig(clave, valor) {
   const v = String(valor);
   if (clave === 'sf_logo' || clave === 'effi_rotulo_logo_v1') {
     return `${v ? 'Cambió' : 'Quitó'} ${NOMBRE_CLAVE[clave]}`;
   }
+  if (clave === 'feriados') {
+    try {
+      const n = JSON.parse(v).length;
+      return `Configuración: Feriados → ${n} fecha${n === 1 ? '' : 's'}`;
+    } catch { /* cae al formato general */ }
+  }
   const nombre = NOMBRE_CLAVE[clave] || (/^mostrar_btn_/.test(clave) ? `Botón del menú ${clave.slice(12)}` : clave);
   const legible = v === 'true' ? 'activado' : v === 'false' ? 'desactivado' : `"${v.slice(0, 200)}"`;
   return `Configuración: ${nombre} → ${legible}`;
+}
+
+// Feriados: JSON [{ fecha: 'AAAA-MM-DD', nombre }] ordenado y sin repetidos.
+// Devuelve el texto limpio a guardar o null si no sirve.
+const MAX_FERIADOS = 400;
+function limpiarFeriados(valor) {
+  let lista;
+  try { lista = JSON.parse(String(valor)); } catch { return null; }
+  if (!Array.isArray(lista) || lista.length > MAX_FERIADOS) return null;
+  const vistos = new Map();
+  for (const f of lista) {
+    const fecha = String(f?.fecha ?? '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || isNaN(Date.parse(fecha + 'T00:00:00Z'))) return null;
+    if (new Date(fecha + 'T00:00:00Z').toISOString().slice(0, 10) !== fecha) return null;   // 2026-02-30
+    vistos.set(fecha, { fecha, nombre: String(f?.nombre ?? '').trim().slice(0, 80) });
+  }
+  return JSON.stringify([...vistos.values()].sort((a, b) => a.fecha.localeCompare(b.fecha)));
 }
 
 function permisoDeClave(clave) {
@@ -81,9 +106,15 @@ export default async function handler(req, res) {
       const user = await requirePermiso(req, res, permisoDeClave(clave));
       if (!user) return;
 
+      let valorFinal = valor;
+      if (clave === 'feriados') {
+        valorFinal = limpiarFeriados(valor);
+        if (valorFinal === null) return res.status(400).json({ error: `Lista de feriados inválida (fechas AAAA-MM-DD, máx. ${MAX_FERIADOS})` });
+      }
+
       const { error } = await supabaseAdmin.rpc('upsert_config', {
         p_clave: clave,
-        p_valor: valor
+        p_valor: valorFinal
       });
 
       if (error) {
@@ -91,7 +122,7 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'No se pudo guardar la configuración' });
       }
 
-      await registrar(user, 'config_cambiar', detalleConfig(clave, valor), { clave });
+      await registrar(user, 'config_cambiar', detalleConfig(clave, valorFinal), { clave });
       return res.status(200).json({ ok: true });
     }
 

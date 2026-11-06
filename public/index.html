@@ -353,6 +353,43 @@
             <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">Son las opciones de "Contado por" y "Mesa" en la pantalla de Conteos del celular. Los conteos ya guardados no cambian.</p>
           </div>
         </section>
+        <section class="cfg-sec" data-permiso="cfg-feriados">
+          <div class="cfg-head">
+            <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-feriados">
+              <svg class="cfg-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="m9.5 15.5 2 2 3.5-4"/></svg>
+              <span class="cfg-title">Feriados</span>
+              <span class="cfg-summary" id="cfg-feriados-resumen"></span>
+              <svg class="cfg-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="cfg-panel" id="cfg-panel-feriados" hidden>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Días en que la empresa no trabaja: el plazo de 48 horas laborables de las recepciones se pausa todo ese día.</p>
+            <div class="fer-ley">
+              <div class="form-group">
+                <label for="fer-anio">Feriados de ley de Costa Rica</label>
+                <select id="fer-anio"></select>
+              </div>
+              <button type="button" class="btn-action btn-ghost" onclick="agregarFeriadosDeLey()">Agregar los de ese año</button>
+            </div>
+            <div class="fer-nuevo">
+              <div class="form-group">
+                <label for="fer-fecha">Fecha</label>
+                <input type="date" id="fer-fecha">
+              </div>
+              <div class="form-group">
+                <label for="fer-nombre">Nombre</label>
+                <input type="text" id="fer-nombre" maxlength="80" placeholder="Ej: Cierre de fin de año">
+              </div>
+              <button type="button" class="btn-action btn-ghost" onclick="agregarFeriado()">Agregar</button>
+            </div>
+            <div class="fer-lista" id="fer-lista"></div>
+            <div class="fer-pie">
+              <button type="button" class="btn-action btn-primary" id="fer-btn" onclick="guardarFeriados()" disabled>Guardar</button>
+              <span class="fer-pendiente" id="fer-pendiente" hidden>Hay cambios sin guardar</span>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:22px">"Agregar los de ese año" carga los feriados del Código de Trabajo en su fecha oficial, incluidos los de pago no obligatorio (2 de agosto, 31 de agosto y 1 de diciembre): quita los que la empresa sí trabaje. Si un año la ley traslada un feriado a lunes, quítalo y agrégalo en la fecha nueva.</p>
+          </div>
+        </section>
         <section class="cfg-sec" data-permiso="cfg-disp">
           <div class="cfg-head">
             <button type="button" class="cfg-head-btn" aria-expanded="false" aria-controls="cfg-panel-disp">
@@ -660,7 +697,7 @@
     <!-- TAB: Recepciones de mercancía (recepcion.html) con su plazo de 48 h laborables -->
     <div id="tab-recepciones" class="tab-content">
       <p class="section-label" style="margin-bottom:6px">Recepciones de mercancía</p>
-      <p class="rc-ayuda">Plazo: <b>48 horas laborables</b> desde que llega el ajuste de inventario. El reloj solo corre en horario (lunes a viernes de 7:30 a. m. a 5:00 p. m., sábado de 7:30 a. m. a 1:00 p. m.) y se pausa fuera de él.</p>
+      <p class="rc-ayuda">Plazo: <b>48 horas laborables</b> desde que llega el ajuste de inventario. El reloj solo corre en horario (lunes a viernes de 7:30 a. m. a 5:00 p. m., sábado de 7:30 a. m. a 1:00 p. m.) y se pausa fuera de él y en los feriados.</p>
       <div class="devol-presets rc-estados" role="group" aria-label="Estado">
         <button type="button" class="btn-action btn-ghost active" data-estado="abiertas" onclick="rcEstado('abiertas')">Abiertas</button>
         <button type="button" class="btn-action btn-ghost" data-estado="finalizadas" onclick="rcEstado('finalizadas')">Finalizadas</button>
@@ -686,7 +723,7 @@
       <div class="rc-lista" id="rc-lista">
         <div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>
       </div>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px">Las recepciones se registran desde la pantalla "Recepción de Mercancía" (abierta para todos, pensada para el celular). No se toman en cuenta los feriados. Las fotos se abren con un enlace temporal de 1 hora.</p>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">Las recepciones se registran desde la pantalla "Recepción de Mercancía" (abierta para todos, pensada para el celular). Los feriados se configuran en Configuración &gt; Feriados. Las fotos se abren con un enlace temporal de 1 hora.</p>
     </div>
 
     <!-- TAB: Conteos registrados desde conteos.html (pantalla móvil pública) -->
