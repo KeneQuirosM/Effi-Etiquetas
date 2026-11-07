@@ -4,19 +4,10 @@
            para los valores exactos y el historial del fix de contraste. */
         @import url('/shared/tokens.css');
         :root {
-            --mono: 'IBM Plex Mono', monospace;
-            --sans: 'Inter', system-ui, sans-serif;
+  /* Radios, sombras, transición y fuentes: shared/tokens.css (aquí solo alias) */
+            --mono: var(--font-mono);
+            --sans: var(--font-sans);
 
-            --shadow-xs: 0 1px 3px rgba(13,27,110,.06);
-            --shadow-sm: 0 2px 8px rgba(13,27,110,.09);
-            --shadow-md: 0 4px 16px rgba(13,27,110,.11);
-            --shadow-lg: 0 8px 28px rgba(13,27,110,.13);
-
-            --radius-sm: 6px;
-            --radius-md: 10px;
-            --radius-lg: 14px;
-            --radius-xl: 18px;
-            --transition: all .18s ease;
         }
 
         *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -44,71 +35,6 @@
         }
 
         /* ══ HEADER — copia exacta del manifiesto ══ */
-        .app-header {
-            background: var(--brand-800);
-            display: flex;
-            flex-direction: column;
-        }
-        .header-main-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 13px 22px;
-        }
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        .header-logo-pill {
-            display: flex;
-            align-items: center;
-            background: rgba(255,255,255,.1);
-            border: 0.5px solid rgba(255,255,255,.2);
-            border-radius: 8px;
-            padding: 6px 12px;
-        }
-        .header-logo-img {
-            height: 28px;
-            object-fit: contain;
-            filter: brightness(0) invert(1);
-        }
-        .header-divider {
-            width: 1px; height: 30px;
-            background: rgba(255,255,255,.15);
-        }
-        .header-titles { display: flex; flex-direction: column; gap: 2px; }
-        .header-titles h1 {
-            font-size: 1rem; font-weight: 500;
-            margin: 0; color: white; letter-spacing: .2px;
-        }
-        .header-sub {
-            font-size: 12px;
-            color: #c7cdf5;
-            font-weight: 400;
-        }
-        .header-back {
-            width: 34px; height: 34px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            background: transparent; color: #fff;
-            border: 1px solid rgba(255,255,255,.35); border-radius: 8px;
-            cursor: pointer; transition: background .15s, border-color .15s;
-        }
-        .header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
-        .header-status-bar {
-            display: flex; align-items: center; gap: 6px;
-            padding: 5px 22px;
-            background: rgba(0,0,0,.15);
-            border-top: .5px solid rgba(255,255,255,.08);
-        }
-        .header-status-dot {
-            width: 7px; height: 7px; border-radius: 50%;
-            background: #4caf50; flex-shrink: 0;
-        }
-        .header-status-text {
-            font-size: .7rem;
-            color: rgba(255,255,255,.72); /* AA: antes .45 (4.2:1) */
-        }
 
         /* ══ SECTION HEADER — igual al manifiesto ══ */
         .section-header {
@@ -196,14 +122,16 @@
         }
 
         /* ══ BUTTONS — mismos que manifiesto ══ */
+        /* Botón estándar de la suite: 40 px, radio 10, 14 px/600 */
         .btn {
-            padding: 10px 20px;
+            padding: 0 var(--space-4);
             border-radius: var(--radius-md);
-            font-family: var(--sans); font-weight: 500; font-size: .8rem;
+            font-family: var(--sans); font-weight: var(--weight-semibold); font-size: var(--text-base);
             border: 1.5px solid transparent;
             cursor: pointer;
             display: inline-flex; align-items: center; gap: 7px;
             white-space: nowrap; transition: var(--transition);
+          min-height: var(--control-h);
         }
         .btn:active { transform: scale(.97); }
 
@@ -421,6 +349,7 @@
 
         .tabla-search-wrapper { position: relative; display: flex; align-items: center; }
         .tabla-search-wrapper i { position: absolute; left: 10px; color: var(--neutral-400); font-size: 13px; pointer-events: none; }
+        /* Campo estándar de la suite: 40 px, radio 10 */
         .tabla-search {
             padding: 7px 12px 7px 30px;
             border: 1.5px solid var(--neutral-200);
@@ -429,6 +358,7 @@
             font-family: var(--sans);
             outline: none; background: var(--neutral-50);
             transition: var(--transition);
+          min-height: var(--control-h);
         }
         .tabla-search:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(42,71,212,.1); background: white; }
         .tabla-search::placeholder { color: var(--neutral-400); }
@@ -484,10 +414,6 @@
         }
 
         /* empty state */
-        .empty { text-align: center; padding: 56px 24px; }
-        .empty-ico { font-size: 3rem; opacity: .4; margin-bottom: 12px; display: block; }
-        .empty-t { font-size: .85rem; color: #3d4663; margin-bottom: 4px; font-weight: 500; }
-        .empty-s { font-family: var(--mono); font-size: .68rem; color: var(--neutral-400); }
 
         /* ══ LOG DE AUDITORÍA ══ */
         .log-wrap {
@@ -545,14 +471,16 @@
         .toast-inf { border-left: 3px solid var(--brand-500); }
 
         /* ══ ACTION BUTTONS (ver reporte) ══ */
+        /* Botón estándar de la suite (ver QA_CONSISTENCIA_VISUAL.md): 40 px, radio 10, 14 px/600 */
         .action-btn {
             display: inline-flex; align-items: center; gap: 8px;
-            padding: 11px 22px;
+            padding: 0 var(--space-4);
             border: 1.5px solid var(--neutral-200);
             border-radius: var(--radius-md);
-            font-size: 13.5px; font-weight: 500; font-family: var(--sans);
+            font-size: var(--text-base); font-weight: var(--weight-semibold); font-family: var(--sans);
             cursor: pointer; transition: var(--transition);
             background: white; color: var(--neutral-800);
+          min-height: var(--control-h);
         }
         .action-btn:hover { background: var(--neutral-50); border-color: var(--neutral-400); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
         .action-btn.primary { background: var(--brand-800); border-color: var(--brand-800); color: white; }
@@ -573,17 +501,3 @@
             .metric-value { font-size: 1.4rem; }
             .scan-fields { grid-template-columns: 1fr; }
         }
-
-/* ── CABECERA EN CELULAR ──
- * Dos filas: volver + logo arriba, título y subtítulo a todo el ancho
- * debajo (antes el título se partía en 3-4 líneas al lado del logo).
- * Si el logo externo no carga, se oculta también su óvalo y el separador. */
-.header-logo-pill[hidden], .header-logo-pill[hidden] + .header-divider { display: none; }
-@media (max-width: 600px) {
-  .header-main-row { padding: 12px 14px; }
-  .header-left { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
-  .header-divider { display: none; }
-  .header-titles { flex: 1 1 100%; min-width: 0; }
-  .header-titles h1 { font-size: 1.15rem; line-height: 1.25; }
-  .header-back { width: 44px; height: 44px; }
-}

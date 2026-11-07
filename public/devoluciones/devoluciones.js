@@ -158,7 +158,7 @@
 
     function renderTable(){
         if(!originalRowsData.length){
-            tableBody.innerHTML=`<tr><td colspan="99" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">∅</span><div class="empty-t">Sin datos cargados</div><div class="empty-s">Carga un archivo Excel para comenzar</div></div></td></tr>`;
+            tableBody.innerHTML=`<tr><td colspan="99" style="padding:0;border:none;">${estadoVacio({icono:'archivo',titulo:'Sin datos cargados',texto:'Carga un archivo Excel para comenzar'})}</td></tr>`;
             updateStats(); return;
         }
         // Índice original (posición en el Excel, antes de agrupar devueltas
@@ -465,10 +465,10 @@
         inp.click();
     }
 
-    function exportDevueltas(){
+    async function exportDevueltas(){
         if(!workbookOriginal){ notify('Primero carga un archivo','err'); return; }
         if(!devolutionSet.size){ notify('No hay guías marcadas','err'); return; }
-        if(!confirm(`¿Exportar ${devolutionSet.size} filas marcadas?`)) return;
+        if(!(await confirmar({ titulo:'Exportar devueltas', mensaje:`¿Exportar ${devolutionSet.size} filas marcadas?`, aceptar:'Exportar' }))) return;
         const rows=XLSX.utils.sheet_to_json(worksheetOriginal,{header:1,defval:""});
         if(!rows.length) return;
         const hrow=rows[0];
@@ -500,9 +500,9 @@
         }
     }
 
-    function resetAll(){
+    async function resetAll(){
         if(!originalRowsData.length) return;
-        if(!confirm('¿Reiniciar todas las marcas?')) return;
+        if(!(await confirmar({ titulo:'Reiniciar marcas', mensaje:'¿Reiniciar todas las marcas? Se quitan todas las guías marcadas como devueltas.', aceptar:'Reiniciar', peligro:true }))) return;
         devolutionSet.clear(); addLog('SISTEMA','','','Admin','Todas','REINICIO');
         // Un solo re-render en vez de updateRowStatus() por guía: desmarcar
         // una guía recorre toda la tabla para reubicar la fila, así que con

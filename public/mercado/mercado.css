@@ -3,10 +3,11 @@
  * casillas grandes, una columna en celular.
  */
 :root {
-  --sans: 'Inter', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --radius: 10px;
-  --shadow: 0 2px 8px rgba(13, 27, 110, .08);
+  /* Radios, sombras, transición y fuentes: shared/tokens.css (aquí solo alias) */
+  --sans: var(--font-sans);
+  --mono: var(--font-mono);
+  --radius: var(--radius-md);
+  --shadow: var(--shadow-sm);
   --ok: var(--success-mid);
   --bad: var(--danger-mid);
   --warn: var(--warning-text);
@@ -36,15 +37,16 @@ body {
   background: var(--brand-800); color: #fff;
   box-shadow: 0 2px 10px rgba(0, 0, 0, .15);
 }
-.mk-header-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
+.mk-header-row { display: flex; align-items: center; gap: var(--space-3); min-height: 64px; padding: var(--space-3) var(--space-5); }
+/* Mismo botón volver que la cabecera de módulo (shared/componentes.css) */
 .mk-back {
-  width: 36px; height: 36px; flex-shrink: 0;
+  width: var(--control-h); height: var(--control-h); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: transparent; color: #fff; cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, .35); border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .35); border-radius: var(--radius-md);
 }
 .mk-back:hover { background: rgba(255, 255, 255, .12); }
-.mk-titles h1 { font-size: 1.05rem; font-weight: 600; line-height: 1.2; }
+.mk-titles h1 { font-size: var(--text-lg); font-weight: var(--weight-semibold); line-height: 1.2; }
 .mk-sub { font-size: .78rem; color: #c7cdf5; }
 .mk-quien {
   margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;
@@ -99,13 +101,15 @@ body.sin-gestion .solo-gestion { display: none !important; }
 .mk-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .mk-vacio { text-align: center; padding: 28px 12px; color: var(--neutral-600); list-style: none; }
 .mk-vacio p + p { margin-top: 6px; }
+.mk-vacio.estado-vacio { padding: var(--space-8) var(--space-4); }   /* vacíos de panel: componente compartido */
 
 /* ── Botones y campos ── */
+/* Botón estándar de la suite (ver QA_CONSISTENCIA_VISUAL.md): 40 px, radio 10, 14 px/600 */
 .mk-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  min-height: 40px; padding: 8px 14px;
-  font: 500 .88rem var(--sans); color: var(--brand-800);
-  background: #fff; border: 1.5px solid var(--brand-100); border-radius: 8px; cursor: pointer;
+  min-height: var(--control-h); padding: 0 var(--space-4);
+  font: var(--weight-semibold) var(--text-base) var(--sans); color: var(--brand-800);
+  background: #fff; border: 1.5px solid var(--brand-100); border-radius: var(--radius-md); cursor: pointer;
 }
 .mk-btn:hover { border-color: var(--brand-500); background: var(--brand-50); }
 .mk-btn:disabled { opacity: .45; cursor: not-allowed; }
@@ -116,10 +120,11 @@ body.sin-gestion .solo-gestion { display: none !important; }
 .mk-btn-sm { min-height: 32px; padding: 4px 10px; font-size: .8rem; }
 .mk-link { background: none; border: none; padding: 2px 0; min-height: 24px; color: var(--brand-500); font: inherit; text-decoration: underline; cursor: pointer; }
 @media (pointer: coarse) { .mk-link { padding: 10px 4px; margin: -10px -4px; } }   /* área táctil sin mover el texto */
+/* Campo estándar de la suite: radio 10 */
 input[type="text"], input[type="date"], input[type="search"], select {
   width: 100%; min-height: 40px; padding: 8px 10px;
   font: inherit; font-size: .9rem; color: inherit;
-  background: #fff; border: 1.5px solid var(--neutral-200); border-radius: 8px;
+  background: #fff; border: 1.5px solid var(--neutral-200); border-radius: var(--radius-md);
 }
 input:focus, select:focus { border-color: var(--brand-500); outline: none; }
 select.falta { border-color: var(--warning-mid); background: var(--warning-bg); }

@@ -7,8 +7,8 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     <link rel="stylesheet" href="/shared/tokens.css">
+<link rel="stylesheet" href="/shared/componentes.css">
     <link rel="stylesheet" href="devoluciones.css">
 </head>
 <body>
@@ -31,10 +31,6 @@
                     <span class="header-sub">Transportadora · Verificación de guías</span>
                 </div>
             </div>
-        </div>
-        <div class="header-status-bar">
-            <span class="header-status-dot"></span>
-            <span class="header-status-text">Sistema activo · Escaneo en tiempo real</span>
         </div>
     </header>
 
@@ -212,11 +208,7 @@
                     <thead id="tableHeader"></thead>
                     <tbody id="tableBody">
                         <tr><td colspan="10" style="padding:0;border:none;">
-                            <div class="empty">
-                                <span class="empty-ico">∅</span>
-                                <div class="empty-t">Sin datos cargados</div>
-                                <div class="empty-s">Carga un archivo Excel para comenzar</div>
-                            </div>
+                            <div class="estado-vacio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg><p class="estado-vacio-titulo">Sin datos cargados</p><p class="estado-vacio-texto">Carga un archivo Excel para comenzar</p></div>
                         </td></tr>
                     </tbody>
                 </table>
@@ -244,6 +236,8 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="/shared/dom-utils.js"></script>
+<script src="/shared/iconos.js"></script>
+<script src="/shared/confirmar.js"></script>
 <script src="/shared/api.js"></script>
 <script src="/shared/dispositivo.js"></script>
 <script src="devoluciones.js"></script>

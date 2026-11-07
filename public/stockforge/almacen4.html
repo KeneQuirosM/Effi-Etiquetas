@@ -8,6 +8,7 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous">
 </script>
 <link rel="stylesheet" href="/shared/tokens.css">
+<link rel="stylesheet" href="/shared/componentes.css">
 <link rel="stylesheet" href="/stockforge/almacen4.css">
 </head>
 <body>
@@ -72,7 +73,7 @@
     <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(event)">
     <input type="file" id="imp-xlsx" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcelStock(event)">
     <button class="hbtn" onclick="openSettings()" data-i18n="btn_settings" title="Settings / Configuración">⚙</button>
-   <button class="hbtn" id="lock-btn" onclick="toggleLock()" data-i18n-target="title" data-i18n="lock_title">🔒</button> 
+   <button class="hbtn" id="lock-btn" onclick="toggleLock()" data-i18n-target="title" data-i18n="lock_title" aria-label="Modo coordinador: bloqueado"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button> 
    <!-- Hamburger — mobile only -->
     <button class="hbtn hburger" id="hburger" onclick="toggleMobileMenu()" title="Menú" aria-label="Abrir menú" aria-controls="mob-drawer" aria-expanded="false">☰</button>
   </div>
@@ -763,9 +764,9 @@
   </div>
 </div>
 
-<div class="notifs" id="notifs" role="status" aria-live="polite"></div>
 
 <script src="/shared/dom-utils.js"></script>
+<script src="/shared/confirmar.js"></script>
 <script src="/shared/api.js"></script>
 <script src="/shared/a11y.js"></script>
 <script src="/stockforge/almacen4.js"></script>

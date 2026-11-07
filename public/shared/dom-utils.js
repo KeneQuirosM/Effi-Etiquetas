@@ -60,7 +60,8 @@ function notify(msg, type = 'info', duration, accion) {
     container = document.createElement('div');
     container.id = '__notify_container';
     // En celular ocupa el ancho disponible menos un margen (antes 360 px fijos tapaban medio contenido)
-    container.style.cssText = 'position:fixed;bottom:max(12px, env(safe-area-inset-bottom));right:12px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:min(360px, calc(100vw - 24px))';
+    // Tokens de shared/tokens.css; --notify-bottom lo sube una pantalla con barra inferior fija (StockForge en celular)
+    container.style.cssText = 'position:fixed;bottom:max(var(--notify-bottom, 12px), env(safe-area-inset-bottom));right:12px;z-index:var(--z-toast, 99999);display:flex;flex-direction:column;gap:8px;max-width:min(360px, calc(100vw - 24px));font-family:var(--font-sans, Inter, system-ui, sans-serif)';
     // Anuncios para lectores de pantalla: dos regiones vivas fijas (cortés
     // para info/éxito, alerta para error/advertencia). Un aviso recién creado
     // dentro de una región viva no siempre se anuncia; un texto que cambia
@@ -74,7 +75,7 @@ function notify(msg, type = 'info', duration, accion) {
   anunciarAviso(container, kind, msg, accion);
 
   const toast = document.createElement('div');
-  toast.style.cssText = `pointer-events:auto;background:#1a1a2e;color:#fff;border-left:4px solid ${COLORS[kind]};border-radius:6px;padding:10px 14px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:.92rem;line-height:1.4;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s`;
+  toast.style.cssText = `pointer-events:auto;background:#1a1a2e;color:#fff;border-left:4px solid ${COLORS[kind]};border-radius:var(--radius-md, 10px);padding:10px 14px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:var(--text-base, 14px);line-height:1.4;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s`;
   // El ícono es decorativo para el lector (el anuncio ya dice "Error:", etc.)
   toast.innerHTML = `<span aria-hidden="true">${ICONS[kind]}</span> ${esc(msg)}`;
 
@@ -151,6 +152,23 @@ function ponerAvisosSobreDialogo(container) {
       if (container.parentNode === modal) document.body.appendChild(container);
     }, { once: true });
   }
+}
+
+/* ── ESTADO VACÍO ──────────────────────────────────────────
+ * HTML del componente .estado-vacio (shared/componentes.css): ícono de
+ * trazo, título y una indicación de qué hacer para que aparezcan datos.
+ *   tbody.innerHTML = `<tr><td colspan="5">${estadoVacio({ icono: 'archivo',
+ *     titulo: 'Sin datos cargados', texto: 'Carga un archivo Excel para comenzar' })}</td></tr>`;
+ */
+const ICONOS_VACIO = {
+  archivo:  '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/>',
+  busqueda: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  lista:    '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>',
+  escaner:  '<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M11 8v8M15 8v8"/>'
+};
+function estadoVacio({ icono = 'lista', titulo = '', texto = '' } = {}) {
+  return `<div class="estado-vacio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS_VACIO[icono] || ICONOS_VACIO.lista}</svg>` +
+    `<p class="estado-vacio-titulo">${esc(titulo)}</p>${texto ? `<p class="estado-vacio-texto">${esc(texto)}</p>` : ''}</div>`;
 }
 
 /* ── FECHA LOCAL ──────────────────────────────────────────

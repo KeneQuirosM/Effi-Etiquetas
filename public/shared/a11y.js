@@ -94,6 +94,10 @@
   document.addEventListener('keydown', ev => {
     const e = pila[pila.length - 1];
     if (!e || !estaAbierta(e.capa)) return;
+    // Un <dialog> nativo abierto encima (p. ej. confirmar()) maneja su propio teclado
+    let nativoEncima = null;
+    try { nativoEncima = document.querySelector('dialog[open]:modal'); } catch (_) { /* sin :modal */ }
+    if (nativoEncima && !e.dialogo.contains(nativoEncima)) return;
     if (ev.key === 'Escape' && e.cerrarConEscape && typeof e.cerrar === 'function') {
       ev.preventDefault();
       e.cerrar();

@@ -604,7 +604,7 @@ async function deleteTienda() {
   if (idx === '') return notify('Selecciona una tienda', 'danger');
   const tienda = getTienda(idx);
   if (!tienda) return notify('Tienda no encontrada', 'danger');
-  if (!confirm(`¿Eliminar la tienda "${tienda.nombre}" y todo su inventario?`)) return;
+  if (!(await confirmar({ titulo: 'Eliminar tienda', mensaje: `¿Eliminar la tienda "${tienda.nombre}" y todo su inventario?`, aceptar: 'Eliminar', peligro: true }))) return;
   try {
     await apiDelete('/api/tiendas', { id: tienda.id });
     await loadData();
@@ -1661,7 +1661,7 @@ async function confirmarTraslado() {
     pedidos.push(p);
   }
   const destino = getTienda(destinoId);
-  if (!confirm(`¿Trasladar ${pedidos.length} conteo(s) a ${destino ? destino.nombre : 'la tienda destino'}?`)) return;
+  if (!(await confirmar({ titulo: 'Trasladar conteos', mensaje: `¿Trasladar ${pedidos.length} conteo(s) a ${destino ? destino.nombre : 'la tienda destino'}?`, aceptar: 'Trasladar' }))) return;
 
   traslado.enCurso = true;
   const btn = document.getElementById('tr-confirmar');
@@ -1759,7 +1759,7 @@ function compartirTrasladoWhatsApp() {
 async function deleteConteo(id) {
   const c = (conteos || []).find(x => x.id === id);
   if (!c) return;
-  if (!confirm(`¿Eliminar el conteo de ID ${c.producto_codigo} (${c.cantidad} u.) de ${c.contado_por}?`)) return;
+  if (!(await confirmar({ titulo: 'Eliminar conteo', mensaje: `¿Eliminar el conteo de ID ${c.producto_codigo} (${c.cantidad} u.) de ${c.contado_por}?`, aceptar: 'Eliminar', peligro: true }))) return;
   try {
     await apiDelete('/api/conteos', { id });
     conteos = conteos.filter(x => x.id !== id);
@@ -3349,7 +3349,7 @@ function copiarEnlaceDispositivo() {
 
 async function desvincularDispositivo(btn) {
   const { id, nombre } = btn.dataset;
-  if (!confirm(`¿Desvincular "${nombre}"? Si "Exigir dispositivo vinculado" está activado, ya no podrá guardar.`)) return;
+  if (!(await confirmar({ titulo: 'Desvincular dispositivo', mensaje: `¿Desvincular "${nombre}"? Si "Exigir dispositivo vinculado" está activado, ya no podrá guardar.`, aceptar: 'Desvincular', peligro: true }))) return;
   btn.disabled = true;
   try {
     await apiFetch('DELETE', '/api/dispositivos', { id });
@@ -3363,7 +3363,7 @@ async function desvincularDispositivo(btn) {
 async function guardarExigirDispositivo(valor) {
   const toggle = document.getElementById('toggle-exigir-disp');
   if (valor && !dispositivosLista.length &&
-      !confirm('No hay dispositivos vinculados: Conteos y Devoluciones dejarán de poder guardar desde cualquier equipo. ¿Activarlo igual?')) {
+      !(await confirmar({ titulo: 'Exigir dispositivo vinculado', mensaje: 'No hay dispositivos vinculados: Conteos y Devoluciones dejarán de poder guardar desde cualquier equipo. ¿Activarlo igual?', aceptar: 'Activar igual', peligro: true }))) {
     toggle.checked = false;
     return;
   }
@@ -3819,7 +3819,7 @@ async function rcGuardarAjuste(id) {
 }
 
 async function rcQuitarAjuste(id) {
-  if (!confirm('¿Quitar la hora del ajuste? El plazo de 24 h deja de contar hasta que la registres de nuevo.')) return;
+  if (!(await confirmar({ titulo: 'Quitar hora del ajuste', mensaje: '¿Quitar la hora del ajuste? El plazo de 24 h deja de contar hasta que la registres de nuevo.', aceptar: 'Quitar' }))) return;
   try {
     const res = await apiPost('/api/conteos?accion=recepcion_ajuste', { id, ajuste_en: null });
     rcReemplazar(res.recepcion, res.ahora);
@@ -3831,7 +3831,7 @@ async function rcFinalizar(id, finalizar) {
   const msg = finalizar
     ? `¿Dar por contada y finalizar la recepción de ${r ? r.tienda_nombre : ''}? Se guarda la hora actual como cierre.`
     : '¿Reabrir esta recepción? Se borra la hora de cierre y el plazo vuelve a correr.';
-  if (!confirm(msg)) return;
+  if (!(await confirmar({ titulo: finalizar ? 'Finalizar recepción' : 'Reabrir recepción', mensaje: msg, aceptar: finalizar ? 'Finalizar' : 'Reabrir' }))) return;
   try {
     const res = await apiPost('/api/conteos?accion=recepcion_finalizar', { id, finalizar });
     const c = rcCalculo(res.recepcion, rcAhora());

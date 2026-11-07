@@ -812,10 +812,7 @@ function renderTablaGuias() {
   if (contador) contador.textContent = filas.length;
 
   if (filas.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="tabla-vacia">
-      <i class="fas fa-barcode" style="font-size:34px;display:block;margin-bottom:10px;opacity:.45"></i>
-      Carga un manifiesto y escanea guías para verlas aquí
-    </td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="tabla-vacia">${estadoVacio({ icono: 'escaner', titulo: 'Sin guías todavía', texto: 'Carga un manifiesto y escanea guías para verlas aquí' })}</td></tr>`;
     return;
   }
 

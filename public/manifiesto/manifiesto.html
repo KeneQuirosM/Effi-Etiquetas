@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Comparativo de Manifiesto </title>
   <link rel="stylesheet" href="/shared/tokens.css">
+<link rel="stylesheet" href="/shared/componentes.css">
   <link rel="stylesheet" href="manifiesto.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
   <!-- Librería para leer PDFs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js" integrity="sha384-uLiAv4VcjM5H2Jsqzl8EajEaxPugj1CIzQaCjQ8c5//vC+elhxO5pZfXGxoLQi1W" crossorigin="anonymous"></script>
   <!-- Tesseract.js para OCR -->
@@ -172,10 +172,6 @@
         </div>
       </div>
       <!-- Barra de estado -->
-      <div class="header-status-bar">
-        <span class="header-status-dot"></span>
-        <span class="header-status-text">Sistema activo · Escaneo en tiempo real</span>
-      </div>
     </header>
 
     <!-- Avance guardado: aviso para continuar o descartar (manifiesto-sesion.js) -->
@@ -378,8 +374,7 @@
               <tbody id="guiasTableBody">
                 <tr>
                   <td colspan="5" class="tabla-vacia">
-                    <i class="fas fa-barcode" style="font-size:24px;display:block;margin-bottom:8px;opacity:.3"></i>
-                    Carga un manifiesto y escanea guías para verlas aquí
+                    <div class="estado-vacio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M11 8v8M15 8v8"/></svg><p class="estado-vacio-titulo">Sin guías todavía</p><p class="estado-vacio-texto">Carga un manifiesto y escanea guías para verlas aquí</p></div>
                   </td>
                 </tr>
               </tbody>
@@ -406,6 +401,7 @@
 
   <!-- Lógica principal -->
   <script src="/shared/dom-utils.js"></script>
+  <script src="/shared/iconos.js"></script>
   <script src="/shared/a11y.js"></script>
   <script src="manifiesto.js"></script>
   <script src="manifiesto-scan-ui.js"></script>

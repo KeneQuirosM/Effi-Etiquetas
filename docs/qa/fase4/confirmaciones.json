@@ -1,0 +1,132 @@
+[
+ {
+  "n": "Diálogo: foco inicial en \"Cancelar\", título, verbo \"Eliminar\" en rojo, con nombre y descripción",
+  "pass": true,
+  "i": "{\"foco\":\"no\",\"titulo\":\"Eliminar tienda\",\"acepta\":\"Eliminar\",\"peligro\":true,\"rol\":\"confirmar-mw62dxud-m\"}"
+ },
+ {
+  "n": "Eliminar tienda: Enter con el foco inicial cancela (no llama a la API)",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Eliminar tienda: Escape cancela",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Eliminar tienda: \"Eliminar\" llama a DELETE /api/tiendas",
+  "pass": true,
+  "i": "DELETE /api/tiendas"
+ },
+ {
+  "n": "Finalizar recepción: Cancelar no llama a la API",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Finalizar recepción: \"Finalizar\" llama a recepcion_finalizar",
+  "pass": true,
+  "i": "POST /api/conteos?accion=recepcion_finalizar"
+ },
+ {
+  "n": "Quitar ajuste: Cancelar no llama a la API",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Exigir dispositivo: Cancelar apaga el interruptor y no guarda",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Exigir dispositivo: \"Activar igual\" guarda la configuración",
+  "pass": true,
+  "i": "POST /api/config"
+ },
+ {
+  "n": "Eliminar conteo: Cancelar no llama a la API",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Eliminar conteo: \"Eliminar\" llama a la API",
+  "pass": true,
+  "i": "DELETE /api/conteos"
+ },
+ {
+  "n": "Pantalla principal: sin errores JS",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "StockForge: diálogo con la paleta oscura y verbo \"Eliminar\"",
+  "pass": true,
+  "i": "{\"oscuro\":true,\"acepta\":\"Eliminar\",\"bg\":\"rgb(15, 19, 24)\"}"
+ },
+ {
+  "n": "StockForge eliminar rack: Cancelar conserva el rack",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "StockForge eliminar rack: \"Eliminar\" lo quita",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "StockForge eliminar zona: Escape la conserva",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "StockForge en inglés: botones \"Cancel/Delete\"",
+  "pass": true,
+  "i": "Cancel/Delete"
+ },
+ {
+  "n": "StockForge: sin errores JS",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Mercado descartar: Cancelar devuelve false",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Mercado descartar: \"Descartar\" devuelve true",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Mercado descartar: sin cambios no pregunta",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Mercado: sin errores JS",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Devoluciones reiniciar: Cancelar conserva la marca",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Devoluciones: al cerrar, el foco vuelve a \"Reiniciar\"",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Devoluciones reiniciar: \"Reiniciar\" quita las marcas",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Devoluciones: sin errores JS",
+  "pass": true,
+  "i": ""
+ }
+]

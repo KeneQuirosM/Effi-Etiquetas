@@ -8,6 +8,7 @@
 
 /* ══ TOKENS Efficommerce ══ */
 :root {
+  /* Radios, sombras, transición y fuentes: shared/tokens.css (aquí solo alias) */
   --primary:       var(--brand-800);
   --primary-light: var(--brand-700);
   --primary-dark:  var(--brand-900);
@@ -28,21 +29,10 @@
   /* --success-bg/--danger-bg/--warning-bg: mismo nombre y valor en
      tokens.css, no se redeclaran acá (evita auto-referencia). */
 
-  --shadow-xs: 0 1px 3px rgba(13,27,110,.06);
-  --shadow-sm: 0 2px 8px rgba(13,27,110,.09);
-  --shadow-md: 0 4px 16px rgba(13,27,110,.11);
-  --shadow-lg: 0 8px 28px rgba(13,27,110,.14);
+  --sans: var(--font-sans);
+  --mono: var(--font-mono);
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
-
-  --sans: 'Inter', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', monospace;
-
-  --sidebar-w: 310px;
-  --transition: all .18s ease;
+  --sidebar-w: 310px; 
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -177,19 +167,22 @@ body {
   transition: var(--transition);
   appearance: none;
   -webkit-appearance: none;
+  min-height: var(--control-h);
 }
 .field input[type="text"]::placeholder { color: rgba(199,205,245,.8); }   /* AA: antes .6 (4.0:1) */
 
 /* chevron propio solo en los selects (antes también se pintaba en el input de búsqueda) */
+/* Campo estándar de la suite: 40 px, radio 10 */
 .sidebar .field select {
-  height: 36px;
+  
   padding: 0 36px 0 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c7cdf5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 16px 16px;
   cursor: pointer;
+  min-height: var(--control-h);
 }
 
 .field select:focus,
@@ -491,10 +484,10 @@ body {
 /* ══ SELECTS UNIFICADOS (fondo claro) ══ */
 #coord-panel .form-group select,
 .bulk-tienda-select {
-  height: 36px;
+  
   padding: 0 36px 0 12px;
   border: 1px solid #cfd4e0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background-color: #fff;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235a6482' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -503,6 +496,7 @@ body {
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
+  min-height: var(--control-h);
 }
 #coord-panel .form-group select:focus {
   border-color: var(--primary);
@@ -534,18 +528,20 @@ body {
 .pw-toggle.is-visible .pw-ico-hide { display: block; }
 
 /* ══ ACTION BUTTONS ══ */
+/* Botón estándar de la suite (ver QA_CONSISTENCIA_VISUAL.md): 40 px, radio 10, 14 px/600 */
 .btn-action {
-  padding: 10px 20px;
+  padding: 0 var(--space-4);
   border-radius: var(--radius-md);
   font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
   cursor: pointer;
   border: 1.5px solid transparent;
   transition: var(--transition);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: var(--control-h);
 }
 .btn-action:active { transform: scale(.97); }
 
@@ -962,15 +958,16 @@ body {
 }
 .bulk-search input {
   width: 100%;
-  height: 36px;
+  
   padding: 0 12px 0 34px;
   border: 1px solid #cfd4e0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-family: var(--sans);
   font-size: 13px;
   color: var(--text);
   outline: none;
   transition: var(--transition);
+  min-height: var(--control-h);
 }
 .bulk-search input::placeholder { color: var(--muted); }
 .bulk-search input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(13,27,110,.09); }
@@ -1925,3 +1922,7 @@ body {
 #coord-panel .switch-toggle input { min-width: 0; min-height: 0; }   /* el interruptor ya mide 42×24 */
 #ct-sel-todos, .conteo-card input[type="checkbox"] { width: 24px; height: 24px; }
 .estacion-ayuda summary { padding: 6px 0; }
+
+/* Botón pequeño de la suite (32 px, 13 px/600): antes cada uno llevaba
+   font-size/padding en línea en index.html */
+.btn-action.btn-sm { min-height: var(--control-h-sm); padding: 0 var(--space-3); font-size: 13px; }

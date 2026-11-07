@@ -3,19 +3,10 @@
    igual que devoluciones.css — ver ese archivo para valores exactos. */
 @import url('/shared/tokens.css');
 :root {
-    --mono: 'IBM Plex Mono', monospace;
-    --sans: 'Inter', system-ui, sans-serif;
+  /* Radios, sombras, transición y fuentes: shared/tokens.css (aquí solo alias) */
+    --mono: var(--font-mono);
+    --sans: var(--font-sans);
 
-    --shadow-xs: 0 1px 3px rgba(13,27,110,.06);
-    --shadow-sm: 0 2px 8px rgba(13,27,110,.09);
-    --shadow-md: 0 4px 16px rgba(13,27,110,.11);
-    --shadow-lg: 0 8px 28px rgba(13,27,110,.13);
-
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
-    --radius-xl: 18px;
-    --transition: all .18s ease;
 }
 
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -43,71 +34,6 @@ body {
 }
 
 /* ══ HEADER — copia exacta de devoluciones ══ */
-.app-header {
-    background: var(--brand-800);
-    display: flex;
-    flex-direction: column;
-}
-.header-main-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 13px 22px;
-}
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-.header-logo-pill {
-    display: flex;
-    align-items: center;
-    background: rgba(255,255,255,.1);
-    border: 0.5px solid rgba(255,255,255,.2);
-    border-radius: 8px;
-    padding: 6px 12px;
-}
-.header-logo-img {
-    height: 28px;
-    object-fit: contain;
-    filter: brightness(0) invert(1);
-}
-.header-divider {
-    width: 1px; height: 30px;
-    background: rgba(255,255,255,.15);
-}
-.header-titles { display: flex; flex-direction: column; gap: 2px; }
-.header-titles h1 {
-    font-size: 1rem; font-weight: 500;
-    margin: 0; color: white; letter-spacing: .2px;
-}
-.header-sub {
-    font-size: 12px;
-    color: #c7cdf5;
-    font-weight: 400;
-}
-.header-back {
-    width: 34px; height: 34px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: transparent; color: #fff;
-    border: 1px solid rgba(255,255,255,.35); border-radius: 8px;
-    cursor: pointer; transition: background .15s, border-color .15s;
-}
-.header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
-.header-status-bar {
-    display: flex; align-items: center; gap: 6px;
-    padding: 5px 22px;
-    background: rgba(0,0,0,.15);
-    border-top: .5px solid rgba(255,255,255,.08);
-}
-.header-status-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: #4caf50; flex-shrink: 0;
-}
-.header-status-text {
-    font-size: .7rem;
-    color: rgba(255,255,255,.72); /* AA: antes .45 (4.2:1) */
-}
 
 /* ══ SECTION HEADER ══ */
 .section-header {
@@ -127,14 +53,16 @@ body {
 .section-content { padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; }
 
 /* ══ BUTTONS — mismos que devoluciones/manifiesto ══ */
+/* Botón estándar de la suite (ver QA_CONSISTENCIA_VISUAL.md): 40 px, radio 10, 14 px/600 */
 .btn {
-    padding: 10px 20px;
+    padding: 0 var(--space-4);
     border-radius: var(--radius-md);
-    font-family: var(--sans); font-weight: 500; font-size: .8rem;
+    font-family: var(--sans); font-weight: var(--weight-semibold); font-size: var(--text-base);
     border: 1.5px solid transparent;
     cursor: pointer;
     display: inline-flex; align-items: center; gap: 7px;
     white-space: nowrap; transition: var(--transition);
+  min-height: var(--control-h);
 }
 .btn:active { transform: scale(.97); }
 .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
@@ -142,12 +70,12 @@ body {
 .btn-primary {
     background: var(--brand-800); color: white;
     border-color: var(--brand-800);
-    box-shadow: 0 2px 8px rgba(13,27,110,.2);
+    box-shadow: none;
 }
 .btn-primary:hover:not(:disabled) {
     background: var(--brand-700); border-color: var(--brand-700);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(13,27,110,.28);
+    transform: none;
+    box-shadow: none;
 }
 .btn-ghost {
     background: white; color: var(--neutral-600);
@@ -220,12 +148,13 @@ body {
 
 .dropzone-browse-btn {
     margin-top: 12px;
-    padding: 8px 16px;
+    padding: 0 var(--space-3);
     border-radius: var(--radius-md);
-    font-family: var(--sans); font-weight: 500; font-size: .74rem;
+    font-family: var(--sans); font-weight: var(--weight-semibold); font-size: 13px;
     border: 1.5px solid var(--neutral-200);
     background: white; color: var(--neutral-600);
     cursor: pointer; transition: var(--transition);
+  min-height: var(--control-h-sm);
 }
 .dropzone-browse-btn:hover { border-color: var(--brand-500); color: var(--brand-500); background: var(--brand-50); }
 
@@ -277,7 +206,10 @@ body {
 
 /* ══ ACCIÓN PRINCIPAL ══ */
 .compare-action { display: flex; justify-content: center; }
-.compare-action .btn { padding: 13px 32px; font-size: .88rem; }
+/* Acción principal destacada: botón grande de la suite (48 px) */
+.compare-action .btn { padding: 0 var(--space-8); font-size: var(--text-md);
+  min-height: var(--control-h-lg);
+}
 
 /* ══ MÉTRICAS ══ */
 .metrics-grid {
@@ -371,9 +303,6 @@ tr:hover td { background: var(--brand-50); color: var(--neutral-800); }
 tbody tr:nth-child(even) td { background: var(--neutral-50); }
 tbody tr:nth-child(even):hover td { background: var(--brand-50); }
 
-.empty { text-align: center; padding: 40px 24px; }
-.empty-ico { font-size: 2.8rem; opacity: .4; margin-bottom: 10px; display: block; }
-.empty-t { font-size: .82rem; color: #3d4663; font-weight: 500; }
 
 .guide-id-pill {
     font-family: var(--mono); font-size: .82rem;
@@ -500,18 +429,4 @@ tbody tr:nth-child(even):hover td { background: var(--brand-50); }
 }
 @media(max-width: 480px){
     .metric-card { min-width: 120px; flex-direction: column; text-align: center; gap: 6px; }
-}
-
-/* ── CABECERA EN CELULAR ──
- * Dos filas: volver + logo arriba, título y subtítulo a todo el ancho
- * debajo (antes el título se partía en 3-4 líneas al lado del logo).
- * Si el logo externo no carga, se oculta también su óvalo y el separador. */
-.header-logo-pill[hidden], .header-logo-pill[hidden] + .header-divider { display: none; }
-@media (max-width: 600px) {
-  .header-main-row { padding: 12px 14px; }
-  .header-left { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
-  .header-divider { display: none; }
-  .header-titles { flex: 1 1 100%; min-width: 0; }
-  .header-titles h1 { font-size: 1.15rem; line-height: 1.25; }
-  .header-back { width: 44px; height: 44px; }
 }

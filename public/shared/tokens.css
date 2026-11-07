@@ -1,21 +1,24 @@
-/* ── PALETA DE COLOR COMPARTIDA ─────────────────────────
- * Unifica las variables de color que index.css, devoluciones.css,
- * manifiesto.css y reporte.css redefinían cada uno por su cuenta
- * (mismos valores en al menos 3 de los 4 archivos, con leves
- * divergencias que se estandarizan acá). Fuentes, sombras, radios y
- * transiciones quedan locales a cada módulo — esto es solo color.
+/* ══ SISTEMA DE DISEÑO EFFICOMMERCE ═════════════════════
+ * Fuente única de los valores visuales de la suite. Las 10 pantallas lo
+ * cargan; los módulos no redefinen estos nombres (solo alias como
+ * --sans: var(--font-sans) donde su CSS ya usaba otro nombre).
+ * Excepción: trazabilidad.html lleva una copia porque debe funcionar
+ * abierta desde file:// (mantenerla sincronizada con este archivo).
+ * StockForge conserva su paleta oscura propia (temas en almacen4.js) y
+ * comparte aquí el foco, la tipografía base de controles, los avisos y
+ * el diálogo de confirmación.
  */
 :root {
-  /* Marca */
+  /* ── Marca ── */
   --brand-900:  #07104a;
-  --brand-800:  #0d1b6e;
-  --brand-700:  #1227a0;
-  --brand-500:  #2a47d4;
+  --brand-800:  #0d1b6e;   /* primario: cabeceras, botón principal */
+  --brand-700:  #1227a0;   /* primario en hover / presionado */
+  --brand-500:  #2a47d4;   /* acento: enlaces, indicadores, progreso */
   --brand-300:  #7a9df3;
   --brand-100:  #dde6fd;
   --brand-50:   #f0f4fe;
 
-  /* Semánticos */
+  /* ── Semánticos ── (-bg fondo, -text texto AA sobre su -bg, -mid ícono/borde fuerte) */
   --success-bg:     #e8f5e9;
   --success-text:   #1b5e20;
   --success-mid:    #2e7d32;
@@ -31,20 +34,96 @@
   --danger-mid:     #c62828;
   --danger-border:  #f48fb1;
 
-  /* Único de manifiesto.css, incluido acá para no duplicar paleta */
-  --purple-bg:   #f3e5f5;
+  --purple-bg:   #f3e5f5;   /* "repetidas" en Manifiesto */
   --purple-text: #4a148c;
   --purple-mid:  #7b1fa2;
 
-  /* Neutros — estandarizados al valor usado en 3 de los 4 módulos
-     (reporte.css divergía levemente en 50/100/200; ver commit) */
+  /* ── Grises ── */
+  --neutral-0:   #ffffff;
   --neutral-50:  #f8f9fb;
   --neutral-100: #f1f3f7;
   --neutral-200: #e2e6ef;
-  --neutral-400: #5a6482; /* corregido por contraste AA, ver public/index.css etc. */
+  --neutral-300: #c9d0de;   /* bordes de controles */
+  --neutral-400: #5a6482;   /* = 600 desde la corrección de contraste AA */
   --neutral-600: #5a6482;
   --neutral-800: #1e2540;
+
+  /* ── Roles (usar estos en componentes nuevos) ── */
+  --color-bg:            var(--neutral-100);
+  --color-surface:       var(--neutral-0);
+  --color-surface-alt:   var(--neutral-50);
+  --color-text:          var(--neutral-800);
+  --color-text-muted:    var(--neutral-600);
+  --color-border:        var(--neutral-200);
+  --color-border-strong: var(--neutral-300);
+  --color-primary:       var(--brand-800);
+  --color-primary-hover: var(--brand-700);
+  --color-on-primary:    #ffffff;
+  --color-accent:        var(--brand-500);
+
+  /* ── Tipografía ── */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 14px;
+  --text-md:   15px;
+  --text-lg:   17px;   /* título de cabecera de módulo */
+  --text-xl:   20px;
+  --text-2xl:  26px;   /* cifras de métricas */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --leading-tight:  1.25;
+  --leading-normal: 1.5;
+
+  /* ── Espaciado (base 4 px) ── */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;  --space-4: 16px;
+  --space-5: 20px;  --space-6: 24px;  --space-8: 32px;  --space-10: 40px;
+
+  /* ── Radios ── */
+  --radius-sm:   6px;    /* insignias, chips, controles pequeños */
+  --radius-md:   10px;   /* botones, campos */
+  --radius-lg:   14px;   /* tarjetas */
+  --radius-xl:   18px;   /* contenedores de página, modales */
+  --radius-pill: 999px;
+
+  /* ── Sombras (tinte de marca) ── */
+  --shadow-xs: 0 1px 3px rgba(13,27,110,.07);
+  --shadow-sm: 0 2px 8px rgba(13,27,110,.09);
+  --shadow-md: 0 4px 16px rgba(13,27,110,.11);
+  --shadow-lg: 0 8px 28px rgba(13,27,110,.14);
+
+  /* ── Bordes ── */
+  --border-width: 1px;
+  /* (no se llama --border: index.css y StockForge ya usan ese nombre como color) */
+  --border-line:        var(--border-width) solid var(--color-border);
+  --border-line-strong: var(--border-width) solid var(--color-border-strong);
+
+  /* ── Controles (botones y campos) ── */
+  --control-h-sm: 32px;
+  --control-h:    40px;
+  --control-h-lg: 48px;   /* formularios de celular (Conteos, Recepción) */
+
+  /* ── Interacción ── */
+  --transition:        all .18s ease;
+  --hover-bg:          var(--neutral-50);
+  --pressed-scale:     .98;
+  --disabled-opacity:  .5;
+
+  /* ── Capas ── */
+  --z-header: 20;
+  --z-modal:  1000;
+  --z-toast:  99999;
 }
+
+/* ── BASE ──
+ * Los <button>, <input>, <select> y <textarea> no heredan la fuente de la
+ * página: en 9 de las 10 pantallas había botones en Arial 13,3 px (volver,
+ * cerrar, "Modo coordinador"). Solo la familia: los tamaños siguen siendo
+ * los de cada módulo. */
+button, input, select, textarea { font-family: inherit; }
 
 /* ── FOCO VISIBLE GLOBAL ────────────────────────────────
  * Un anillo de 3 px en todo control enfocado con teclado (:focus-visible: con

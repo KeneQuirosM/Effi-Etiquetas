@@ -9,8 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     <link rel="stylesheet" href="/shared/tokens.css">
+<link rel="stylesheet" href="/shared/componentes.css">
     <link rel="stylesheet" href="alistamiento.css">
 </head>
 <body>
@@ -33,10 +33,6 @@
                     <span class="header-sub">Fulfillment · Filtro de guías</span>
                 </div>
             </div>
-        </div>
-        <div class="header-status-bar">
-            <span class="header-status-dot"></span>
-            <span class="header-status-text">Sistema activo</span>
         </div>
     </header>
 
@@ -149,10 +145,7 @@
                         </thead>
                         <tbody id="guidesTableBody">
                             <tr><td colspan="3" style="padding:0;border:none;">
-                                <div class="empty">
-                                    <span class="empty-ico">∅</span>
-                                    <div class="empty-t">Sin resultados</div>
-                                </div>
+                                <div class="estado-vacio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><p class="estado-vacio-titulo">Sin resultados</p><p class="estado-vacio-texto">Carga el Excel y el PDF y pulsa "Comparar y Filtrar".</p></div>
                             </td></tr>
                         </tbody>
                     </table>
@@ -203,6 +196,7 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="/shared/dom-utils.js"></script>
+<script src="/shared/iconos.js"></script>
 <script src="alistamiento.js"></script>
 </body>
 </html>

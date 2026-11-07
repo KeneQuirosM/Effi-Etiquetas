@@ -6,14 +6,14 @@
 <title>Reporte de Salida por Distribuidor / Proveedor — Efficommerce</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" integrity="sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz" crossorigin="anonymous"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
 <link rel="stylesheet" href="/shared/tokens.css">
+<link rel="stylesheet" href="/shared/componentes.css">
 <link rel="stylesheet" href="reporte.css">
 </head>
 <body>
 
-<header>
-  <div class="header-container">
+<header class="app-header">
+  <div class="header-main-row">
     <div class="header-left">
       <button type="button" class="header-back" onclick="goBackToApp()" aria-label="Volver" title="Volver"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>
       <div class="header-logo-pill">
@@ -85,16 +85,14 @@
 </div>
 
 <div class="main" id="mainContent">
-  <div class="empty-state">
-    <i class="fas fa-folder-open" style="font-size: 2.5rem; color: var(--neutral-400); margin-bottom: 12px; display: block;"></i>
-    Carga un reporte de movimientos para estructurar los SKUs contra la base de datos.
-  </div>
+  <div class="estado-vacio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg><p class="estado-vacio-titulo">Sin reporte cargado</p><p class="estado-vacio-texto">Carga un reporte de movimientos para estructurar los SKUs contra la base de datos.</p></div>
 </div>
 
 <div class="footer-note" id="footerNote">Efficommerce · Gestión Integrada de Almacén</div>
 </div>
 
 <script src="/shared/dom-utils.js"></script>
+<script src="/shared/iconos.js"></script>
 <script src="reporte.js"></script>
 </body>
 </html>

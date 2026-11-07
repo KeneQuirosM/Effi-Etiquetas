@@ -846,7 +846,7 @@ function hideOfflineBanner() {
 function showToast(msg, type) {
   if (type === 'danger') notif(msg, 'err');
   else if (type === 'warn') notif(msg, 'warn');
-  else if (type === 'info') notif(msg, 'ok'); // o un estilo específico
+  else if (type === 'info') notif(msg, '');
   else notif(msg, 'ok');
 }
   
@@ -983,12 +983,18 @@ async function load() {
   }
 }
   
+// Confirmación con el diálogo compartido (shared/confirmar.js), en la paleta de StockForge
+function confirmarSF(mensaje, titulo, aceptar){
+  const en=currentLang==='en';
+  return confirmar({titulo:titulo[en?1:0],mensaje,aceptar:aceptar[en?1:0],cancelar:en?'Cancel':'Cancelar',peligro:true,oscuro:true});
+}
+
 async function limpiarCantidades() {
   const msg = currentLang === 'en'
     ? 'Reset ALL quantities in the warehouse?\n\nProducts and cell states are kept — only quantities are zeroed out.'
     : '¿Limpiar TODAS las cantidades del almacén?\n\nLos productos y estados de celda permanecen — solo se resetean las cantidades.';
 
-  if (!confirm(msg)) return;
+  if (!(await confirmarSF(msg, ['Limpiar cantidades','Reset quantities'], ['Limpiar','Reset']))) return;
 
   // Guardar estados antes de cualquier operación
   const estadosPrevios = {};
@@ -1267,13 +1273,13 @@ function saveSnapshot(auto=false){
   }catch(e){if(!auto)notif(t('notif_snap_error'),'err');}
 }
 
-function restoreSnapshot(ts){
+async function restoreSnapshot(ts){
   if(!coordUnlocked){notif(t('notif_pin_locked_snap'),'warn');openCoordinadorModal();return;}
   try{
     const snaps=JSON.parse(localStorage.getItem(SNAP_KEY))||[];
     const snap=snaps.find(s=>s.ts===ts);
     if(!snap){notif(t('notif_snap_not_found'),'err');return;}
-    if(!confirm(t('confirm_restore_snap').replace('{date}',snap.label)))return;
+    if(!(await confirmarSF(t('confirm_restore_snap').replace('{date}',snap.label),['Restaurar snapshot','Restore snapshot'],['Restaurar','Restore'])))return;
     saveSnapshot();
     const d=JSON.parse(snap.data);
     state.zones=d.zones||[];state.racks=d.racks||[];state.cells=d.cells||{};
@@ -1284,10 +1290,10 @@ function restoreSnapshot(ts){
   }catch(e){notif(t('notif_snap_restore_error'),'err');}
 }
 
-function deleteSnapshot(ts){
+async function deleteSnapshot(ts){
   if(!coordUnlocked){notif(t('notif_pin_locked_del'),'warn');openCoordinadorModal();return;}
   const msg=currentLang==='en'?'Delete this snapshot? This cannot be undone.':'¿Eliminar este snapshot? Esta acción no se puede deshacer.';
-  if(!confirm(msg))return;
+  if(!(await confirmarSF(msg,['Eliminar snapshot','Delete snapshot'],['Eliminar','Delete'])))return;
   try{
     let snaps=JSON.parse(localStorage.getItem(SNAP_KEY))||[];
     snaps=snaps.filter(s=>s.ts!==ts);
@@ -1562,14 +1568,14 @@ function addZone(){
   document.getElementById('zn').value='';document.getElementById('zd').value='';
   openO('o-zone');
 }
-function deleteZone(id){
+async function deleteZone(id){
   if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');return;}
   const z=state.zones.find(z=>z.id===id);
   const rackCount=state.racks.filter(r=>r.zone===id).length;
   const msg=rackCount>0
     ? `${currentLang==='en'?`Delete zone "${z?.name}"? ${rackCount} rack(s) will be unassigned.`:`¿Eliminar zona "${z?.name}"? ${rackCount} rack(s) quedarán sin zona.`}`
     : `${currentLang==='en'?`Delete zone "${z?.name}"?`:`¿Eliminar zona "${z?.name}"?`}`;
-  if(!confirm(msg))return;
+  if(!(await confirmarSF(msg,['Eliminar zona','Delete zone'],['Eliminar','Delete'])))return;
   state.zones=state.zones.filter(z=>z.id!==id);
   state.racks.forEach(r=>{if(r.zone===id)r.zone='';});
   save();renderZoneList();populateZoneSel();renderFloor();notif(`${currentLang==='en'?'Zone':'Zona'} "${z.name}" ${currentLang==='en'?'deleted':'eliminada'}`,'warn');
@@ -1847,13 +1853,13 @@ function sortSkuList(mode){
   });
   renderSkuList(skus);
 }
-function removeSkuRow(i){
+async function removeSkuRow(i){
   const skus=collectSkus();
   const s=skus[i];
   const qty=parseFloat(s.qty)||0;
-  if(qty>0&&!confirm((currentLang==='en'
+  if(qty>0&&!(await confirmarSF((currentLang==='en'
     ?'This SKU has '+qty+' '+s.unit+' in stock. Remove it?'
-    :'Este SKU tiene '+qty+' '+s.unit+' en stock. ¿Eliminarlo de la celda?')))return;
+    :'Este SKU tiene '+qty+' '+s.unit+' en stock. ¿Eliminarlo de la celda?'),['Quitar SKU','Remove SKU'],['Quitar','Remove'])))return;
   skus.splice(i,1);renderSkuList(skus);
 }
 function collectSkus(){
@@ -2557,9 +2563,9 @@ function showDetail(id){
       <button class="btn bd bsm" onclick="deleteRack('${id}')">✕</button>
     </div>`;
 }
-function deleteRack(id){
+async function deleteRack(id){
   if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');return;}
-  if(!confirm(t('confirm_del_rack')))return;
+  if(!(await confirmarSF(t('confirm_del_rack'),['Eliminar rack','Delete rack'],['Eliminar','Delete'])))return;
   const r=state.racks.find(r=>r.id===id);
   state.racks=state.racks.filter(r=>r.id!==id);delete state.cells[id];
   state.movements=(state.movements||[]).filter(m=>m.rackId!==id&&m.destRackId!==id);
@@ -5543,11 +5549,16 @@ function addAct(txt,color='var(--cyan)'){
   acts.unshift({txt,color,t});if(acts.length>16)acts.pop();
   document.getElementById('actlog').innerHTML=acts.map(a=>`<div class="aitem"><div class="adot" style="background:${a.color}"></div><div class="atime">${a.t}</div><div class="atxt">${a.txt}</div></div>`).join('');
 }
+// Avisos: el sistema compartido notify() (shared/dom-utils.js), igual que el
+// resto de la suite (antes un sistema propio arriba a la derecha). Se conserva
+// la regla de no repetir un aviso idéntico mientras sigue en pantalla.
+const __notifVisibles=new Map();
 function notif(msg,type=''){
-  const c=document.getElementById('notifs');
-  if(Array.from(c.children).some(n=>n.textContent===msg))return;
-  const n=document.createElement('div');
-  n.className=`notif ${type}`;n.textContent=msg;c.appendChild(n);setTimeout(()=>n.remove(),3200);
+  if(__notifVisibles.has(msg))return;
+  const tipo={ok:'success',err:'error',warn:'warn'}[type]||'info';
+  const dur=tipo==='error'||tipo==='warn'?6000:3200;
+  notify(msg,tipo,dur);
+  __notifVisibles.set(msg,true);setTimeout(()=>__notifVisibles.delete(msg),dur);
 }
 
 // ═══════════════ HELPERS ═══════════════
@@ -5692,6 +5703,11 @@ function tokenExpirado(token) {
   } catch(e) { return true; }
 }
 
+// Candado del botón de coordinador: ícono SVG monocromo (antes los emoji 🔒/🔓)
+function iconoCandado(abierto){
+  return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="'+(abierto?'M8 11V7a4 4 0 0 1 7.5-2':'M8 11V7a4 4 0 0 1 8 0v4')+'"/></svg>';
+}
+
 function activarCoordinador(token, refreshToken) {
   coordToken = token;
   coordUnlocked = true;
@@ -5699,7 +5715,8 @@ function activarCoordinador(token, refreshToken) {
   if (refreshToken) sessionStorage.setItem('sf_refresh_token', refreshToken);
   const btn = document.getElementById('lock-btn');
   if (btn) {
-    btn.textContent = '🔓';
+    btn.innerHTML = iconoCandado(true);
+    btn.setAttribute('aria-label', currentLang==='en' ? 'Coordinator mode: active' : 'Modo coordinador: activo');
     btn.style.borderColor = 'var(--green)';
     btn.style.color = 'var(--green)';
     btn.title = 'Coordinador activo — click para cerrar sesión';
@@ -5716,7 +5733,8 @@ function desactivarCoordinador() {
   cerrarSesion();
   const btn = document.getElementById('lock-btn');
   if (btn) {
-    btn.textContent = '🔒';
+    btn.innerHTML = iconoCandado(false);
+    btn.setAttribute('aria-label', currentLang==='en' ? 'Coordinator mode: locked' : 'Modo coordinador: bloqueado');
     btn.style.borderColor = '';
     btn.style.color = '';
     btn.title = 'Modo coordinador';

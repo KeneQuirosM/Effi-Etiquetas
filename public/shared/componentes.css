@@ -1,0 +1,137 @@
+/* ══ COMPONENTES COMPARTIDOS ══════════════════════════════
+ * Piezas que antes cada módulo copiaba con pequeñas diferencias. Se carga
+ * después de tokens.css y antes del CSS propio del módulo (que puede
+ * ajustar, no redefinir). Todo usa los tokens de shared/tokens.css.
+ *
+ *   .app-header     cabecera de módulo (volver, logo opcional, título)
+ *   .estado-vacio   tabla o lista sin datos
+ *   .ui-btn         botón base (lo usa el diálogo de confirmación)
+ *   .ui-confirm     diálogo de confirmación (shared/confirmar.js)
+ */
+
+/* ── CABECERA DE MÓDULO ───────────────────────────────────
+ * Dos estructuras de HTML conviven y se ven igual:
+ *   <header class="app-header"> volver + títulos </header>          (Conteos, Recepción)
+ *   <header class="app-header"><div class="header-main-row">
+ *     <div class="header-left"> volver + logo + separador + títulos   (Manifiesto, Devoluciones,
+ *   </div></div></header>                                             Alistamiento, Trazabilidad, Reporte)
+ */
+.app-header {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.app-header:not(:has(> .header-main-row)),
+.app-header > .header-main-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  padding: var(--space-3) var(--space-5);
+}
+.header-left { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.header-back {
+  width: var(--control-h); height: var(--control-h); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; color: #fff; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.35); border-radius: var(--radius-md);
+  transition: background .15s, border-color .15s;
+}
+.header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
+.header-logo-pill {
+  display: flex; align-items: center;
+  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+  border-radius: var(--radius-sm); padding: 6px 12px;
+}
+.header-logo-img { height: 28px; object-fit: contain; filter: brightness(0) invert(1); }
+.header-divider { width: 1px; height: 30px; background: rgba(255,255,255,.15); flex-shrink: 0; }
+.header-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.header-titles h1 {
+  margin: 0; color: #fff;
+  font-size: var(--text-lg); font-weight: var(--weight-semibold); line-height: 1.2; letter-spacing: -.1px;
+}
+.header-sub, .header-titles p { margin: 0; font-size: var(--text-sm); line-height: 1.35; color: #c7cdf5; font-weight: var(--weight-regular); }
+/* Si el logo externo no carga se oculta su óvalo y el separador */
+.header-logo-pill[hidden], .header-logo-pill[hidden] + .header-divider { display: none; }
+
+/* Celular: volver + logo arriba, título a todo el ancho debajo */
+@media (max-width: 600px) {
+  .app-header:not(:has(> .header-main-row)),
+  .app-header > .header-main-row { padding: var(--space-3) var(--space-4); }
+  .header-left { flex-wrap: wrap; row-gap: 10px; }
+  .header-left .header-divider { display: none; }
+  /* Sin logo: volver y título en la misma fila; el subtítulo largo se parte
+     dentro del bloque en vez de empujarlo a otra línea. Con logo: dos filas. */
+  .header-left .header-titles { flex: 1 1 0; min-width: 0; }
+  .header-left:has(.header-logo-pill:not([hidden])) .header-titles { flex: 1 1 100%; }
+  .header-back { width: 44px; height: 44px; }
+}
+
+/* ── ESTADO VACÍO ─────────────────────────────────────────
+ * <div class="estado-vacio"><svg …/><p class="estado-vacio-titulo">Sin datos</p>
+ *   <p class="estado-vacio-texto">Qué hacer para que aparezcan</p></div> */
+.estado-vacio {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-2); text-align: center;
+  padding: var(--space-10) var(--space-5);
+  color: var(--color-text-muted);
+}
+.estado-vacio[hidden] { display: none; }
+.estado-vacio svg { width: 36px; height: 36px; color: var(--neutral-300); margin-bottom: var(--space-1); }
+.estado-vacio-titulo { margin: 0; font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--color-text); }
+.estado-vacio-texto { margin: 0; font-size: var(--text-sm); max-width: 42ch; line-height: var(--leading-normal); }
+
+/* ── BOTÓN BASE ───────────────────────────────────────── */
+.ui-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--control-h); padding: 0 var(--space-4);
+  border-radius: var(--radius-md); border: 1px solid var(--color-border-strong);
+  background: var(--color-surface); color: var(--color-text);
+  font: var(--weight-semibold) var(--text-base)/1 var(--font-sans);
+  cursor: pointer; transition: var(--transition);
+}
+.ui-btn:hover { background: var(--hover-bg); }
+.ui-btn:active { transform: scale(var(--pressed-scale)); }
+.ui-btn:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; transform: none; }
+.ui-btn-primario { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-on-primary); }
+.ui-btn-primario:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+.ui-btn-peligro { background: var(--danger-mid); border-color: var(--danger-mid); color: #fff; }
+.ui-btn-peligro:hover { background: #a61f1f; border-color: #a61f1f; }
+
+/* ── DIÁLOGO DE CONFIRMACIÓN ──────────────────────────── */
+.ui-confirm {
+  width: min(440px, calc(100vw - 32px));
+  /* margin:auto centra el <dialog> modal; algunas páginas tienen un reset
+     global * { margin: 0 } que, sin esto, lo deja arriba a la izquierda */
+  margin: auto;
+  padding: 0; border: none; border-radius: var(--radius-xl);
+  background: var(--color-surface); color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-sans);
+}
+.ui-confirm::backdrop { background: rgba(7, 16, 74, .45); }
+.ui-confirm-cuerpo { padding: var(--space-6) var(--space-6) var(--space-4); }
+.ui-confirm-titulo { margin: 0 0 var(--space-2); font-size: var(--text-lg); font-weight: var(--weight-semibold); line-height: var(--leading-tight); }
+.ui-confirm-texto { margin: 0; font-size: var(--text-base); line-height: var(--leading-normal); color: var(--color-text-muted); white-space: pre-line; }
+.ui-confirm-pie {
+  display: flex; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap;
+  padding: var(--space-4) var(--space-6) var(--space-5);
+}
+@media (max-width: 480px) {
+  .ui-confirm-pie { flex-direction: column-reverse; }
+  .ui-confirm-pie .ui-btn { width: 100%; min-height: 44px; }
+}
+/* StockForge (tema oscuro): el mismo diálogo con su paleta */
+.ui-confirm.ui-confirm-oscuro { background: var(--panel, #0f1318); color: var(--bright, #e0ecff); border: 1px solid var(--border2, #243048); }
+.ui-confirm-oscuro .ui-confirm-texto { color: var(--text, #b8c8e0); }
+.ui-confirm-oscuro .ui-btn:not(.ui-btn-primario):not(.ui-btn-peligro) { background: transparent; color: var(--bright, #e0ecff); border-color: var(--border2, #243048); }
+.ui-confirm-oscuro { --focus-ring: #ffd54f; }
+.ui-confirm-oscuro::backdrop { background: rgba(0, 0, 0, .72); }
+
+/* ── ÍCONOS (shared/iconos.js) ──
+ * El <i> conserva su tamaño (font-size) y color: el SVG mide 1em y usa
+ * currentColor, como antes el ícono de fuente. */
+.icono { display: inline-flex; align-items: center; justify-content: center; vertical-align: -0.125em; line-height: 1; }
+.icono svg { width: 1em; height: 1em; flex-shrink: 0; }
+.icono-girar svg { animation: icono-girar 1s linear infinite; }
+@keyframes icono-girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .icono-girar svg { animation: none; } }

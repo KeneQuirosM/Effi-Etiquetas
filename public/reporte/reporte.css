@@ -8,15 +8,9 @@
   @import url('/shared/tokens.css');
 
   :root {
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
+  /* Radios, sombras, transición y fuentes: shared/tokens.css (aquí solo alias) */   
 
-    --shadow-sm: 0 2px 8px rgba(13,27,110,.05);
-    --shadow-md: 0 4px 16px rgba(13,27,110,.08);
-    
-    --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
-    --transition: all .18s ease;
+    --font: var(--font-sans); 
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -30,76 +24,20 @@
   }
 
   /* ── CABECERA CORPORATIVA ── */
-  header {
-    background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-800) 100%);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 16px 32px;
-    color: #ffffff;
-  }
 
-  .header-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
 
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-  }
 
-  .header-logo-pill {
-    display: flex;
-    align-items: center;
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.25);
-    border-radius: var(--radius-md);
-    padding: 6px 14px;
-  }
 
-  .header-logo-img {
-    height: 32px;
-    object-fit: contain;
-    filter: brightness(0) invert(1);
-  }
 
-  .header-divider {
-    width: 1px;
-    height: 36px;
-    background: rgba(255,255,255,0.2);
-  }
 
-  .header-titles h1 {
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: #ffffff;
-    letter-spacing: -0.3px;
-    margin: 0;
-  }
 
-  .header-titles p {
-    color: #c7cdf5;
-    font-size: 12px;
-    margin-top: 2px;
-  }
-  .header-back {
-      width: 34px; height: 34px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: transparent; color: #fff;
-      border: 1px solid rgba(255,255,255,.35); border-radius: 8px;
-      cursor: pointer; transition: background .15s, border-color .15s;
-  }
-  .header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
 
   /* Ancho máximo en pantalla (1440px, centrado como los demás módulos).
      Solo @media screen: al imprimir/guardar PDF el contenido sigue
      ocupando el ancho completo de la hoja. Por debajo de 1440px no cambia. */
   @media screen {
     .report-shell { max-width: 1440px; margin: 0 auto; }
-    header .header-container { max-width: calc(1440px - 64px); margin: 0 auto; }
+    .app-header > .header-main-row { max-width: 1440px; margin: 0 auto; }   /* cabecera a todo el ancho, contenido centrado */
   }
 
   /* a11y: estas clases pasaron de <div onclick> a <button> — se neutraliza el
@@ -129,12 +67,13 @@
     border: none;         /* ahora es <button> — sin esto mostraría el borde nativo */
     font-family: inherit; /* idem — evita la tipografía por defecto del navegador */
     color: white;
-    padding: 10px 24px;
-    border-radius: 32px;
-    font-weight: 600;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-semibold);
     cursor: pointer;
-    font-size: 0.88rem;
+    font-size: var(--text-base);
     transition: var(--transition);
+    min-height: var(--control-h);
   }
   .file-label:hover { background: var(--brand-700); transform: translateY(-1px); }
   .file-info { margin-top: 10px; font-size: 0.8rem; color: var(--neutral-600); }
@@ -185,16 +124,18 @@
     align-items: center;
   }
 
+  /* Campo estándar de la suite: 40 px, radio 10 */
   .controls input[type="text"], .controls select {
     background: #fcfdfe;
     border: 1px solid var(--neutral-200);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     color: var(--neutral-800);
     padding: 8px 14px;
     font-size: 0.85rem;
     outline: none;
     transition: var(--transition);
     font-family: var(--font);
+    min-height: var(--control-h);
   }
   .controls input[type="text"] { min-width: 260px; }
   .controls input[type="text"]:focus, .controls select:focus {
@@ -202,19 +143,21 @@
     box-shadow: 0 0 0 3px rgba(42, 71, 212, 0.12);
   }
 
+  /* Botón estándar de la suite (ver QA_CONSISTENCIA_VISUAL.md): 40 px, radio 10, 14 px/600 */
   .toggle-btn {
     background: #fcfdfe;
     border: 1px solid var(--neutral-200);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     color: var(--neutral-800);
-    padding: 8px 14px;
-    font-size: 0.82rem;
-    font-weight: 500;
+    padding: 0 var(--space-4);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
     cursor: pointer;
     transition: var(--transition);
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    min-height: var(--control-h);
   }
   .toggle-btn:hover { background: var(--neutral-50); transform: translateY(-1px); }
   .toggle-btn.active { background: var(--danger-bg); border-color: var(--danger-mid); color: var(--danger-mid); font-weight: 600; }
@@ -468,21 +411,6 @@
     .bar-fill { background: var(--brand-500) !important; height: 100% !important; }
     .bar-fill.low { background: var(--danger-mid) !important; }
   }
-
-/* ── CABECERA EN CELULAR ──
- * Dos filas: volver + logo arriba, título y subtítulo a todo el ancho
- * debajo (antes el título se partía en 3-4 líneas al lado del logo).
- * Si el logo externo no carga, se oculta también su óvalo y el separador. */
-.header-logo-pill[hidden], .header-logo-pill[hidden] + .header-divider { display: none; }
-@media (max-width: 600px) {
-  header { padding: 12px 14px; }
-  .header-container { gap: 10px; }
-  .header-left { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
-  .header-divider { display: none; }
-  .header-titles { flex: 1 1 100%; min-width: 0; }
-  .header-titles h1 { font-size: 1.15rem; line-height: 1.25; }
-  .header-back { width: 44px; height: 44px; }
-}
 
 /* ── CELULAR: métricas 2×2, controles a lo ancho y cada artículo como tarjeta ──
  * Solo pantalla: al imprimir / guardar PDF se mantiene la tabla. */

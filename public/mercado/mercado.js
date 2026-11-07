@@ -330,7 +330,7 @@ function nuevoCorte(archivo, resultado) {
 }
 
 async function abrirCorte(id, tab) {
-  if (!confirmarDescartar()) return;
+  if (!(await confirmarDescartar())) return;
   try {
     const d = await api('GET', `/api/mercado?accion=corte&id=${id}`);
     const c = d.corte;
@@ -351,11 +351,14 @@ async function abrirCorte(id, tab) {
   }
 }
 
-function confirmarDescartar() {
+// Promesa: true si no hay cambios o si se aceptó descartarlos
+async function confirmarDescartar() {
   if (!S.corte?.sucio) return true;
-  return confirm(S.corte.id
-    ? 'Hay cambios de asignación sin guardar. ¿Descartarlos?'
-    : 'El corte actual no está guardado. ¿Descartarlo?');
+  return confirmar({
+    titulo: 'Descartar cambios',
+    mensaje: S.corte.id ? 'Hay cambios de asignación sin guardar. ¿Descartarlos?' : 'El corte actual no está guardado. ¿Descartarlo?',
+    aceptar: 'Descartar', peligro: true
+  });
 }
 window.addEventListener('beforeunload', e => {
   if (S.corte?.sucio) { e.preventDefault(); e.returnValue = ''; }
@@ -403,7 +406,7 @@ async function procesarArchivoCorte(file) {
     await cargarInicio();
     if (!S.inicioOk) { notify('No se pudo cargar la configuración del mercado. Revisa la conexión y vuelve a intentar.', 'error', 8000); return; }
   }
-  if (!confirmarDescartar()) return;
+  if (!(await confirmarDescartar())) return;
   try {
     const wb = await leerLibro(file);
     // El export trae una sola hoja; si suben la hoja de Google completa se usa la
@@ -1031,10 +1034,10 @@ async function guardarCorte() {
     if (v.avisos.desconocida.length) partes.push(`${v.avisos.desconocida.length} filas con transportadora desconocida`);
     const sinUbic = v.avisos.sin_ubicacion.length + v.avisos.tabla_no_cargada.length;
     if (sinUbic) partes.push(`${sinUbic} filas sin ubicación`);
-    if (!confirm(`La comprobación no está completa: ${partes.join(', ')}.\n\n¿Guardar de todos modos?`)) return;
+    if (!(await confirmar({ titulo: 'Comprobación incompleta', mensaje: `La comprobación no está completa: ${partes.join(', ')}.\n\n¿Guardar de todos modos?`, aceptar: 'Guardar igual' }))) return;
   }
   if (!c.id && (c.repetidas || []).length &&
-      !confirm(`${c.repetidas.length} guías de este Excel ya están en otro corte guardado. ¿Guardarlo de todos modos?`)) return;
+      !(await confirmar({ titulo: 'Guías repetidas', mensaje: `${c.repetidas.length} guías de este Excel ya están en otro corte guardado. ¿Guardarlo de todos modos?`, aceptar: 'Guardar igual' }))) return;
   guardando = true;
   $('btn-guardar-corte').disabled = true;
   try {
@@ -1259,7 +1262,7 @@ $('hist-lista').addEventListener('click', async e => {
   const id = Number(b.dataset.id);
   if (b.dataset.accion === 'abrir') abrirCorte(id, pestanaDeCorte());
   if (b.dataset.accion === 'borrar') {
-    if (!confirm(`¿Borrar el corte #${id} con sus asignaciones y su avance? No se puede deshacer.`)) return;
+    if (!(await confirmar({ titulo: `Borrar el corte #${id}`, mensaje: `¿Borrar el corte #${id} con sus asignaciones y su avance? No se puede deshacer.`, aceptar: 'Borrar', peligro: true }))) return;
     try {
       await api('DELETE', `/api/mercado?accion=corte&id=${id}`);
       notify('Corte borrado', 'success');
@@ -1409,7 +1412,7 @@ $('cfg-ubic-preview').addEventListener('click', async e => {
   const destinos = elegidas.map(h => h.destino);
   if (!elegidas.length) { notify('Escoge al menos una tabla', 'warn'); return; }
   if (new Set(destinos).size !== destinos.length) { notify('Dos pestañas van a la misma tabla', 'warn'); return; }
-  if (!confirm(`Se reemplazarán las tablas ${destinos.join(', ')}. ¿Continuar?`)) return;
+  if (!(await confirmar({ titulo: 'Reemplazar tablas', mensaje: `Se reemplazarán las tablas ${destinos.join(', ')}. ¿Continuar?`, aceptar: 'Reemplazar', peligro: true }))) return;
   e.target.disabled = true;
   let ok = 0;
   for (const h of elegidas) {
@@ -1481,8 +1484,8 @@ $('btn-rango-agregar').addEventListener('click', () => {
   S.cfgEdit.rangos.push({ hasta: '', nombre: '' });
   renderRangos();
 });
-$('btn-rango-defecto').addEventListener('click', () => {
-  if (!confirm('¿Volver a los rangos de la hoja original? Se aplican al guardar.')) return;
+$('btn-rango-defecto').addEventListener('click', async () => {
+  if (!(await confirmar({ titulo: 'Rangos originales', mensaje: '¿Volver a los rangos de la hoja original? Se aplican al guardar.', aceptar: 'Volver a los originales' }))) return;
   S.cfgEdit.rangos = M.RANGOS_DEFECTO.map(r => ({ ...r }));
   marcarConfigSucia();
   renderRangos();
