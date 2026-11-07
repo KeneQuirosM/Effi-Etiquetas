@@ -222,8 +222,8 @@
   .btn-download-xlsx { background: var(--success-mid) !important; color: white !important; border: none; font-weight: 600; }
   .btn-download-xlsx:hover { background: #1b5e20 !important; }
 
-  .btn-pdf { background: #e67e00 !important; color: white !important; border: none; font-weight: 600; }
-  .btn-pdf:hover { background: #b36200 !important; }
+  .btn-pdf { background: #b35c00 !important; /* AA: antes #e67e00 (2.9:1 con texto blanco) */ color: white !important; border: none; font-weight: 600; }
+  .btn-pdf:hover { background: #8f4a00 !important; }
 
   /* ── CONTENEDOR DE BLOQUES ── */
   .main { padding: 16px 32px 32px 32px; }

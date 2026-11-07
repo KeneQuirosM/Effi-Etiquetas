@@ -1,0 +1,82 @@
+{
+ "index.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "index.html|mobile": {
+  "score": 100,
+  "fails": []
+ },
+ "stockforge/almacen4.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "stockforge/almacen4.html|mobile": {
+  "score": 100,
+  "fails": []
+ },
+ "manifiesto/manifiesto.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "manifiesto/manifiesto.html|mobile": {
+  "score": 100,
+  "fails": []
+ },
+ "devoluciones/devoluciones.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "devoluciones/devoluciones.html|mobile": {
+  "score": 100,
+  "fails": []
+ },
+ "reporte/reporte_distribuidor_proveedor.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "reporte/reporte_distribuidor_proveedor.html|mobile": {
+  "score": 100,
+  "fails": []
+ },
+ "mercado/mercado.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "mercado/mercado.html|mobile": {
+  "score": 100,
+  "fails": []
+ },
+ "conteos/conteos.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "conteos/conteos.html|mobile": {
+  "score": 100,
+  "fails": []
+ },
+ "recepcion/recepcion.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "recepcion/recepcion.html|mobile": {
+  "score": 100,
+  "fails": []
+ },
+ "alistamiento/alistamiento.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "alistamiento/alistamiento.html|mobile": {
+  "score": 100,
+  "fails": []
+ },
+ "trazabilidad.html|desktop": {
+  "score": 100,
+  "fails": []
+ },
+ "trazabilidad.html|mobile": {
+  "score": 100,
+  "fails": []
+ }
+}

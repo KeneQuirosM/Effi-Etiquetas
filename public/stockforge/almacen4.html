@@ -74,7 +74,7 @@
     <button class="hbtn" onclick="openSettings()" data-i18n="btn_settings" title="Settings / Configuración">⚙</button>
    <button class="hbtn" id="lock-btn" onclick="toggleLock()" data-i18n-target="title" data-i18n="lock_title">🔒</button> 
    <!-- Hamburger — mobile only -->
-    <button class="hbtn hburger" id="hburger" onclick="toggleMobileMenu()" title="Menú">☰</button>
+    <button class="hbtn hburger" id="hburger" onclick="toggleMobileMenu()" title="Menú" aria-label="Abrir menú" aria-controls="mob-drawer" aria-expanded="false">☰</button>
   </div>
 </header>
 
@@ -83,7 +83,7 @@
 <div class="mob-drawer" id="mob-drawer">
   <div class="mob-drawer-hd">
     <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.2rem;letter-spacing:3px;color:var(--bright)">MENÚ</span>
-    <button onclick="closeMobileMenu()" style="background:none;border:none;color:var(--dim);font-size:1.4rem;cursor:pointer;padding:4px 8px">✕</button>
+    <button type="button" onclick="closeMobileMenu()" aria-label="Cerrar menú" data-cerrar-modal style="background:none;border:none;color:var(--dim);font-size:1.4rem;cursor:pointer;padding:4px 8px">✕</button>
   </div>
   <div class="mob-drawer-body">
     <button class="mob-action ac guard-btn" onclick="closeMobileMenu();guardEdit(openAddRack)">＋ <span data-i18n="btn_rack">Rack</span></button>
@@ -108,12 +108,13 @@
   </div>
 </div>
 
-<div class="wrap" id="wrap">
+<div class="wrap" id="wrap" role="main">
+  <h1 class="sr-only">StockForge · Gestión de almacén</h1>
   <!-- Panel toggle buttons — live outside panels so they survive collapse -->
   <button class="ptoggle ptoggle-l" id="ptoggle-lp" onclick="togglePanel('lp')" title="Panel izquierdo  [">‹</button>
   <button class="ptoggle ptoggle-r" id="ptoggle-rp" onclick="togglePanel('rp')" title="Panel derecho  ]">›</button>
 <!-- LEFT -->
-<aside class="lp" id="lp">
+<aside class="lp" id="lp" aria-label="Estadísticas y zonas">
   <div class="lsec">
     <div class="shd" data-i18n="stat_racks" id="stat-racks-hd">Estadísticas</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
@@ -217,7 +218,7 @@
 </div>
 
 <!-- RIGHT -->
-<aside class="rp" id="rp">
+<aside class="rp" id="rp" aria-label="Capacidad, detalle del rack y actividad">
   <div style="padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0">
     <div class="shd" style="margin-bottom:6px">Capacidad Global</div>
     <div class="dcard">
@@ -762,10 +763,11 @@
   </div>
 </div>
 
-<div class="notifs" id="notifs"></div>
+<div class="notifs" id="notifs" role="status" aria-live="polite"></div>
 
 <script src="/shared/dom-utils.js"></script>
 <script src="/shared/api.js"></script>
+<script src="/shared/a11y.js"></script>
 <script src="/stockforge/almacen4.js"></script>
 </body>
 </html>

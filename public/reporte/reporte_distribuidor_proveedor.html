@@ -28,7 +28,7 @@
   </div>
 </header>
 
-<div class="report-shell">
+<div class="report-shell" role="main">
 <div class="file-zone" id="fileZone">
   <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event)" />
   <button type="button" class="file-label" onclick="document.getElementById('excelInput').click()">
@@ -65,7 +65,7 @@
 
 <div class="controls" id="controlsSection" style="display:none;">
   <input type="text" id="searchInput" placeholder="Buscar por SKU o nombre de producto...">
-  <select id="filterType">
+  <select id="filterType" aria-label="Filtrar por origen">
     <option value="">Todos los orígenes</option>
     <option value="Distribuidor (Bodega Propia)">Solo Bodega Propia</option>
     <option value="Proveedor Dropshipping">Solo Proveedores Dropshipping</option>

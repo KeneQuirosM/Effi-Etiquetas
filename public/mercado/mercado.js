@@ -1512,3 +1512,14 @@ $('btn-config-guardar').addEventListener('click', async () => {
     renderConfig();
   } catch (err) { notify(err.message || 'No se pudo guardar', 'error', 8000); }
 });
+
+
+/* ── ACCESIBILIDAD: pestañas con flechas, Inicio/Fin y una sola en el orden
+   de Tab (shared/a11y.js); cada una apunta a su panel. ── */
+if (typeof activarPestanas === 'function') {
+  activarPestanas(document.querySelector('.mk-tabs'), {
+    etiqueta: 'Secciones',
+    activa: t => t.getAttribute('aria-selected') === 'true',
+    panelDe: t => document.getElementById('panel-' + t.dataset.tab)
+  });
+}

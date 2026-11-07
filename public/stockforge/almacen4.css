@@ -3,7 +3,7 @@
   --border:#1a2030;--border2:#243048;
   --accent: #f2a900;--cyan:#00d4ff;--green:#00ff88;
   --red:#ff3b5c;--yellow:#ffd000;
-  --text:#b8c8e0;--dim:#4a5a78;--bright:#e0ecff;
+  --text:#b8c8e0;--dim:#7a8bab;   /* antes #4a5a78 (2.3-2.8:1); ahora >= 4.7:1 sobre todos los fondos */--bright:#e0ecff;
   --steel:#141c2a;--beam:#1e2d45;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -753,4 +753,22 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
   .btn{min-height:40px;}
   .tbar{height:auto;min-height:48px;flex-wrap:wrap;row-gap:4px;padding-top:6px;padding-bottom:6px;overflow:visible;}
   .tinfo{flex:1 1 9em;white-space:normal;line-height:1.2;}
+}
+
+/* ── ACCESIBILIDAD ── */
+/* .sr-only viene de shared/tokens.css */
+:root{--focus-ring:#ffd54f;}   /* fondo oscuro; el tema claro lo cambia a azul */
+/* Modal cerrado: fuera del orden de Tab y del árbol de accesibilidad (antes
+   solo transparente: el Tab entraba en su contenido invisible). La
+   visibilidad cambia al final del desvanecimiento para no cortarlo. */
+.ov{visibility:hidden;transition:opacity .2s,visibility 0s linear .2s;}
+.ov.open{visibility:visible;transition:opacity .2s,visibility 0s;}
+
+/* Celular: los paneles inferiores (Info / Detalle) cerrados miden 0 de alto
+   pero sus controles seguían en el orden de Tab, invisibles bajo la barra
+   inferior (WCAG 2.4.3 / 2.4.11). Cerrados quedan ocultos también para el
+   teclado; la visibilidad cambia al final de la animación de altura. */
+@media (max-width:768px){
+  .lp:not(.mob-open), .rp:not(.mob-open){visibility:hidden;transition:height .3s cubic-bezier(.4,0,.2,1),visibility 0s linear .3s;}
+  .lp.mob-open, .rp.mob-open{visibility:visible;transition:height .3s cubic-bezier(.4,0,.2,1),visibility 0s;}
 }

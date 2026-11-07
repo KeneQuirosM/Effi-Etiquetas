@@ -17,7 +17,7 @@
 <!-- LOGIN OVERLAY -->
 <div id="pin-overlay">
   <div class="pin-modal">
-    <h3>Modo Coordinador</h3>
+    <h2 id="pin-titulo">Modo Coordinador</h2>
     <p>Inicia sesión para acceder</p>
     <!-- Formulario real: Enter envía desde cualquier campo y los gestores de
          contraseñas reconocen usuario/contraseña. novalidate: los mensajes
@@ -45,7 +45,7 @@
 </div>
 
 <!-- SIDEBAR -->
-<aside class="sidebar">
+<aside class="sidebar" aria-label="Generador de etiquetas y módulos">
 
   <!-- Brand — misma estructura que manifiesto/devoluciones -->
   <div class="brand">
@@ -118,6 +118,7 @@
 
 <!-- MAIN AREA -->
 <main class="main">
+  <h1 class="sr-only">Efficommerce · Generador de etiquetas y panel de coordinador</h1>
 
   <!-- COORDINATOR PANEL -->
   <div id="coord-panel">
@@ -265,7 +266,7 @@
             </button>
             <!-- El interruptor va junto al botón (no dentro): funciona sin abrir la sección -->
             <label class="switch-toggle">
-              <input type="checkbox" id="toggle-ubicacion" onchange="saveUbicacionToggle(this.checked)">
+              <input type="checkbox" id="toggle-ubicacion" aria-label="QR de ubicación en la etiqueta" onchange="saveUbicacionToggle(this.checked)">
               <span class="switch-track"></span>
             </label>
           </div>
@@ -282,7 +283,7 @@
               <svg class="cfg-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </button>
             <label class="switch-toggle">
-              <input type="checkbox" id="toggle-imprimir-grupo" checked onchange="saveGroupPrintToggle(this.checked)">
+              <input type="checkbox" id="toggle-imprimir-grupo" aria-label="Imprimir por grupo (Alistamiento)" checked onchange="saveGroupPrintToggle(this.checked)">
               <span class="switch-track"></span>
             </label>
           </div>
@@ -785,7 +786,7 @@
     </div>
 
     <div class="label-body">
-      <h1 id="view-name">PRODUCTO</h1>
+      <p id="view-name" class="label-nombre">PRODUCTO</p>
     </div>
 
     <div class="label-notes">
@@ -867,7 +868,7 @@
 <div id="rotulo-overlay">
   <div class="rotulo-modal">
     <div class="rotulo-modal-header">
-      <h3>Rótulo A4 Horizontal</h3>
+      <h2>Rótulo A4 Horizontal</h2>
       <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px;color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeRotulo()">✕</button>
     </div>
     <div class="rotulo-modal-body">
@@ -906,11 +907,11 @@
 <div id="bulk-overlay">
   <div class="bulk-modal">
     <div class="bulk-modal-header">
-      <h3>Impresión Masiva</h3>
+      <h2>Impresión Masiva</h2>
       <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px;color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeBulk()">✕ Cerrar</button>
     </div>
     <div class="bulk-modal-body">
-      <select class="bulk-tienda-select" id="bulk-select-tienda" onchange="renderBulkList()">
+      <select class="bulk-tienda-select" id="bulk-select-tienda" aria-label="Tienda para impresión masiva" onchange="renderBulkList()">
         <option value="">-- Selecciona una tienda --</option>
       </select>
       <div class="bulk-search">
@@ -941,7 +942,7 @@
 <div id="traslado-overlay" role="dialog" aria-modal="true" aria-labelledby="traslado-titulo">
   <div class="traslado-modal">
     <div class="traslado-head">
-      <h3 id="traslado-titulo">Trasladar conteos</h3>
+      <h2 id="traslado-titulo">Trasladar conteos</h2>
       <button type="button" class="traslado-cerrar" onclick="cerrarTraslado()" aria-label="Cerrar">✕</button>
     </div>
 
@@ -975,6 +976,7 @@
 
 <script src="/shared/dom-utils.js"></script>
 <script src="/shared/api.js"></script>
+<script src="/shared/a11y.js"></script>
 <script src="/shared/horario-laboral.js"></script>
 <script src="/index.js"></script>
 <script src="/decoracion.js"></script>

@@ -439,12 +439,14 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 /* Headers de modales específicos */
 #noManifestadasModal .modal-header { background: var(--danger-mid); }
 #repetidasModal     .modal-header  { background: var(--purple-mid); }
-#faltantesModal     .modal-header  { background: #e67e00; }
+#faltantesModal     .modal-header  { background: #b35c00; }   /* AA: antes #e67e00 (2.9:1 con texto blanco) */
 #historialModal     .modal-header  { background: var(--brand-800); }
 #confirmModal       .modal-header  { background: #c0392b; }
 
+/* <button> (antes <span>, que no se podía usar con teclado) */
 .close {
-  color: rgba(255,255,255,.75);
+  background: none; border: 0; padding: 4px 8px; font-family: inherit;
+  color: #fff;
   font-size: 22px;
   font-weight: 300;
   cursor: pointer;
@@ -837,7 +839,7 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
     }
     .header-status-text {
       font-size: 0.7rem;
-      color: rgba(255,255,255,0.45);
+      color: rgba(255,255,255,0.72); /* AA: antes .45 (4.2:1) */
     }
 
     /* ── TABLA DE GUÍAS ── */

@@ -1,0 +1,502 @@
+[
+ {
+  "n": "index 1440px: Tab recorre 14 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "index 1440px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "SELECT#select-tienda. INPUT#search-producto. SELECT#select-producto. SELECT#select-id. SELECT#select-formato."
+ },
+ {
+  "n": "index 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "index 375px: Tab recorre 14 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "index 375px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "SELECT#select-tienda. INPUT#search-producto. SELECT#select-producto. SELECT#select-id. SELECT#select-formato."
+ },
+ {
+  "n": "index 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "stockforge 1440px: Tab recorre 26 controles; todos con nombre accesible",
+  "pass": false,
+  "i": "DIV#.lscroll DIV#vp.vp"
+ },
+ {
+  "n": "stockforge 1440px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "INPUT#srch-hdr. DIV#.lscroll DIV#vp.vp"
+ },
+ {
+  "n": "stockforge 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": false,
+  "i": "BUTTON#.mcl INPUT#cat-person-name.fi INPUT#cat-person-role.fi BUTTON#.btn bp bsm INPUT#cat-shop-name.fi INPUT#cat-shop-code.fi"
+ },
+ {
+  "n": "stockforge 375px: Tab recorre 23 controles; todos con nombre accesible",
+  "pass": false,
+  "i": "DIV#.lscroll DIV#vp.vp DIV#.rpscroll"
+ },
+ {
+  "n": "stockforge 375px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "INPUT#srch-hdr. DIV#.lscroll DIV#vp.vp DIV#.rpscroll"
+ },
+ {
+  "n": "stockforge 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": false,
+  "i": "BUTTON#.mcl INPUT#cat-person-name.fi INPUT#cat-person-role.fi BUTTON#.btn bp bsm INPUT#cat-shop-name.fi INPUT#cat-shop-code.fi"
+ },
+ {
+  "n": "manifiesto 1440px: Tab recorre 7 controles; todos con nombre accesible",
+  "pass": false,
+  "i": "SELECT#.obs-select obs-buen-estado"
+ },
+ {
+  "n": "manifiesto 1440px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "INPUT#tablaBuscador.tabla-search SELECT#.obs-select obs-buen-estado"
+ },
+ {
+  "n": "manifiesto 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "manifiesto 375px: Tab recorre 7 controles; todos con nombre accesible",
+  "pass": false,
+  "i": "SELECT#.obs-select obs-buen-estado"
+ },
+ {
+  "n": "manifiesto 375px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "INPUT#tablaBuscador.tabla-search SELECT#.obs-select obs-buen-estado"
+ },
+ {
+  "n": "manifiesto 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 1440px: Tab recorre 17 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 375px: Tab recorre 17 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "reporte 1440px: Tab recorre 14 controles; todos con nombre accesible",
+  "pass": false,
+  "i": "SELECT#filterType."
+ },
+ {
+  "n": "reporte 1440px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "INPUT#searchInput. SELECT#filterType."
+ },
+ {
+  "n": "reporte 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "reporte 375px: Tab recorre 14 controles; todos con nombre accesible",
+  "pass": false,
+  "i": "SELECT#filterType."
+ },
+ {
+  "n": "reporte 375px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "INPUT#searchInput. SELECT#filterType."
+ },
+ {
+  "n": "reporte 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 1440px: Tab recorre 7 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 375px: Tab recorre 7 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 1440px: Tab recorre 6 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 1440px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "SELECT#f-tienda. SELECT#f-contado. SELECT#f-mesa. INPUT#f-inicio."
+ },
+ {
+  "n": "conteos 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 375px: Tab recorre 6 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 375px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "SELECT#f-tienda. SELECT#f-contado. SELECT#f-mesa. INPUT#f-inicio."
+ },
+ {
+  "n": "conteos 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 1440px: Tab recorre 7 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 1440px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "SELECT#f-tienda. INPUT#f-cajas. SELECT#f-recibido."
+ },
+ {
+  "n": "recepcion 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 375px: Tab recorre 7 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 375px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "SELECT#f-tienda. INPUT#f-cajas. SELECT#f-recibido."
+ },
+ {
+  "n": "recepcion 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 1440px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 1440: sin errores JS",
+  "pass": false,
+  "i": "pdfjsLib is not defined"
+ },
+ {
+  "n": "alistamiento 375px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 375: sin errores JS",
+  "pass": false,
+  "i": "pdfjsLib is not defined"
+ },
+ {
+  "n": "trazabilidad 1440px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 375px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "panel coordinador 1440px: Tab recorre 30 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "panel coordinador 1440px: todos muestran el anillo de foco",
+  "pass": false,
+  "i": "SELECT#c-select-tienda. INPUT#c-new-id. INPUT#c-new-nombre. SELECT#select-tienda. INPUT#search-producto. SELECT#select-producto. SELECT#select-id. SELECT#select-formato."
+ },
+ {
+  "n": "panel coordinador 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "pestañas del panel: role=tab, una seleccionada, una sola en el orden de Tab, con aria-controls",
+  "pass": false,
+  "i": "[]"
+ },
+ {
+  "n": "pestañas: → mueve el foco a la siguiente",
+  "pass": false,
+  "i": "Agregar Producto"
+ },
+ {
+  "n": "pestañas: Fin/Inicio van a la última/primera",
+  "pass": false,
+  "i": "Agregar Producto / Agregar Producto"
+ },
+ {
+  "n": "pestañas: Enter activa la enfocada (Gestionar Inventario) y muestra su panel",
+  "pass": false,
+  "i": "{\"panel\":false}"
+ },
+ {
+  "n": "filtros de rango: aria-pressed presente",
+  "pass": false,
+  "i": ",,,,,,,,,,"
+ },
+ {
+  "n": "Login de coordinador: al abrir con Enter el foco entra al diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"INPUT\",\"id\":\"coord-email\",\"cls\":\"\",\"nombre\":\"Email\",\"anillo\":false,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "Login de coordinador: role=\"dialog\", aria-modal y nombre",
+  "pass": false,
+  "i": "{\"role\":null,\"modal\":null}"
+ },
+ {
+  "n": "Login de coordinador: Tab y Shift+Tab no salen del diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"INPUT\",\"id\":\"coord-password\",\"cls\":\"\",\"nombre\":\"Contraseña\",\"anillo\":false,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "Login de coordinador: Escape cierra y el foco vuelve al botón que lo abrió",
+  "pass": false,
+  "i": "cerrado=true origen=btn-coord-toggle ahora=navidad"
+ },
+ {
+  "n": "Impresión masiva: al abrir con Enter el foco entra al diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"nav-btn-masiva\",\"cls\":\"btn-bulk\",\"nombre\":\"Impresión Masiva\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "Impresión masiva: role=\"dialog\", aria-modal y nombre",
+  "pass": false,
+  "i": "{\"role\":null,\"modal\":null}"
+ },
+ {
+  "n": "Impresión masiva: Tab y Shift+Tab no salen del diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"nav-btn-almacen\",\"cls\":\"btn-bulk\",\"nombre\":\"Gestión de Almacén\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "Impresión masiva: Escape cierra y el foco vuelve al botón que lo abrió",
+  "pass": false,
+  "i": "cerrado=false origen=nav-btn-masiva ahora=nav-btn-masiva"
+ },
+ {
+  "n": "Manifiesto: Faltantes: al abrir con Enter el foco entra al diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"DIV\",\"id\":\"\",\"cls\":\"modal-content\",\"nombre\":\"\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "Manifiesto: Faltantes: role=\"dialog\", aria-modal y nombre",
+  "pass": false,
+  "i": "{\"role\":null,\"modal\":null}"
+ },
+ {
+  "n": "Manifiesto: Faltantes: Tab y Shift+Tab no salen del diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"\",\"cls\":\"btn-copy\",\"nombre\":\"Copiar lista\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "Manifiesto: Faltantes: Escape cierra y el foco vuelve a scanInput",
+  "pass": false,
+  "i": "cerrado=false origen=metric-card warning ahora="
+ },
+ {
+  "n": "Manifiesto: la × de cerrar es <button> con nombre",
+  "pass": false,
+  "i": "SPAN null"
+ },
+ {
+  "n": "StockForge: Nueva zona: al abrir con Enter el foco entra al diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"zone-add-btn\",\"cls\":\"\",\"nombre\":\"＋\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "StockForge: Nueva zona: role=\"dialog\", aria-modal y nombre",
+  "pass": false,
+  "i": "{\"role\":null,\"modal\":null}"
+ },
+ {
+  "n": "StockForge: Nueva zona: Tab y Shift+Tab no salen del diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"DIV\",\"id\":\"\",\"cls\":\"lscroll\",\"nombre\":\"\",\"anillo\":false,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "StockForge: Nueva zona: Escape cierra y el foco vuelve al botón que lo abrió",
+  "pass": true,
+  "i": "cerrado=true origen=zone-add-btn ahora=zone-add-btn"
+ },
+ {
+  "n": "StockForge: pestañas del reporte con flechas + Enter",
+  "pass": false,
+  "i": "{\"n\":0}"
+ },
+ {
+  "n": "StockForge: menú ☰: al abrir con Enter el foco entra al diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"hburger\",\"cls\":\"hbtn hburger\",\"nombre\":\"☰\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "StockForge: menú ☰: role=\"dialog\", aria-modal y nombre",
+  "pass": false,
+  "i": "{\"role\":null,\"modal\":null}"
+ },
+ {
+  "n": "StockForge: menú ☰: Tab y Shift+Tab no salen del diálogo",
+  "pass": false,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"mob-backdrop\",\"cls\":\"mob-backdrop open\",\"nombre\":\"Cerrar menú\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "StockForge: menú ☰: Escape cierra y el foco vuelve al botón que lo abrió",
+  "pass": true,
+  "i": "cerrado=true origen=hburger ahora=hburger"
+ },
+ {
+  "n": "StockForge: ☰ informa aria-expanded",
+  "pass": false,
+  "i": "null"
+ },
+ {
+  "n": "Mercado: pestañas con flechas + Enter, una sola en el orden de Tab",
+  "pass": false,
+  "i": "{\"sel\":\"corte\",\"tabs\":\"0,0,0,0\",\"ctrl\":null}"
+ },
+ {
+  "n": "Mercado: \"¿Quién eres?\" abre con el foco en el primer nombre",
+  "pass": true,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"\",\"cls\":\"mk-chip mk-chip-btn\",\"nombre\":\"Ana\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "Mercado: Escape cierra y devuelve el foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Devoluciones 375: la tabla se alcanza con Tab y se desplaza con flechas",
+  "pass": true,
+  "i": "scrollLeft=80"
+ },
+ {
+  "n": "Devoluciones: Espacio marca la guía",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Manifiesto: tabla de guías alcanzable con Tab (región con nombre)",
+  "pass": false,
+  "i": "[-1,null,null]"
+ },
+ {
+  "n": "Avisos: los errores van a role=\"alert\" y los éxitos a role=\"status\", con prefijo de tipo",
+  "pass": false,
+  "i": "{\"roles\":[null,null]}"
+ }
+]

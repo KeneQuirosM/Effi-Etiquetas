@@ -96,7 +96,7 @@ body {
     border-top: .5px solid rgba(255,255,255,.08);
 }
 .header-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; flex-shrink: 0; }
-.header-status-text { font-size: .7rem; color: rgba(255,255,255,.45); }
+.header-status-text { font-size: .7rem; color: rgba(255,255,255,.72); } /* AA: antes .45 (4.2:1) */
 
 /* ══ SECTION HEADER ══ */
 .section-header {
@@ -439,6 +439,7 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
         </div>
     </header>
 
+    <main class="main-contenido">
     <div class="section-header">
         <i class="fas fa-route"></i>
         <h2>Panel de Control — Trazabilidad</h2>
@@ -713,7 +714,8 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
             </div>
         </div>
 
-    </div><!-- /section-content -->
+    </div>
+    </main><!-- /section-content -->
 </div><!-- /app-container -->
 
 <div class="toast-container" id="toastContainer"></div>

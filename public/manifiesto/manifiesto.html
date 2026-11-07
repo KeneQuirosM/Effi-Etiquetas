@@ -18,7 +18,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h3>Guías No Manifestadas</h3>
-      <span class="close" onclick="cerrarModalNoManifestadas()">&times;</span>
+      <button type="button" class="close" aria-label="Cerrar" onclick="cerrarModalNoManifestadas()">&times;</button>
     </div>
     <div class="modal-body">
       <div class="modal-stats">
@@ -37,7 +37,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h3>Historial de Documentos</h3>
-      <span class="close" onclick="cerrarModalHistorial()">&times;</span>
+      <button type="button" class="close" aria-label="Cerrar" onclick="cerrarModalHistorial()">&times;</button>
     </div>
     <div class="modal-body">
       <div class="historial-stats">
@@ -67,7 +67,7 @@
   <div class="modal-content" style="max-width: 400px;">
     <div class="modal-header">
       <h3>Confirmar Eliminación</h3>
-      <span class="close" onclick="cerrarConfirmModal()">&times;</span>
+      <button type="button" class="close" aria-label="Cerrar" onclick="cerrarConfirmModal()">&times;</button>
     </div>
     <div class="modal-body">
       <p>¿Estás seguro de que quieres eliminar <strong>todo</strong> el historial?</p>
@@ -91,7 +91,7 @@
   <div class="modal-content" style="max-width: 420px;">
     <div class="modal-header">
       <h3>Confirmar Generación de Reporte</h3>
-      <span class="close" onclick="cerrarConfirmExportModal()">&times;</span>
+      <button type="button" class="close" aria-label="Cerrar" onclick="cerrarConfirmExportModal()">&times;</button>
     </div>
     <div class="modal-body">
       <p>¿Estás seguro de que deseas generar el reporte de devoluciones?</p>
@@ -115,7 +115,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h3>Guías Repetidas</h3>
-      <span class="close" onclick="cerrarModalRepetidas()">&times;</span>
+      <button type="button" class="close" aria-label="Cerrar" onclick="cerrarModalRepetidas()">&times;</button>
     </div>
     <div class="modal-body">
       <div class="modal-stats">
@@ -134,7 +134,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h3>Guías Faltantes</h3>
-      <span class="close" onclick="this.closest('.modal').style.display='none'">&times;</span>
+      <button type="button" class="close" aria-label="Cerrar" onclick="this.closest('.modal').style.display='none'">&times;</button>
     </div>
     <div class="modal-body">
       <div class="modal-stats">
@@ -186,7 +186,7 @@
     </div>
 
     <!-- Dashboard -->
-    <section class="dashboard-section">
+    <section class="dashboard-section" role="main">
       <div class="section-header">
         <i class="fas fa-chart-line"></i>
         <h2>Panel de Control - Comparativo de Manifiesto</h2>
@@ -240,6 +240,7 @@
                 id="fileInput"
                 accept=".xls,.xlsx,.pdf"
                 class="hidden-file-input"
+                tabindex="-1" aria-hidden="true"
                 onchange="handleFile(event); document.getElementById('fileInputLabel').textContent = this.files[0]?.name || 'Seleccionar archivo...'"
               />
               <button type="button" class="file-input-button" onclick="document.getElementById('fileInput').click()">
@@ -363,7 +364,7 @@
               <i class="fas fa-file-excel"></i> Exportar Excel — Devoluciones
             </button>
           </div>
-          <div class="guias-table-wrapper">
+          <div class="guias-table-wrapper" tabindex="0" role="region" aria-label="Guías registradas">
             <table class="guias-table" id="guiasTable">
               <thead>
                 <tr>
@@ -405,6 +406,7 @@
 
   <!-- Lógica principal -->
   <script src="/shared/dom-utils.js"></script>
+  <script src="/shared/a11y.js"></script>
   <script src="manifiesto.js"></script>
   <script src="manifiesto-scan-ui.js"></script>
   <script src="manifiesto-sesion.js"></script>

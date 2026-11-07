@@ -178,7 +178,7 @@ body {
   appearance: none;
   -webkit-appearance: none;
 }
-.field input[type="text"]::placeholder { color: rgba(199,205,245,.6); }
+.field input[type="text"]::placeholder { color: rgba(199,205,245,.8); }   /* AA: antes .6 (4.0:1) */
 
 /* chevron propio solo en los selects (antes también se pintaba en el input de búsqueda) */
 .sidebar .field select {
@@ -236,7 +236,7 @@ body {
 .print-hint {
   margin: 0 20px 8px;
   font-size: 12px;
-  color: var(--muted);
+  color: #c7cdf5;   /* AA sobre la barra: antes --muted (2.6:1) */
   text-align: center;
 }
 .print-hint:empty { display: none; }
@@ -274,7 +274,7 @@ body {
   width: 100%;
   padding: 9px;
   background: transparent;
-  color: rgba(255,255,255,.38);
+  color: rgba(255,255,255,.75);   /* AA: antes .38 (3.2:1) */
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: .7px;
@@ -330,7 +330,9 @@ body {
 .label-4x6:has(.label-qr.visible) #label-logo-img { max-width: 100%; max-height: 0.75in; }
 
 .label-body { flex-grow: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
-.label-body h1 { margin: 0; font-family: var(--sans); line-height: 1.1; }
+/* El nombre de la vista previa era un <h1>: el título de la página quedaba
+   en "PRODUCTO". Ahora es un párrafo con el mismo aspecto. */
+.label-body .label-nombre { margin: 0; font-family: var(--sans); line-height: 1.1; font-size: 2em; font-weight: 700; }
 
 .label-footer { border-top: 4px solid #000; position: relative; text-align: center; flex-shrink: 0; }
 .label-footer p { font-size: 50pt; font-weight: 700; margin: 0; font-family: var(--sans); }
@@ -774,7 +776,7 @@ body {
   to   { transform: scale(1);   opacity: 1; }
 }
 
-.pin-modal h3 { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+.pin-modal h2 { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
 .pin-modal p  { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
 
 .pin-dots { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
@@ -859,7 +861,7 @@ body {
   flex-shrink: 0;
   background: var(--primary);
 }
-.bulk-modal-header h3 { font-size: 14px; font-weight: 600; color: white; }
+.bulk-modal-header h2 { font-size: 14px; font-weight: 600; color: white; }
 
 .bulk-modal-body { padding: 16px 24px; overflow-y: auto; flex-grow: 1; }
 .bulk-modal-body::-webkit-scrollbar { width: 4px; }
@@ -1034,7 +1036,7 @@ body {
   justify-content: space-between;
   background: var(--primary);
 }
-.rotulo-modal-header h3 { font-size: 14px; font-weight: 600; color: white; }
+.rotulo-modal-header h2 { font-size: 14px; font-weight: 600; color: white; }
 
 .rotulo-modal-body { padding: 20px 24px; }
 .rotulo-modal-footer {
@@ -1561,7 +1563,7 @@ body {
 .traslado-modal > div { display: flex; flex-direction: column; min-height: 0; }
 .traslado-modal > div[hidden] { display: none; }
 .traslado-head { flex-direction: row !important; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.traslado-head h3 { font-size: 16px; color: var(--primary); }
+.traslado-head h2 { font-size: 16px; color: var(--primary); }
 .traslado-cerrar { background: none; border: none; font-size: 18px; color: var(--muted); cursor: pointer; padding: 4px 8px; }
 .traslado-ayuda { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
 .traslado-filas {
@@ -1917,3 +1919,9 @@ body {
   .pw-toggle { min-width: 40px; min-height: 40px; }
   .perm-perfil-btn { min-height: 40px; }
 }
+
+/* WCAG 2.2 (2.5.8): áreas de toque de al menos 24×24 px también con mouse */
+#coord-panel input[type="checkbox"] { min-width: 20px; min-height: 20px; }
+#coord-panel .switch-toggle input { min-width: 0; min-height: 0; }   /* el interruptor ya mide 42×24 */
+#ct-sel-todos, .conteo-card input[type="checkbox"] { width: 24px; height: 24px; }
+.estacion-ayuda summary { padding: 6px 0; }

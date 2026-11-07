@@ -250,7 +250,7 @@
 
     function initTable(){
         if(!originalRowsData.length) return;
-        tableHeader.innerHTML=`<tr><th style="width:46px;text-align:center;"></th>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;
+        tableHeader.innerHTML=`<tr><th style="width:46px;text-align:center;"><span class="sr-only">Devuelta</span></th>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;
         renderTable();
     }
 
@@ -473,7 +473,7 @@
         if(!rows.length) return;
         const hrow=rows[0];
         const gIdx=hrow.findIndex(h=>String(h).trim()==='Guía transportadora');
-        if(gIdx<0){ alert("No se encontró columna 'Guía transportadora'"); return; }
+        if(gIdx<0){ notify("No se encontró la columna 'Guía transportadora' en el archivo", 'error'); return; }
         const out=[hrow,...rows.slice(1).filter(r=>devolutionSet.has(String(r[gIdx]??'').trim()))];
         const ws=XLSX.utils.aoa_to_sheet(out);
         if(worksheetOriginal['!cols']) ws['!cols']=[...worksheetOriginal['!cols']];

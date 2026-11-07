@@ -1,0 +1,72 @@
+
+### Pantalla principal: encabezados (h1)
+- main:
+  - strong: FELIZ NAVIDAD
+  - text: Equipo de Logística Efficommerce Efficommerce Logística Interna
+  - heading "CEPILLO ELÉCTRICO FACIAL RECARGABLE CON CINCO CABEZALES INTERCAMBIABLES" [level=1]
+  - text: TIENDA CENTRAL SAN JOSÉ
+  - paragraph: "ID: 1000"
+
+### Login de coordinador
+- heading "Modo Coordinador" [level=3]
+- paragraph: Inicia sesión para acceder
+- text: Email
+- textbox "Email":
+  - /placeholder: coordinador@efficommerce.com
+- text: Contraseña
+- textbox "Contraseña":
+  - /placeholder: ••••••••
+- button "Iniciar Sesión"
+- alert
+- button "Cancelar"
+
+### Pestañas del panel de coordinador
+- button "Agregar Producto"
+- button "Nueva Tienda"
+- button "Gestionar Inventario"
+- button "Configuración"
+- button "Usuarios y permisos"
+- button "Bitácora"
+- button "Devoluciones"
+- button "Conteos"
+- button "Impresión"
+- button "Recepciones"
+
+### StockForge: modal Nueva zona
+- text: Nueva Zona
+- button "✕"
+- text: Nombre de la zona
+- 'textbox "Ej: Recepción, Despacho..."'
+- text: Color identificador
+- button "#00ff88"
+- button "#f0a500"
+- button "#00d4ff"
+- button "#ff6b35"
+- button "#ff3b5c"
+- button "#ffd000"
+- button "#a78bfa"
+- button "#34d399"
+- button "#f472b6"
+- button "#60a5fa"
+- button "#fb923c"
+- button "#22d3ee"
+- text: Descripción
+- textbox "Opcional"
+- text: Área (m²)
+- spinbutton: "0"
+- text: Tipo de zona
+- combobox:
+  - option "Operativa (almacenaje)" [selected]
+  - option "Excluida (oficinas, comedor)"
+  - option "Pasillo"
+- button "Cerrar"
+- button "Crear Zona"
+
+### Manifiesto: modal Faltantes
+- heading "Guías Faltantes" [level=3]
+- text: "× Total: 2"
+- button "Copiar lista"
+- text: CR123456791
+- button "Marcar"
+- text: "1000119384"
+- button "Marcar"

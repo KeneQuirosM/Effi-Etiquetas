@@ -134,7 +134,7 @@ function showOfflineBanner(mensaje) {
     banner.style.cssText = `
       position:fixed;top:0;left:0;right:0;z-index:9000;
       display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 12px;
-      background:#8a5a00;color:#fff;text-align:center;
+      background:#8a5a00;color:#fff;text-align:center;--focus-ring:#fff;
       padding:6px 16px;font-size:13px;font-weight:600;line-height:1.35;
       font-family:var(--sans);
     `;
@@ -2389,7 +2389,7 @@ function printBulk() {
       <div class="bulk-label">
         <div style="text-align:center;margin-bottom:10px">${logoHTML}</div>
         <div style="flex-grow:1;display:flex;align-items:center;justify-content:center;text-align:center">
-          <h1 style="font-size:${size};margin:0;font-family:'Inter',sans-serif;line-height:1.1">${esc(nombre)}</h1>
+          <p style="font-size:${size};margin:0;font-family:'Inter',sans-serif;line-height:1.1;font-weight:700">${esc(nombre)}</p>
         </div>
         <div style="border-top:4px solid #000;position:relative;text-align:center">
           <span style="position:absolute;top:85px;right:0;font-size:12pt;font-family:'Inter',sans-serif">${esc(tiendaNombre)}</span>
@@ -3957,3 +3957,25 @@ async function guardarFeriados() {
     renderFeriados();
   }
 }
+
+
+/* ── ACCESIBILIDAD ─────────────────────────────────────
+ * Semántica y teclado (shared/a11y.js), sin tocar la lógica: los 4 modales
+ * con foco gestionado y Escape, las pestañas del panel con el patrón ARIA y
+ * los grupos de filtros con aria-pressed (el elegido no queda solo en color).
+ */
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof registrarModal !== 'function') return;
+  const modal = (id, caja, cerrar) => {
+    const capa = document.getElementById(id);
+    if (capa) registrarModal(capa, { caja: capa.querySelector(caja) || capa, cerrar });
+  };
+  modal('pin-overlay', '.pin-modal', closePinModal);
+  modal('bulk-overlay', '.bulk-modal', closeBulk);
+  modal('rotulo-overlay', '.rotulo-modal', closeRotulo);
+  modal('traslado-overlay', '[role="dialog"]', cerrarTraslado);
+
+  const tabs = document.querySelector('.coord-tabs');
+  if (tabs) activarPestanas(tabs, { etiqueta: 'Secciones del panel', panelDe: t => document.getElementById(t.dataset.tab) });
+  document.querySelectorAll('.devol-presets, .perm-perfiles').forEach(g => sincronizarPresionado(g));
+});

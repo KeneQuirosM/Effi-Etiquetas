@@ -571,7 +571,8 @@ const THEMES={
     '--border':'#1a2030','--border2':'#243048',
     '--accent':'#f0a500','--cyan':'#00d4ff','--green':'#00ff88',
     '--red':'#ff3b5c','--yellow':'#ffd000',
-    '--text':'#b8c8e0','--dim':'#4a5a78','--bright':'#e0ecff',
+    '--text':'#b8c8e0','--dim':'#7a8bab','--focus-ring':'#ffd54f',   // AA: antes #4a5a78 (2.8:1)
+   '--bright':'#e0ecff',
     '--steel':'#141c2a','--beam':'#1e2d45',
     '--body-bg':'#0a0c0f','--scanline':'rgba(0,0,0,.05)',
   },
@@ -588,7 +589,7 @@ const THEMES={
     '--red': '#e74c3c',
     '--yellow': '#f2a900',
     '--text': '#e0e5ec',
-    '--dim': '#6a7f9b',
+    '--dim': '#7d90ab', '--focus-ring': '#ffd54f',           // AA: antes #6a7f9b (4.4:1)
     '--bright': '#ffffff',
     '--steel': '#1a232e',
     '--beam': '#2a3848',
@@ -600,7 +601,8 @@ const THEMES={
     '--border':'#d0d8e8','--border2':'#b8c4d8',
     '--accent':'#d4820a','--cyan':'#0095b8','--green':'#007a42',
     '--red':'#cc1133','--yellow':'#b87800',
-    '--text':'#2a3548','--dim':'#7a8aaa','--bright':'#0a1428',
+    '--text':'#2a3548','--dim':'#56647f','--focus-ring':'#1d4ed8',   // AA: antes #7a8aaa (3.0:1)
+   '--bright':'#0a1428',
     '--steel':'#e8edf5','--beam':'#d8e0f0',
     '--body-bg':'#f0f4f8','--scanline':'rgba(0,0,0,.015)',
   },
@@ -609,7 +611,8 @@ const THEMES={
     '--border':'#1a2240','--border2':'#243460',
     '--accent':'#f5c842','--cyan':'#4db8ff','--green':'#4db8ff',
     '--red':'#f5c842','--yellow':'#f5c842',
-    '--text':'#c8d8f0','--dim':'#4a5a88','--bright':'#e8f0ff',
+    '--text':'#c8d8f0','--dim':'#7f8fbf','--focus-ring':'#ffd54f',   // AA: antes #4a5a88
+   '--bright':'#e8f0ff',
     '--steel':'#141c34','--beam':'#1e2d55',
     '--body-bg':'#0a0c14','--scanline':'rgba(0,0,0,.05)',
   }
@@ -807,7 +810,7 @@ function showOfflineBanner(mensaje) {
     banner = document.createElement('div');
     banner.id = 'offline-banner';
     banner.setAttribute('role', 'alert');
-    banner.style.cssText = 'flex-shrink:0;position:relative;z-index:300;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 12px;background:#8a5a00;color:#fff;text-align:center;padding:5px 12px;font-size:.95rem;line-height:1.3;';
+    banner.style.cssText = 'flex-shrink:0;position:relative;z-index:300;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 12px;background:#8a5a00;color:#fff;text-align:center;padding:5px 12px;--focus-ring:#fff;font-size:.95rem;line-height:1.3;';
     document.body.prepend(banner);
   }
   banner.textContent = '';
@@ -1490,7 +1493,10 @@ function effectiveTiendas(rack,cell){
 // ═══════════════ ZONES ═══════════════
 function buildSwatches(id){
   const c=document.getElementById(id);c.innerHTML='';
-  COLORS.forEach(col=>{const s=document.createElement('button');s.type='button';s.className='sw'+(col===pickedColor?' on':'');s.style.background=col;s.title=col;s.onclick=()=>{pickedColor=col;buildSwatches(id);};c.appendChild(s);});
+  COLORS.forEach(col=>{const s=document.createElement('button');s.type='button';s.className='sw'+(col===pickedColor?' on':'');s.style.background=col;s.title=col;
+    s.setAttribute('aria-label','Color '+col);s.setAttribute('aria-pressed',String(col===pickedColor));
+    // al reconstruir, el foco sigue en el color elegido (antes se perdía)
+    s.onclick=()=>{pickedColor=col;buildSwatches(id);c.querySelector('.sw.on')?.focus();};c.appendChild(s);});
 }
 let _editZoneId=null;
 
@@ -2394,7 +2400,11 @@ function buildShelfNode(rack,rCells,b,l){
     sh.appendChild(auditDot);
   }
   const code=document.createElement('div');code.className='scode';code.textContent=`B${b+1}L${l+1}`;sh.appendChild(code);
-  sh.title=`${rack.name} B${b+1}·N${l+1}${skus.length?' — '+skus.map(s=>s.sku).filter(Boolean).join(', '):''}${cell.expiry?' | Vence: '+cell.expiry:''}`;
+  // El estado no queda solo en el color: va en el nombre accesible y en el tooltip
+  const ESTADO={es:{full:'Ocupado',partial:'Parcial',reserved:'Reservado',blocked:'Bloqueado',empty:'Vacío'},en:{full:'Full',partial:'Partial',reserved:'Reserved',blocked:'Blocked',empty:'Empty'}};
+  const estado=(ESTADO[currentLang]||ESTADO.es)[cell.state]||cell.state;
+  sh.title=`${rack.name} B${b+1}·N${l+1} · ${estado}${skus.length?' — '+skus.map(s=>s.sku).filter(Boolean).join(', '):''}${cell.expiry?' | Vence: '+cell.expiry:''}`;
+  sh.setAttribute('aria-label',`${rack.name}, bahía ${b+1}, nivel ${l+1}: ${estado}${skus.length?', '+skus.length+' SKU':''}`);
   sh.addEventListener('click',e=>{e.stopPropagation();openViewCell(rack.id,b,l);});
   return sh;
 }
@@ -3855,7 +3865,7 @@ function printRackA4(){
 </body></html>`;
 
   const win=window.open('','_blank','width=1100,height=740');
-  if(!win){alert('Bloqueado por el navegador — permitir popups para esta página');return;}
+  if(!win){showToast('El navegador bloqueó la ventana de impresión: permite las ventanas emergentes para esta página.','danger');return;}
   win.document.write(html);
   win.document.close();
   closeO('o-print-rack');
@@ -4219,7 +4229,7 @@ function printReportTab(tab){
 
   // ── OPEN WINDOW ──
   const win=window.open('','_blank','width=960,height=750');
-  if(!win){alert('Bloqueado por el navegador — permitir popups para esta página');return;}
+  if(!win){showToast('El navegador bloqueó la ventana de impresión: permite las ventanas emergentes para esta página.','danger');return;}
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)} — ${esc(bname)}</title><style>${baseCss}</style></head><body>${toolbar}<div style="padding:10px 20px 30px">${pageHd}${body}</div></body></html>`);
   win.document.close();
 }
@@ -4916,7 +4926,7 @@ function printMovementsPDF(){
 </body></html>`;
 
   const win=window.open('','_blank','width=1100,height=740');
-  if(!win){alert('Bloqueado por el navegador — permitir popups para esta página');return;}
+  if(!win){showToast('El navegador bloqueó la ventana de impresión: permite las ventanas emergentes para esta página.','danger');return;}
   win.document.write(html);
   win.document.close();
 }
@@ -5469,12 +5479,14 @@ function toggleMobileMenu(){
   const isOpen=drawer.classList.contains('open');
   drawer.classList.toggle('open',!isOpen);
   backdrop.classList.toggle('open',!isOpen);
+  document.getElementById('hburger')?.setAttribute('aria-expanded',String(!isOpen));
 }
 function closeMobileMenu(){
   const drawer=document.getElementById('mob-drawer');
   const backdrop=document.getElementById('mob-backdrop');
   if(drawer) drawer.classList.remove('open');
   if(backdrop) backdrop.classList.remove('open');
+  document.getElementById('hburger')?.setAttribute('aria-expanded','false');
 }
 // Close drawer on Escape
 document.addEventListener('keydown',e=>{
@@ -5957,3 +5969,34 @@ function actualizarMetricasEspacio(){
   const mbDisp=document.getElementById('mb-disponible');
   if(mbDisp) mbDisp.style.width=`${100-pctOcupado}%`;
 }
+
+
+// ═══════════════ ACCESIBILIDAD ═══════════════
+// Semántica y teclado sin cambiar la lógica: etiquetas asociadas, nombres
+// para controles sin texto, modales con foco gestionado (shared/a11y.js),
+// pestañas del reporte y zonas con scroll alcanzables con Tab.
+(function initAccesibilidad(){
+  if(typeof registrarModal!=='function')return;
+  asociarEtiquetas(document);
+  const nombrar=(id,txt)=>{const el=document.getElementById(id);if(el&&!(el.labels&&el.labels.length)&&!el.getAttribute('aria-label'))el.setAttribute('aria-label',txt);};
+  nombrar('rx','Posición X');nombrar('ry','Posición Y');
+  nombrar('srch-hdr','Buscar SKU o descripción');nombrar('logo-name-input','Nombre de la bodega');
+  document.querySelectorAll('.mcl').forEach(b=>{if(!b.getAttribute('aria-label'))b.setAttribute('aria-label','Cerrar');b.setAttribute('data-cerrar-modal','');});
+  document.querySelectorAll('.tbtn:not([aria-label])').forEach(b=>{const t=b.getAttribute('title')||{'＋':'Acercar','－':'Alejar','⊡':'Restablecer zoom','⊞':'Mostrar u ocultar cuadrícula'}[b.textContent.trim()];if(t&&!/[a-z]/i.test(b.textContent))b.setAttribute('aria-label',t);});
+  const zb=document.getElementById('zone-add-btn');if(zb&&!zb.getAttribute('aria-label'))zb.setAttribute('aria-label','Agregar zona');
+  const lp=document.getElementById('logo-placeholder');if(lp&&!lp.getAttribute('aria-label'))lp.setAttribute('aria-label','Subir logo');
+  // Zonas con scroll propio: alcanzables con Tab para desplazarlas con flechas
+  document.querySelectorAll('.lscroll, .rpscroll').forEach(el=>{el.tabIndex=0;el.setAttribute('role','region');el.setAttribute('aria-label',el.classList.contains('rpscroll')?'Capacidad, detalle y actividad':'Estadísticas y zonas');});
+  const vp=document.getElementById('vp');if(vp){vp.tabIndex=0;vp.setAttribute('role','region');vp.setAttribute('aria-label','Plano de la bodega');}
+  // Modales
+  document.querySelectorAll('.ov').forEach(o=>registrarModal(o,{
+    caja:o.querySelector(':scope > .modal')||o,
+    etiqueta:o.id==='o-pin'?'Acceso de coordinador':undefined,
+    cerrar:()=>{if(o.id==='o-pin'&&typeof cerrarModalCoordinador==='function')cerrarModalCoordinador();else closeO(o.id);}
+  }));
+  const dr=document.getElementById('mob-drawer');if(dr)registrarModal(dr,{etiqueta:'Menú',cerrar:closeMobileMenu});
+  // Pestañas del reporte (clase .on = activa)
+  const rt=document.querySelector('#o-report .report-tabs');
+  if(rt)activarPestanas(rt,{etiqueta:'Secciones del reporte',activa:t=>t.classList.contains('on'),
+    panelDe:t=>{const m=(t.getAttribute('onclick')||'').match(/switchRTab\('([^']+)'/);return m&&document.getElementById(m[1]);}});
+})();

@@ -61,15 +61,22 @@ function notify(msg, type = 'info', duration, accion) {
     container.id = '__notify_container';
     // En celular ocupa el ancho disponible menos un margen (antes 360 px fijos tapaban medio contenido)
     container.style.cssText = 'position:fixed;bottom:max(12px, env(safe-area-inset-bottom));right:12px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:min(360px, calc(100vw - 24px))';
-    container.setAttribute('role', 'status');
-    container.setAttribute('aria-live', 'polite');
+    // Anuncios para lectores de pantalla: dos regiones vivas fijas (cortés
+    // para info/éxito, alerta para error/advertencia). Un aviso recién creado
+    // dentro de una región viva no siempre se anuncia; un texto que cambia
+    // dentro de una región que ya existía, sí. Van dentro del contenedor para
+    // acompañarlo cuando entra en un <dialog> modal.
+    container.innerHTML = '<div class="sr-only" role="status" aria-live="polite" data-vivo="cortes"></div>' +
+      '<div class="sr-only" role="alert" aria-live="assertive" data-vivo="alerta"></div>';
     document.body.appendChild(container);
   }
   ponerAvisosSobreDialogo(container);
+  anunciarAviso(container, kind, msg, accion);
 
   const toast = document.createElement('div');
   toast.style.cssText = `pointer-events:auto;background:#1a1a2e;color:#fff;border-left:4px solid ${COLORS[kind]};border-radius:6px;padding:10px 14px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:.92rem;line-height:1.4;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s`;
-  toast.innerHTML = `${ICONS[kind]} ${esc(msg)}`;
+  // El ícono es decorativo para el lector (el anuncio ya dice "Error:", etc.)
+  toast.innerHTML = `<span aria-hidden="true">${ICONS[kind]}</span> ${esc(msg)}`;
 
   let cerrado = false;
   const cerrar = () => {
@@ -84,7 +91,7 @@ function notify(msg, type = 'info', duration, accion) {
     toast.style.display = 'flex';
     toast.style.alignItems = 'center';
     toast.style.gap = '12px';
-    toast.innerHTML = `<span style="flex:1">${ICONS[kind]} ${esc(msg)}</span>`;
+    toast.innerHTML = `<span style="flex:1"><span aria-hidden="true">${ICONS[kind]}</span> ${esc(msg)}</span>`;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = accion.texto;
@@ -102,6 +109,23 @@ function notify(msg, type = 'info', duration, accion) {
 
   if (duration > 0) setTimeout(cerrar, duration);
   return { cerrar };
+}
+
+// Texto para lectores de pantalla: tipo + mensaje (+ la acción disponible).
+// Un mismo texto repetido en menos de 2 s no se vuelve a anunciar (p. ej.
+// varios fallos seguidos con el mismo mensaje).
+const __ultimoAnuncio = { texto: '', en: 0 };
+function anunciarAviso(container, kind, msg, accion) {
+  const PREFIJO = { success: 'Listo: ', error: 'Error: ', warn: 'Atención: ', info: '' };
+  const texto = PREFIJO[kind] + msg + (accion && accion.texto ? `. Opción disponible: ${accion.texto}.` : '');
+  const ahora = Date.now();
+  if (texto === __ultimoAnuncio.texto && ahora - __ultimoAnuncio.en < 2000) return;
+  __ultimoAnuncio.texto = texto; __ultimoAnuncio.en = ahora;
+  const region = container.querySelector(kind === 'error' || kind === 'warn' ? '[data-vivo="alerta"]' : '[data-vivo="cortes"]');
+  if (!region) return;
+  region.textContent = '';
+  // Vaciar y volver a escribir en otro ciclo para que se anuncie aunque coincida con el anterior
+  setTimeout(() => { region.textContent = texto; }, 60);
 }
 
 // Llamar justo después de dlg.showModal(): sube los avisos que ya estaban
