@@ -76,7 +76,7 @@ function restaurarBorrador() {
 async function cargarOpciones() {
   const selPersona = $('f-contado'), selMesa = $('f-mesa');
   try {
-    const { personas, mesas } = await apiRequestJSON('/api/conteos?accion=opciones');
+    const { personas, mesas } = await conReintentos(() => apiRequestJSON('/api/conteos?accion=opciones'));
     selPersona.innerHTML = '<option value="">-- Selecciona --</option>' +
       personas.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
     selMesa.innerHTML = '<option value="">--</option>' +
@@ -90,7 +90,7 @@ async function cargarOpciones() {
   } catch (e) {
     selPersona.innerHTML = '<option value="">No se pudo cargar la lista</option>';
     selMesa.innerHTML = '<option value="">--</option>';
-    notify('No se pudo cargar la lista de personas y mesas. Revisa la conexión y recarga.', 'error');
+    notify(mensajeErrorCarga(e, 'la lista de personas y mesas'), 'error', 0, { texto: 'Reintentar', alHacer: cargarOpciones });
   }
 }
 
@@ -98,7 +98,7 @@ async function cargarOpciones() {
 async function cargarTiendas() {
   const sel = $('f-tienda');
   try {
-    const data = await apiRequestJSON('/api/tiendas');
+    const data = await conReintentos(() => apiRequestJSON('/api/tiendas'));
     tiendas = data.tiendas || [];
     sel.innerHTML = '<option value="">-- Selecciona --</option>' +
       tiendas.map(t => `<option value="${esc(t.id)}">${esc(t.nombre)}</option>`).join('');
@@ -109,7 +109,7 @@ async function cargarTiendas() {
     actualizarProductos();
   } catch (e) {
     sel.innerHTML = '<option value="">No se pudieron cargar las tiendas</option>';
-    notify('No se pudieron cargar las tiendas. Revisa la conexión y recarga.', 'error');
+    notify(mensajeErrorCarga(e, 'las tiendas'), 'error', 0, { texto: 'Reintentar', alHacer: cargarTiendas });
   }
 }
 
@@ -393,6 +393,7 @@ function confirmarAvisos(avisos) {
     $('dlg-revisar').onclick = () => cerrar(false);
     dlg.oncancel = e => { e.preventDefault(); cerrar(false); };   // tecla atrás / Escape = revisar
     dlg.showModal();
+    subirAvisosSobreDialogo();
     $('dlg-revisar').focus();
   });
 }

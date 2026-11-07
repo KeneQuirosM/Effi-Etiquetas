@@ -51,7 +51,7 @@ function tickReloj() { $('reloj').textContent = fechaHoraLocal(); }
 async function cargarTiendas() {
   const sel = $('f-tienda');
   try {
-    const data = await apiRequestJSON('/api/tiendas');
+    const data = await conReintentos(() => apiRequestJSON('/api/tiendas'));
     tiendas = data.tiendas || [];
     sel.innerHTML = '<option value="">-- Selecciona --</option>' +
       tiendas.map(t => `<option value="${esc(t.id)}">${esc(t.nombre)}</option>`).join('');
@@ -59,7 +59,7 @@ async function cargarTiendas() {
     if (tiendaId && tiendas.some(t => String(t.id) === String(tiendaId))) sel.value = String(tiendaId);
   } catch (e) {
     sel.innerHTML = '<option value="">No se pudieron cargar las tiendas</option>';
-    notify('No se pudieron cargar las tiendas. Revisa la conexión y recarga.', 'error');
+    notify(mensajeErrorCarga(e, 'las tiendas'), 'error', 0, { texto: 'Reintentar', alHacer: cargarTiendas });
   }
 }
 
@@ -67,7 +67,7 @@ async function cargarTiendas() {
 async function cargarPersonas() {
   const sel = $('f-recibido');
   try {
-    const { personas } = await apiRequestJSON('/api/conteos?accion=opciones');
+    const { personas } = await conReintentos(() => apiRequestJSON('/api/conteos?accion=opciones'));
     sel.innerHTML = '<option value="">-- Selecciona --</option>' +
       personas.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
     const recordada = leerPrefs().recibidoPor;
@@ -75,7 +75,7 @@ async function cargarPersonas() {
     if (coincide) sel.value = coincide;
   } catch (e) {
     sel.innerHTML = '<option value="">No se pudo cargar la lista</option>';
-    notify('No se pudo cargar la lista de personas. Revisa la conexión y recarga.', 'error');
+    notify(mensajeErrorCarga(e, 'la lista de personas'), 'error', 0, { texto: 'Reintentar', alHacer: cargarPersonas });
   }
 }
 

@@ -40,6 +40,8 @@ function esc(str) {
  * accion (opcional): { texto, alHacer } agrega un botón al toast (p. ej.
  * "Deshacer"); al tocarlo se llama alHacer() y el toast se cierra.
  * Devuelve { cerrar() } para cerrarlo antes de tiempo.
+ * duration = 0: no se cierra solo (p. ej. "Cargando..."); hay que llamar
+ * a cerrar() cuando termine lo que anuncia.
  */
 function notify(msg, type = 'info', duration, accion) {
   const TYPE_ALIASES = {
@@ -62,6 +64,7 @@ function notify(msg, type = 'info', duration, accion) {
     container.setAttribute('aria-live', 'polite');
     document.body.appendChild(container);
   }
+  ponerAvisosSobreDialogo(container);
 
   const toast = document.createElement('div');
   toast.style.cssText = `pointer-events:auto;background:#1a1a2e;color:#fff;border-left:4px solid ${COLORS[kind]};border-radius:6px;padding:10px 14px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:.92rem;line-height:1.4;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s`;
@@ -96,8 +99,33 @@ function notify(msg, type = 'info', duration, accion) {
     toast.style.transform = 'translateY(0)';
   });
 
-  setTimeout(cerrar, duration);
+  if (duration > 0) setTimeout(cerrar, duration);
   return { cerrar };
+}
+
+// Llamar justo después de dlg.showModal(): sube los avisos que ya estaban
+// en pantalla para que el fondo del diálogo no los tape.
+function subirAvisosSobreDialogo() {
+  const c = document.getElementById('__notify_container');
+  if (c) ponerAvisosSobreDialogo(c);
+}
+
+// Un <dialog> abierto con showModal() queda en la capa superior y su fondo
+// tapa (y oscurece) los avisos que cuelgan de <body>. Mientras haya uno
+// abierto, el contenedor de avisos se mueve dentro de él (sigue siendo
+// position:fixed respecto a la ventana y no queda inerte); al cerrarse el
+// diálogo vuelve a <body>.
+function ponerAvisosSobreDialogo(container) {
+  let modal = null;
+  try { modal = document.querySelector('dialog[open]:modal'); } catch (_) { /* navegador sin :modal */ }
+  const destino = modal || document.body;
+  if (container.parentNode === destino) return;
+  destino.appendChild(container);
+  if (modal) {
+    modal.addEventListener('close', () => {
+      if (container.parentNode === modal) document.body.appendChild(container);
+    }, { once: true });
+  }
 }
 
 /* ── FECHA LOCAL ──────────────────────────────────────────

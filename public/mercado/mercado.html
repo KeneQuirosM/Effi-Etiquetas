@@ -244,7 +244,10 @@
 <!-- Quién está usando este equipo (personas de Conteos) -->
 <dialog id="dlg-quien" class="mk-dialog" aria-labelledby="dlg-quien-tit">
   <div class="mk-dialog-cuerpo">
-    <h2 id="dlg-quien-tit" class="mk-h2">¿Quién eres?</h2>
+    <div class="mk-card-head">
+      <h2 id="dlg-quien-tit" class="mk-h2">¿Quién eres?</h2>
+      <button type="button" class="mk-btn mk-btn-sm" id="dlg-quien-cerrar" aria-label="Cerrar">✕</button>
+    </div>
     <p class="mk-muted mk-small">Tu nombre queda en los cortes que guardes y en los artículos que marques. Se recuerda en este equipo.</p>
     <div class="mk-chips mk-quien-lista" id="dlg-quien-lista"></div>
   </div>
@@ -258,6 +261,6 @@
 <script src="/shared/dispositivo.js"></script>
 <!-- ?v=: cambiarlo al modificar estos archivos para que el navegador no use la copia vieja -->
 <script src="mercado-core.js?v=20261108"></script>
-<script src="mercado.js?v=20261108"></script>
+<script src="mercado.js?v=20261109"></script>
 </body>
 </html>

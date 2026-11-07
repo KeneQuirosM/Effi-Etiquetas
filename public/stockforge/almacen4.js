@@ -798,14 +798,42 @@ const STATE_COLORS={full:'var(--green)',partial:'var(--yellow)',reserved:'var(--
 
 // ═══════════════ PERSIST ═══════════════
 let lastAutoSnap=0;
-  function showOfflineBanner() {
-  if (document.getElementById('offline-banner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'offline-banner';
-  banner.innerHTML = 'Sin conexión — usando datos en caché';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c98e00;color:#fff;text-align:center;padding:4px;z-index:9999;';
-  document.body.prepend(banner);
+// Franja de "no sincronizado": dice qué pasó (sin red / error del servidor),
+// si se usa la copia guardada, y trae "Reintentar". Va en el flujo del body
+// (columna flex de alto completo), así empuja la cabecera en vez de taparla.
+function showOfflineBanner(mensaje) {
+  let banner = document.getElementById('offline-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'offline-banner';
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText = 'flex-shrink:0;position:relative;z-index:300;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 12px;background:#8a5a00;color:#fff;text-align:center;padding:5px 12px;font-size:.95rem;line-height:1.3;';
+    document.body.prepend(banner);
+  }
+  banner.textContent = '';
+  const txt = document.createElement('span');
+  txt.textContent = mensaje;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = currentLang === 'en' ? 'Retry' : 'Reintentar';
+  btn.style.cssText = 'background:#fff;color:#5c3c00;border:0;border-radius:3px;padding:2px 12px;font:inherit;font-weight:700;cursor:pointer;';
+  btn.addEventListener('click', () => reintentarCarga(btn));
+  banner.append(txt, btn);
 }
+
+let reintentandoCarga = false;
+async function reintentarCarga(btn) {
+  if (reintentandoCarga) return;
+  reintentandoCarga = true;
+  if (btn) { btn.disabled = true; btn.textContent = currentLang === 'en' ? 'Retrying...' : 'Reintentando...'; }
+  try {
+    await load();
+    if (!isOffline) showToast(currentLang === 'en' ? 'Data updated from server' : 'Datos actualizados desde el servidor', 'ok');
+  } finally {
+    reintentandoCarga = false;
+  }
+}
+window.addEventListener('online', () => { if (isOffline) reintentarCarga(); });
 
 function hideOfflineBanner() {
   const b = document.getElementById('offline-banner');
@@ -821,7 +849,9 @@ function showToast(msg, type) {
   
 async function save() {
   if (isOffline) {
-    showToast('Sin conexión — no se pueden guardar cambios', 'danger');
+    showToast(currentLang === 'en'
+      ? 'Not synced with the server: tap "Retry" in the banner above before saving'
+      : 'No sincronizado con el servidor: toca "Reintentar" en el aviso de arriba antes de guardar', 'danger');
     return;
   }
   try {
@@ -874,6 +904,7 @@ async function save() {
 async function load() {
   // 1. Intentar cargar desde caché local INMEDIATAMENTE
   const cached = localStorage.getItem('stockforge_v4');
+  let cacheValido = false;   // la copia se pudo leer y se está mostrando
   if (cached) {
     try {
       const d = JSON.parse(cached);
@@ -891,6 +922,7 @@ async function load() {
       updateExpiryPanel();
       updateLowStockPanel();
       
+      cacheValido = true;
       // Mostrar indicador sutil de que se está actualizando
       showToast('Actualizando desde servidor...', 'info');
     } catch (e) {
@@ -900,7 +932,8 @@ async function load() {
 
   // 2. Luego, en segundo plano, obtener datos frescos del servidor
   try {
-    const data = await apiRequestJSON(API_URL);
+    // Lectura: ante un fallo de red o del servidor se reintenta antes de rendirse
+    const data = await conReintentos(() => apiRequestJSON(API_URL));
     
     // Normalizar racks y zonas del servidor
     const racksNorm = (data.racks||[]).map(r=>({...r,zone:r.zone||r.zone_id||'',w:r.w||r.width||180,h:r.h||r.height||150}));
@@ -938,15 +971,12 @@ async function load() {
 
   } catch (e) {
     console.error('Error actualizando desde servidor:', e);
-    // Si no hay caché y falla el servidor, mostrar error
-    if (!cached) {
-      showToast('Sin conexión y sin caché', 'danger');
-    } else {
-      // Ya mostramos los datos en caché, solo notificar que no se pudo actualizar
-      showToast('Trabajando sin conexión', 'warn');
-    }
+    // Un solo aviso (la franja), coherente con lo que pasó y con si hay copia
+    const motivo = mensajeErrorCarga(e, 'la bodega');
     isOffline = true;
-    showOfflineBanner();
+    showOfflineBanner(cacheValido
+      ? `${motivo} Se muestra la copia guardada en este equipo; los cambios no se guardarán hasta reintentar.`
+      : `${motivo} No hay una copia guardada en este equipo.`);
   }
 }
   
