@@ -2984,6 +2984,7 @@ const BITACORA_ACCIONES = {
   recepcion_ajuste:        ['Recepción', 'edit'],
   recepcion_finalizar:     ['Recepción', 'ok'],
   recepcion_reabrir:       ['Recepción', 'edit'],
+  recepcion_borrar:        ['Recepción', 'del'],
   config_cambiar:          ['Configuración', 'edit'],
   dispositivo_vincular:    ['Dispositivo', 'ok'],
   dispositivo_desvincular: ['Dispositivo', 'del'],
@@ -3701,6 +3702,9 @@ function renderRecepciones() {
           <span>${Number(r.cajas).toLocaleString('es-CR')} caja${Number(r.cajas) === 1 ? '' : 's'} · recibió ${esc(r.recibido_por)}</span>
           <span class="rc-meta">Recibida ${esc(rcFecha(Date.parse(r.creado_en)))} · #${Number(r.id)}</span>
         </div>
+        <button type="button" class="rc-borrar" onclick="rcBorrar(${Number(r.id)})" aria-label="Eliminar la recepción #${Number(r.id)}" title="Eliminar recepción">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
       </div>
       <div class="rc-medidor">${rcMedidorHTML(r, ahora)}</div>
       ${rcAccionesHTML(r)}
@@ -3905,5 +3909,21 @@ async function guardarFeriados() {
     notify(e.message || 'No se pudieron guardar los feriados', 'error');
   } finally {
     renderFeriados();
+  }
+}
+
+async function rcBorrar(id) {
+  const r = recepciones?.find(x => Number(x.id) === id);
+  if (!r) return;
+  const desc = `${r.tienda_nombre}, ${Number(r.cajas)} caja${Number(r.cajas) === 1 ? '' : 's'}, recibida ${rcFecha(Date.parse(r.creado_en))} por ${r.recibido_por}`;
+  if (!confirm(`¿Eliminar la recepción #${id}?\n\n${desc}${r.finalizado_en ? '\n\nYa está finalizada: se pierde también su registro de cierre.' : ''}\n\nSe borran el registro y su foto. No se puede deshacer.`)) return;
+  try {
+    await apiDelete('/api/conteos?accion=recepcion', { id });
+    recepciones = recepciones.filter(x => Number(x.id) !== id);
+    renderRecepciones();
+    notify(`Recepción #${id} eliminada`, 'success');
+  } catch (e) {
+    notify(e.message || 'No se pudo eliminar la recepción', 'error');
+    if (e.status === 404) cargarRecepciones();
   }
 }

@@ -489,6 +489,34 @@ export default async function handler(req, res) {
       });
     }
 
+    // DELETE ?accion=recepcion { id }: borra la recepción y su foto
+    if (req.method === 'DELETE' && req.query?.accion === 'recepcion') {
+      const user = await requirePermiso(req, res, 'tab-recepciones');
+      if (!user) return;
+
+      const id = Number((req.body || {}).id);
+      if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido' });
+      const { data, error } = await supabaseAdmin
+        .from('recepciones').delete().eq('id', id)
+        .select('foto_path, tienda_nombre, cajas, recibido_por, creado_en, finalizado_en').maybeSingle();
+      if (error) {
+        console.error('Error borrando recepción:', error);
+        return res.status(500).json({ error: 'No se pudo borrar la recepción' });
+      }
+      if (!data) return res.status(404).json({ error: 'La recepción ya no existe' });
+      if (data.foto_path) {
+        const { error: rmErr } = await supabaseAdmin.storage.from(BUCKET).remove([data.foto_path]);
+        if (rmErr) console.error('Error borrando foto de recepción:', rmErr);
+      }
+      const cuando = new Intl.DateTimeFormat('es-CR', {
+        timeZone: 'America/Costa_Rica', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+      }).format(new Date(data.creado_en));
+      await registrar(user, 'recepcion_borrar',
+        `Borró la recepción #${id}: ${data.tienda_nombre}, ${data.cajas} caja${data.cajas === 1 ? '' : 's'}, recibida por ${data.recibido_por} el ${cuando}${data.finalizado_en ? ' (estaba finalizada)' : ''}`,
+        { recepcion_id: id });
+      return res.status(200).json({ ok: true });
+    }
+
     if (req.method === 'POST' && (req.query?.accion === 'recepcion_ajuste' || req.query?.accion === 'recepcion_finalizar')) {
       const user = await requirePermiso(req, res, 'tab-recepciones');
       if (!user) return;
