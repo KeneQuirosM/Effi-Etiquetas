@@ -571,7 +571,8 @@ const THEMES={
     '--border':'#1a2030','--border2':'#243048',
     '--accent':'#f0a500','--cyan':'#00d4ff','--green':'#00ff88',
     '--red':'#ff3b5c','--yellow':'#ffd000',
-    '--text':'#b8c8e0','--dim':'#4a5a78','--bright':'#e0ecff',
+    '--text':'#b8c8e0','--dim':'#7a8bab','--focus-ring':'#ffd54f',   // AA: antes #4a5a78 (2.8:1)
+   '--bright':'#e0ecff',
     '--steel':'#141c2a','--beam':'#1e2d45',
     '--body-bg':'#0a0c0f','--scanline':'rgba(0,0,0,.05)',
   },
@@ -588,7 +589,7 @@ const THEMES={
     '--red': '#e74c3c',
     '--yellow': '#f2a900',
     '--text': '#e0e5ec',
-    '--dim': '#6a7f9b',
+    '--dim': '#7d90ab', '--focus-ring': '#ffd54f',           // AA: antes #6a7f9b (4.4:1)
     '--bright': '#ffffff',
     '--steel': '#1a232e',
     '--beam': '#2a3848',
@@ -600,7 +601,8 @@ const THEMES={
     '--border':'#d0d8e8','--border2':'#b8c4d8',
     '--accent':'#d4820a','--cyan':'#0095b8','--green':'#007a42',
     '--red':'#cc1133','--yellow':'#b87800',
-    '--text':'#2a3548','--dim':'#7a8aaa','--bright':'#0a1428',
+    '--text':'#2a3548','--dim':'#56647f','--focus-ring':'#1d4ed8',   // AA: antes #7a8aaa (3.0:1)
+   '--bright':'#0a1428',
     '--steel':'#e8edf5','--beam':'#d8e0f0',
     '--body-bg':'#f0f4f8','--scanline':'rgba(0,0,0,.015)',
   },
@@ -609,7 +611,8 @@ const THEMES={
     '--border':'#1a2240','--border2':'#243460',
     '--accent':'#f5c842','--cyan':'#4db8ff','--green':'#4db8ff',
     '--red':'#f5c842','--yellow':'#f5c842',
-    '--text':'#c8d8f0','--dim':'#4a5a88','--bright':'#e8f0ff',
+    '--text':'#c8d8f0','--dim':'#7f8fbf','--focus-ring':'#ffd54f',   // AA: antes #4a5a88
+   '--bright':'#e8f0ff',
     '--steel':'#141c34','--beam':'#1e2d55',
     '--body-bg':'#0a0c14','--scanline':'rgba(0,0,0,.05)',
   }
@@ -798,14 +801,42 @@ const STATE_COLORS={full:'var(--green)',partial:'var(--yellow)',reserved:'var(--
 
 // ═══════════════ PERSIST ═══════════════
 let lastAutoSnap=0;
-  function showOfflineBanner() {
-  if (document.getElementById('offline-banner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'offline-banner';
-  banner.innerHTML = 'Sin conexión — usando datos en caché';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c98e00;color:#fff;text-align:center;padding:4px;z-index:9999;';
-  document.body.prepend(banner);
+// Franja de "no sincronizado": dice qué pasó (sin red / error del servidor),
+// si se usa la copia guardada, y trae "Reintentar". Va en el flujo del body
+// (columna flex de alto completo), así empuja la cabecera en vez de taparla.
+function showOfflineBanner(mensaje) {
+  let banner = document.getElementById('offline-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'offline-banner';
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText = 'flex-shrink:0;position:relative;z-index:300;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 12px;background:#8a5a00;color:#fff;text-align:center;padding:5px 12px;--focus-ring:#fff;font-size:.95rem;line-height:1.3;';
+    document.body.prepend(banner);
+  }
+  banner.textContent = '';
+  const txt = document.createElement('span');
+  txt.textContent = mensaje;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = currentLang === 'en' ? 'Retry' : 'Reintentar';
+  btn.style.cssText = 'background:#fff;color:#5c3c00;border:0;border-radius:3px;padding:2px 12px;font:inherit;font-weight:700;cursor:pointer;';
+  btn.addEventListener('click', () => reintentarCarga(btn));
+  banner.append(txt, btn);
 }
+
+let reintentandoCarga = false;
+async function reintentarCarga(btn) {
+  if (reintentandoCarga) return;
+  reintentandoCarga = true;
+  if (btn) { btn.disabled = true; btn.textContent = currentLang === 'en' ? 'Retrying...' : 'Reintentando...'; }
+  try {
+    await load();
+    if (!isOffline) showToast(currentLang === 'en' ? 'Data updated from server' : 'Datos actualizados desde el servidor', 'ok');
+  } finally {
+    reintentandoCarga = false;
+  }
+}
+window.addEventListener('online', () => { if (isOffline) reintentarCarga(); });
 
 function hideOfflineBanner() {
   const b = document.getElementById('offline-banner');
@@ -815,13 +846,15 @@ function hideOfflineBanner() {
 function showToast(msg, type) {
   if (type === 'danger') notif(msg, 'err');
   else if (type === 'warn') notif(msg, 'warn');
-  else if (type === 'info') notif(msg, 'ok'); // o un estilo específico
+  else if (type === 'info') notif(msg, '');
   else notif(msg, 'ok');
 }
   
 async function save() {
   if (isOffline) {
-    showToast('Sin conexión — no se pueden guardar cambios', 'danger');
+    showToast(currentLang === 'en'
+      ? 'Not synced with the server: tap "Retry" in the banner above before saving'
+      : 'No sincronizado con el servidor: toca "Reintentar" en el aviso de arriba antes de guardar', 'danger');
     return;
   }
   try {
@@ -874,6 +907,7 @@ async function save() {
 async function load() {
   // 1. Intentar cargar desde caché local INMEDIATAMENTE
   const cached = localStorage.getItem('stockforge_v4');
+  let cacheValido = false;   // la copia se pudo leer y se está mostrando
   if (cached) {
     try {
       const d = JSON.parse(cached);
@@ -891,6 +925,7 @@ async function load() {
       updateExpiryPanel();
       updateLowStockPanel();
       
+      cacheValido = true;
       // Mostrar indicador sutil de que se está actualizando
       showToast('Actualizando desde servidor...', 'info');
     } catch (e) {
@@ -900,7 +935,8 @@ async function load() {
 
   // 2. Luego, en segundo plano, obtener datos frescos del servidor
   try {
-    const data = await apiRequestJSON(API_URL);
+    // Lectura: ante un fallo de red o del servidor se reintenta antes de rendirse
+    const data = await conReintentos(() => apiRequestJSON(API_URL));
     
     // Normalizar racks y zonas del servidor
     const racksNorm = (data.racks||[]).map(r=>({...r,zone:r.zone||r.zone_id||'',w:r.w||r.width||180,h:r.h||r.height||150}));
@@ -938,24 +974,27 @@ async function load() {
 
   } catch (e) {
     console.error('Error actualizando desde servidor:', e);
-    // Si no hay caché y falla el servidor, mostrar error
-    if (!cached) {
-      showToast('Sin conexión y sin caché', 'danger');
-    } else {
-      // Ya mostramos los datos en caché, solo notificar que no se pudo actualizar
-      showToast('Trabajando sin conexión', 'warn');
-    }
+    // Un solo aviso (la franja), coherente con lo que pasó y con si hay copia
+    const motivo = mensajeErrorCarga(e, 'la bodega');
     isOffline = true;
-    showOfflineBanner();
+    showOfflineBanner(cacheValido
+      ? `${motivo} Se muestra la copia guardada en este equipo; los cambios no se guardarán hasta reintentar.`
+      : `${motivo} No hay una copia guardada en este equipo.`);
   }
 }
   
+// Confirmación con el diálogo compartido (shared/confirmar.js), en la paleta de StockForge
+function confirmarSF(mensaje, titulo, aceptar){
+  const en=currentLang==='en';
+  return confirmar({titulo:titulo[en?1:0],mensaje,aceptar:aceptar[en?1:0],cancelar:en?'Cancel':'Cancelar',peligro:true,oscuro:true});
+}
+
 async function limpiarCantidades() {
   const msg = currentLang === 'en'
     ? 'Reset ALL quantities in the warehouse?\n\nProducts and cell states are kept — only quantities are zeroed out.'
     : '¿Limpiar TODAS las cantidades del almacén?\n\nLos productos y estados de celda permanecen — solo se resetean las cantidades.';
 
-  if (!confirm(msg)) return;
+  if (!(await confirmarSF(msg, ['Limpiar cantidades','Reset quantities'], ['Limpiar','Reset']))) return;
 
   // Guardar estados antes de cualquier operación
   const estadosPrevios = {};
@@ -1234,13 +1273,13 @@ function saveSnapshot(auto=false){
   }catch(e){if(!auto)notif(t('notif_snap_error'),'err');}
 }
 
-function restoreSnapshot(ts){
+async function restoreSnapshot(ts){
   if(!coordUnlocked){notif(t('notif_pin_locked_snap'),'warn');openCoordinadorModal();return;}
   try{
     const snaps=JSON.parse(localStorage.getItem(SNAP_KEY))||[];
     const snap=snaps.find(s=>s.ts===ts);
     if(!snap){notif(t('notif_snap_not_found'),'err');return;}
-    if(!confirm(t('confirm_restore_snap').replace('{date}',snap.label)))return;
+    if(!(await confirmarSF(t('confirm_restore_snap').replace('{date}',snap.label),['Restaurar snapshot','Restore snapshot'],['Restaurar','Restore'])))return;
     saveSnapshot();
     const d=JSON.parse(snap.data);
     state.zones=d.zones||[];state.racks=d.racks||[];state.cells=d.cells||{};
@@ -1251,10 +1290,10 @@ function restoreSnapshot(ts){
   }catch(e){notif(t('notif_snap_restore_error'),'err');}
 }
 
-function deleteSnapshot(ts){
+async function deleteSnapshot(ts){
   if(!coordUnlocked){notif(t('notif_pin_locked_del'),'warn');openCoordinadorModal();return;}
   const msg=currentLang==='en'?'Delete this snapshot? This cannot be undone.':'¿Eliminar este snapshot? Esta acción no se puede deshacer.';
-  if(!confirm(msg))return;
+  if(!(await confirmarSF(msg,['Eliminar snapshot','Delete snapshot'],['Eliminar','Delete'])))return;
   try{
     let snaps=JSON.parse(localStorage.getItem(SNAP_KEY))||[];
     snaps=snaps.filter(s=>s.ts!==ts);
@@ -1460,7 +1499,10 @@ function effectiveTiendas(rack,cell){
 // ═══════════════ ZONES ═══════════════
 function buildSwatches(id){
   const c=document.getElementById(id);c.innerHTML='';
-  COLORS.forEach(col=>{const s=document.createElement('button');s.type='button';s.className='sw'+(col===pickedColor?' on':'');s.style.background=col;s.title=col;s.onclick=()=>{pickedColor=col;buildSwatches(id);};c.appendChild(s);});
+  COLORS.forEach(col=>{const s=document.createElement('button');s.type='button';s.className='sw'+(col===pickedColor?' on':'');s.style.background=col;s.title=col;
+    s.setAttribute('aria-label','Color '+col);s.setAttribute('aria-pressed',String(col===pickedColor));
+    // al reconstruir, el foco sigue en el color elegido (antes se perdía)
+    s.onclick=()=>{pickedColor=col;buildSwatches(id);c.querySelector('.sw.on')?.focus();};c.appendChild(s);});
 }
 let _editZoneId=null;
 
@@ -1526,14 +1568,14 @@ function addZone(){
   document.getElementById('zn').value='';document.getElementById('zd').value='';
   openO('o-zone');
 }
-function deleteZone(id){
+async function deleteZone(id){
   if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');return;}
   const z=state.zones.find(z=>z.id===id);
   const rackCount=state.racks.filter(r=>r.zone===id).length;
   const msg=rackCount>0
     ? `${currentLang==='en'?`Delete zone "${z?.name}"? ${rackCount} rack(s) will be unassigned.`:`¿Eliminar zona "${z?.name}"? ${rackCount} rack(s) quedarán sin zona.`}`
     : `${currentLang==='en'?`Delete zone "${z?.name}"?`:`¿Eliminar zona "${z?.name}"?`}`;
-  if(!confirm(msg))return;
+  if(!(await confirmarSF(msg,['Eliminar zona','Delete zone'],['Eliminar','Delete'])))return;
   state.zones=state.zones.filter(z=>z.id!==id);
   state.racks.forEach(r=>{if(r.zone===id)r.zone='';});
   save();renderZoneList();populateZoneSel();renderFloor();notif(`${currentLang==='en'?'Zone':'Zona'} "${z.name}" ${currentLang==='en'?'deleted':'eliminada'}`,'warn');
@@ -1811,13 +1853,13 @@ function sortSkuList(mode){
   });
   renderSkuList(skus);
 }
-function removeSkuRow(i){
+async function removeSkuRow(i){
   const skus=collectSkus();
   const s=skus[i];
   const qty=parseFloat(s.qty)||0;
-  if(qty>0&&!confirm((currentLang==='en'
+  if(qty>0&&!(await confirmarSF((currentLang==='en'
     ?'This SKU has '+qty+' '+s.unit+' in stock. Remove it?'
-    :'Este SKU tiene '+qty+' '+s.unit+' en stock. ¿Eliminarlo de la celda?')))return;
+    :'Este SKU tiene '+qty+' '+s.unit+' en stock. ¿Eliminarlo de la celda?'),['Quitar SKU','Remove SKU'],['Quitar','Remove'])))return;
   skus.splice(i,1);renderSkuList(skus);
 }
 function collectSkus(){
@@ -2364,7 +2406,11 @@ function buildShelfNode(rack,rCells,b,l){
     sh.appendChild(auditDot);
   }
   const code=document.createElement('div');code.className='scode';code.textContent=`B${b+1}L${l+1}`;sh.appendChild(code);
-  sh.title=`${rack.name} B${b+1}·N${l+1}${skus.length?' — '+skus.map(s=>s.sku).filter(Boolean).join(', '):''}${cell.expiry?' | Vence: '+cell.expiry:''}`;
+  // El estado no queda solo en el color: va en el nombre accesible y en el tooltip
+  const ESTADO={es:{full:'Ocupado',partial:'Parcial',reserved:'Reservado',blocked:'Bloqueado',empty:'Vacío'},en:{full:'Full',partial:'Partial',reserved:'Reserved',blocked:'Blocked',empty:'Empty'}};
+  const estado=(ESTADO[currentLang]||ESTADO.es)[cell.state]||cell.state;
+  sh.title=`${rack.name} B${b+1}·N${l+1} · ${estado}${skus.length?' — '+skus.map(s=>s.sku).filter(Boolean).join(', '):''}${cell.expiry?' | Vence: '+cell.expiry:''}`;
+  sh.setAttribute('aria-label',`${rack.name}, bahía ${b+1}, nivel ${l+1}: ${estado}${skus.length?', '+skus.length+' SKU':''}`);
   sh.addEventListener('click',e=>{e.stopPropagation();openViewCell(rack.id,b,l);});
   return sh;
 }
@@ -2517,9 +2563,9 @@ function showDetail(id){
       <button class="btn bd bsm" onclick="deleteRack('${id}')">✕</button>
     </div>`;
 }
-function deleteRack(id){
+async function deleteRack(id){
   if(!coordUnlocked){notif(t('notif_pin_locked'),'warn');return;}
-  if(!confirm(t('confirm_del_rack')))return;
+  if(!(await confirmarSF(t('confirm_del_rack'),['Eliminar rack','Delete rack'],['Eliminar','Delete'])))return;
   const r=state.racks.find(r=>r.id===id);
   state.racks=state.racks.filter(r=>r.id!==id);delete state.cells[id];
   state.movements=(state.movements||[]).filter(m=>m.rackId!==id&&m.destRackId!==id);
@@ -3825,7 +3871,7 @@ function printRackA4(){
 </body></html>`;
 
   const win=window.open('','_blank','width=1100,height=740');
-  if(!win){alert('Bloqueado por el navegador — permitir popups para esta página');return;}
+  if(!win){showToast('El navegador bloqueó la ventana de impresión: permite las ventanas emergentes para esta página.','danger');return;}
   win.document.write(html);
   win.document.close();
   closeO('o-print-rack');
@@ -4189,7 +4235,7 @@ function printReportTab(tab){
 
   // ── OPEN WINDOW ──
   const win=window.open('','_blank','width=960,height=750');
-  if(!win){alert('Bloqueado por el navegador — permitir popups para esta página');return;}
+  if(!win){showToast('El navegador bloqueó la ventana de impresión: permite las ventanas emergentes para esta página.','danger');return;}
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)} — ${esc(bname)}</title><style>${baseCss}</style></head><body>${toolbar}<div style="padding:10px 20px 30px">${pageHd}${body}</div></body></html>`);
   win.document.close();
 }
@@ -4886,7 +4932,7 @@ function printMovementsPDF(){
 </body></html>`;
 
   const win=window.open('','_blank','width=1100,height=740');
-  if(!win){alert('Bloqueado por el navegador — permitir popups para esta página');return;}
+  if(!win){showToast('El navegador bloqueó la ventana de impresión: permite las ventanas emergentes para esta página.','danger');return;}
   win.document.write(html);
   win.document.close();
 }
@@ -5439,12 +5485,14 @@ function toggleMobileMenu(){
   const isOpen=drawer.classList.contains('open');
   drawer.classList.toggle('open',!isOpen);
   backdrop.classList.toggle('open',!isOpen);
+  document.getElementById('hburger')?.setAttribute('aria-expanded',String(!isOpen));
 }
 function closeMobileMenu(){
   const drawer=document.getElementById('mob-drawer');
   const backdrop=document.getElementById('mob-backdrop');
   if(drawer) drawer.classList.remove('open');
   if(backdrop) backdrop.classList.remove('open');
+  document.getElementById('hburger')?.setAttribute('aria-expanded','false');
 }
 // Close drawer on Escape
 document.addEventListener('keydown',e=>{
@@ -5501,11 +5549,16 @@ function addAct(txt,color='var(--cyan)'){
   acts.unshift({txt,color,t});if(acts.length>16)acts.pop();
   document.getElementById('actlog').innerHTML=acts.map(a=>`<div class="aitem"><div class="adot" style="background:${a.color}"></div><div class="atime">${a.t}</div><div class="atxt">${a.txt}</div></div>`).join('');
 }
+// Avisos: el sistema compartido notify() (shared/dom-utils.js), igual que el
+// resto de la suite (antes un sistema propio arriba a la derecha). Se conserva
+// la regla de no repetir un aviso idéntico mientras sigue en pantalla.
+const __notifVisibles=new Map();
 function notif(msg,type=''){
-  const c=document.getElementById('notifs');
-  if(Array.from(c.children).some(n=>n.textContent===msg))return;
-  const n=document.createElement('div');
-  n.className=`notif ${type}`;n.textContent=msg;c.appendChild(n);setTimeout(()=>n.remove(),3200);
+  if(__notifVisibles.has(msg))return;
+  const tipo={ok:'success',err:'error',warn:'warn'}[type]||'info';
+  const dur=tipo==='error'||tipo==='warn'?6000:3200;
+  notify(msg,tipo,dur);
+  __notifVisibles.set(msg,true);setTimeout(()=>__notifVisibles.delete(msg),dur);
 }
 
 // ═══════════════ HELPERS ═══════════════
@@ -5650,6 +5703,11 @@ function tokenExpirado(token) {
   } catch(e) { return true; }
 }
 
+// Candado del botón de coordinador: ícono SVG monocromo (antes los emoji 🔒/🔓)
+function iconoCandado(abierto){
+  return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="'+(abierto?'M8 11V7a4 4 0 0 1 7.5-2':'M8 11V7a4 4 0 0 1 8 0v4')+'"/></svg>';
+}
+
 function activarCoordinador(token, refreshToken) {
   coordToken = token;
   coordUnlocked = true;
@@ -5657,7 +5715,8 @@ function activarCoordinador(token, refreshToken) {
   if (refreshToken) sessionStorage.setItem('sf_refresh_token', refreshToken);
   const btn = document.getElementById('lock-btn');
   if (btn) {
-    btn.textContent = '🔓';
+    btn.innerHTML = iconoCandado(true);
+    btn.setAttribute('aria-label', currentLang==='en' ? 'Coordinator mode: active' : 'Modo coordinador: activo');
     btn.style.borderColor = 'var(--green)';
     btn.style.color = 'var(--green)';
     btn.title = 'Coordinador activo — click para cerrar sesión';
@@ -5674,7 +5733,8 @@ function desactivarCoordinador() {
   cerrarSesion();
   const btn = document.getElementById('lock-btn');
   if (btn) {
-    btn.textContent = '🔒';
+    btn.innerHTML = iconoCandado(false);
+    btn.setAttribute('aria-label', currentLang==='en' ? 'Coordinator mode: locked' : 'Modo coordinador: bloqueado');
     btn.style.borderColor = '';
     btn.style.color = '';
     btn.title = 'Modo coordinador';
@@ -5927,3 +5987,34 @@ function actualizarMetricasEspacio(){
   const mbDisp=document.getElementById('mb-disponible');
   if(mbDisp) mbDisp.style.width=`${100-pctOcupado}%`;
 }
+
+
+// ═══════════════ ACCESIBILIDAD ═══════════════
+// Semántica y teclado sin cambiar la lógica: etiquetas asociadas, nombres
+// para controles sin texto, modales con foco gestionado (shared/a11y.js),
+// pestañas del reporte y zonas con scroll alcanzables con Tab.
+(function initAccesibilidad(){
+  if(typeof registrarModal!=='function')return;
+  asociarEtiquetas(document);
+  const nombrar=(id,txt)=>{const el=document.getElementById(id);if(el&&!(el.labels&&el.labels.length)&&!el.getAttribute('aria-label'))el.setAttribute('aria-label',txt);};
+  nombrar('rx','Posición X');nombrar('ry','Posición Y');
+  nombrar('srch-hdr','Buscar SKU o descripción');nombrar('logo-name-input','Nombre de la bodega');
+  document.querySelectorAll('.mcl').forEach(b=>{if(!b.getAttribute('aria-label'))b.setAttribute('aria-label','Cerrar');b.setAttribute('data-cerrar-modal','');});
+  document.querySelectorAll('.tbtn:not([aria-label])').forEach(b=>{const t=b.getAttribute('title')||{'＋':'Acercar','－':'Alejar','⊡':'Restablecer zoom','⊞':'Mostrar u ocultar cuadrícula'}[b.textContent.trim()];if(t&&!/[a-z]/i.test(b.textContent))b.setAttribute('aria-label',t);});
+  const zb=document.getElementById('zone-add-btn');if(zb&&!zb.getAttribute('aria-label'))zb.setAttribute('aria-label','Agregar zona');
+  const lp=document.getElementById('logo-placeholder');if(lp&&!lp.getAttribute('aria-label'))lp.setAttribute('aria-label','Subir logo');
+  // Zonas con scroll propio: alcanzables con Tab para desplazarlas con flechas
+  document.querySelectorAll('.lscroll, .rpscroll').forEach(el=>{el.tabIndex=0;el.setAttribute('role','region');el.setAttribute('aria-label',el.classList.contains('rpscroll')?'Capacidad, detalle y actividad':'Estadísticas y zonas');});
+  const vp=document.getElementById('vp');if(vp){vp.tabIndex=0;vp.setAttribute('role','region');vp.setAttribute('aria-label','Plano de la bodega');}
+  // Modales
+  document.querySelectorAll('.ov').forEach(o=>registrarModal(o,{
+    caja:o.querySelector(':scope > .modal')||o,
+    etiqueta:o.id==='o-pin'?'Acceso de coordinador':undefined,
+    cerrar:()=>{if(o.id==='o-pin'&&typeof cerrarModalCoordinador==='function')cerrarModalCoordinador();else closeO(o.id);}
+  }));
+  const dr=document.getElementById('mob-drawer');if(dr)registrarModal(dr,{etiqueta:'Menú',cerrar:closeMobileMenu});
+  // Pestañas del reporte (clase .on = activa)
+  const rt=document.querySelector('#o-report .report-tabs');
+  if(rt)activarPestanas(rt,{etiqueta:'Secciones del reporte',activa:t=>t.classList.contains('on'),
+    panelDe:t=>{const m=(t.getAttribute('onclick')||'').match(/switchRTab\('([^']+)'/);return m&&document.getElementById(m[1]);}});
+})();

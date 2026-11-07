@@ -352,16 +352,16 @@ function renderGroups(search = '', typeFilter = '') {
               const pct = Math.min((item.qty / 100) * 100, 100);
               return `
                 <tr>
-                  <td><span class="id-pill">${esc(item.id)}</span></td>
-                  <td><span style="font-weight:600; color:var(--neutral-800);">${esc(item.desc)}</span></td>
-                  ${item.ubicacion ? `<td><span style="color:var(--neutral-600); font-weight:500;">${esc(item.ubicacion)}</span></td>` : (filteredItems.some(i => i.ubicacion) ? '<td>-</td>' : '')}
-                  <td>
+                  <td class="col-sku" data-label="Código SKU"><span class="id-pill">${esc(item.id)}</span></td>
+                  <td class="col-desc" data-label="Descripción"><span style="font-weight:600; color:var(--neutral-800);">${esc(item.desc)}</span></td>
+                  ${item.ubicacion ? `<td class="col-ubic" data-label="Ubicación"><span style="color:var(--neutral-600); font-weight:500;">${esc(item.ubicacion)}</span></td>` : (filteredItems.some(i => i.ubicacion) ? '<td class="col-ubic" data-label="Ubicación">-</td>' : '')}
+                  <td class="col-qty" data-label="Unidades extraídas">
                     <div class="qty-bar">
                       <div class="bar-bg"><div class="bar-fill ${isLow?'low':''}" style="width:${pct}%"></div></div>
                       <span class="qty-num ${isLow?'low':'ok'}">${item.qty}</span>
                     </div>
                   </td>
-                  <td>${isLow ? '<span style="color:var(--danger-mid); font-size:0.75rem; font-weight:700;"><i class="fas fa-exclamation-circle"></i> CRÍTICO</span>' : '<span style="color:var(--success-mid); font-size:0.75rem; font-weight:700;"><i class="fas fa-check-circle"></i> OK</span>'}</td>
+                  <td class="col-estado" data-label="Estado">${isLow ? '<span style="color:var(--danger-mid); font-size:0.75rem; font-weight:700;"><i class="fas fa-exclamation-circle"></i> CRÍTICO</span>' : '<span style="color:var(--success-mid); font-size:0.75rem; font-weight:700;"><i class="fas fa-check-circle"></i> OK</span>'}</td>
                 </tr>`;
             }).join('')}
           </tbody>

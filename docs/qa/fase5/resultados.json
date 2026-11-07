@@ -1,0 +1,398 @@
+{
+ "commit": "5d202f7",
+ "fecha": "2026-11-07",
+ "responsive": {
+  "escenarios": 72,
+  "scrollHorizontal": 0,
+  "erroresJS": 0,
+  "controlesMenoresA24": [
+   "trazabilidad_375: #baseBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_375: #movBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_375: #devBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_375: #analyzeBtn(Analizar traza) 143x19",
+   "trazabilidad_375: #exportBtn(Exportar resul) 139x19",
+   "trazabilidad_820: #baseBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_820: #movBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_820: #devBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_820: #analyzeBtn(Analizar traza) 143x19",
+   "trazabilidad_820: #exportBtn(Exportar resul) 139x19",
+   "trazabilidad_1024: #baseBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_1024: #movBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_1024: #devBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_1024: #analyzeBtn(Analizar traza) 143x19",
+   "trazabilidad_1024: #exportBtn(Exportar resul) 139x19",
+   "trazabilidad_1440: #baseBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_1440: #movBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_1440: #devBrowseBtn(Examinar archi) 107x18",
+   "trazabilidad_1440: #analyzeBtn(Analizar traza) 143x19",
+   "trazabilidad_1440: #exportBtn(Exportar resul) 139x19",
+   "stockforge_1024: #ptoggle-lp(‹) 18x52",
+   "stockforge_1024: #ptoggle-rp(›) 18x52",
+   "stockforge_1440: #ptoggle-lp(‹) 18x52",
+   "stockforge_1440: #ptoggle-rp(›) 18x52",
+   "devoluciones_1024: input.chk 15x15",
+   "devoluciones_1024: input.chk 15x15",
+   "devoluciones_1024: input.chk 15x15",
+   "devoluciones_1024: input.chk 15x15",
+   "devoluciones_1024: input.chk 15x15",
+   "devoluciones_1024: input.chk 15x15",
+   "devoluciones_1440: input.chk 15x15",
+   "devoluciones_1440: input.chk 15x15",
+   "devoluciones_1440: input.chk 15x15",
+   "devoluciones_1440: input.chk 15x15",
+   "devoluciones_1440: input.chk 15x15",
+   "devoluciones_1440: input.chk 15x15"
+  ]
+ },
+ "axe": {
+  "estados": 72,
+  "conViolacionesWCAG": 0
+ },
+ "teclado": {
+  "pass": 98,
+  "total": 100
+ },
+ "foco_no_tapado": "paradas revisadas: 138 | tapadas o fuera de pantalla: 0",
+ "errores_api_fase1": {
+  "pass": 52,
+  "total": 52
+ },
+ "funciones_fase2": {
+  "pass": 25,
+  "total": 25
+ },
+ "confirmaciones": {
+  "pass": 26,
+  "total": 26
+ },
+ "navegacion_consola_red_csp": {
+  "pass": 83,
+  "total": 85
+ },
+ "fallos_navegacion": [
+  {
+   "name": "/trazabilidad.html: \"Volver\" cierra la pestaña y regresa al generador",
+   "pass": false,
+   "info": {
+    "cerrada": false,
+    "errores": [
+     "pageerror: goBackToApp is not defined"
+    ]
+   }
+  },
+  {
+   "name": "trazabilidad.html: \"Volver\" sin pestaña de origen va al inicio",
+   "pass": false,
+   "info": {
+    "url": "http://app.test/trazabilidad.html",
+    "errores": [
+     "goBackToApp is not defined"
+    ]
+   }
+  }
+ ],
+ "lighthouse_accesibilidad": {
+  "index.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "index.html|mobile": {
+   "score": 100,
+   "fails": []
+  },
+  "stockforge/almacen4.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "stockforge/almacen4.html|mobile": {
+   "score": 100,
+   "fails": []
+  },
+  "manifiesto/manifiesto.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "manifiesto/manifiesto.html|mobile": {
+   "score": 100,
+   "fails": []
+  },
+  "devoluciones/devoluciones.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "devoluciones/devoluciones.html|mobile": {
+   "score": 100,
+   "fails": []
+  },
+  "reporte/reporte_distribuidor_proveedor.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "reporte/reporte_distribuidor_proveedor.html|mobile": {
+   "score": 100,
+   "fails": []
+  },
+  "mercado/mercado.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "mercado/mercado.html|mobile": {
+   "score": 100,
+   "fails": []
+  },
+  "conteos/conteos.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "conteos/conteos.html|mobile": {
+   "score": 100,
+   "fails": []
+  },
+  "recepcion/recepcion.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "recepcion/recepcion.html|mobile": {
+   "score": 100,
+   "fails": []
+  },
+  "alistamiento/alistamiento.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "alistamiento/alistamiento.html|mobile": {
+   "score": 100,
+   "fails": []
+  },
+  "trazabilidad.html|desktop": {
+   "score": 100,
+   "fails": []
+  },
+  "trazabilidad.html|mobile": {
+   "score": 100,
+   "fails": []
+  }
+ },
+ "npm_test": [
+  "# tests 29",
+  "# pass 28",
+  "# fail 0",
+  "# skipped 1"
+ ],
+ "origenes_externos_por_pagina": {
+  "index.html": [
+   "https://fonts.googleapis.com",
+   "https://fonts.gstatic.com"
+  ],
+  "stockforge/almacen4.html": [
+   "https://fonts.googleapis.com",
+   "https://cdn.sheetjs.com",
+   "https://fonts.gstatic.com"
+  ],
+  "manifiesto/manifiesto.html": [
+   "https://cdnjs.cloudflare.com",
+   "https://cdn.jsdelivr.net",
+   "https://effi.com.co",
+   "https://cdn.sheetjs.com",
+   "https://fonts.googleapis.com",
+   "https://fonts.gstatic.com"
+  ],
+  "devoluciones/devoluciones.html": [
+   "https://cdn.sheetjs.com",
+   "https://fonts.googleapis.com",
+   "https://effi.com.co",
+   "https://fonts.gstatic.com"
+  ],
+  "reporte/reporte_distribuidor_proveedor.html": [
+   "https://cdn.sheetjs.com",
+   "https://cdnjs.cloudflare.com",
+   "https://effi.com.co",
+   "https://fonts.googleapis.com",
+   "https://fonts.gstatic.com"
+  ],
+  "mercado/mercado.html": [
+   "https://cdn.sheetjs.com",
+   "https://fonts.googleapis.com",
+   "https://fonts.gstatic.com"
+  ],
+  "conteos/conteos.html": [
+   "https://fonts.googleapis.com",
+   "https://fonts.gstatic.com"
+  ],
+  "recepcion/recepcion.html": [
+   "https://fonts.googleapis.com",
+   "https://fonts.gstatic.com"
+  ],
+  "alistamiento/alistamiento.html": [
+   "https://cdn.sheetjs.com",
+   "https://cdnjs.cloudflare.com",
+   "https://cdn.jsdelivr.net",
+   "https://fonts.googleapis.com",
+   "https://effi.com.co",
+   "https://fonts.gstatic.com"
+  ],
+  "trazabilidad.html": [
+   "https://cdn.sheetjs.com",
+   "https://fonts.googleapis.com",
+   "https://cdnjs.cloudflare.com",
+   "https://effi.com.co",
+   "https://fonts.gstatic.com"
+  ]
+ },
+ "correccion_final": {
+  "commit_base": "73f0cda",
+  "archivo": "public/trazabilidad.html",
+  "botones_trazabilidad": [
+   {
+    "id": "baseBrowseBtn",
+    "alto": 32,
+    "ancho": 134,
+    "padding": "0px 12px",
+    "fontSize": "13px",
+    "fontWeight": "600",
+    "minHeight": "32px"
+   },
+   {
+    "id": "analyzeBtn",
+    "alto": 48,
+    "ancho": 222,
+    "padding": "0px 32px",
+    "fontSize": "15px",
+    "fontWeight": "600",
+    "minHeight": "48px"
+   },
+   {
+    "id": "exportBtn",
+    "alto": 48,
+    "ancho": 216,
+    "padding": "0px 32px",
+    "fontSize": "15px",
+    "fontWeight": "600",
+    "minHeight": "48px"
+   }
+  ],
+  "responsive": {
+   "escenarios": 72,
+   "scrollHorizontal": 0,
+   "controlesMenoresA24": [
+    "stockforge_1024: #ptoggle-lp(‹) 18x52",
+    "stockforge_1024: #ptoggle-rp(›) 18x52",
+    "stockforge_1440: #ptoggle-lp(‹) 18x52",
+    "stockforge_1440: #ptoggle-rp(›) 18x52",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15"
+   ]
+  },
+  "axe_estados_con_violaciones": 0,
+  "navegacion_consola_red_csp": {
+   "pass": 85,
+   "total": 85
+  },
+  "teclado": {
+   "pass": 98,
+   "total": 100
+  },
+  "errores_api_fase1": {
+   "pass": 52,
+   "total": 52
+  },
+  "confirmaciones": {
+   "pass": 26,
+   "total": 26
+  },
+  "foco_no_tapado": "paradas revisadas: 138 | tapadas o fuera de pantalla: 0",
+  "lighthouse_accesibilidad": {
+   "index.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "index.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "stockforge/almacen4.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "stockforge/almacen4.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "manifiesto/manifiesto.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "manifiesto/manifiesto.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "devoluciones/devoluciones.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "devoluciones/devoluciones.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "reporte/reporte_distribuidor_proveedor.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "reporte/reporte_distribuidor_proveedor.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "mercado/mercado.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "mercado/mercado.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "conteos/conteos.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "conteos/conteos.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "recepcion/recepcion.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "recepcion/recepcion.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "alistamiento/alistamiento.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "alistamiento/alistamiento.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "trazabilidad.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "trazabilidad.html|mobile": {
+    "score": 100,
+    "fails": []
+   }
+  },
+  "npm_test": "28 pass, 0 fail, 1 skip"
+ }
+}

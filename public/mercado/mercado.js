@@ -40,6 +40,7 @@ const S = {
   gestion: false,
   config: { rangos: M.RANGOS_DEFECTO.slice(), tablas: { ...M.TABLAS_DEFECTO } },
   personas: [], inventarios: [], ubicaciones: {}, cargas: [],
+  errorPersonas: null,   // último error al leer la lista de Conteos (null = se leyó bien)
   corte: null,        // ver nuevoCorte()/abrirCorte()
   filasExcel: null,   // filas del Excel subido (para recalcular si cambia la configuración)
   alistado: new Map(),
@@ -122,13 +123,38 @@ function renderQuien() {
   $('btn-quien').classList.toggle('falta', !S.quien);
 }
 function abrirQuien() {
-  $('dlg-quien-lista').innerHTML = S.personas.length
-    ? S.personas.map(p => `<button type="button" class="mk-chip mk-chip-btn${p.id === S.quien ? ' on' : ''}" data-quien="${esc(p.id)}">${esc(p.nombre)}</button>`).join('')
-    : '<p class="mk-bad-txt">No se pudo leer la lista de personas. Revisa la conexión y recarga la página.</p>';
-  if (!$('dlg-quien').open) $('dlg-quien').showModal();
+  renderListaQuien();
+  if (!$('dlg-quien').open) { $('dlg-quien').showModal(); subirAvisosSobreDialogo(); }
+  // Foco en el primer nombre (o en "Reintentar"), no en el ✕: Enter no debe cerrar
+  ($('dlg-quien-lista').querySelector('[data-quien]') || $('dlg-quien-reintentar'))?.focus();
+}
+// Sin lista (falló la carga y no hay copia): el motivo y un botón para
+// reintentar ahí mismo, en vez de pedir recargar la página.
+function renderListaQuien() {
+  const lista = $('dlg-quien-lista');
+  if (S.personas.length) {
+    lista.innerHTML = S.personas.map(p => `<button type="button" class="mk-chip mk-chip-btn${p.id === S.quien ? ' on' : ''}" data-quien="${esc(p.id)}">${esc(p.nombre)}</button>`).join('');
+    return;
+  }
+  const motivo = S.errorPersonas
+    ? mensajeErrorCarga(S.errorPersonas, 'la lista de personas')
+    : 'No hay personas en la lista de Conteos.';
+  lista.innerHTML = `<p class="mk-bad-txt" role="alert">${esc(motivo)}</p>
+    <button type="button" class="mk-btn mk-btn-primary" id="dlg-quien-reintentar">Reintentar</button>`;
 }
 document.getElementById('btn-quien').addEventListener('click', abrirQuien);
-document.getElementById('dlg-quien-lista').addEventListener('click', e => {
+document.getElementById('dlg-quien-cerrar').addEventListener('click', () => $('dlg-quien').close());
+document.getElementById('dlg-quien-lista').addEventListener('click', async e => {
+  const reintentar = e.target.closest('#dlg-quien-reintentar');
+  if (reintentar) {
+    reintentar.disabled = true;
+    reintentar.textContent = 'Reintentando...';
+    await cargarPersonas();
+    renderListaQuien();
+    // El foco sigue dentro del diálogo: en el primer nombre o en "Reintentar"
+    ($('dlg-quien-lista').querySelector('[data-quien]') || $('dlg-quien-reintentar'))?.focus();
+    return;
+  }
   const b = e.target.closest('[data-quien]');
   if (!b) return;
   ponerQuien(b.dataset.quien);
@@ -189,6 +215,9 @@ const pestanaDeCorte = () => (window.matchMedia('(max-width: 640px)').matches ? 
   if (S.quien && S.personas.length && !S.personas.some(p => p.id === S.quien)) S.quien = '';   // ya no está en Conteos
   renderQuien();
   if (!S.quien) abrirQuien();
+  else if (!S.personas.length && S.errorPersonas) {
+    notify(mensajeErrorCarga(S.errorPersonas, 'la lista de personas'), 'error', 0, { texto: 'Reintentar', alHacer: async () => { await cargarPersonas(); if (!S.personas.length) abrirQuien(); } });
+  }
 
   const idUrl = Number(new URLSearchParams(location.search).get('corte'));
   if (idUrl > 0) await abrirCorte(idUrl, pestanaDeCorte());
@@ -198,7 +227,7 @@ const pestanaDeCorte = () => (window.matchMedia('(max-width: 640px)').matches ? 
 
 async function cargarInicio() {
   try {
-    const d = await api('GET', '/api/mercado?accion=inicio');
+    const d = await conReintentos(() => api('GET', '/api/mercado?accion=inicio'));
     if (d.config?.rangos?.length) S.config.rangos = M.limpiarRangos(d.config.rangos);
     if (d.config?.tablas) S.config.tablas = d.config.tablas;
     S.inventarios = d.inventarios || [];
@@ -206,7 +235,7 @@ async function cargarInicio() {
     S.cargas = d.cargas || [];
     S.inicioOk = true;
   } catch (err) {
-    notify(err.message || 'No se pudo cargar el módulo', 'error', 10000);
+    notify(mensajeErrorCarga(err, 'el módulo'), 'error', 0, { texto: 'Reintentar', alHacer: async () => { await cargarInicio(); render(); } });
   }
 }
 
@@ -217,15 +246,18 @@ async function cargarPersonas() {
     if (Array.isArray(copia) && copia.length && !S.personas.length) S.personas = copia.map(nombre => ({ id: nombre, nombre }));
   } catch { /* sin copia */ }
   try {
-    const d = await apiRequestJSON('/api/conteos?accion=opciones');
+    const d = await conReintentos(() => apiRequestJSON('/api/conteos?accion=opciones'));
     const lista = [...new Set((d.personas || []).map(n => M.normEspacios(n)).filter(Boolean))];
     if (lista.length) {
       try { localStorage.setItem(LS_PERSONAS, JSON.stringify(lista)); } catch { /* sin storage */ }
       S.personas = lista.map(nombre => ({ id: nombre, nombre }));
     }
-  } catch {
-    if (S.personas.length) notify('No se pudo leer la lista de personas de Conteos; se usa la última guardada', 'warn');
-    else notify('No se pudo leer la lista de personas de Conteos. Revisa la conexión y recarga la página.', 'error', 8000);
+    S.errorPersonas = null;
+  } catch (err) {
+    S.errorPersonas = err;
+    // Sin lista ni copia, el motivo lo muestra el diálogo "¿Quién eres?" (o el
+    // arranque, si ya hay un nombre elegido): aquí solo se avisa del respaldo.
+    if (S.personas.length) notify(`${mensajeErrorCarga(err, 'la lista de personas')} Se usa la última guardada en este equipo.`, 'warn');
   }
 }
 
@@ -250,6 +282,12 @@ function irA(tab) {
     const on = b.dataset.tab === tab;
     b.classList.toggle('active', on);
     b.setAttribute('aria-selected', String(on));
+    // Si las pestañas no caben (celular con Configuración), centrar la activa
+    const tira = b.parentElement;
+    if (on && tira.scrollWidth > tira.clientWidth) {
+      const r = b.getBoundingClientRect(), t = tira.getBoundingClientRect();
+      tira.scrollTo({ left: tira.scrollLeft + (r.left - t.left) - (t.width - r.width) / 2, behavior: 'smooth' });
+    }
   });
   document.querySelectorAll('.mk-panel').forEach(p => { p.hidden = p.id !== `panel-${tab}`; });
   if (tab === 'historial') cargarHistorial();
@@ -292,7 +330,7 @@ function nuevoCorte(archivo, resultado) {
 }
 
 async function abrirCorte(id, tab) {
-  if (!confirmarDescartar()) return;
+  if (!(await confirmarDescartar())) return;
   try {
     const d = await api('GET', `/api/mercado?accion=corte&id=${id}`);
     const c = d.corte;
@@ -313,11 +351,14 @@ async function abrirCorte(id, tab) {
   }
 }
 
-function confirmarDescartar() {
+// Promesa: true si no hay cambios o si se aceptó descartarlos
+async function confirmarDescartar() {
   if (!S.corte?.sucio) return true;
-  return confirm(S.corte.id
-    ? 'Hay cambios de asignación sin guardar. ¿Descartarlos?'
-    : 'El corte actual no está guardado. ¿Descartarlo?');
+  return confirmar({
+    titulo: 'Descartar cambios',
+    mensaje: S.corte.id ? 'Hay cambios de asignación sin guardar. ¿Descartarlos?' : 'El corte actual no está guardado. ¿Descartarlo?',
+    aceptar: 'Descartar', peligro: true
+  });
 }
 window.addEventListener('beforeunload', e => {
   if (S.corte?.sucio) { e.preventDefault(); e.returnValue = ''; }
@@ -365,7 +406,7 @@ async function procesarArchivoCorte(file) {
     await cargarInicio();
     if (!S.inicioOk) { notify('No se pudo cargar la configuración del mercado. Revisa la conexión y vuelve a intentar.', 'error', 8000); return; }
   }
-  if (!confirmarDescartar()) return;
+  if (!(await confirmarDescartar())) return;
   try {
     const wb = await leerLibro(file);
     // El export trae una sola hoja; si suben la hoja de Google completa se usa la
@@ -788,6 +829,7 @@ function abrirSelectorImpresion(contexto) {
   $('dlg-imp-juntar').checked = leerPrefs().juntarHojas !== false;
   renderSelectorImpresion();
   $('dlg-imprimir').showModal();
+  subirAvisosSobreDialogo();
 }
 
 function renderSelectorImpresion() {
@@ -992,10 +1034,10 @@ async function guardarCorte() {
     if (v.avisos.desconocida.length) partes.push(`${v.avisos.desconocida.length} filas con transportadora desconocida`);
     const sinUbic = v.avisos.sin_ubicacion.length + v.avisos.tabla_no_cargada.length;
     if (sinUbic) partes.push(`${sinUbic} filas sin ubicación`);
-    if (!confirm(`La comprobación no está completa: ${partes.join(', ')}.\n\n¿Guardar de todos modos?`)) return;
+    if (!(await confirmar({ titulo: 'Comprobación incompleta', mensaje: `La comprobación no está completa: ${partes.join(', ')}.\n\n¿Guardar de todos modos?`, aceptar: 'Guardar igual' }))) return;
   }
   if (!c.id && (c.repetidas || []).length &&
-      !confirm(`${c.repetidas.length} guías de este Excel ya están en otro corte guardado. ¿Guardarlo de todos modos?`)) return;
+      !(await confirmar({ titulo: 'Guías repetidas', mensaje: `${c.repetidas.length} guías de este Excel ya están en otro corte guardado. ¿Guardarlo de todos modos?`, aceptar: 'Guardar igual' }))) return;
   guardando = true;
   $('btn-guardar-corte').disabled = true;
   try {
@@ -1220,7 +1262,7 @@ $('hist-lista').addEventListener('click', async e => {
   const id = Number(b.dataset.id);
   if (b.dataset.accion === 'abrir') abrirCorte(id, pestanaDeCorte());
   if (b.dataset.accion === 'borrar') {
-    if (!confirm(`¿Borrar el corte #${id} con sus asignaciones y su avance? No se puede deshacer.`)) return;
+    if (!(await confirmar({ titulo: `Borrar el corte #${id}`, mensaje: `¿Borrar el corte #${id} con sus asignaciones y su avance? No se puede deshacer.`, aceptar: 'Borrar', peligro: true }))) return;
     try {
       await api('DELETE', `/api/mercado?accion=corte&id=${id}`);
       notify('Corte borrado', 'success');
@@ -1370,7 +1412,7 @@ $('cfg-ubic-preview').addEventListener('click', async e => {
   const destinos = elegidas.map(h => h.destino);
   if (!elegidas.length) { notify('Escoge al menos una tabla', 'warn'); return; }
   if (new Set(destinos).size !== destinos.length) { notify('Dos pestañas van a la misma tabla', 'warn'); return; }
-  if (!confirm(`Se reemplazarán las tablas ${destinos.join(', ')}. ¿Continuar?`)) return;
+  if (!(await confirmar({ titulo: 'Reemplazar tablas', mensaje: `Se reemplazarán las tablas ${destinos.join(', ')}. ¿Continuar?`, aceptar: 'Reemplazar', peligro: true }))) return;
   e.target.disabled = true;
   let ok = 0;
   for (const h of elegidas) {
@@ -1442,8 +1484,8 @@ $('btn-rango-agregar').addEventListener('click', () => {
   S.cfgEdit.rangos.push({ hasta: '', nombre: '' });
   renderRangos();
 });
-$('btn-rango-defecto').addEventListener('click', () => {
-  if (!confirm('¿Volver a los rangos de la hoja original? Se aplican al guardar.')) return;
+$('btn-rango-defecto').addEventListener('click', async () => {
+  if (!(await confirmar({ titulo: 'Rangos originales', mensaje: '¿Volver a los rangos de la hoja original? Se aplican al guardar.', aceptar: 'Volver a los originales' }))) return;
   S.cfgEdit.rangos = M.RANGOS_DEFECTO.map(r => ({ ...r }));
   marcarConfigSucia();
   renderRangos();
@@ -1473,3 +1515,14 @@ $('btn-config-guardar').addEventListener('click', async () => {
     renderConfig();
   } catch (err) { notify(err.message || 'No se pudo guardar', 'error', 8000); }
 });
+
+
+/* ── ACCESIBILIDAD: pestañas con flechas, Inicio/Fin y una sola en el orden
+   de Tab (shared/a11y.js); cada una apunta a su panel. ── */
+if (typeof activarPestanas === 'function') {
+  activarPestanas(document.querySelector('.mk-tabs'), {
+    etiqueta: 'Secciones',
+    activa: t => t.getAttribute('aria-selected') === 'true',
+    panelDe: t => document.getElementById('panel-' + t.dataset.tab)
+  });
+}

@@ -71,7 +71,14 @@ async function renovarToken() {
 /* ── API HELPERS ───────────────────────────────────── */
 async function apiGet(path) {
   const r = await fetch(API + path);
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) {
+    // .status para distinguir un error del servidor (5xx) de un fallo de red
+    // (fetch lanza TypeError, sin .status); antes el mensaje era el JSON crudo
+    const e = await r.json().catch(() => ({}));
+    const err = new Error(e.error || `Error del servidor (${r.status})`);
+    err.status = r.status;
+    throw err;
+  }
   return r.json();
 }
 
@@ -113,71 +120,90 @@ async function apiPost(path, body)        { return apiFetch('POST',   path, body
 async function apiPatch(path, body)       { return apiFetch('PATCH',  path, body); }
 async function apiDelete(path, body)      { return apiFetch('DELETE', path, body); }
 
-/* ── OFFLINE BANNER ─────────────────────────────────── */
-function showOfflineBanner() {
-  if (document.getElementById('offline-banner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'offline-banner';
-  banner.innerHTML = 'Sin conexión — usando inventario en caché. Los cambios no se guardarán.';
-  banner.style.cssText = `
-    position:fixed;top:0;left:0;right:0;z-index:9000;
-    background:#c98e00;color:#fff;text-align:center;
-    padding:8px 16px;font-size:13px;font-weight:600;
-    font-family:'DM Sans',sans-serif;
-  `;
-  document.body.prepend(banner);
+/* ── AVISO DE INVENTARIO NO SINCRONIZADO ─────────────────
+ * Una sola franja dice qué pasó (sin red / error del servidor) y si se está
+ * usando la copia guardada. Trae "Reintentar"; al volver la red se reintenta
+ * sola. Empuja la página hacia abajo para no tapar la barra lateral.
+ */
+function showOfflineBanner(mensaje) {
+  let banner = document.getElementById('offline-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'offline-banner';
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText = `
+      position:fixed;top:0;left:0;right:0;z-index:9000;
+      display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 12px;
+      background:#8a5a00;color:#fff;text-align:center;--focus-ring:#fff;
+      padding:6px 16px;font-size:13px;font-weight:600;line-height:1.35;
+      font-family:var(--sans);
+    `;
+    document.body.prepend(banner);
+  }
+  banner.innerHTML = `<span>${esc(mensaje)}</span>`;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = 'Reintentar';
+  btn.style.cssText = 'background:#fff;color:#5c3c00;border:0;border-radius:6px;padding:4px 12px;font:inherit;cursor:pointer';
+  btn.addEventListener('click', () => reintentarInventario(btn));
+  banner.appendChild(btn);
+  document.body.style.paddingTop = banner.offsetHeight + 'px';
 }
 
 function hideOfflineBanner() {
   const b = document.getElementById('offline-banner');
   if (b) b.remove();
+  document.body.style.paddingTop = '';
 }
+
+let reintentandoInventario = false;
+async function reintentarInventario(btn) {
+  if (reintentandoInventario) return;
+  reintentandoInventario = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'Reintentando...'; }
+  try {
+    await loadData();
+    populateTiendas();
+    if (!isOffline) notify('Inventario actualizado', 'success');
+  } finally {
+    reintentandoInventario = false;
+  }
+}
+window.addEventListener('online', () => { if (isOffline) reintentarInventario(); });
 
 /* ── LOAD DATA FROM API ─────────────────────────────── */
 async function loadData() {
+  // Se cierra siempre al terminar (antes quedaba abierto si fallaba la carga)
+  const cargando = notify('Cargando inventario...', 'info', 0);
   try {
-    notify('Cargando inventario...', '');
-    const data = await apiGet('/api/tiendas');
+    // Lectura: si falla la red o el servidor, se reintenta antes de rendirse
+    const data = await conReintentos(() => apiGet('/api/tiendas'));
     appData = data;
     ocultarBorradosPendientes();   // siguen en la base hasta que vence el "Deshacer"
     localStorage.setItem(CACHE_KEY, JSON.stringify(appData));
     isOffline = false;
     hideOfflineBanner();
-    hideToast();
-    
-    // NUEVO: Resetear búsqueda
-    const searchInput = document.getElementById('search-producto');
-    if (searchInput) {
-      searchInput.value = '';
-      searchInput.disabled = true;
-    }
-    
   } catch(e) {
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      appData = JSON.parse(cached);
-      isOffline = true;
-      showOfflineBanner();
-      hideToast();
-      notify('Usando inventario en caché', 'danger');
+    const motivo = mensajeErrorCarga(e, 'el inventario');
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch { cached = null; }
+    isOffline = true;
+    if (cached && Array.isArray(cached.tiendas)) {
+      appData = cached;
+      showOfflineBanner(`${motivo} Se muestra la copia guardada en este equipo; los cambios no se guardarán hasta reintentar.`);
     } else {
-      notify('Sin conexión y sin caché. Verifica conexión.', 'danger');
       appData = { tiendas: [] };
-      isOffline = true;
+      showOfflineBanner(`${motivo} No hay una copia guardada en este equipo.`);
     }
-    
-    // NUEVO: También resetear búsqueda en caso de error
+  } finally {
+    cargando.cerrar();
+    // La búsqueda se habilita al elegir tienda
     const searchInput = document.getElementById('search-producto');
     if (searchInput) {
       searchInput.value = '';
       searchInput.disabled = true;
     }
   }
-}
-
-function hideToast() {
-  const t = document.getElementById('toast');
-  t.className = 'toast';
 }
 
 /* ── COORDINADOR LOGIN ──────────────────────────────── */
@@ -226,6 +252,7 @@ async function checkPin() {
     activateCoord(data.token, data.refresh_token);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
+    mostrarPanelSiApilado(document.getElementById('coord-panel'));
     notify('Sesión iniciada', 'success');
   } catch(e) {
     errorEl.textContent = mensajeErrorLogin(e);
@@ -312,7 +339,7 @@ function populateTiendas() {
 /* ── OFFLINE GUARD ──────────────────────────────────── */
 function guardOffline() {
   if (isOffline) {
-    notify('Sin conexión — no se pueden guardar cambios', 'danger');
+    notify('El inventario no está sincronizado con el servidor: toca "Reintentar" en el aviso de arriba antes de guardar cambios.', 'danger');
     return true;
   }
   return false;
@@ -401,7 +428,15 @@ function switchTab(id) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.querySelector(`.tab-btn[data-tab="${id}"]`)?.classList.add('active');
+  const tabBtn = document.querySelector(`.tab-btn[data-tab="${id}"]`);
+  tabBtn?.classList.add('active');
+  // En celular las pestañas van en una fila deslizable: centrar la activa
+  // (solo en horizontal, sin mover la página)
+  const tira = tabBtn?.parentElement;
+  if (tira && tira.scrollWidth > tira.clientWidth) {
+    const r = tabBtn.getBoundingClientRect(), t = tira.getBoundingClientRect();
+    tira.scrollTo({ left: tira.scrollLeft + (r.left - t.left) - (t.width - r.width) / 2, behavior: 'smooth' });
+  }
   if (id === 'tab-add-tienda') populateTiendas();
   if (id === 'tab-users') { loadUsers(); cargarPermisos(); cargarInactividad(); }
   if (id === 'tab-bitacora') abrirBitacora();
@@ -569,7 +604,7 @@ async function deleteTienda() {
   if (idx === '') return notify('Selecciona una tienda', 'danger');
   const tienda = getTienda(idx);
   if (!tienda) return notify('Tienda no encontrada', 'danger');
-  if (!confirm(`¿Eliminar la tienda "${tienda.nombre}" y todo su inventario?`)) return;
+  if (!(await confirmar({ titulo: 'Eliminar tienda', mensaje: `¿Eliminar la tienda "${tienda.nombre}" y todo su inventario?`, aceptar: 'Eliminar', peligro: true }))) return;
   try {
     await apiDelete('/api/tiendas', { id: tienda.id });
     await loadData();
@@ -656,9 +691,20 @@ function closePinModal() {
 function toggleCoordMode() {
   if (coordUnlocked) {
     const panel = document.getElementById('coord-panel');
-    if (panel.classList.toggle('visible')) cargarPerfil();
+    if (panel.classList.toggle('visible')) {
+      cargarPerfil();
+      mostrarPanelSiApilado(panel);
+    }
   } else {
     openPinModal();
+  }
+}
+
+// Con la barra lateral apilada (tablet/celular) el panel queda debajo del
+// generador: llevarlo a la vista al abrirlo.
+function mostrarPanelSiApilado(panel) {
+  if (window.matchMedia('(max-width: 900px)').matches) {
+    requestAnimationFrame(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 }
 
@@ -864,6 +910,7 @@ async function handleJSONImport(input) {
 
   const reader = new FileReader();
   reader.onload = async e => {
+    let avisoImportando = null;
     try {
       const parsed = JSON.parse(e.target.result);
       if (!parsed.tiendas || !Array.isArray(parsed.tiendas))
@@ -875,7 +922,8 @@ async function handleJSONImport(input) {
       clearImportLog();
       logImport('Iniciando importación...', 'info');
       logImport(`Total de tiendas en archivo: ${parsed.tiendas.length}`, 'info');
-      notify('Importando... espera', '');
+      // Fijo hasta terminar: una importación grande dura más que un aviso normal
+      avisoImportando = notify('Importando... espera', 'info', 0);
 
       let tiendasCreadas = 0;
       let tiendasExistentes = 0;
@@ -999,9 +1047,11 @@ async function handleJSONImport(input) {
       const errores = tiendasConError + productosConError;
       const mensaje = `Tiendas nuevas: ${tiendasCreadas} | Tiendas existentes: ${tiendasExistentes} | Productos agregados: ${productosAgregados} | Duplicados omitidos: ${productosDuplicados} | Errores: ${errores}`;
       logImport(`${detenida ? 'IMPORTACIÓN INCOMPLETA' : 'IMPORTACIÓN FINALIZADA'}: ${mensaje}`, detenida || errores ? 'error' : 'success');
+      avisoImportando.cerrar();
       notify(mensaje, detenida ? 'danger' : errores ? 'warn' : 'success', errores || detenida ? 9000 : undefined);
 
     } catch(err) {
+      avisoImportando?.cerrar();
       logImport(`Error crítico: ${err.message}`, 'error');
       notify('Error al procesar el archivo JSON', 'danger');
       console.error(err);
@@ -1611,7 +1661,7 @@ async function confirmarTraslado() {
     pedidos.push(p);
   }
   const destino = getTienda(destinoId);
-  if (!confirm(`¿Trasladar ${pedidos.length} conteo(s) a ${destino ? destino.nombre : 'la tienda destino'}?`)) return;
+  if (!(await confirmar({ titulo: 'Trasladar conteos', mensaje: `¿Trasladar ${pedidos.length} conteo(s) a ${destino ? destino.nombre : 'la tienda destino'}?`, aceptar: 'Trasladar' }))) return;
 
   traslado.enCurso = true;
   const btn = document.getElementById('tr-confirmar');
@@ -1709,7 +1759,7 @@ function compartirTrasladoWhatsApp() {
 async function deleteConteo(id) {
   const c = (conteos || []).find(x => x.id === id);
   if (!c) return;
-  if (!confirm(`¿Eliminar el conteo de ID ${c.producto_codigo} (${c.cantidad} u.) de ${c.contado_por}?`)) return;
+  if (!(await confirmar({ titulo: 'Eliminar conteo', mensaje: `¿Eliminar el conteo de ID ${c.producto_codigo} (${c.cantidad} u.) de ${c.contado_por}?`, aceptar: 'Eliminar', peligro: true }))) return;
   try {
     await apiDelete('/api/conteos', { id });
     conteos = conteos.filter(x => x.id !== id);
@@ -2339,7 +2389,7 @@ function printBulk() {
       <div class="bulk-label">
         <div style="text-align:center;margin-bottom:10px">${logoHTML}</div>
         <div style="flex-grow:1;display:flex;align-items:center;justify-content:center;text-align:center">
-          <h1 style="font-size:${size};margin:0;font-family:'Inter',sans-serif;line-height:1.1">${esc(nombre)}</h1>
+          <p style="font-size:${size};margin:0;font-family:'Inter',sans-serif;line-height:1.1;font-weight:700">${esc(nombre)}</p>
         </div>
         <div style="border-top:4px solid #000;position:relative;text-align:center">
           <span style="position:absolute;top:85px;right:0;font-size:12pt;font-family:'Inter',sans-serif">${esc(tiendaNombre)}</span>
@@ -3300,7 +3350,7 @@ function copiarEnlaceDispositivo() {
 
 async function desvincularDispositivo(btn) {
   const { id, nombre } = btn.dataset;
-  if (!confirm(`¿Desvincular "${nombre}"? Si "Exigir dispositivo vinculado" está activado, ya no podrá guardar.`)) return;
+  if (!(await confirmar({ titulo: 'Desvincular dispositivo', mensaje: `¿Desvincular "${nombre}"? Si "Exigir dispositivo vinculado" está activado, ya no podrá guardar.`, aceptar: 'Desvincular', peligro: true }))) return;
   btn.disabled = true;
   try {
     await apiFetch('DELETE', '/api/dispositivos', { id });
@@ -3314,7 +3364,7 @@ async function desvincularDispositivo(btn) {
 async function guardarExigirDispositivo(valor) {
   const toggle = document.getElementById('toggle-exigir-disp');
   if (valor && !dispositivosLista.length &&
-      !confirm('No hay dispositivos vinculados: Conteos y Devoluciones dejarán de poder guardar desde cualquier equipo. ¿Activarlo igual?')) {
+      !(await confirmar({ titulo: 'Exigir dispositivo vinculado', mensaje: 'No hay dispositivos vinculados: Conteos y Devoluciones dejarán de poder guardar desde cualquier equipo. ¿Activarlo igual?', aceptar: 'Activar igual', peligro: true }))) {
     toggle.checked = false;
     return;
   }
@@ -3429,7 +3479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isTokenExpired(savedToken)) {
       // Token vigente — restaurar sin llamada al servidor
       activateCoord(savedToken, localStorage.getItem(REFRESH_KEY));
-      if (coordUnlocked) notify('Sesión restaurada', 'success');   // false = se cerró por inactividad
+      if (coordUnlocked && !isOffline) notify('Sesión restaurada', 'success');   // sin mezclarlo con el aviso de error de carga   // false = se cerró por inactividad
     } else {
       // Token expirado — intentar renovar con el refresh_token
       const renewed = await tryRefreshToken();
@@ -3778,7 +3828,7 @@ async function rcGuardarAjuste(id) {
 }
 
 async function rcQuitarAjuste(id) {
-  if (!confirm('¿Quitar la hora del ajuste? El plazo de 24 h deja de contar hasta que la registres de nuevo.')) return;
+  if (!(await confirmar({ titulo: 'Quitar hora del ajuste', mensaje: '¿Quitar la hora del ajuste? El plazo de 24 h deja de contar hasta que la registres de nuevo.', aceptar: 'Quitar' }))) return;
   try {
     const res = await apiPost('/api/conteos?accion=recepcion_ajuste', { id, ajuste_en: null });
     rcReemplazar(res.recepcion, res.ahora);
@@ -3790,7 +3840,7 @@ async function rcFinalizar(id, finalizar) {
   const msg = finalizar
     ? `¿Dar por contada y finalizar la recepción de ${r ? r.tienda_nombre : ''}? Se guarda la hora actual como cierre.`
     : '¿Reabrir esta recepción? Se borra la hora de cierre y el plazo vuelve a correr.';
-  if (!confirm(msg)) return;
+  if (!(await confirmar({ titulo: finalizar ? 'Finalizar recepción' : 'Reabrir recepción', mensaje: msg, aceptar: finalizar ? 'Finalizar' : 'Reabrir' }))) return;
   try {
     const res = await apiPost('/api/conteos?accion=recepcion_finalizar', { id, finalizar });
     const c = rcCalculo(res.recepcion, rcAhora());
@@ -3932,3 +3982,24 @@ async function rcBorrar(id) {
     if (e.status === 404) cargarRecepciones();
   }
 }
+
+/* ── ACCESIBILIDAD ─────────────────────────────────────
+ * Semántica y teclado (shared/a11y.js), sin tocar la lógica: los 4 modales
+ * con foco gestionado y Escape, las pestañas del panel con el patrón ARIA y
+ * los grupos de filtros con aria-pressed (el elegido no queda solo en color).
+ */
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof registrarModal !== 'function') return;
+  const modal = (id, caja, cerrar) => {
+    const capa = document.getElementById(id);
+    if (capa) registrarModal(capa, { caja: capa.querySelector(caja) || capa, cerrar });
+  };
+  modal('pin-overlay', '.pin-modal', closePinModal);
+  modal('bulk-overlay', '.bulk-modal', closeBulk);
+  modal('rotulo-overlay', '.rotulo-modal', closeRotulo);
+  modal('traslado-overlay', '[role="dialog"]', cerrarTraslado);
+
+  const tabs = document.querySelector('.coord-tabs');
+  if (tabs) activarPestanas(tabs, { etiqueta: 'Secciones del panel', panelDe: t => document.getElementById(t.dataset.tab) });
+  document.querySelectorAll('.devol-presets, .perm-perfiles').forEach(g => sincronizarPresionado(g));
+});

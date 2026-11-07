@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500;700&family=Fraunces:ital,opsz,wght@1,9..144,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/shared/tokens.css">
+<link rel="stylesheet" href="/shared/componentes.css">
 <link rel="stylesheet" href="/index.css">
 <link rel="stylesheet" href="/navidad.css">
 <link rel="stylesheet" href="/halloween.css">
@@ -17,7 +18,7 @@
 <!-- LOGIN OVERLAY -->
 <div id="pin-overlay">
   <div class="pin-modal">
-    <h3>Modo Coordinador</h3>
+    <h2 id="pin-titulo">Modo Coordinador</h2>
     <p>Inicia sesión para acceder</p>
     <!-- Formulario real: Enter envía desde cualquier campo y los gestores de
          contraseñas reconocen usuario/contraseña. novalidate: los mensajes
@@ -37,7 +38,7 @@
           onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
       </div>
     </div>
-    <button type="submit" class="btn-action btn-primary" id="pin-submit" style="width:100%;padding:11px;font-size:14px;justify-content:center;">Iniciar Sesión</button>
+    <button type="submit" class="btn-action btn-primary" id="pin-submit" style="width:100%;justify-content:center">Iniciar Sesión</button>
     <div class="pin-error" id="pin-error" role="alert"></div>
     </form>
     <button type="button" class="btn-cancel-pin" onclick="closePinModal()">Cancelar</button>
@@ -45,7 +46,7 @@
 </div>
 
 <!-- SIDEBAR -->
-<aside class="sidebar">
+<aside class="sidebar" aria-label="Generador de etiquetas y módulos">
 
   <!-- Brand — misma estructura que manifiesto/devoluciones -->
   <div class="brand">
@@ -118,6 +119,7 @@
 
 <!-- MAIN AREA -->
 <main class="main">
+  <h1 class="sr-only">Efficommerce · Generador de etiquetas y panel de coordinador</h1>
 
   <!-- COORDINATOR PANEL -->
   <div id="coord-panel">
@@ -227,11 +229,11 @@
                 <img id="logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
               </div>
               <div style="display:flex;flex-direction:column;gap:8px">
-                <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
+                <label class="btn-action btn-sm btn-primary" style="cursor:pointer">
                   Subir imagen
                   <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
                 </label>
-                <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeLogo()">✕ Quitar logo</button>
+                <button class="btn-action btn-sm btn-ghost" onclick="removeLogo()">✕ Quitar logo</button>
               </div>
             </div>
             <p style="font-size:11px;color:var(--muted);margin-bottom:22px">PNG, JPG o SVG. Se guarda en el navegador automáticamente.</p>
@@ -245,11 +247,11 @@
                 <img id="rotulo-logo-preview-img" style="max-width:100%;max-height:100%;display:none;object-fit:contain">
               </div>
               <div style="display:flex;flex-direction:column;gap:8px">
-                <label class="btn-action btn-primary" style="cursor:pointer;font-size:12px;padding:8px 14px">
+                <label class="btn-action btn-sm btn-primary" style="cursor:pointer">
                   Subir imagen
                   <input type="file" id="rotulo-logo-file-input" accept="image/*" style="display:none" onchange="handleRotuloLogoUpload(this)">
                 </label>
-                <button class="btn-action btn-ghost" style="font-size:12px;padding:8px 14px" onclick="removeRotuloLogo()">✕ Quitar logo</button>
+                <button class="btn-action btn-sm btn-ghost" onclick="removeRotuloLogo()">✕ Quitar logo</button>
               </div>
             </div>
             <p style="font-size:11px;color:var(--muted);margin-bottom:22px">Logo independiente del rótulo. Si no se sube, usa el mismo que la etiqueta.</p>
@@ -265,7 +267,7 @@
             </button>
             <!-- El interruptor va junto al botón (no dentro): funciona sin abrir la sección -->
             <label class="switch-toggle">
-              <input type="checkbox" id="toggle-ubicacion" onchange="saveUbicacionToggle(this.checked)">
+              <input type="checkbox" id="toggle-ubicacion" aria-label="QR de ubicación en la etiqueta" onchange="saveUbicacionToggle(this.checked)">
               <span class="switch-track"></span>
             </label>
           </div>
@@ -282,7 +284,7 @@
               <svg class="cfg-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </button>
             <label class="switch-toggle">
-              <input type="checkbox" id="toggle-imprimir-grupo" checked onchange="saveGroupPrintToggle(this.checked)">
+              <input type="checkbox" id="toggle-imprimir-grupo" aria-label="Imprimir por grupo (Alistamiento)" checked onchange="saveGroupPrintToggle(this.checked)">
               <span class="switch-track"></span>
             </label>
           </div>
@@ -495,8 +497,8 @@
           <div class="cfg-panel" id="cfg-panel-json" hidden>
             <!-- JSON -->
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-              <button class="btn-action btn-primary" onclick="exportJSON()" style="font-size:12px">⬇ Exportar JSON</button>
-              <label class="btn-action btn-ghost" style="cursor:pointer;font-size:12px">
+              <button class="btn-action btn-sm btn-primary" onclick="exportJSON()">⬇ Exportar JSON</button>
+              <label class="btn-action btn-sm btn-ghost" style="cursor:pointer">
                 ⬆ Importar JSON
                 <input type="file" id="json-file-input" accept=".json" style="display:none" onchange="handleJSONImport(this)">
               </label>
@@ -509,7 +511,7 @@
               <div id="import-log-container" style="background:#0d1b2e;border-radius:var(--radius-md);padding:12px;max-height:200px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.5;border:1px solid var(--border);">
                 <div id="import-log" style="color:#b4c8fb;white-space:pre-wrap;word-break:break-all;">— Esperando archivo —</div>
               </div>
-              <button class="btn-action btn-ghost" onclick="clearImportLog()" style="margin-top:8px;font-size:11px;padding:4px 12px">Limpiar registro</button>
+              <button class="btn-action btn-sm btn-ghost" onclick="clearImportLog()" style="margin-top:8px">Limpiar registro</button>
             </div>
           </div>
         </section>
@@ -785,7 +787,7 @@
     </div>
 
     <div class="label-body">
-      <h1 id="view-name">PRODUCTO</h1>
+      <p id="view-name" class="label-nombre">PRODUCTO</p>
     </div>
 
     <div class="label-notes">
@@ -867,8 +869,8 @@
 <div id="rotulo-overlay">
   <div class="rotulo-modal">
     <div class="rotulo-modal-header">
-      <h3>Rótulo A4 Horizontal</h3>
-      <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px;color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeRotulo()">✕</button>
+      <h2>Rótulo A4 Horizontal</h2>
+      <button class="btn-action btn-sm btn-ghost" style="color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeRotulo()">✕</button>
     </div>
     <div class="rotulo-modal-body">
       <div class="form-row single" style="margin-bottom:12px">
@@ -906,11 +908,11 @@
 <div id="bulk-overlay">
   <div class="bulk-modal">
     <div class="bulk-modal-header">
-      <h3>Impresión Masiva</h3>
-      <button class="btn-action btn-ghost" style="font-size:12px;padding:6px 12px;color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeBulk()">✕ Cerrar</button>
+      <h2>Impresión Masiva</h2>
+      <button class="btn-action btn-sm btn-ghost" style="color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeBulk()">✕ Cerrar</button>
     </div>
     <div class="bulk-modal-body">
-      <select class="bulk-tienda-select" id="bulk-select-tienda" onchange="renderBulkList()">
+      <select class="bulk-tienda-select" id="bulk-select-tienda" aria-label="Tienda para impresión masiva" onchange="renderBulkList()">
         <option value="">-- Selecciona una tienda --</option>
       </select>
       <div class="bulk-search">
@@ -919,8 +921,8 @@
       </div>
       <div class="bulk-actions-bar">
         <span id="bulk-selected-count">0 productos · 0 etiquetas</span>
-        <button class="btn-action btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkSelectAll()">Todos ×1</button>
-        <button class="btn-action btn-ghost" style="font-size:11px;padding:5px 10px" onclick="bulkSelectNone()">Limpiar</button>
+        <button class="btn-action btn-sm btn-ghost" onclick="bulkSelectAll()">Todos ×1</button>
+        <button class="btn-action btn-sm btn-ghost" onclick="bulkSelectNone()">Limpiar</button>
       </div>
       <div class="bulk-list" id="bulk-list">
         <div class="bulk-item"><span style="color:var(--muted)">Selecciona una tienda primero</span></div>
@@ -941,7 +943,7 @@
 <div id="traslado-overlay" role="dialog" aria-modal="true" aria-labelledby="traslado-titulo">
   <div class="traslado-modal">
     <div class="traslado-head">
-      <h3 id="traslado-titulo">Trasladar conteos</h3>
+      <h2 id="traslado-titulo">Trasladar conteos</h2>
       <button type="button" class="traslado-cerrar" onclick="cerrarTraslado()" aria-label="Cerrar">✕</button>
     </div>
 
@@ -974,7 +976,9 @@
 </div>
 
 <script src="/shared/dom-utils.js"></script>
+<script src="/shared/confirmar.js"></script>
 <script src="/shared/api.js"></script>
+<script src="/shared/a11y.js"></script>
 <script src="/shared/horario-laboral.js"></script>
 <script src="/index.js"></script>
 <script src="/decoracion.js"></script>

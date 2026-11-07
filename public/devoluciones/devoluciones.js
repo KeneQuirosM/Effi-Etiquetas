@@ -158,7 +158,7 @@
 
     function renderTable(){
         if(!originalRowsData.length){
-            tableBody.innerHTML=`<tr><td colspan="99" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">∅</span><div class="empty-t">Sin datos cargados</div><div class="empty-s">Carga un archivo Excel para comenzar</div></div></td></tr>`;
+            tableBody.innerHTML=`<tr><td colspan="99" style="padding:0;border:none;">${estadoVacio({icono:'archivo',titulo:'Sin datos cargados',texto:'Carga un archivo Excel para comenzar'})}</td></tr>`;
             updateStats(); return;
         }
         // Índice original (posición en el Excel, antes de agrupar devueltas
@@ -175,7 +175,7 @@
             const guia=row['Guía transportadora']!==undefined?String(row['Guía transportadora']):'';
             const isDev=devolutionSet.has(guia);
             const cells=headers.map(h=>`<td>${esc(String(row[h]??''))}</td>`).join('');
-            return `<tr class="${isDev?'row-dev':''}" data-guia="${esc(guia)}" data-original-index="${origIndexMap.get(row)}"><td style="text-align:center"><input type="checkbox" class="chk" data-guia="${esc(guia)}" ${isDev?'checked':''}></td>${cells}</tr>`;
+            return `<tr class="${isDev?'row-dev':''}" data-guia="${esc(guia)}" data-original-index="${origIndexMap.get(row)}"><td style="text-align:center"><input type="checkbox" class="chk" data-guia="${esc(guia)}" aria-label="Marcar guía ${esc(guia)} como devuelta" ${isDev?'checked':''}></td>${cells}</tr>`;
         }).join('');
 
         // Los listeners se atan una sola vez acá (renderTable completo solo
@@ -250,7 +250,7 @@
 
     function initTable(){
         if(!originalRowsData.length) return;
-        tableHeader.innerHTML=`<tr><th style="width:46px;text-align:center;"></th>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;
+        tableHeader.innerHTML=`<tr><th style="width:46px;text-align:center;"><span class="sr-only">Devuelta</span></th>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;
         renderTable();
     }
 
@@ -465,15 +465,15 @@
         inp.click();
     }
 
-    function exportDevueltas(){
+    async function exportDevueltas(){
         if(!workbookOriginal){ notify('Primero carga un archivo','err'); return; }
         if(!devolutionSet.size){ notify('No hay guías marcadas','err'); return; }
-        if(!confirm(`¿Exportar ${devolutionSet.size} filas marcadas?`)) return;
+        if(!(await confirmar({ titulo:'Exportar devueltas', mensaje:`¿Exportar ${devolutionSet.size} filas marcadas?`, aceptar:'Exportar' }))) return;
         const rows=XLSX.utils.sheet_to_json(worksheetOriginal,{header:1,defval:""});
         if(!rows.length) return;
         const hrow=rows[0];
         const gIdx=hrow.findIndex(h=>String(h).trim()==='Guía transportadora');
-        if(gIdx<0){ alert("No se encontró columna 'Guía transportadora'"); return; }
+        if(gIdx<0){ notify("No se encontró la columna 'Guía transportadora' en el archivo", 'error'); return; }
         const out=[hrow,...rows.slice(1).filter(r=>devolutionSet.has(String(r[gIdx]??'').trim()))];
         const ws=XLSX.utils.aoa_to_sheet(out);
         if(worksheetOriginal['!cols']) ws['!cols']=[...worksheetOriginal['!cols']];
@@ -500,9 +500,9 @@
         }
     }
 
-    function resetAll(){
+    async function resetAll(){
         if(!originalRowsData.length) return;
-        if(!confirm('¿Reiniciar todas las marcas?')) return;
+        if(!(await confirmar({ titulo:'Reiniciar marcas', mensaje:'¿Reiniciar todas las marcas? Se quitan todas las guías marcadas como devueltas.', aceptar:'Reiniciar', peligro:true }))) return;
         devolutionSet.clear(); addLog('SISTEMA','','','Admin','Todas','REINICIO');
         // Un solo re-render en vez de updateRowStatus() por guía: desmarcar
         // una guía recorre toda la tabla para reubicar la fila, así que con

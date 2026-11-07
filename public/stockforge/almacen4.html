@@ -8,6 +8,7 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous">
 </script>
 <link rel="stylesheet" href="/shared/tokens.css">
+<link rel="stylesheet" href="/shared/componentes.css">
 <link rel="stylesheet" href="/stockforge/almacen4.css">
 </head>
 <body>
@@ -30,7 +31,7 @@
       <button type="button" id="logo-name-display"
         onclick="startEditName()"
         title="Clic para editar nombre"
-        style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.35rem;letter-spacing:3px;color:var(--bright);background:none;border:none;padding:0;text-align:left;cursor:pointer;white-space:nowrap;appearance:none;-webkit-appearance:none;">
+        style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.35rem;letter-spacing:3px;color:var(--bright);background:none;border:none;padding:0;text-align:left;cursor:pointer;appearance:none;-webkit-appearance:none;">
         BODEGA <em style="color:var(--accent);font-style:normal;" id="logo-name-em">EFFICOMMERCE CR</em>
       </button>
       <input id="logo-name-input"
@@ -72,9 +73,9 @@
     <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(event)">
     <input type="file" id="imp-xlsx" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcelStock(event)">
     <button class="hbtn" onclick="openSettings()" data-i18n="btn_settings" title="Settings / Configuración">⚙</button>
-   <button class="hbtn" id="lock-btn" onclick="toggleLock()" data-i18n-target="title" data-i18n="lock_title">🔒</button> 
+   <button class="hbtn" id="lock-btn" onclick="toggleLock()" data-i18n-target="title" data-i18n="lock_title" aria-label="Modo coordinador: bloqueado"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button> 
    <!-- Hamburger — mobile only -->
-    <button class="hbtn hburger" id="hburger" onclick="toggleMobileMenu()" title="Menú">☰</button>
+    <button class="hbtn hburger" id="hburger" onclick="toggleMobileMenu()" title="Menú" aria-label="Abrir menú" aria-controls="mob-drawer" aria-expanded="false">☰</button>
   </div>
 </header>
 
@@ -83,7 +84,7 @@
 <div class="mob-drawer" id="mob-drawer">
   <div class="mob-drawer-hd">
     <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.2rem;letter-spacing:3px;color:var(--bright)">MENÚ</span>
-    <button onclick="closeMobileMenu()" style="background:none;border:none;color:var(--dim);font-size:1.4rem;cursor:pointer;padding:4px 8px">✕</button>
+    <button type="button" onclick="closeMobileMenu()" aria-label="Cerrar menú" data-cerrar-modal style="background:none;border:none;color:var(--dim);font-size:1.4rem;cursor:pointer;padding:4px 8px">✕</button>
   </div>
   <div class="mob-drawer-body">
     <button class="mob-action ac guard-btn" onclick="closeMobileMenu();guardEdit(openAddRack)">＋ <span data-i18n="btn_rack">Rack</span></button>
@@ -108,12 +109,13 @@
   </div>
 </div>
 
-<div class="wrap" id="wrap">
+<div class="wrap" id="wrap" role="main">
+  <h1 class="sr-only">StockForge · Gestión de almacén</h1>
   <!-- Panel toggle buttons — live outside panels so they survive collapse -->
   <button class="ptoggle ptoggle-l" id="ptoggle-lp" onclick="togglePanel('lp')" title="Panel izquierdo  [">‹</button>
   <button class="ptoggle ptoggle-r" id="ptoggle-rp" onclick="togglePanel('rp')" title="Panel derecho  ]">›</button>
 <!-- LEFT -->
-<aside class="lp" id="lp">
+<aside class="lp" id="lp" aria-label="Estadísticas y zonas">
   <div class="lsec">
     <div class="shd" data-i18n="stat_racks" id="stat-racks-hd">Estadísticas</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
@@ -217,7 +219,7 @@
 </div>
 
 <!-- RIGHT -->
-<aside class="rp" id="rp">
+<aside class="rp" id="rp" aria-label="Capacidad, detalle del rack y actividad">
   <div style="padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0">
     <div class="shd" style="margin-bottom:6px">Capacidad Global</div>
     <div class="dcard">
@@ -762,10 +764,11 @@
   </div>
 </div>
 
-<div class="notifs" id="notifs"></div>
 
 <script src="/shared/dom-utils.js"></script>
+<script src="/shared/confirmar.js"></script>
 <script src="/shared/api.js"></script>
+<script src="/shared/a11y.js"></script>
 <script src="/stockforge/almacen4.js"></script>
 </body>
 </html>

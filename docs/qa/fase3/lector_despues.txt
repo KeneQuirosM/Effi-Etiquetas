@@ -1,0 +1,77 @@
+
+### Pantalla principal: encabezados (h1)
+- main:
+  - heading "Efficommerce · Generador de etiquetas y panel de coordinador" [level=1]
+  - strong: FELIZ NAVIDAD
+  - text: Equipo de Logística Efficommerce Efficommerce Logística Interna
+  - paragraph: CEPILLO ELÉCTRICO FACIAL RECARGABLE CON CINCO CABEZALES INTERCAMBIABLES
+  - text: TIENDA CENTRAL SAN JOSÉ
+  - paragraph: "ID: 1000"
+
+### Login de coordinador
+- dialog "Modo Coordinador":
+  - heading "Modo Coordinador" [level=2]
+  - paragraph: Inicia sesión para acceder
+  - text: Email
+  - textbox "Email":
+    - /placeholder: coordinador@efficommerce.com
+  - text: Contraseña
+  - textbox "Contraseña":
+    - /placeholder: ••••••••
+  - button "Iniciar Sesión"
+  - alert
+  - button "Cancelar"
+
+### Pestañas del panel de coordinador
+- tablist "Secciones del panel":
+  - tab "Agregar Producto" [selected]
+  - tab "Nueva Tienda"
+  - tab "Gestionar Inventario"
+  - tab "Configuración"
+  - tab "Usuarios y permisos"
+  - tab "Bitácora"
+  - tab "Devoluciones"
+  - tab "Conteos"
+  - tab "Impresión"
+  - tab "Recepciones"
+
+### StockForge: modal Nueva zona
+- dialog "Nueva Zona":
+  - text: Nueva Zona
+  - button "Cerrar": ✕
+  - text: Nombre de la zona
+  - textbox "Nombre de la zona":
+    - /placeholder: "Ej: Recepción, Despacho..."
+  - text: Color identificador
+  - 'button "Color #00ff88" [pressed]'
+  - 'button "Color #f0a500"'
+  - 'button "Color #00d4ff"'
+  - 'button "Color #ff6b35"'
+  - 'button "Color #ff3b5c"'
+  - 'button "Color #ffd000"'
+  - 'button "Color #a78bfa"'
+  - 'button "Color #34d399"'
+  - 'button "Color #f472b6"'
+  - 'button "Color #60a5fa"'
+  - 'button "Color #fb923c"'
+  - 'button "Color #22d3ee"'
+  - text: Descripción
+  - textbox "Descripción":
+    - /placeholder: Opcional
+  - text: Área (m²)
+  - spinbutton "Área (m²)": "0"
+  - text: Tipo de zona
+  - combobox "Tipo de zona":
+    - option "Operativa (almacenaje)" [selected]
+    - option "Excluida (oficinas, comedor)"
+
+### Manifiesto: modal Faltantes
+- dialog "Guías Faltantes":
+  - heading "Guías Faltantes" [level=3]
+  - button "Cerrar": ×
+  - text: "Total: 2"
+  - button "Copiar lista"
+  - text: CR123456791
+  - button "Marcar"
+  - text: "1000119384"
+  - button "Marcar"

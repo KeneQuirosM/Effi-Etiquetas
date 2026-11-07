@@ -484,7 +484,7 @@ function renderGuidesTable(guideList, notFoundGuides) {
     document.getElementById('guidesTableCount').textContent = `${guideList.length} guías`;
 
     if (!guideList.length) {
-        tbody.innerHTML = `<tr><td colspan="3" style="padding:0;border:none;"><div class="empty"><span class="empty-ico">∅</span><div class="empty-t">Sin resultados</div></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" style="padding:0;border:none;">${estadoVacio({icono:'busqueda',titulo:'Sin resultados',texto:'Carga el Excel y el PDF y pulsa "Comparar y Filtrar".'})}</td></tr>`;
         return;
     }
 

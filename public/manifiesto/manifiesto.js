@@ -812,10 +812,7 @@ function renderTablaGuias() {
   if (contador) contador.textContent = filas.length;
 
   if (filas.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="tabla-vacia">
-      <i class="fas fa-barcode" style="font-size:34px;display:block;margin-bottom:10px;opacity:.45"></i>
-      Carga un manifiesto y escanea guías para verlas aquí
-    </td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="tabla-vacia">${estadoVacio({ icono: 'escaner', titulo: 'Sin guías todavía', texto: 'Carga un manifiesto y escanea guías para verlas aquí' })}</td></tr>`;
     return;
   }
 
@@ -828,13 +825,14 @@ function renderTablaGuias() {
     const opciones = OBSERVACION_ESTADOS.map(o =>
       `<option value="${o.value}" ${obsActual === o.value ? 'selected' : ''}>${o.value}</option>`
     ).join('');
+    // data-label: en celular cada fila se muestra como tarjeta (ver manifiesto.css)
     return `<tr>
-      <td style="color:#999;font-size:12px;">${i + 1}</td>
-      <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${esc(f.guia)}</td>
-      <td><span class="badge-estado ${badgeClass}">${badgeText}</span>${insigniaRepetidaHTML(f.guia)}</td>
-      <td style="color:#888;font-size:12px;">${esc(f.hora)}</td>
-      <td style="text-align:center;">
-        <select class="obs-select ${claseObservacion(obsActual)}"
+      <td class="col-num" data-label="#" style="color:#6b6b6b;font-size:12px;">${i + 1}</td>
+      <td class="col-guia" data-label="Número de guía" style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${esc(f.guia)}</td>
+      <td class="col-estado" data-label="Estado"><span class="badge-estado ${badgeClass}">${badgeText}</span>${insigniaRepetidaHTML(f.guia)}</td>
+      <td class="col-hora" data-label="Hora de escaneo" style="color:#6b6b6b;font-size:12px;">${esc(f.hora)}</td>
+      <td class="col-obs" data-label="Observaciones" style="text-align:center;">
+        <select class="obs-select ${claseObservacion(obsActual)}" aria-label="Observaciones de la guía ${esc(f.guia)}"
           onchange="setObservacion('${esc(f.guia.replace(/'/g,"\\'"))}', this.value, this)">
           ${opciones}
         </select>
@@ -965,4 +963,16 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.onclick = function() { this.closest('.modal').style.display = 'none'; };
   });
   window.onclick = function(e) { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
+});
+
+
+/* ── ACCESIBILIDAD: modales con foco gestionado (shared/a11y.js) ── */
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof registrarModal !== 'function') return;
+  [['noManifestadasModal', cerrarModalNoManifestadas], ['historialModal', cerrarModalHistorial],
+   ['confirmModal', cerrarConfirmModal], ['confirmExportModal', cerrarConfirmExportModal],
+   ['repetidasModal', cerrarModalRepetidas], ['faltantesModal', cerrarModalFaltantes]].forEach(([id, cerrar]) => {
+    const capa = document.getElementById(id);
+    if (capa) registrarModal(capa, { caja: capa.querySelector('.modal-content') || capa, cerrar });
+  });
 });

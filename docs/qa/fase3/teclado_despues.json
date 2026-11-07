@@ -1,0 +1,502 @@
+[
+ {
+  "n": "index 1440px: Tab recorre 14 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "index 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "index 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "index 375px: Tab recorre 14 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "index 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "index 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "stockforge 1440px: Tab recorre 21 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "stockforge 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "stockforge 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "stockforge 375px: Tab recorre 14 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "stockforge 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "stockforge 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "manifiesto 1440px: Tab recorre 20 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "manifiesto 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "manifiesto 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "manifiesto 375px: Tab recorre 20 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "manifiesto 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "manifiesto 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 1440px: Tab recorre 17 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 375px: Tab recorre 17 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "devoluciones 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "reporte 1440px: Tab recorre 14 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "reporte 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "reporte 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "reporte 375px: Tab recorre 14 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "reporte 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "reporte 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 1440px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 375px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "mercado 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 1440px: Tab recorre 6 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 375px: Tab recorre 6 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "conteos 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 1440px: Tab recorre 7 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 375px: Tab recorre 7 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "recepcion 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 1440px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 1440: sin errores JS",
+  "pass": false,
+  "i": "pdfjsLib is not defined"
+ },
+ {
+  "n": "alistamiento 375px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "alistamiento 375: sin errores JS",
+  "pass": false,
+  "i": "pdfjsLib is not defined"
+ },
+ {
+  "n": "trazabilidad 1440px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 375px: Tab recorre 5 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 375px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "trazabilidad 375px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "panel coordinador 1440px: Tab recorre 22 controles; todos con nombre accesible",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "panel coordinador 1440px: todos muestran el anillo de foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "panel coordinador 1440px: el foco nunca entra en elementos ocultos ni modales cerrados",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "pestañas del panel: role=tab, una seleccionada, una sola en el orden de Tab, con aria-controls",
+  "pass": true,
+  "i": "[[\"Agregar Producto\",\"true\",0,\"tab-add-item\"],[\"Nueva Tienda\",\"false\",-1,\"tab-add-tienda\"],[\"Gestionar Inventario\",\"false\",-1,\"tab-manage\"]]"
+ },
+ {
+  "n": "pestañas: → mueve el foco a la siguiente",
+  "pass": true,
+  "i": "Nueva Tienda"
+ },
+ {
+  "n": "pestañas: Fin/Inicio van a la última/primera",
+  "pass": true,
+  "i": "Recepciones / Agregar Producto"
+ },
+ {
+  "n": "pestañas: Enter activa la enfocada (Gestionar Inventario) y muestra su panel",
+  "pass": true,
+  "i": "{\"tab\":\"Gestionar Inventario\",\"panel\":true}"
+ },
+ {
+  "n": "filtros de rango: aria-pressed presente",
+  "pass": true,
+  "i": "false,false,false,false,false,true,false,false,false,false,false"
+ },
+ {
+  "n": "Login de coordinador: al abrir con Enter el foco entra al diálogo",
+  "pass": true,
+  "i": "{\"tag\":\"INPUT\",\"id\":\"coord-email\",\"cls\":\"\",\"nombre\":\"Email\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":true}"
+ },
+ {
+  "n": "Login de coordinador: role=\"dialog\", aria-modal y nombre",
+  "pass": true,
+  "i": "{\"role\":\"dialog\",\"modal\":\"true\",\"nombre\":\"Modo Coordinador\"}"
+ },
+ {
+  "n": "Login de coordinador: Tab y Shift+Tab no salen del diálogo",
+  "pass": true,
+  "i": "false"
+ },
+ {
+  "n": "Login de coordinador: Escape cierra y el foco vuelve al botón que lo abrió",
+  "pass": true,
+  "i": "cerrado=true origen=btn-coord-toggle ahora=btn-coord-toggle"
+ },
+ {
+  "n": "Impresión masiva: al abrir con Enter el foco entra al diálogo",
+  "pass": true,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"\",\"cls\":\"btn-action btn-ghost\",\"nombre\":\"✕ Cerrar\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":true}"
+ },
+ {
+  "n": "Impresión masiva: role=\"dialog\", aria-modal y nombre",
+  "pass": true,
+  "i": "{\"role\":\"dialog\",\"modal\":\"true\",\"nombre\":\"Impresión Masiva\"}"
+ },
+ {
+  "n": "Impresión masiva: Tab y Shift+Tab no salen del diálogo",
+  "pass": true,
+  "i": "false"
+ },
+ {
+  "n": "Impresión masiva: Escape cierra y el foco vuelve al botón que lo abrió",
+  "pass": true,
+  "i": "cerrado=true origen=nav-btn-masiva ahora=nav-btn-masiva"
+ },
+ {
+  "n": "Manifiesto: Faltantes: al abrir con Enter el foco entra al diálogo",
+  "pass": true,
+  "i": "{\"tag\":\"DIV\",\"id\":\"\",\"cls\":\"modal-content\",\"nombre\":\"Guías Faltantes\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":true}"
+ },
+ {
+  "n": "Manifiesto: Faltantes: role=\"dialog\", aria-modal y nombre",
+  "pass": true,
+  "i": "{\"role\":\"dialog\",\"modal\":\"true\",\"nombre\":\"Guías Faltantes\"}"
+ },
+ {
+  "n": "Manifiesto: Faltantes: Tab y Shift+Tab no salen del diálogo",
+  "pass": true,
+  "i": "false"
+ },
+ {
+  "n": "Manifiesto: Faltantes: Escape cierra y el foco vuelve a scanInput",
+  "pass": true,
+  "i": "cerrado=true origen=metric-card warning ahora=scanInput"
+ },
+ {
+  "n": "Manifiesto: la × de cerrar es <button> con nombre",
+  "pass": true,
+  "i": "BUTTON Cerrar"
+ },
+ {
+  "n": "StockForge: Nueva zona: al abrir con Enter el foco entra al diálogo",
+  "pass": true,
+  "i": "{\"tag\":\"INPUT\",\"id\":\"zn\",\"cls\":\"fi\",\"nombre\":\"Nombre de la zona\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":true}"
+ },
+ {
+  "n": "StockForge: Nueva zona: role=\"dialog\", aria-modal y nombre",
+  "pass": true,
+  "i": "{\"role\":\"dialog\",\"modal\":\"true\",\"nombre\":\"Nueva Zona\"}"
+ },
+ {
+  "n": "StockForge: Nueva zona: Tab y Shift+Tab no salen del diálogo",
+  "pass": true,
+  "i": "false"
+ },
+ {
+  "n": "StockForge: Nueva zona: Escape cierra y el foco vuelve al botón que lo abrió",
+  "pass": true,
+  "i": "cerrado=true origen=zone-add-btn ahora=zone-add-btn"
+ },
+ {
+  "n": "StockForge: pestañas del reporte con flechas + Enter",
+  "pass": true,
+  "i": "{\"sel\":\"Por Celda\",\"n\":9}"
+ },
+ {
+  "n": "StockForge: menú ☰: al abrir con Enter el foco entra al diálogo",
+  "pass": true,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"\",\"cls\":\"mob-action ac guard-btn\",\"nombre\":\"＋ ＋ Rack\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":true}"
+ },
+ {
+  "n": "StockForge: menú ☰: role=\"dialog\", aria-modal y nombre",
+  "pass": true,
+  "i": "{\"role\":\"dialog\",\"modal\":\"true\",\"nombre\":\"Menú\"}"
+ },
+ {
+  "n": "StockForge: menú ☰: Tab y Shift+Tab no salen del diálogo",
+  "pass": true,
+  "i": "false"
+ },
+ {
+  "n": "StockForge: menú ☰: Escape cierra y el foco vuelve al botón que lo abrió",
+  "pass": true,
+  "i": "cerrado=true origen=hburger ahora=hburger"
+ },
+ {
+  "n": "StockForge: ☰ informa aria-expanded",
+  "pass": true,
+  "i": "false"
+ },
+ {
+  "n": "Mercado: pestañas con flechas + Enter, una sola en el orden de Tab",
+  "pass": true,
+  "i": "{\"sel\":\"asignacion\",\"tabs\":\"-1,0,-1,-1\",\"ctrl\":\"panel-corte\"}"
+ },
+ {
+  "n": "Mercado: \"¿Quién eres?\" abre con el foco en el primer nombre",
+  "pass": true,
+  "i": "{\"tag\":\"BUTTON\",\"id\":\"\",\"cls\":\"mk-chip mk-chip-btn\",\"nombre\":\"Ana\",\"anillo\":true,\"visible\":true,\"enModalCerrado\":false,\"dialogo\":false}"
+ },
+ {
+  "n": "Mercado: Escape cierra y devuelve el foco",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Devoluciones 375: la tabla se alcanza con Tab y se desplaza con flechas",
+  "pass": true,
+  "i": "scrollLeft=80"
+ },
+ {
+  "n": "Devoluciones: Espacio marca la guía",
+  "pass": true,
+  "i": ""
+ },
+ {
+  "n": "Manifiesto: tabla de guías alcanzable con Tab (región con nombre)",
+  "pass": true,
+  "i": "[0,\"region\",\"Guías registradas\"]"
+ },
+ {
+  "n": "Avisos: los errores van a role=\"alert\" y los éxitos a role=\"status\", con prefijo de tipo",
+  "pass": true,
+  "i": "{\"alerta\":\"Error: Prueba de error\",\"cortes\":\"Listo: Guardado\",\"roles\":[\"alert\",\"status\"]}"
+ }
+]

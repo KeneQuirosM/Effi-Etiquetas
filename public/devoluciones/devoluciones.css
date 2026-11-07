@@ -4,19 +4,10 @@
            para los valores exactos y el historial del fix de contraste. */
         @import url('/shared/tokens.css');
         :root {
-            --mono: 'IBM Plex Mono', monospace;
-            --sans: 'Inter', system-ui, sans-serif;
+  /* Radios, sombras, transición y fuentes: shared/tokens.css (aquí solo alias) */
+            --mono: var(--font-mono);
+            --sans: var(--font-sans);
 
-            --shadow-xs: 0 1px 3px rgba(13,27,110,.06);
-            --shadow-sm: 0 2px 8px rgba(13,27,110,.09);
-            --shadow-md: 0 4px 16px rgba(13,27,110,.11);
-            --shadow-lg: 0 8px 28px rgba(13,27,110,.13);
-
-            --radius-sm: 6px;
-            --radius-md: 10px;
-            --radius-lg: 14px;
-            --radius-xl: 18px;
-            --transition: all .18s ease;
         }
 
         *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -44,71 +35,6 @@
         }
 
         /* ══ HEADER — copia exacta del manifiesto ══ */
-        .app-header {
-            background: var(--brand-800);
-            display: flex;
-            flex-direction: column;
-        }
-        .header-main-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 13px 22px;
-        }
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        .header-logo-pill {
-            display: flex;
-            align-items: center;
-            background: rgba(255,255,255,.1);
-            border: 0.5px solid rgba(255,255,255,.2);
-            border-radius: 8px;
-            padding: 6px 12px;
-        }
-        .header-logo-img {
-            height: 28px;
-            object-fit: contain;
-            filter: brightness(0) invert(1);
-        }
-        .header-divider {
-            width: 1px; height: 30px;
-            background: rgba(255,255,255,.15);
-        }
-        .header-titles { display: flex; flex-direction: column; gap: 2px; }
-        .header-titles h1 {
-            font-size: 1rem; font-weight: 500;
-            margin: 0; color: white; letter-spacing: .2px;
-        }
-        .header-sub {
-            font-size: 12px;
-            color: #c7cdf5;
-            font-weight: 400;
-        }
-        .header-back {
-            width: 34px; height: 34px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            background: transparent; color: #fff;
-            border: 1px solid rgba(255,255,255,.35); border-radius: 8px;
-            cursor: pointer; transition: background .15s, border-color .15s;
-        }
-        .header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
-        .header-status-bar {
-            display: flex; align-items: center; gap: 6px;
-            padding: 5px 22px;
-            background: rgba(0,0,0,.15);
-            border-top: .5px solid rgba(255,255,255,.08);
-        }
-        .header-status-dot {
-            width: 7px; height: 7px; border-radius: 50%;
-            background: #4caf50; flex-shrink: 0;
-        }
-        .header-status-text {
-            font-size: .7rem;
-            color: rgba(255,255,255,.45);
-        }
 
         /* ══ SECTION HEADER — igual al manifiesto ══ */
         .section-header {
@@ -196,14 +122,16 @@
         }
 
         /* ══ BUTTONS — mismos que manifiesto ══ */
+        /* Botón estándar de la suite: 40 px, radio 10, 14 px/600 */
         .btn {
-            padding: 10px 20px;
+            padding: 0 var(--space-4);
             border-radius: var(--radius-md);
-            font-family: var(--sans); font-weight: 500; font-size: .8rem;
+            font-family: var(--sans); font-weight: var(--weight-semibold); font-size: var(--text-base);
             border: 1.5px solid transparent;
             cursor: pointer;
             display: inline-flex; align-items: center; gap: 7px;
             white-space: nowrap; transition: var(--transition);
+          min-height: var(--control-h);
         }
         .btn:active { transform: scale(.97); }
 
@@ -359,12 +287,13 @@
         .badge-pend { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning-border); }
 
         /* ══ MÉTRICAS — igual que manifiesto ══ */
+        /* Cuadrícula (antes una fila con scroll: en celular la 3.ª quedaba cortada) */
         .metrics-grid {
-            display: flex; flex-wrap: nowrap;
-            gap: 14px; overflow-x: auto; padding-bottom: 4px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 14px;
         }
         .metric-card {
-            flex: 1; min-width: 160px;
+            min-width: 0;
             display: flex; align-items: center; gap: 14px;
             padding: 18px 20px;
             border: 1px solid transparent;
@@ -420,6 +349,7 @@
 
         .tabla-search-wrapper { position: relative; display: flex; align-items: center; }
         .tabla-search-wrapper i { position: absolute; left: 10px; color: var(--neutral-400); font-size: 13px; pointer-events: none; }
+        /* Campo estándar de la suite: 40 px, radio 10 */
         .tabla-search {
             padding: 7px 12px 7px 30px;
             border: 1.5px solid var(--neutral-200);
@@ -428,6 +358,7 @@
             font-family: var(--sans);
             outline: none; background: var(--neutral-50);
             transition: var(--transition);
+          min-height: var(--control-h);
         }
         .tabla-search:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(42,71,212,.1); background: white; }
         .tabla-search::placeholder { color: var(--neutral-400); }
@@ -468,11 +399,21 @@
 
         .chk { width: 15px; height: 15px; cursor: pointer; accent-color: var(--brand-500); }
 
+        /* Tabla ancha (todas las columnas del Excel): se desliza en horizontal
+           dentro de su marco y la casilla para marcar queda fija a la izquierda */
+        #dataTable th:first-child, #dataTable td:first-child { position: sticky; left: 0; z-index: 1; box-shadow: inset -1px 0 0 var(--neutral-200); }
+        #dataTable thead th:first-child { z-index: 11; }
+        #dataTable tbody td:first-child { background: white; }
+        #dataTable tbody tr:nth-child(even) td:first-child { background: var(--neutral-50); }
+        #dataTable tbody tr:hover td:first-child { background: var(--brand-50); }
+        .tbl-hint { display: none; margin: 0 0 8px; font-size: .78rem; color: var(--neutral-600); }
+        @media (max-width: 900px) {
+            .tbl-hint { display: block; }
+            .chk { width: 24px; height: 24px; }
+            #dataTable td:first-child { padding: 10px; }
+        }
+
         /* empty state */
-        .empty { text-align: center; padding: 56px 24px; }
-        .empty-ico { font-size: 3rem; opacity: .4; margin-bottom: 12px; display: block; }
-        .empty-t { font-size: .85rem; color: #3d4663; margin-bottom: 4px; font-weight: 500; }
-        .empty-s { font-family: var(--mono); font-size: .68rem; color: var(--neutral-400); }
 
         /* ══ LOG DE AUDITORÍA ══ */
         .log-wrap {
@@ -530,14 +471,16 @@
         .toast-inf { border-left: 3px solid var(--brand-500); }
 
         /* ══ ACTION BUTTONS (ver reporte) ══ */
+        /* Botón estándar de la suite (ver QA_CONSISTENCIA_VISUAL.md): 40 px, radio 10, 14 px/600 */
         .action-btn {
             display: inline-flex; align-items: center; gap: 8px;
-            padding: 11px 22px;
+            padding: 0 var(--space-4);
             border: 1.5px solid var(--neutral-200);
             border-radius: var(--radius-md);
-            font-size: 13.5px; font-weight: 500; font-family: var(--sans);
+            font-size: var(--text-base); font-weight: var(--weight-semibold); font-family: var(--sans);
             cursor: pointer; transition: var(--transition);
             background: white; color: var(--neutral-800);
+          min-height: var(--control-h);
         }
         .action-btn:hover { background: var(--neutral-50); border-color: var(--neutral-400); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
         .action-btn.primary { background: var(--brand-800); border-color: var(--brand-800); color: white; }
@@ -548,11 +491,13 @@
             body { padding: 12px 8px; }
             .section-content { padding: 18px 16px; }
             .metrics-grid { gap: 10px; }
-            .metric-card { min-width: 140px; padding: 14px 16px; }
+            .metric-card { padding: 14px 16px; }
             .metric-value { font-size: 1.6rem; }
             .scan-fields { grid-template-columns: 1fr 1fr; }
         }
         @media(max-width: 480px){
-            .metric-card { min-width: 120px; flex-direction: column; text-align: center; gap: 6px; }
+            .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+            .metric-card { padding: 12px 6px; flex-direction: column; text-align: center; gap: 6px; }
+            .metric-value { font-size: 1.4rem; }
             .scan-fields { grid-template-columns: 1fr; }
         }

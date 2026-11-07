@@ -8,15 +8,9 @@
   @import url('/shared/tokens.css');
 
   :root {
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
+  /* Radios, sombras, transición y fuentes: shared/tokens.css (aquí solo alias) */   
 
-    --shadow-sm: 0 2px 8px rgba(13,27,110,.05);
-    --shadow-md: 0 4px 16px rgba(13,27,110,.08);
-    
-    --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
-    --transition: all .18s ease;
+    --font: var(--font-sans); 
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -30,76 +24,20 @@
   }
 
   /* ── CABECERA CORPORATIVA ── */
-  header {
-    background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-800) 100%);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 16px 32px;
-    color: #ffffff;
-  }
 
-  .header-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
 
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-  }
 
-  .header-logo-pill {
-    display: flex;
-    align-items: center;
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.25);
-    border-radius: var(--radius-md);
-    padding: 6px 14px;
-  }
 
-  .header-logo-img {
-    height: 32px;
-    object-fit: contain;
-    filter: brightness(0) invert(1);
-  }
 
-  .header-divider {
-    width: 1px;
-    height: 36px;
-    background: rgba(255,255,255,0.2);
-  }
 
-  .header-titles h1 {
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: #ffffff;
-    letter-spacing: -0.3px;
-    margin: 0;
-  }
 
-  .header-titles p {
-    color: #c7cdf5;
-    font-size: 12px;
-    margin-top: 2px;
-  }
-  .header-back {
-      width: 34px; height: 34px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: transparent; color: #fff;
-      border: 1px solid rgba(255,255,255,.35); border-radius: 8px;
-      cursor: pointer; transition: background .15s, border-color .15s;
-  }
-  .header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
 
   /* Ancho máximo en pantalla (1440px, centrado como los demás módulos).
      Solo @media screen: al imprimir/guardar PDF el contenido sigue
      ocupando el ancho completo de la hoja. Por debajo de 1440px no cambia. */
   @media screen {
     .report-shell { max-width: 1440px; margin: 0 auto; }
-    header .header-container { max-width: calc(1440px - 64px); margin: 0 auto; }
+    .app-header > .header-main-row { max-width: 1440px; margin: 0 auto; }   /* cabecera a todo el ancho, contenido centrado */
   }
 
   /* a11y: estas clases pasaron de <div onclick> a <button> — se neutraliza el
@@ -129,12 +67,13 @@
     border: none;         /* ahora es <button> — sin esto mostraría el borde nativo */
     font-family: inherit; /* idem — evita la tipografía por defecto del navegador */
     color: white;
-    padding: 10px 24px;
-    border-radius: 32px;
-    font-weight: 600;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-semibold);
     cursor: pointer;
-    font-size: 0.88rem;
+    font-size: var(--text-base);
     transition: var(--transition);
+    min-height: var(--control-h);
   }
   .file-label:hover { background: var(--brand-700); transform: translateY(-1px); }
   .file-info { margin-top: 10px; font-size: 0.8rem; color: var(--neutral-600); }
@@ -185,16 +124,18 @@
     align-items: center;
   }
 
+  /* Campo estándar de la suite: 40 px, radio 10 */
   .controls input[type="text"], .controls select {
     background: #fcfdfe;
     border: 1px solid var(--neutral-200);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     color: var(--neutral-800);
     padding: 8px 14px;
     font-size: 0.85rem;
     outline: none;
     transition: var(--transition);
     font-family: var(--font);
+    min-height: var(--control-h);
   }
   .controls input[type="text"] { min-width: 260px; }
   .controls input[type="text"]:focus, .controls select:focus {
@@ -202,19 +143,21 @@
     box-shadow: 0 0 0 3px rgba(42, 71, 212, 0.12);
   }
 
+  /* Botón estándar de la suite (ver QA_CONSISTENCIA_VISUAL.md): 40 px, radio 10, 14 px/600 */
   .toggle-btn {
     background: #fcfdfe;
     border: 1px solid var(--neutral-200);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     color: var(--neutral-800);
-    padding: 8px 14px;
-    font-size: 0.82rem;
-    font-weight: 500;
+    padding: 0 var(--space-4);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
     cursor: pointer;
     transition: var(--transition);
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    min-height: var(--control-h);
   }
   .toggle-btn:hover { background: var(--neutral-50); transform: translateY(-1px); }
   .toggle-btn.active { background: var(--danger-bg); border-color: var(--danger-mid); color: var(--danger-mid); font-weight: 600; }
@@ -222,8 +165,8 @@
   .btn-download-xlsx { background: var(--success-mid) !important; color: white !important; border: none; font-weight: 600; }
   .btn-download-xlsx:hover { background: #1b5e20 !important; }
 
-  .btn-pdf { background: #e67e00 !important; color: white !important; border: none; font-weight: 600; }
-  .btn-pdf:hover { background: #b36200 !important; }
+  .btn-pdf { background: #b35c00 !important; /* AA: antes #e67e00 (2.9:1 con texto blanco) */ color: white !important; border: none; font-weight: 600; }
+  .btn-pdf:hover { background: #8f4a00 !important; }
 
   /* ── CONTENEDOR DE BLOQUES ── */
   .main { padding: 16px 32px 32px 32px; }
@@ -468,3 +411,35 @@
     .bar-fill { background: var(--brand-500) !important; height: 100% !important; }
     .bar-fill.low { background: var(--danger-mid) !important; }
   }
+
+/* ── CELULAR: métricas 2×2, controles a lo ancho y cada artículo como tarjeta ──
+ * Solo pantalla: al imprimir / guardar PDF se mantiene la tabla. */
+@media screen and (max-width: 600px) {
+  .stats-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px 14px; }
+  .stat { min-width: 0; padding: 12px; }
+  .stat-val { font-size: 1.4rem; }
+  .controls { padding: 10px 14px; }
+  .controls input[type="text"], .controls select { min-width: 0; flex: 1 1 100%; min-height: 44px; font-size: 16px; }
+  .toggle-btn { min-height: 44px; flex: 1 1 calc(50% - 5px); justify-content: center; }
+  .main { padding: 12px 14px 24px; }
+  .group-header { flex-wrap: wrap; row-gap: 6px; }
+  .group-name { flex: 1 1 calc(100% - 110px); }
+  .group-meta { flex: 1 1 100%; flex-wrap: wrap; gap: 6px 12px; order: 3; }
+
+  .group-body thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .group-body table, .group-body tbody { display: block; }
+  .group-body tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 12px 14px; border-bottom: 1px solid var(--neutral-100); }
+  .group-body td { display: block; padding: 0; border: none; }
+  .group-body td.col-desc, .group-body td.col-qty, .group-body td.col-ubic { grid-column: 1 / -1; }
+  .group-body td.col-estado { grid-row: 1; grid-column: 2; text-align: right; }
+  .group-body td.col-ubic::before, .group-body td.col-qty::before {
+    content: attr(data-label); display: block; font-size: .68rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--neutral-600); margin-bottom: 2px;
+  }
+  .bar-bg { max-width: none; }
+  .file-zone { margin: 16px 14px 10px; padding: 20px 14px; }
+  .exclusion-panel { margin-left: 14px; margin-right: 14px; }
+}
+
+/* Tablet táctil: botones de la barra con altura cómoda */
+@media screen and (max-width: 900px), (pointer: coarse) { .toggle-btn { min-height: 40px; } }

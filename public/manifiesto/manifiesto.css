@@ -16,18 +16,9 @@
 }
 
 :root {
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
+  /* Radios, sombras, transición y fuentes: shared/tokens.css (aquí solo alias) */    
 
-  --shadow-xs: 0 1px 3px rgba(13,27,110,.07);
-  --shadow-sm: 0 2px 8px rgba(13,27,110,.09);
-  --shadow-md: 0 4px 16px rgba(13,27,110,.11);
-  --shadow-lg: 0 8px 28px rgba(13,27,110,.13);
-
-  --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  --transition: all .18s ease;
+  --font: var(--font-sans); 
 }
 
 /* ── BASE ── */
@@ -54,9 +45,6 @@ body {
 }
 
 /* ── HEADER (ver estilos ampliados de header al final del archivo) ── */
-.app-header {
-  background: var(--brand-800);
-}
 
 /* ── SECTION HEADER ── */
 .section-header {
@@ -148,11 +136,12 @@ select:focus {
 input[type="text"]::placeholder { color: var(--neutral-400); }
 
 /* Selects Empleado / Transportadora: apariencia unificada con chevron propio */
+/* Campo estándar de la suite: 40 px, radio 10 */
 .input-row-3 select {
-  height: 36px;
+  
   padding: 0 36px 0 12px;
   border: 1px solid #cfd4e0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 13px;
   background-color: #fff;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235a6482' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -162,15 +151,17 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
+  min-height: var(--control-h);
 }
 .input-row-3 select:focus { border-color: var(--brand-500); }
 /* Mensajero: misma altura y borde que los selects de la fila */
 .input-row-3 input[type="text"] {
-  height: 36px;
+  
   padding: 0 12px;
   border: 1px solid #cfd4e0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 13px;
+  min-height: var(--control-h);
 }
 .input-row-3 select:has(option[value=""]:checked) { color: var(--neutral-400); }
 .input-row-3 select option { color: var(--neutral-800); }
@@ -189,14 +180,14 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 }
 
 .file-input-button {
-  padding: 10px 18px;
+  padding: 0 var(--space-4);
   background: var(--brand-800);
   color: white;
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: 500;
-  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
   font-family: var(--font);
   transition: var(--transition);
   white-space: nowrap;
@@ -204,6 +195,7 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   display: flex;
   align-items: center;
   gap: 7px;
+  min-height: var(--control-h);
 }
 
 .file-input-button:hover {
@@ -226,21 +218,21 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-height: var(--control-h);
 }
 
 /* ── METRICS GRID ── */
+/* Cuadrícula que se acomoda al ancho (antes una fila con scroll horizontal:
+   en tablet y celular las últimas tarjetas quedaban fuera de la vista) */
 .metrics-grid {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
   margin: 24px 0;
-  overflow-x: auto;
-  padding-bottom: 4px;
 }
 
 .metric-card {
-  flex: 1;
-  min-width: 160px;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -440,12 +432,14 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 /* Headers de modales específicos */
 #noManifestadasModal .modal-header { background: var(--danger-mid); }
 #repetidasModal     .modal-header  { background: var(--purple-mid); }
-#faltantesModal     .modal-header  { background: #e67e00; }
+#faltantesModal     .modal-header  { background: #b35c00; }   /* AA: antes #e67e00 (2.9:1 con texto blanco) */
 #historialModal     .modal-header  { background: var(--brand-800); }
 #confirmModal       .modal-header  { background: #c0392b; }
 
+/* <button> (antes <span>, que no se podía usar con teclado) */
 .close {
-  color: rgba(255,255,255,.75);
+  background: none; border: 0; padding: 4px 8px; font-family: inherit;
+  color: #fff;
   font-size: 22px;
   font-weight: 300;
   cursor: pointer;
@@ -497,19 +491,20 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 }
 
 .btn-copy {
-  padding: 7px 14px;
+  padding: 0 var(--space-3);
   background: var(--brand-50);
   color: var(--brand-800);
   border: 1px solid var(--brand-100);
   border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: 500;
-  font-size: 12.5px;
+  font-weight: var(--weight-semibold);
+  font-size: 13px;
   font-family: var(--font);
   transition: var(--transition);
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: var(--control-h-sm);
 }
 .btn-copy:hover {
   background: var(--brand-100);
@@ -564,18 +559,20 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 .no-manifestada-item:hover { background: #ffd5e0; transform: translateX(3px); }
 
 /* ── BOTONES DE ACCIÓN EN MODALES ── */
+/* Botón pequeño de la suite: 32 px, radio 10, 13 px/600 */
 .btn-action {
-  padding: 7px 14px;
+  padding: 0 var(--space-3);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 12.5px;
+  font-size: 13px;
   font-family: var(--font);
-  font-weight: 500;
+  font-weight: var(--weight-semibold);
   transition: var(--transition);
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-height: var(--control-h-sm);
 }
 
 .btn-marcar  { background: var(--success-mid); color: white; }
@@ -708,16 +705,35 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 @media (max-width: 768px) {
   body { padding: 12px 8px; }
   .dashboard-content { padding: 18px 16px; }
-  .metrics-grid { gap: 10px; }
-  .metric-card { min-width: 140px; padding: 14px 16px; }
+  .metrics-grid { gap: 10px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .metric-card { padding: 14px 16px; }
   .metric-value { font-size: 1.6rem; }
   .metric-icon { font-size: 1.2rem; }
   .section-header { padding: 16px 18px; }
 }
 
 @media (max-width: 480px) {
-  .metric-card { min-width: 120px; padding: 12px; flex-direction: column; text-align: center; gap: 6px; }
+  .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-card:last-child:nth-child(odd) { grid-column: 1 / -1; }   /* 5.ª tarjeta a lo ancho */
+  .metric-card { padding: 12px; flex-direction: column; text-align: center; gap: 6px; }
   .metric-icon { margin: 0; }
+}
+
+/* Tabla de guías en celular: cada guía es una tarjeta (número, guía y estado
+   arriba; hora; observaciones a todo el ancho). La cabecera queda para
+   lectores de pantalla. */
+@media screen and (max-width: 600px) {
+  .guias-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .guias-table, .guias-table tbody { display: block; }
+  .guias-table tbody tr { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 6px 10px; align-items: center; padding: 12px 14px; }
+  .guias-table tbody td { display: block; padding: 0; }
+  .guias-table tbody td.col-num { grid-row: 1 / span 3; align-self: start; padding-top: 2px; }
+  .guias-table tbody td.col-guia, .guias-table tbody td.col-estado, .guias-table tbody td.col-hora { grid-column: 2; }
+  .guias-table tbody td.col-guia { font-size: 15px; overflow-wrap: anywhere; }
+  .guias-table tbody td.col-hora::before { content: attr(data-label) ": "; }
+  .guias-table tbody td.col-obs { grid-column: 1 / -1; text-align: left !important; }
+  .guias-table tbody td.col-obs .obs-select { width: 100%; min-height: 44px; font-size: 14px; }
+  .guias-table tbody td.tabla-vacia { grid-column: 1 / -1; }
 }
 
 /* ── PRINT ── */
@@ -741,86 +757,6 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
    el orden de cascada existente.
    ============================================================ */
     /* ── HEADER OPCIÓN A ── */
-    .app-header {
-      background: #0d1b6e !important;
-      padding: 0 !important;
-      flex-direction: column !important;
-      align-items: stretch !important;
-    }
-    .header-main-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 13px 22px;
-    }
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .header-logo-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255,255,255,0.1);
-      border: 0.5px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      padding: 6px 12px;
-    }
-    .header-logo-img {
-      height: 28px;
-      object-fit: contain;
-      filter: brightness(0) invert(1);
-    }
-    .header-divider {
-      width: 1px;
-      height: 30px;
-      background: rgba(255,255,255,0.15);
-    }
-    .header-titles {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .header-titles h1 {
-      font-size: 1rem;
-      font-weight: 500;
-      margin: 0;
-      color: white;
-      letter-spacing: 0.2px;
-    }
-    .header-sub {
-      font-size: 12px;
-      color: #c7cdf5;
-      font-weight: 400;
-    }
-    .header-back {
-        width: 34px; height: 34px; flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center;
-        background: transparent; color: #fff;
-        border: 1px solid rgba(255,255,255,.35); border-radius: 8px;
-        cursor: pointer; transition: background .15s, border-color .15s;
-    }
-    .header-back:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
-    .header-status-bar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 22px;
-      background: rgba(0,0,0,0.15);
-      border-top: 0.5px solid rgba(255,255,255,0.08);
-    }
-    .header-status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #4caf50;
-      flex-shrink: 0;
-    }
-    .header-status-text {
-      font-size: 0.7rem;
-      color: rgba(255,255,255,0.45);
-    }
 
     /* ── TABLA DE GUÍAS ── */
     .guias-section {
@@ -914,33 +850,31 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
     .obs-select.obs-mal-estado  { background: #f8d7da; color: #7a1f1f; border-color: #f1aeb5; }
 
     /* fila vacía */
-    .tabla-vacia {
-      text-align: center;
-      color: var(--neutral-400);
-      padding: 32px !important;
-      font-size: 14px;
-    }
+    .tabla-vacia { padding: 0 !important; }   /* contenido: .estado-vacio (shared/componentes.css) */
 
     /* botón exportar */
+    /* Botón estándar de la suite (ver QA_CONSISTENCIA_VISUAL.md): 40 px, radio 10, 14 px/600; verde sólido (antes degradado con sombra) */
     .btn-exportar-excel {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 22px;
-      background: linear-gradient(135deg, #1b5e20, #43a047);
+      padding: 0 var(--space-4);
+      background: var(--success-mid);
       color: white;
       border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
+      border-radius: var(--radius-md);
+      font-size: var(--text-base);
+      font-weight: var(--weight-semibold);
       cursor: pointer;
-      box-shadow: 0 3px 10px rgba(27,94,32,0.3);
+      box-shadow: none;
       transition: all .2s;
       margin-top: 14px;
+      min-height: var(--control-h);
     }
     .btn-exportar-excel:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 16px rgba(27,94,32,0.4);
+      transform: none;
+      box-shadow: none;
+      background: var(--success-text);
     }
 
     .guias-toolbar {
@@ -979,12 +913,13 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
     .tabla-search {
       padding: 7px 12px 7px 30px;
       border: 1.5px solid #dde3f0;
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       font-size: 13px;
       width: 220px;
       outline: none;
       transition: border-color .2s, box-shadow .2s;
       background: #f8f9ff;
+      min-height: var(--control-h);
     }
     .tabla-search:focus {
       border-color: #1a237e;
@@ -1194,3 +1129,13 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   overflow-wrap: anywhere;
 }
 .sesion-aviso-ignoradas[hidden] { display: none; }
+
+/* Tablet táctil: el desplegable de observaciones con altura cómoda */
+@media (max-width: 900px), (pointer: coarse) { .obs-select { min-height: 40px; } }
+/* Barra de la tabla en celular: contador, buscador y exportar a todo el ancho */
+@media screen and (max-width: 600px) {
+  .guias-toolbar, .guias-toolbar-left { flex-direction: column; align-items: stretch; gap: 10px; }
+  .tabla-search-wrapper, .tabla-search { width: 100%; }
+  .tabla-search { min-height: 44px; font-size: 16px; }
+  .btn-exportar-excel { width: 100%; justify-content: center; min-height: 44px; }
+}
