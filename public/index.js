@@ -3520,6 +3520,8 @@ let rcCargadasEn = 0;
 let rcTimer = null;
 
 const rcAhora = () => Date.now() + rcRelojDesfase;
+// Hora de la recepción: la elegida en el celular (recibido_en) o la de registro
+const rcRecibido = r => Date.parse(r.recibido_en || r.creado_en);
 
 function populateRcTiendas() {
   const sel = document.getElementById('rc-tienda');
@@ -3554,7 +3556,8 @@ async function cargarRecepciones() {
   if (!recepciones) lista.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>';
   try {
     const data = await apiFetch('GET', url);
-    recepciones = data.recepciones || [];
+    recepciones = (data.recepciones || []).sort((a, b) =>
+      rcEstadoActual === 'abiertas' ? rcRecibido(a) - rcRecibido(b) : rcRecibido(b) - rcRecibido(a));
     if (data.ahora) rcRelojDesfase = Date.parse(data.ahora) - Date.now();
     rcCargadasEn = Date.now();
     if (data.truncado) notify('Se muestran solo las 1000 recepciones más recientes', 'warn');
@@ -3601,7 +3604,7 @@ function rcValorLocal(ms) {
 // Estado calculado de una recepción en el instante "ahora"
 function rcCalculo(r, ahora) {
   const HL = HorarioLaboral;
-  const recibido = Date.parse(r.creado_en);
+  const recibido = rcRecibido(r);
   const fin = r.finalizado_en ? Date.parse(r.finalizado_en) : ahora;
   const c = { recibido, fin, finalizada: !!r.finalizado_en, desdeRecepcion: HL.horasLaborables(recibido, fin) };
   if (!r.ajuste_en) {
@@ -3700,7 +3703,9 @@ function renderRecepciones() {
         <div class="rc-info">
           <strong class="rc-tienda">${esc(r.tienda_nombre)}</strong>
           <span>${Number(r.cajas).toLocaleString('es-CR')} caja${Number(r.cajas) === 1 ? '' : 's'} · recibió ${esc(r.recibido_por)}</span>
-          <span class="rc-meta">Recibida ${esc(rcFecha(Date.parse(r.creado_en)))} · #${Number(r.id)}</span>
+          <span class="rc-meta">Recibida ${esc(rcFecha(rcRecibido(r)))} · #${Number(r.id)}</span>
+          ${r.recibido_en && Math.abs(Date.parse(r.recibido_en) - Date.parse(r.creado_en)) > 10 * 60000
+            ? `<span class="rc-meta">Hora cambiada en el celular; se registró ${esc(rcFecha(Date.parse(r.creado_en)))}</span>` : ''}
         </div>
         <button type="button" class="rc-borrar" onclick="rcBorrar(${Number(r.id)})" aria-label="Eliminar la recepción #${Number(r.id)}" title="Eliminar recepción">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
@@ -3915,7 +3920,7 @@ async function guardarFeriados() {
 async function rcBorrar(id) {
   const r = recepciones?.find(x => Number(x.id) === id);
   if (!r) return;
-  const desc = `${r.tienda_nombre}, ${Number(r.cajas)} caja${Number(r.cajas) === 1 ? '' : 's'}, recibida ${rcFecha(Date.parse(r.creado_en))} por ${r.recibido_por}`;
+  const desc = `${r.tienda_nombre}, ${Number(r.cajas)} caja${Number(r.cajas) === 1 ? '' : 's'}, recibida ${rcFecha(rcRecibido(r))} por ${r.recibido_por}`;
   if (!confirm(`¿Eliminar la recepción #${id}?\n\n${desc}${r.finalizado_en ? '\n\nYa está finalizada: se pierde también su registro de cierre.' : ''}\n\nSe borran el registro y su foto. No se puede deshacer.`)) return;
   try {
     await apiDelete('/api/conteos?accion=recepcion', { id });

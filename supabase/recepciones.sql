@@ -28,6 +28,9 @@ ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS ajuste_en      TIMESTAMPTZ;  --
 ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS ajuste_por     TEXT;         -- quién lo registró en el panel
 ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS finalizado_en  TIMESTAMPTZ;  -- se dio por contado todo (hora del servidor)
 ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS finalizado_por TEXT;
+-- Fecha y hora de la recepción elegida en el celular (editable). creado_en
+-- sigue siendo cuándo se registró en el sistema. NULL = la de creado_en.
+ALTER TABLE recepciones ADD COLUMN IF NOT EXISTS recibido_en    TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_recepciones_fecha  ON recepciones(fecha);
 CREATE INDEX IF NOT EXISTS idx_recepciones_tienda ON recepciones(tienda_id);

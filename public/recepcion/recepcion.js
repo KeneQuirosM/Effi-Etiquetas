@@ -5,9 +5,10 @@
  * POST /api/conteos?accion=recepcion (tabla "recepciones", foto en el
  * bucket "conteos" bajo recepciones/).
  *
- * Fecha y hora: la página muestra la hora del sistema solo como
- * referencia; la que se guarda y va en el mensaje la pone el servidor,
- * así nadie la puede elegir ni cambiar.
+ * Fecha y hora: el campo arranca con la hora actual (hora de Costa Rica)
+ * y la sigue mientras nadie lo toque. Si se cambia (la mercancía llegó
+ * antes), se manda como recibido_en; si no, vale la hora del servidor.
+ * No puede ser futura ni de hace más de FECHA_MAX_ATRAS_DIAS.
  *
  * WhatsApp: igual que en Conteos, no hay envío automático (una cuenta que
  * manda mensajes por API sin la plataforma oficial de Meta puede ser
@@ -40,12 +41,43 @@ function normalizar(s) {
   return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
-/* ── RELOJ (solo lectura) ── */
+/* ── FECHA Y HORA (editable) ── */
+const FECHA_MAX_ATRAS_DIAS = 30;          // igual que RECEPCION_MAX_ATRAS_DIAS en api/conteos.js
+const CR_OFFSET_MS = 6 * 3600000;         // Costa Rica = UTC-6
 const FMT_FECHA_HORA = new Intl.DateTimeFormat('es-CR', {
-  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+  timeZone: 'America/Costa_Rica', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
 });
-function fechaHoraLocal() { return FMT_FECHA_HORA.format(new Date()); }
-function tickReloj() { $('reloj').textContent = fechaHoraLocal(); }
+let fechaEditada = false;                 // true = la persona cambió la fecha/hora
+
+// 'AAAA-MM-DDTHH:MM' en hora de Costa Rica <-> instante
+const valorCR = ms => new Date(ms - CR_OFFSET_MS).toISOString().slice(0, 16);
+const instanteCR = v => Date.parse(`${v}:00-06:00`);
+
+function fechaHoraTexto(ms) { return FMT_FECHA_HORA.format(new Date(ms)); }
+function fechaHoraLocal() { return fechaHoraTexto(Date.now()); }
+
+// Mientras no se edite, el campo sigue la hora actual
+function tickReloj() {
+  const ahora = Date.now();
+  $('f-fecha').max = valorCR(ahora);
+  $('f-fecha').min = valorCR(ahora - FECHA_MAX_ATRAS_DIAS * 86400000);
+  if (!fechaEditada) $('f-fecha').value = valorCR(ahora);
+}
+
+function marcarFechaEditada(editada) {
+  fechaEditada = editada;
+  const hint = $('f-fecha-hint');
+  hint.classList.toggle('editada', editada);
+  hint.textContent = editada
+    ? 'Hora cambiada a mano. Toca "Ahora" para volver a la hora actual.'
+    : 'Va con la hora actual. Cámbiala si la mercancía llegó antes.';
+  if (!editada) tickReloj();
+}
+
+// Instante elegido (o la hora actual si no se editó); NaN si es inválido
+function fechaElegida() {
+  return fechaEditada ? instanteCR($('f-fecha').value) : Date.now();
+}
 
 /* ── LISTAS: tiendas y personas de bodega ── */
 async function cargarTiendas() {
@@ -154,13 +186,20 @@ function leerFormulario() {
   const datos = {
     tienda_id: $('f-tienda').value,
     cajas: $('f-cajas').value.trim(),
-    recibido_por: $('f-recibido').value.trim()
+    recibido_por: $('f-recibido').value.trim(),
+    recibido_en: fechaElegida()
   };
   const cajas = Number(datos.cajas);
+  const ahora = Date.now();
+  const fechaMal = !Number.isFinite(datos.recibido_en) ? 'Indica la fecha y la hora de la recepción'
+    : datos.recibido_en > ahora + 60000 ? 'La fecha y hora no pueden ser en el futuro'
+    : datos.recibido_en < ahora - FECHA_MAX_ATRAS_DIAS * 86400000 ? `La fecha no puede ser de hace más de ${FECHA_MAX_ATRAS_DIAS} días`
+    : null;
   const errores = [
     marcar('f-tienda', !datos.tienda_id) && 'Selecciona la tienda',
     marcar('f-cajas', !(datos.cajas !== '' && Number.isInteger(cajas) && cajas >= 1)) && 'La cantidad de cajas debe ser un número entero de al menos 1',
     marcar('f-recibido', !datos.recibido_por) && 'Indica quién recibió',
+    marcar('f-fecha', !!fechaMal) && fechaMal,
     marcar('foto-vacia', !fotoBlob) && 'Toma la foto de la mercancía'
   ].filter(Boolean);
   return { datos, errores };
@@ -208,18 +247,20 @@ async function guardarRecepcion(e) {
       recibido_por: datos.recibido_por,
       foto: await blobADataURL(fotoBlob)
     };
+    if (fechaEditada) body.recibido_en = new Date(datos.recibido_en).toISOString();
     const res = await apiRequestJSON('/api/conteos?accion=recepcion', { method: 'POST', body, headers: headersDispositivo() });
     const r = res.recepcion || {};
 
     guardarPrefs({ tiendaId: datos.tienda_id, recibidoPor: datos.recibido_por });
 
     const tiendaNombre = r.tienda_nombre || tiendaActual()?.nombre || '';
-    ultimoMensaje = armarMensaje(tiendaNombre, r.cajas ?? datos.cajas, r.recibido_por || datos.recibido_por, r.fecha_hora || fechaHoraLocal());
+    ultimoMensaje = armarMensaje(tiendaNombre, r.cajas ?? datos.cajas, r.recibido_por || datos.recibido_por, r.fecha_hora || fechaHoraTexto(datos.recibido_en));
     ultimaFoto = archivoFoto(tiendaNombre);
 
     $('ok-msg').textContent = ultimoMensaje;
     $('ok-sub').textContent = `Registro #${r.id ?? ''}${res.aviso_foto ? ' · sin foto en el sistema' : ' · con foto'}`;
     if (res.aviso_foto) notify(res.aviso_foto, 'warn', 12000);
+    if (res.aviso_hora) notify(res.aviso_hora, 'warn', 12000);
     $('error-guardar').hidden = true;
     $('form-recepcion').hidden = true;
     $('vista-ok').hidden = false;
@@ -247,7 +288,8 @@ async function guardarRecepcion(e) {
 function compartirSinGuardar() {
   const { datos } = leerFormulario();
   const tiendaNombre = tiendaActual()?.nombre || '';
-  ultimoMensaje = armarMensaje(tiendaNombre, datos.cajas || 0, datos.recibido_por, fechaHoraLocal()) +
+  ultimoMensaje = armarMensaje(tiendaNombre, datos.cajas || 0, datos.recibido_por,
+    Number.isFinite(datos.recibido_en) ? fechaHoraTexto(datos.recibido_en) : fechaHoraLocal()) +
     '\n\n*Nota:* no se pudo guardar en el sistema; registrarla cuando vuelva a funcionar.';
   ultimaFoto = fotoBlob ? archivoFoto(tiendaNombre) : null;
   compartirWhatsApp();
@@ -305,6 +347,7 @@ function nuevaRecepcion() {
   $('error-guardar').hidden = true;
   document.querySelectorAll('.invalid').forEach(f => f.classList.remove('invalid'));
   quitarFoto();
+  marcarFechaEditada(false);
   ultimaFoto = null;
   $('vista-ok').hidden = true;
   $('form-recepcion').hidden = false;
@@ -315,7 +358,12 @@ function nuevaRecepcion() {
 /* ── INICIO ── */
 (function init() {
   tickReloj();
-  setInterval(tickReloj, 1000);
+  setInterval(tickReloj, 15000);
+  $('f-fecha').addEventListener('input', () => marcarFechaEditada(true));
+  $('btn-ahora').addEventListener('click', () => {
+    marcarFechaEditada(false);
+    $('f-fecha').closest('.field').classList.remove('invalid');
+  });
 
   $('f-foto').addEventListener('change', onFotoSeleccionada);
   $('f-foto-galeria').addEventListener('change', onFotoSeleccionada);

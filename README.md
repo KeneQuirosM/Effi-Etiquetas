@@ -73,7 +73,7 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 
 ### 6b. Recepción de Mercancía (`/recepcion/recepcion.html`)
 - Pantalla para celular, abierta para todos (sin login), hermana de Conteos, para avisar cada llegada de mercadería: tienda, cantidad de cajas, recibido por (las personas de bodega de Configuración > Conteos) y foto obligatoria
-- La fecha y la hora no se eligen: la página muestra la del sistema y se guarda la del servidor al registrar
+- La fecha y la hora arrancan con la hora actual y se pueden cambiar (por ejemplo si la mercancía llegó antes); no pueden ser futuras ni de hace más de 30 días. El sistema guarda aparte cuándo se registró y el panel avisa si la hora se cambió
 - Se guarda en la tabla `recepciones` (vía `POST /api/conteos?accion=recepcion`); la foto va al bucket `conteos`, carpeta `recepciones/`
 - Tras guardar, "Compartir en WhatsApp" abre el menú de compartir con la foto y el mensaje "Ingresa mercancía" (Tienda, Cantidad cajas, Recibido por, Fecha y hora)
 - Respeta "Exigir dispositivo vinculado"; se puede vincular un celular directo a esta pantalla desde Configuración > Dispositivos vinculados

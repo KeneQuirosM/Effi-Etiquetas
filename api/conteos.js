@@ -29,7 +29,8 @@ const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const CLAVE_MESAS = 'conteos_mesas';
 const MESAS_DEFECTO = 4;
 const MESAS_MAX = 50;
-const VENC_ANIO_MIN = 2000, VENC_ANIO_MAX = 2100;   // fuera de esto es un error de tipeo (p. ej. 0202)
+const VENC_ANIO_MIN = 2000, VENC_ANIO_MAX = 2100;
+const RECEPCION_MAX_ATRAS_DIAS = 30;       // fecha de recepción editable: hasta 30 días atrás   // fuera de esto es un error de tipeo (p. ej. 0202)
 
 async function leerOpciones() {
   const opciones = { mesas: MESAS_DEFECTO, personas: PERSONAS_DEFECTO };
@@ -366,8 +367,9 @@ export default async function handler(req, res) {
     // ── POST ?accion=recepcion: registrar una recepción de mercancía ──
     // Pública como el conteo (recepcion.html, desde el celular). Va en este
     // handler porque Vercel Hobby no admite más funciones (ver CLAUDE.md).
-    // Body: { tienda_id, cajas, recibido_por, foto }. La fecha y la hora
-    // las pone el servidor: no se pueden elegir ni mandar desde el celular.
+    // Body: { tienda_id, cajas, recibido_por, foto, recibido_en? }. La fecha y
+    // hora se pueden corregir en el celular (recibido_en, ISO); sin ella vale la
+    // del servidor. creado_en guarda siempre cuándo se registró de verdad.
     if (req.method === 'POST' && req.query?.accion === 'recepcion') {
       if (!rateLimit(req, res, { max: 20, windowMs: 60000 })) return;
       if (!(await exigirDispositivo(req, res))) return;
@@ -381,6 +383,16 @@ export default async function handler(req, res) {
       if (!Number.isInteger(tiendaId) || tiendaId <= 0) return res.status(400).json({ error: 'Selecciona la tienda' });
       if (!cajas) return res.status(400).json({ error: 'La cantidad de cajas debe ser un número entero de al menos 1' });
       if (!recibidoPor) return res.status(400).json({ error: 'Elige quién recibió de la lista' });
+      let recibidoEn = null;
+      if (b.recibido_en != null && b.recibido_en !== '') {
+        const t = Date.parse(String(b.recibido_en));
+        if (!Number.isFinite(t)) return res.status(400).json({ error: 'Fecha y hora de la recepción inválidas' });
+        if (t > Date.now() + 5 * 60000) return res.status(400).json({ error: 'La fecha y hora de la recepción no pueden ser en el futuro' });
+        if (t < Date.now() - RECEPCION_MAX_ATRAS_DIAS * 86400000) {
+          return res.status(400).json({ error: `La fecha de la recepción no puede ser de hace más de ${RECEPCION_MAX_ATRAS_DIAS} días` });
+        }
+        recibidoEn = new Date(t).toISOString();
+      }
 
       const m = typeof b.foto === 'string' && b.foto.match(FOTO_RE);
       if (!m) return res.status(400).json({ error: 'Toma la foto de la mercancía' });
@@ -410,13 +422,28 @@ export default async function handler(req, res) {
         fotoPath = null;
       }
 
-      const { data, error } = await supabaseAdmin.from('recepciones').insert({
+      const fila = {
         tienda_id: tienda.id,
         tienda_nombre: tienda.nombre,
         cajas,
         recibido_por: recibidoPor,
         foto_path: fotoPath
-      }).select('id, creado_en').single();
+      };
+      if (recibidoEn) {
+        fila.recibido_en = recibidoEn;
+        // La columna fecha (filtros del panel) es el día de la recepción en Costa Rica
+        fila.fecha = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Costa_Rica' }).format(new Date(recibidoEn));
+      }
+      let { data, error } = await supabaseAdmin.from('recepciones').insert(fila).select('id, creado_en').single();
+      let avisoHora = null;
+      // Falta re-ejecutar recepciones.sql (sin columna recibido_en): guardar con la hora del servidor
+      if (error && recibidoEn && /recibido_en/.test(error.message || '')) {
+        console.error('Columna recibido_en ausente; re-ejecutar supabase/recepciones.sql:', error.message);
+        const { recibido_en, fecha, ...sinHora } = fila;
+        ({ data, error } = await supabaseAdmin.from('recepciones').insert(sinHora).select('id, creado_en').single());
+        recibidoEn = null;
+        avisoHora = 'La hora que elegiste no se guardó (falta actualizar la base de datos); quedó la hora del sistema.';
+      }
       if (error) {
         console.error('Error registrando recepción:', error);
         if (fotoPath) await supabaseAdmin.storage.from(BUCKET).remove([fotoPath]);
@@ -424,14 +451,15 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: falta ? 'Falta ejecutar supabase/recepciones.sql' : 'No se pudo registrar la recepción' });
       }
 
-      // Fecha y hora de Costa Rica para el mensaje (la del servidor, no la del celular)
+      // Fecha y hora de Costa Rica para el mensaje
       const fechaHora = new Intl.DateTimeFormat('es-CR', {
         timeZone: 'America/Costa_Rica', day: '2-digit', month: '2-digit', year: 'numeric',
         hour: '2-digit', minute: '2-digit', hour12: true
-      }).format(new Date(data.creado_en));
+      }).format(new Date(recibidoEn || data.creado_en));
       return res.status(201).json({
-        recepcion: { id: data.id, creado_en: data.creado_en, fecha_hora: fechaHora, tienda_nombre: tienda.nombre, cajas, recibido_por: recibidoPor },
-        aviso_foto: avisoFoto
+        recepcion: { id: data.id, creado_en: data.creado_en, recibido_en: recibidoEn, fecha_hora: fechaHora, tienda_nombre: tienda.nombre, cajas, recibido_por: recibidoPor },
+        aviso_foto: avisoFoto,
+        aviso_hora: avisoHora
       });
     }
 
@@ -498,7 +526,7 @@ export default async function handler(req, res) {
       if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido' });
       const { data, error } = await supabaseAdmin
         .from('recepciones').delete().eq('id', id)
-        .select('foto_path, tienda_nombre, cajas, recibido_por, creado_en, finalizado_en').maybeSingle();
+        .select('*').maybeSingle();
       if (error) {
         console.error('Error borrando recepción:', error);
         return res.status(500).json({ error: 'No se pudo borrar la recepción' });
@@ -510,7 +538,7 @@ export default async function handler(req, res) {
       }
       const cuando = new Intl.DateTimeFormat('es-CR', {
         timeZone: 'America/Costa_Rica', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
-      }).format(new Date(data.creado_en));
+      }).format(new Date(data.recibido_en || data.creado_en));
       await registrar(user, 'recepcion_borrar',
         `Borró la recepción #${id}: ${data.tienda_nombre}, ${data.cajas} caja${data.cajas === 1 ? '' : 's'}, recibida por ${data.recibido_por} el ${cuando}${data.finalizado_en ? ' (estaba finalizada)' : ''}`,
         { recepcion_id: id });
@@ -547,7 +575,7 @@ export default async function handler(req, res) {
           const t = Date.parse(String(b.ajuste_en ?? ''));
           if (!Number.isFinite(t)) return res.status(400).json({ error: 'Fecha y hora del ajuste inválidas' });
           if (t > Date.now() + 5 * 60000) return res.status(400).json({ error: 'El ajuste no puede ser en el futuro' });
-          if (t < Date.parse(r.creado_en) - 30 * 86400000) return res.status(400).json({ error: 'El ajuste es más de 30 días anterior a la recepción; revisa la fecha' });
+          if (t < Date.parse(r.recibido_en || r.creado_en) - 30 * 86400000) return res.status(400).json({ error: 'El ajuste es más de 30 días anterior a la recepción; revisa la fecha' });
           const ajusteEn = new Date(t).toISOString();
           cambios = { ajuste_en: ajusteEn, ajuste_por: quien };
           accion = 'recepcion_ajuste';

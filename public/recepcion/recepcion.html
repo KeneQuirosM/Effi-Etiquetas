@@ -43,12 +43,12 @@
                 </select>
             </div>
             <div class="field">
-                <span class="field-label" id="lbl-reloj">Fecha y hora</span>
-                <div class="reloj" role="timer" aria-labelledby="lbl-reloj">
-                    <span id="reloj"></span>
-                    <span class="reloj-tag">del sistema</span>
+                <div class="label-row">
+                    <label for="f-fecha">Fecha y hora <span class="req">*</span></label>
+                    <button type="button" class="link-btn" id="btn-ahora">Ahora</button>
                 </div>
-                <p class="hint">Se registra la hora del servidor al guardar; no se puede cambiar.</p>
+                <input type="datetime-local" id="f-fecha" required>
+                <p class="hint" id="f-fecha-hint">Va con la hora actual. Cámbiala si la mercancía llegó antes.</p>
             </div>
         </section>
 
