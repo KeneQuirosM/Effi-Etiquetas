@@ -1466,8 +1466,10 @@ body {
 }
 .conteo-del:hover { opacity: 1; }
 @media (max-width: 640px) {
-  .conteo-card { grid-template-columns: 80px 1fr; }
-  .conteo-foto { width: 80px; height: 80px; }
+  .conteo-card { grid-template-columns: 64px 1fr; gap: 10px; }
+  .conteo-foto { width: 64px; height: 64px; }
+  /* El nombre completo (hasta 3 líneas) en vez de cortarlo en una */
+  .conteo-nombre { white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
   .conteo-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .conteo-toolbar { flex-direction: column; }
 }
@@ -1762,7 +1764,7 @@ body {
 }
 .rc-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .rc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12.5px; }
-.rc-tienda { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-tienda { font-size: 14px; overflow-wrap: anywhere; }   /* nombre completo, en dos líneas si hace falta */
 .rc-meta { font-size: 11px; color: var(--muted); }
 
 .rc-medidor { display: grid; grid-template-columns: 132px 1fr; gap: 12px; align-items: center; }
@@ -1818,3 +1820,100 @@ body {
 .fer-quitar:hover { opacity: 1; }
 .fer-pie { display: flex; align-items: center; gap: 10px; }
 .fer-pendiente { font-size: 12px; color: var(--warning-text); font-weight: 600; }
+
+/* ══ RESPONSIVE: TABLET Y CELULAR (solo pantalla) ══
+ * Hasta 900 px la barra lateral deja de ser una columna fija de 310 px y se
+ * apila arriba a todo el ancho: el generador (campos + Imprimir) primero y
+ * los módulos en una cuadrícula de 2 columnas; debajo, el panel de
+ * coordinador y la vista previa. La etiqueta se escala con zoom solo en
+ * pantalla: la impresión sigue saliendo a 4×6 in (ver @media print).
+ */
+@media screen and (max-width: 900px) {
+  body { flex-direction: column; }
+  .sidebar { width: 100%; min-height: 0; }
+  .sidebar-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+    padding: 18px 20px 4px;
+  }
+  .sidebar-body .field:nth-child(5),
+  .sidebar-body .btn-print,
+  .sidebar-body .print-hint { grid-column: 1 / -1; }
+  .sidebar-body .btn-print { width: 100%; margin: 6px 0; }
+  .sidebar-body .print-hint { margin: 0 0 12px; }
+  .sidebar-body .btn-bulk { width: auto; margin: 0 0 10px; min-height: 44px; min-width: 0; }
+  .sidebar .field select, .field input[type="text"] { height: 44px; font-size: 15px; }
+  .sidebar-footer { padding: 10px 20px 16px; }
+  .btn-coord { min-height: 44px; font-size: 12px; }
+
+  .main { padding: 28px 16px 40px; justify-content: flex-start; }
+  #coord-panel { max-width: none; }
+}
+
+@media screen and (max-width: 640px) {
+  .sidebar-body { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 16px 4px; }
+  .sidebar-body .field { grid-column: 1 / -1; }
+  .sidebar-body .btn-bulk { padding: 10px; gap: 8px; font-size: 13px; line-height: 1.25; }
+  .sidebar-footer { padding: 10px 16px 16px; }
+
+  #coord-panel { padding: 18px 14px; border-radius: var(--radius-lg); }
+  .coord-header { flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .coord-header h2 { flex-wrap: wrap; }
+  .coord-header .btn-action { min-height: 44px; }
+  /* Pestañas: una fila que se desliza (10 pestañas no caben); el borde
+     difuminado avisa que hay más y switchTab() lleva la activa a la vista */
+  .coord-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0 4px;
+    margin: 0 -14px 16px;
+    padding: 0 14px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 28px), transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 28px), transparent 100%);
+  }
+  .coord-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn { flex: 0 0 auto; min-height: 44px; padding: 10px 8px; font-size: 14px; white-space: nowrap; scroll-snap-align: start; }
+  .form-row { grid-template-columns: 1fr; }
+
+  /* Vista previa 4×6 in (384 px) dentro de 343 px útiles */
+  #etiqueta { zoom: .86; }
+}
+@media screen and (max-width: 360px) {
+  #etiqueta { zoom: .78; }
+}
+
+/* Listas del panel en celular: cada usuario en dos líneas (nombre y correo
+   completos arriba; perfil y acciones abajo) y botones de ícono de 40 px */
+@media screen and (max-width: 640px) {
+  #users-list .inv-item { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  #users-list .user-ident { flex: 1 1 100%; }
+  #users-list .user-nombre { max-width: none; width: 100%; }
+  #users-list .user-rol { margin-left: 0; flex: 1; min-height: 40px; font-size: 14px; }
+  #users-list .inv-item .user-rol + .user-del-btn { margin-left: 0; }
+  .inv-item button { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+}
+
+/* Configuración en celular: el resumen de cada sección se lee completo
+   (en dos líneas si hace falta) en vez de cortarse con "..." */
+@media screen and (max-width: 640px) {
+  #tab-config .cfg-summary,
+  #tab-config .cfg-head #toggle-ubicacion-label { white-space: normal; text-align: right; line-height: 1.3; max-width: 45%; }
+  #tab-config .cfg-head-btn { padding: 8px 12px; }
+  #tab-config .cfg-head #toggle-ubicacion-label { flex-shrink: 0; max-width: none; overflow: visible; }   /* una palabra: no se parte */
+}
+
+/* Pantallas táctiles (tablet y celular): controles del panel de 40 px como
+   mínimo. Con mouse en escritorio se mantienen los tamaños compactos. */
+@media screen and (max-width: 900px), (pointer: coarse) {
+  #coord-panel .btn-action { min-height: 40px; }
+  #coord-panel input[type="checkbox"] { width: 24px; height: 24px; }
+  #coord-panel .switch-toggle input { width: 0; height: 0; }   /* el interruptor ya mide 42×24 */
+  #coord-panel select, #coord-panel .inact-select, #users-list .user-rol { min-height: 40px; }
+  #users-list .user-nombre { min-height: 36px; }
+  .inv-item button, .conteo-print, .conteo-del { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+  .pw-toggle { min-width: 40px; min-height: 40px; }
+  .perm-perfil-btn { min-height: 40px; }
+}

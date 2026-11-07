@@ -501,3 +501,17 @@ tbody tr:nth-child(even):hover td { background: var(--brand-50); }
 @media(max-width: 480px){
     .metric-card { min-width: 120px; flex-direction: column; text-align: center; gap: 6px; }
 }
+
+/* ── CABECERA EN CELULAR ──
+ * Dos filas: volver + logo arriba, título y subtítulo a todo el ancho
+ * debajo (antes el título se partía en 3-4 líneas al lado del logo).
+ * Si el logo externo no carga, se oculta también su óvalo y el separador. */
+.header-logo-pill[hidden], .header-logo-pill[hidden] + .header-divider { display: none; }
+@media (max-width: 600px) {
+  .header-main-row { padding: 12px 14px; }
+  .header-left { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
+  .header-divider { display: none; }
+  .header-titles { flex: 1 1 100%; min-width: 0; }
+  .header-titles h1 { font-size: 1.15rem; line-height: 1.25; }
+  .header-back { width: 44px; height: 44px; }
+}

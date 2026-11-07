@@ -59,7 +59,8 @@ function notify(msg, type = 'info', duration, accion) {
   if (!container) {
     container = document.createElement('div');
     container.id = '__notify_container';
-    container.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:360px';
+    // En celular ocupa el ancho disponible menos un margen (antes 360 px fijos tapaban medio contenido)
+    container.style.cssText = 'position:fixed;bottom:max(12px, env(safe-area-inset-bottom));right:12px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:min(360px, calc(100vw - 24px))';
     container.setAttribute('role', 'status');
     container.setAttribute('aria-live', 'polite');
     document.body.appendChild(container);

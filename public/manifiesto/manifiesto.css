@@ -229,18 +229,17 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 }
 
 /* ── METRICS GRID ── */
+/* Cuadrícula que se acomoda al ancho (antes una fila con scroll horizontal:
+   en tablet y celular las últimas tarjetas quedaban fuera de la vista) */
 .metrics-grid {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
   margin: 24px 0;
-  overflow-x: auto;
-  padding-bottom: 4px;
 }
 
 .metric-card {
-  flex: 1;
-  min-width: 160px;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -708,16 +707,35 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
 @media (max-width: 768px) {
   body { padding: 12px 8px; }
   .dashboard-content { padding: 18px 16px; }
-  .metrics-grid { gap: 10px; }
-  .metric-card { min-width: 140px; padding: 14px 16px; }
+  .metrics-grid { gap: 10px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .metric-card { padding: 14px 16px; }
   .metric-value { font-size: 1.6rem; }
   .metric-icon { font-size: 1.2rem; }
   .section-header { padding: 16px 18px; }
 }
 
 @media (max-width: 480px) {
-  .metric-card { min-width: 120px; padding: 12px; flex-direction: column; text-align: center; gap: 6px; }
+  .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-card:last-child:nth-child(odd) { grid-column: 1 / -1; }   /* 5.ª tarjeta a lo ancho */
+  .metric-card { padding: 12px; flex-direction: column; text-align: center; gap: 6px; }
   .metric-icon { margin: 0; }
+}
+
+/* Tabla de guías en celular: cada guía es una tarjeta (número, guía y estado
+   arriba; hora; observaciones a todo el ancho). La cabecera queda para
+   lectores de pantalla. */
+@media screen and (max-width: 600px) {
+  .guias-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .guias-table, .guias-table tbody { display: block; }
+  .guias-table tbody tr { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 6px 10px; align-items: center; padding: 12px 14px; }
+  .guias-table tbody td { display: block; padding: 0; }
+  .guias-table tbody td.col-num { grid-row: 1 / span 3; align-self: start; padding-top: 2px; }
+  .guias-table tbody td.col-guia, .guias-table tbody td.col-estado, .guias-table tbody td.col-hora { grid-column: 2; }
+  .guias-table tbody td.col-guia { font-size: 15px; overflow-wrap: anywhere; }
+  .guias-table tbody td.col-hora::before { content: attr(data-label) ": "; }
+  .guias-table tbody td.col-obs { grid-column: 1 / -1; text-align: left !important; }
+  .guias-table tbody td.col-obs .obs-select { width: 100%; min-height: 44px; font-size: 14px; }
+  .guias-table tbody td.tabla-vacia { grid-column: 1 / -1; }
 }
 
 /* ── PRINT ── */
@@ -1194,3 +1212,27 @@ input[type="text"]::placeholder { color: var(--neutral-400); }
   overflow-wrap: anywhere;
 }
 .sesion-aviso-ignoradas[hidden] { display: none; }
+
+/* ── CABECERA EN CELULAR ──
+ * Dos filas: volver + logo arriba, título y subtítulo a todo el ancho
+ * debajo (antes el título se partía en 3-4 líneas al lado del logo).
+ * Si el logo externo no carga, se oculta también su óvalo y el separador. */
+.header-logo-pill[hidden], .header-logo-pill[hidden] + .header-divider { display: none; }
+@media (max-width: 600px) {
+  .header-main-row { padding: 12px 14px; }
+  .header-left { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
+  .header-divider { display: none; }
+  .header-titles { flex: 1 1 100%; min-width: 0; }
+  .header-titles h1 { font-size: 1.15rem; line-height: 1.25; }
+  .header-back { width: 44px; height: 44px; }
+}
+
+/* Tablet táctil: el desplegable de observaciones con altura cómoda */
+@media (max-width: 900px), (pointer: coarse) { .obs-select { min-height: 40px; } }
+/* Barra de la tabla en celular: contador, buscador y exportar a todo el ancho */
+@media screen and (max-width: 600px) {
+  .guias-toolbar, .guias-toolbar-left { flex-direction: column; align-items: stretch; gap: 10px; }
+  .tabla-search-wrapper, .tabla-search { width: 100%; }
+  .tabla-search { min-height: 44px; font-size: 16px; }
+  .btn-exportar-excel { width: 100%; justify-content: center; min-height: 44px; }
+}

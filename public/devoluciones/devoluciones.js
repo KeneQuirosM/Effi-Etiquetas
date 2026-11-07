@@ -175,7 +175,7 @@
             const guia=row['Guía transportadora']!==undefined?String(row['Guía transportadora']):'';
             const isDev=devolutionSet.has(guia);
             const cells=headers.map(h=>`<td>${esc(String(row[h]??''))}</td>`).join('');
-            return `<tr class="${isDev?'row-dev':''}" data-guia="${esc(guia)}" data-original-index="${origIndexMap.get(row)}"><td style="text-align:center"><input type="checkbox" class="chk" data-guia="${esc(guia)}" ${isDev?'checked':''}></td>${cells}</tr>`;
+            return `<tr class="${isDev?'row-dev':''}" data-guia="${esc(guia)}" data-original-index="${origIndexMap.get(row)}"><td style="text-align:center"><input type="checkbox" class="chk" data-guia="${esc(guia)}" aria-label="Marcar guía ${esc(guia)} como devuelta" ${isDev?'checked':''}></td>${cells}</tr>`;
         }).join('');
 
         // Los listeners se atan una sola vez acá (renderTable completo solo

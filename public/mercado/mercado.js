@@ -282,6 +282,12 @@ function irA(tab) {
     const on = b.dataset.tab === tab;
     b.classList.toggle('active', on);
     b.setAttribute('aria-selected', String(on));
+    // Si las pestañas no caben (celular con Configuración), centrar la activa
+    const tira = b.parentElement;
+    if (on && tira.scrollWidth > tira.clientWidth) {
+      const r = b.getBoundingClientRect(), t = tira.getBoundingClientRect();
+      tira.scrollTo({ left: tira.scrollLeft + (r.left - t.left) - (t.width - r.width) / 2, behavior: 'smooth' });
+    }
   });
   document.querySelectorAll('.mk-panel').forEach(p => { p.hidden = p.id !== `panel-${tab}`; });
   if (tab === 'historial') cargarHistorial();

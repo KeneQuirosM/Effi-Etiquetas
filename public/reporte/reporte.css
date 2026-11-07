@@ -468,3 +468,50 @@
     .bar-fill { background: var(--brand-500) !important; height: 100% !important; }
     .bar-fill.low { background: var(--danger-mid) !important; }
   }
+
+/* ── CABECERA EN CELULAR ──
+ * Dos filas: volver + logo arriba, título y subtítulo a todo el ancho
+ * debajo (antes el título se partía en 3-4 líneas al lado del logo).
+ * Si el logo externo no carga, se oculta también su óvalo y el separador. */
+.header-logo-pill[hidden], .header-logo-pill[hidden] + .header-divider { display: none; }
+@media (max-width: 600px) {
+  header { padding: 12px 14px; }
+  .header-container { gap: 10px; }
+  .header-left { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
+  .header-divider { display: none; }
+  .header-titles { flex: 1 1 100%; min-width: 0; }
+  .header-titles h1 { font-size: 1.15rem; line-height: 1.25; }
+  .header-back { width: 44px; height: 44px; }
+}
+
+/* ── CELULAR: métricas 2×2, controles a lo ancho y cada artículo como tarjeta ──
+ * Solo pantalla: al imprimir / guardar PDF se mantiene la tabla. */
+@media screen and (max-width: 600px) {
+  .stats-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px 14px; }
+  .stat { min-width: 0; padding: 12px; }
+  .stat-val { font-size: 1.4rem; }
+  .controls { padding: 10px 14px; }
+  .controls input[type="text"], .controls select { min-width: 0; flex: 1 1 100%; min-height: 44px; font-size: 16px; }
+  .toggle-btn { min-height: 44px; flex: 1 1 calc(50% - 5px); justify-content: center; }
+  .main { padding: 12px 14px 24px; }
+  .group-header { flex-wrap: wrap; row-gap: 6px; }
+  .group-name { flex: 1 1 calc(100% - 110px); }
+  .group-meta { flex: 1 1 100%; flex-wrap: wrap; gap: 6px 12px; order: 3; }
+
+  .group-body thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .group-body table, .group-body tbody { display: block; }
+  .group-body tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 12px 14px; border-bottom: 1px solid var(--neutral-100); }
+  .group-body td { display: block; padding: 0; border: none; }
+  .group-body td.col-desc, .group-body td.col-qty, .group-body td.col-ubic { grid-column: 1 / -1; }
+  .group-body td.col-estado { grid-row: 1; grid-column: 2; text-align: right; }
+  .group-body td.col-ubic::before, .group-body td.col-qty::before {
+    content: attr(data-label); display: block; font-size: .68rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--neutral-600); margin-bottom: 2px;
+  }
+  .bar-bg { max-width: none; }
+  .file-zone { margin: 16px 14px 10px; padding: 20px 14px; }
+  .exclusion-panel { margin-left: 14px; margin-right: 14px; }
+}
+
+/* Tablet táctil: botones de la barra con altura cómoda */
+@media screen and (max-width: 900px), (pointer: coarse) { .toggle-btn { min-height: 40px; } }

@@ -252,6 +252,7 @@ async function checkPin() {
     activateCoord(data.token, data.refresh_token);
     closePinModal();
     document.getElementById('coord-panel').classList.add('visible');
+    mostrarPanelSiApilado(document.getElementById('coord-panel'));
     notify('Sesión iniciada', 'success');
   } catch(e) {
     errorEl.textContent = mensajeErrorLogin(e);
@@ -427,7 +428,15 @@ function switchTab(id) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.querySelector(`.tab-btn[data-tab="${id}"]`)?.classList.add('active');
+  const tabBtn = document.querySelector(`.tab-btn[data-tab="${id}"]`);
+  tabBtn?.classList.add('active');
+  // En celular las pestañas van en una fila deslizable: centrar la activa
+  // (solo en horizontal, sin mover la página)
+  const tira = tabBtn?.parentElement;
+  if (tira && tira.scrollWidth > tira.clientWidth) {
+    const r = tabBtn.getBoundingClientRect(), t = tira.getBoundingClientRect();
+    tira.scrollTo({ left: tira.scrollLeft + (r.left - t.left) - (t.width - r.width) / 2, behavior: 'smooth' });
+  }
   if (id === 'tab-add-tienda') populateTiendas();
   if (id === 'tab-users') { loadUsers(); cargarPermisos(); cargarInactividad(); }
   if (id === 'tab-bitacora') abrirBitacora();
@@ -682,9 +691,20 @@ function closePinModal() {
 function toggleCoordMode() {
   if (coordUnlocked) {
     const panel = document.getElementById('coord-panel');
-    if (panel.classList.toggle('visible')) cargarPerfil();
+    if (panel.classList.toggle('visible')) {
+      cargarPerfil();
+      mostrarPanelSiApilado(panel);
+    }
   } else {
     openPinModal();
+  }
+}
+
+// Con la barra lateral apilada (tablet/celular) el panel queda debajo del
+// generador: llevarlo a la vista al abrirlo.
+function mostrarPanelSiApilado(panel) {
+  if (window.matchMedia('(max-width: 900px)').matches) {
+    requestAnimationFrame(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 }
 

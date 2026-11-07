@@ -359,12 +359,13 @@
         .badge-pend { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning-border); }
 
         /* ══ MÉTRICAS — igual que manifiesto ══ */
+        /* Cuadrícula (antes una fila con scroll: en celular la 3.ª quedaba cortada) */
         .metrics-grid {
-            display: flex; flex-wrap: nowrap;
-            gap: 14px; overflow-x: auto; padding-bottom: 4px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 14px;
         }
         .metric-card {
-            flex: 1; min-width: 160px;
+            min-width: 0;
             display: flex; align-items: center; gap: 14px;
             padding: 18px 20px;
             border: 1px solid transparent;
@@ -468,6 +469,20 @@
 
         .chk { width: 15px; height: 15px; cursor: pointer; accent-color: var(--brand-500); }
 
+        /* Tabla ancha (todas las columnas del Excel): se desliza en horizontal
+           dentro de su marco y la casilla para marcar queda fija a la izquierda */
+        #dataTable th:first-child, #dataTable td:first-child { position: sticky; left: 0; z-index: 1; box-shadow: inset -1px 0 0 var(--neutral-200); }
+        #dataTable thead th:first-child { z-index: 11; }
+        #dataTable tbody td:first-child { background: white; }
+        #dataTable tbody tr:nth-child(even) td:first-child { background: var(--neutral-50); }
+        #dataTable tbody tr:hover td:first-child { background: var(--brand-50); }
+        .tbl-hint { display: none; margin: 0 0 8px; font-size: .78rem; color: var(--neutral-600); }
+        @media (max-width: 900px) {
+            .tbl-hint { display: block; }
+            .chk { width: 24px; height: 24px; }
+            #dataTable td:first-child { padding: 10px; }
+        }
+
         /* empty state */
         .empty { text-align: center; padding: 56px 24px; }
         .empty-ico { font-size: 3rem; opacity: .4; margin-bottom: 12px; display: block; }
@@ -548,11 +563,27 @@
             body { padding: 12px 8px; }
             .section-content { padding: 18px 16px; }
             .metrics-grid { gap: 10px; }
-            .metric-card { min-width: 140px; padding: 14px 16px; }
+            .metric-card { padding: 14px 16px; }
             .metric-value { font-size: 1.6rem; }
             .scan-fields { grid-template-columns: 1fr 1fr; }
         }
         @media(max-width: 480px){
-            .metric-card { min-width: 120px; flex-direction: column; text-align: center; gap: 6px; }
+            .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+            .metric-card { padding: 12px 6px; flex-direction: column; text-align: center; gap: 6px; }
+            .metric-value { font-size: 1.4rem; }
             .scan-fields { grid-template-columns: 1fr; }
         }
+
+/* ── CABECERA EN CELULAR ──
+ * Dos filas: volver + logo arriba, título y subtítulo a todo el ancho
+ * debajo (antes el título se partía en 3-4 líneas al lado del logo).
+ * Si el logo externo no carga, se oculta también su óvalo y el separador. */
+.header-logo-pill[hidden], .header-logo-pill[hidden] + .header-divider { display: none; }
+@media (max-width: 600px) {
+  .header-main-row { padding: 12px 14px; }
+  .header-left { flex-wrap: wrap; row-gap: 10px; min-width: 0; }
+  .header-divider { display: none; }
+  .header-titles { flex: 1 1 100%; min-width: 0; }
+  .header-titles h1 { font-size: 1.15rem; line-height: 1.25; }
+  .header-back { width: 44px; height: 44px; }
+}

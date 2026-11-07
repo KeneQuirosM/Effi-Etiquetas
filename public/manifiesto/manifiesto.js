@@ -828,12 +828,13 @@ function renderTablaGuias() {
     const opciones = OBSERVACION_ESTADOS.map(o =>
       `<option value="${o.value}" ${obsActual === o.value ? 'selected' : ''}>${o.value}</option>`
     ).join('');
+    // data-label: en celular cada fila se muestra como tarjeta (ver manifiesto.css)
     return `<tr>
-      <td style="color:#999;font-size:12px;">${i + 1}</td>
-      <td style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${esc(f.guia)}</td>
-      <td><span class="badge-estado ${badgeClass}">${badgeText}</span>${insigniaRepetidaHTML(f.guia)}</td>
-      <td style="color:#888;font-size:12px;">${esc(f.hora)}</td>
-      <td style="text-align:center;">
+      <td class="col-num" data-label="#" style="color:#999;font-size:12px;">${i + 1}</td>
+      <td class="col-guia" data-label="Número de guía" style="font-family:monospace;font-weight:600;letter-spacing:.5px;">${esc(f.guia)}</td>
+      <td class="col-estado" data-label="Estado"><span class="badge-estado ${badgeClass}">${badgeText}</span>${insigniaRepetidaHTML(f.guia)}</td>
+      <td class="col-hora" data-label="Hora de escaneo" style="color:#888;font-size:12px;">${esc(f.hora)}</td>
+      <td class="col-obs" data-label="Observaciones" style="text-align:center;">
         <select class="obs-select ${claseObservacion(obsActual)}"
           onchange="setObservacion('${esc(f.guia.replace(/'/g,"\\'"))}', this.value, this)">
           ${opciones}

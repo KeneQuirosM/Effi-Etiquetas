@@ -19,6 +19,7 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
 @keyframes hpulse{0%,100%{filter:drop-shadow(0 0 4px var(--accent));}50%{filter:drop-shadow(0 0 12px var(--accent));}}
 #logo-placeholder:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.06);}
 #logo-img:hover{opacity:.8;}
+#logo-name-display{white-space:nowrap;}
 #logo-name-display:hover{color:var(--cyan);}
 
 .ntab{padding:0 .7rem;height:62px;display:flex;align-items:center;font-size:1.05rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);background:none;border:none;border-bottom:2px solid transparent;font-family:'Barlow Condensed',sans-serif;cursor:pointer;transition:all .2s;white-space:nowrap;appearance:none;-webkit-appearance:none;}
@@ -685,4 +686,71 @@ header{height:62px;background:rgba(9,11,15,.97);border-bottom:1px solid var(--bo
 /* Report tabs: fade hint on right so user knows there's more */
 @media (max-width:768px) {
   .report-tabs { -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%); mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%); }
+}
+
+/* ═══════════════ RESPONSIVE: ajustes ═══════════════ */
+/* Menú móvil cerrado: fuera del layout (antes, desplazado con transform,
+   sumaba 320 px de ancho invisible a la página). Se anima igual al abrir y
+   cerrar donde el navegador lo soporta; si no, solo aparece y desaparece. */
+.mob-drawer{display:none;transition:transform .28s cubic-bezier(.4,0,.2,1),display .28s allow-discrete;}
+.mob-drawer.open{display:flex;}
+@starting-style{.mob-drawer.open{transform:translateX(100%);}}
+
+/* Panel izquierdo angosto (1101–1280 px): rótulos sin cortar */
+@media (max-width:1280px){
+  .sblk-lbl{font-size:.9rem;letter-spacing:.5px;}
+}
+
+/* Celular y tablet chica: cabecera en dos filas. Arriba logo, reloj y ☰;
+   abajo el buscador a todo el ancho (antes todo en una fila de 688 px). */
+@media (max-width:768px){
+  header{height:auto;flex-wrap:wrap;row-gap:6px;padding:8px .6rem;}
+  .logo{flex:1 1 calc(100% - 60px);min-width:0;margin-right:0;}   /* fila 1 = logo + ☰ (44 px) */
+  #logo-name-wrap{min-width:0;}
+  #logo-name-display{white-space:normal;text-align:left;line-height:1.15;}
+  .ntab.on{display:none;}            /* rótulo de la sección actual; "Reporte" sigue en el menú ☰ */
+  /* Los hijos visibles de .hbar (reloj y ☰) pasan a ser ítems de la cabecera:
+     fila 1 = logo + ☰, fila 2 = buscador + reloj */
+  .hbar{display:contents;}
+  .hburger{order:2;margin-left:auto;}
+  .hdr-srch{order:10;flex:1 1 180px;min-height:40px;}
+  #hclock{order:11;}
+  .hdr-srch input{font-size:16px;}   /* 16 px: iOS no hace zoom al enfocar */
+  .hburger{min-width:44px;min-height:44px;justify-content:center;align-items:center;font-size:1.3rem;}
+  .mob-drawer-hd button{min-width:44px;min-height:44px;}
+}
+/* Botones de la barra del plano: el ancho lo da el texto ("⊞ Fit" se salía de 32 px) */
+.tbtn{width:auto;min-width:32px;padding:0 6px;}
+@media (max-width:768px){
+  /* Botones arriba; el texto del rack seleccionado en su propia línea, completo */
+  .tbar{height:auto;min-height:52px;padding:6px 10px;flex-wrap:wrap;row-gap:4px;overflow:visible;}
+  .tbtn{min-width:40px;height:40px;}
+  .tinfo{flex:1 1 100%;white-space:normal;line-height:1.2;font-size:.95rem;}
+  .tbar .tsep:has(+ .tinfo){display:none;}   /* separador antes del texto, ya en otra línea */
+}
+@media (max-width:400px){
+  #logo-name-display{font-size:1rem;letter-spacing:.5px;}
+}
+
+/* Pantallas táctiles: cerrar (✕), agregar zona y colores con área cómoda */
+@media (pointer:coarse), (max-width:768px){
+  .mcl{width:40px;height:40px;}
+  #zone-add-btn{min-width:40px;min-height:40px;}
+  .sw{width:32px;height:32px;}
+}
+@media (pointer:coarse), (max-width:768px){
+  #srch-hdr{min-height:40px;}
+  .rtab{min-height:40px;}
+  .fl > button{min-height:36px;padding:6px 8px !important;}   /* "＋ Gestionar" junto a Responsables / Tiendas */
+}
+/* Tablet táctil (769–900 px, paneles laterales abiertos): controles cómodos
+   y el texto del rack en su propia línea si no cabe */
+@media (pointer:coarse), (max-width:900px){
+  .hbtn,#lock-btn,.hoverflow-btn{min-height:36px;min-width:36px;}
+  .ptoggle{width:28px;}
+  .hdr-srch{flex:1 1 auto;max-width:260px;}
+  .hdr-srch input{width:100%;}
+  .btn{min-height:40px;}
+  .tbar{height:auto;min-height:48px;flex-wrap:wrap;row-gap:4px;padding-top:6px;padding-bottom:6px;overflow:visible;}
+  .tinfo{flex:1 1 9em;white-space:normal;line-height:1.2;}
 }
