@@ -1,9 +1,9 @@
 # QA final (Fase 5): Efficommerce, Sistema de Logística Interna
 
-**Rama:** `claude/great-albattani-po2d35` · **Código probado:** `5d202f7` (Fases 1 a 4) · **Fecha:** 7 de noviembre de 2026
+**Rama:** `claude/great-albattani-po2d35` · **Código probado:** `5d202f7` (Fases 1 a 4) y, tras las dos correcciones autorizadas, la versión final de `public/trazabilidad.html` · **Fecha:** 7 de noviembre de 2026
 
-Esta fase solo prueba y documenta. No modifica código de la aplicación, la API ni Supabase.
-Los únicos archivos nuevos son este informe y la evidencia en `docs/qa/fase5/`.
+Esta fase probó y documentó; después, con tu autorización, se aplicaron solo las correcciones R1 y D1, ambas en `public/trazabilidad.html` (16 líneas añadidas, ninguna borrada).
+No se tocó ningún otro módulo, la API ni Supabase. Los demás archivos nuevos son este informe y la evidencia en `docs/qa/fase5/`.
 
 ## 1. Veredicto
 
@@ -11,9 +11,9 @@ Los únicos archivos nuevos son este informe y la evidencia en `docs/qa/fase5/`.
 |---|---|
 | Pruebas automáticas | Se repitieron todas las pruebas de las Fases 1 a 4 y dan lo mismo que al cerrar la Fase 4. Se sumaron pruebas nuevas de navegación, consola, red y CSP de producción. |
 | Auditoría original | 35 hallazgos: **21 resueltos**, **5 parciales** y **9 pendientes**. Los 6 críticos (prioridad 0) están resueltos. |
-| Regresiones | **1, introducida en la Fase 4**: los botones de Trazabilidad perdieron relleno y alto (R1). |
-| Defecto previo nuevo | **1, anterior a las fases**: "Volver" no funciona en Trazabilidad (D1). |
-| Cambios hechos en esta fase | Ninguno. Según la instrucción, R1 y D1 quedan documentados y no se corrigen sin tu aprobación. |
+| Regresiones | **1, introducida en la Fase 4 y ya corregida**: los botones de Trazabilidad habían perdido relleno y alto (R1). |
+| Defecto previo nuevo | **1, anterior a las fases y ya corregido**: "Volver" no funcionaba en Trazabilidad (D1). |
+| Cambios hechos en esta fase | Solo R1 y D1 en `public/trazabilidad.html`, con tu autorización. Después se repitieron todas las pruebas (§3.3): no hay regresiones abiertas. |
 
 ## 2. Cómo se probó
 
@@ -43,7 +43,7 @@ Los únicos archivos nuevos son este informe y la evidencia en `docs/qa/fase5/`.
 | Confirmaciones (Fase 4) | 26 / 26 | **26 / 26** | Cancelar no hace nada, aceptar sí |
 | Íconos Lucide | 108 convertidos | **108**, 0 sin convertir | |
 | `npm test` (cálculo de Mercado y horario laboral) | 28 pass, 0 fail | **28 pass, 0 fail**, 1 skip | El skip es el fixture privado `CORTE031110.xlsx`, que no está en el repositorio |
-| **Navegación, consola, red y CSP (nueva)** | — | **83 / 85** | Los 2 fallos son D1 |
+| **Navegación, consola, red y CSP (nueva)** | — | **83 / 85** → **85 / 85** tras corregir D1 | Ver §3.3 |
 | **Auditoría original repetida** | — | Ver §5 | Violaciones axe: de 46 reglas en 286 nodos a 4 avisos `region` (no WCAG) |
 
 ### 3.1 Navegación (nueva)
@@ -51,9 +51,9 @@ Los únicos archivos nuevos son este informe y la evidencia en `docs/qa/fase5/`.
 - Desde el menú lateral del generador se abrieron los 10 destinos: Impresión Masiva, Almacén, Devoluciones, Manifiestos, Alistamiento, Conteos, Recepción, Trazabilidad, Reporte y Mercado.
   - Cada uno carga con su título y un solo `h1`.
   - Los botones que vienen ocultos por defecto se activaron para la prueba.
-- **"Volver" con pestaña de origen:** cierra la pestaña en 8 de 9 módulos.
-- **"Volver" sin pestaña de origen:** lleva a "/" en 7 de 8.
-- **Excepción:** Trazabilidad falla en ambos casos (D1). StockForge no tiene botón "Volver" (pendiente P2-9).
+- **"Volver" con pestaña de origen:** cierra la pestaña en los 9 módulos que tienen ese botón.
+- **"Volver" sin pestaña de origen:** lleva a "/" en los 8 módulos probados.
+- Antes de la corrección, Trazabilidad fallaba en ambos casos (D1). StockForge no tiene botón "Volver" (pendiente P2-9).
 - **Impresión Masiva:** se abre, se cierra con Escape y el foco vuelve al botón.
 - **Reporte sin sesión:** oculta el contenido, muestra "Acceso restringido" y redirige a "/" a los 2 s.
 - **Historial del navegador:** atrás y adelante entre el generador y Conteos funcionan, sin errores.
@@ -78,9 +78,30 @@ Los únicos archivos nuevos son este informe y la evidencia en `docs/qa/fase5/`.
 - Todos los orígenes externos están permitidos por la CSP de `vercel.json`.
 - Llamadas a la API al cargar: solo las de siempre (`tiendas`, `config`, `users?accion=yo`, `stockforge`, `conteos?accion=opciones`, `dispositivos?accion=estado`, `mercado?accion=inicio|cortes`). No hay llamadas nuevas ni repetidas. Los contratos no cambiaron (`api/` no se tocó en ninguna fase).
 
+### 3.3 Resultados definitivos después de corregir R1 y D1
+
+| Prueba | Antes de corregir | Después de corregir |
+|---|---|---|
+| Botones de Trazabilidad | 107×18, 143×19 y 139×19 px, relleno 0, peso 400 | **"Examinar archivo" 134×32 px**, **"Analizar trazabilidad" 222×48 px**, **"Exportar resultados" 216×48 px**; peso 600 |
+| Responsive de Trazabilidad (375, 820, 1024, 1440) | 0 desbordes; 5 controles de menos de 24 px en cada ancho | **0 desbordes, 0 textos cortados, 0 controles de menos de 32 px** |
+| Responsive de los otros 68 escenarios | — | **Idénticos** a la medición anterior (sin regresiones) |
+| Navegación, consola, red y CSP | 83 / 85 | **85 / 85**: "Volver" de Trazabilidad cierra la pestaña o va a "/", sin errores |
+| axe-core WCAG 2.2 AA (72 estados) | 0 | **0** |
+| Lighthouse accesibilidad | 100 × 20 | **100 × 20** |
+| Teclado | 98 / 100 | **98 / 100** (mismos 2 fallos del sandbox con pdf.js) |
+| Foco no tapado | 0 / 138 | **0 / 138** |
+| Errores de API (Fase 1) | 52 / 52 | **52 / 52** |
+| Confirmaciones (Fase 4) | 26 / 26 | **26 / 26** |
+| `npm test` | 28 pass, 0 fail | **28 pass, 0 fail**, 1 skip |
+| Trazabilidad abierta desde `file://` | — | Carga sin errores; `goBackToApp` definida; "Analizar" mide 48 px |
+| Variables CSS sin definir en Trazabilidad | 11 | **2** (`--neutral-500` y `--neutral-700`, que ya faltaban antes de las fases; ver §6) |
+
+Los 9 valores agregados se compararon uno por uno con `shared/tokens.css` y coinciden exactamente.
+Los controles de menos de 24 px que quedan en toda la app son los 2 casos previos a las fases descritos en las observaciones menores de §5 (casillas de Devoluciones en escritorio y pestañas laterales de StockForge).
+
 ## 4. Regresiones y defectos encontrados
 
-### R1. Botones de Trazabilidad sin relleno ni alto mínimo (regresión de la Fase 4)
+### R1. Botones de Trazabilidad sin relleno ni alto mínimo (regresión de la Fase 4): **corregido**
 
 | | |
 |---|---|
@@ -90,9 +111,9 @@ Los únicos archivos nuevos son este informe y la evidencia en `docs/qa/fase5/`.
 | **Por qué no se detectó en la Fase 4** | La métrica sí lo marcó: los controles de menos de 32 px en Trazabilidad pasaron de 0 a 5. Pasé por alto ese cambio. Además, `QA_CONSISTENCIA_VISUAL.md` dice que la copia de Trazabilidad quedó "sincronizada", y no es exacto: faltan estos 9 tokens. axe no lo marca porque la regla de tamaño de objetivo (2.5.8) acepta controles pequeños si tienen espacio libre alrededor. |
 | **Evidencia** | `docs/qa/fase5/f5_06_regresion_trazabilidad.png`; `docs/qa/fase5/resultados.json` (`controlesMenoresA24`) |
 | **Archivo** | `public/trazabilidad.html` (bloque `:root`, líneas 24 a 45) |
-| **Corrección propuesta (no aplicada)** | Agregar a ese `:root` los 9 tokens con los mismos valores de `shared/tokens.css` (`--control-h-sm: 32px; --control-h: 40px; --control-h-lg: 48px; --space-3: 12px; --space-4: 16px; --space-8: 32px; --text-base: 14px; --text-md: 15px; --weight-semibold: 600`). Son solo valores y no cambian el diseño acordado: devuelven a los botones el tamaño que la Fase 4 pretendía. |
+| **Corrección aplicada** | Se agregaron a ese `:root` los 9 tokens con los mismos valores de `shared/tokens.css` (`--control-h-sm: 32px; --control-h: 40px; --control-h-lg: 48px; --space-3: 12px; --space-4: 16px; --space-8: 32px; --text-base: 14px; --text-md: 15px; --weight-semibold: 600`). Son solo valores y no cambian el diseño acordado: devuelven a los botones el tamaño que la Fase 4 pretendía. Resultado en §3.3. |
 
-### D1. "Volver" no funciona en Trazabilidad (defecto anterior a las fases)
+### D1. "Volver" no funcionaba en Trazabilidad (defecto anterior a las fases): **corregido**
 
 | | |
 |---|---|
@@ -101,9 +122,9 @@ Los únicos archivos nuevos son este informe y la evidencia en `docs/qa/fase5/`.
 | **Desde cuándo** | Ya fallaba en `1e9407b`, el commit anterior a la Fase 1. No es una regresión de este plan, pero no aparecía en la auditoría original porque ella no probaba la navegación. |
 | **Evidencia** | `docs/qa/fase5/resultados.json` (`fallos_navegacion`) |
 | **Archivo** | `public/trazabilidad.html` (botón en la línea 449; el `<script>` empieza en la 745) |
-| **Corrección propuesta (no aplicada)** | Copiar en el `<script>` de Trazabilidad la función `goBackToApp()` de `dom-utils.js` (8 líneas), como ya se hizo con `localDateKey`. |
+| **Corrección aplicada** | Se copió `goBackToApp()` de `dom-utils.js`, sin cambios, al inicio del `<script>` de Trazabilidad, como ya se hizo con `localDateKey`. Con pestaña de origen la cierra; sin ella navega a "/". Abierta desde `file://` y sin pestaña de origen, "/" lleva a la raíz del disco, igual que haría la función compartida. Resultado en §3.3. |
 
-No se encontraron otras regresiones. Se revisó lo siguiente:
+No se encontraron otras regresiones; la repetición completa tras la corrección lo confirma (§3.3). Se revisó lo siguiente:
 
 - **Métricas responsive:** iguales a la Fase 4 en los 72 escenarios.
 - **Errores de JavaScript:** ninguno nuevo en los 10 módulos.
@@ -147,7 +168,7 @@ Estado: **resuelto** (verificado en esta fase), **parcial** (mejoró, pero queda
 | # | Problema detectado | Estado | Evidencia | Archivos |
 |---|---|---|---|---|
 | C-1 | Tres estilos visuales distintos | **Parcial** | Cabecera, botones, estados vacíos, confirmaciones y avisos ya son comunes (Fase 4). StockForge conserva su tema oscuro por decisión aprobada, y Manifiesto, Devoluciones, Alistamiento y Trazabilidad conservan su tarjeta. | `shared/componentes.css`, `shared/tokens.css` |
-| C-2 | Radios, sombras y neutros duplicados; `--neutral-400` igual a `--neutral-600` | **Parcial** | Fuente única en `tokens.css`. `--neutral-400` sigue igual a `--neutral-600` (lo dejó así la corrección de contraste). La copia de Trazabilidad está incompleta (R1). | `shared/tokens.css`, `trazabilidad.html` |
+| C-2 | Radios, sombras y neutros duplicados; `--neutral-400` igual a `--neutral-600` | **Parcial** | Fuente única en `tokens.css`. `--neutral-400` sigue igual a `--neutral-600` (lo dejó así la corrección de contraste). La copia de Trazabilidad estaba incompleta (R1); ya tiene los tokens que usa, salvo `--neutral-500` y `--neutral-700`, que ya faltaban antes de las fases. | `shared/tokens.css`, `trazabilidad.html` |
 | C-3 | Títulos que no coinciden en Manifiesto | **Pendiente** | Sigue igual: `<title>` "Comparativo de Manifiesto", h1 "Comparativo de devoluciones" y panel "Comparativo de Manifiesto" | `manifiesto/manifiesto.html:6,169,188` |
 | C-4 | "Seleccionar..." en Manifiesto | **Pendiente** | `manifiesto.html:200,220` | `manifiesto/manifiesto.html` |
 | C-5 | Logo cargado desde `effi.com.co` | **Parcial** | Si el logo falla, su óvalo y el separador ahora se ocultan, así que ya no se ve una imagen rota. Pero se sigue pidiendo a `effi.com.co` desde 5 páginas (§3.2); no se sirve desde `public/`. | Manifiesto, Devoluciones, Reporte, Alistamiento, Trazabilidad |
@@ -170,7 +191,7 @@ Estado: **resuelto** (verificado en esta fase), **parcial** (mejoró, pero queda
 | P2-11 | Casillas de Conteos de 20×20 px y "historial" de Mercado de 52×21 px | **Resuelto** | 24×24 y 45×24 px (WCAG 2.5.8) | `conteos/conteos.css`, `mercado/mercado.css` |
 | P2-12 | 121 estilos escritos en `index.html` y 136 en `almacen4.html` | **Pendiente** | 116 y 136 | `index.html`, `stockforge/almacen4.html` |
 
-**Resumen:** de 35 hallazgos, 21 resueltos, 5 parciales y 9 pendientes. Ninguno de los pendientes impide usar la aplicación. Se suman R1 y D1, encontrados en esta fase.
+**Resumen:** de 35 hallazgos, 21 resueltos, 5 parciales y 9 pendientes. Ninguno de los pendientes impide usar la aplicación. Se suman R1 y D1, encontrados y corregidos en esta fase.
 
 ### Observaciones menores nuevas (no son de la auditoría)
 
@@ -180,22 +201,18 @@ Estado: **resuelto** (verificado en esta fase), **parcial** (mejoró, pero queda
 
 ## 6. Recomendaciones
 
-**Para cerrar el plan (requieren tu aprobación):**
-
-1. **Corregir R1:** agregar los 9 tokens a la copia de `trazabilidad.html`. Son 3 líneas, sin cambios de diseño.
-2. **Corregir D1:** copiar `goBackToApp()` en `trazabilidad.html`. Son 8 líneas.
-3. Repetir después la prueba responsive de Trazabilidad (0 controles menores de 24 px) y la prueba de navegación (85/85).
+**Para cerrar el plan:** R1 y D1 ya están corregidos y verificados (§3.3). No queda nada bloqueante.
 
 **Mejoras de bajo riesgo para más adelante** (fuera del alcance de "no rediseñar", se anotan para decidir):
 
-4. **Manifiesto:** unificar el título (C-3) y cambiar "Seleccionar..." por "-- Selecciona --" (C-4). Son solo textos.
-5. **Logo:** servirlo desde `public/` en lugar de `effi.com.co` (C-5).
-6. **Tokens que faltan:** definir `--neutral-500` y `--neutral-700` en `tokens.css`, o cambiar sus 10 usos a tokens que existan.
-7. **Prueba de tokens:** agregar una comprobación de "tokens usados pero no definidos" al flujo de pruebas, para que una copia como la de Trazabilidad no vuelva a quedar incompleta.
-8. **Ajustes visuales de StockForge** (P2-8) y **botón "Volver"** (P2-9).
-9. **Decoración de temporada** (P2-6): que el lazo no cubra el botón "Imprimir" y que los copos no pasen sobre la barra lateral.
-10. **"Sesión restaurada"** (P2-7): mostrarlo solo cuando de verdad se renovó el token, no en cada carga. Es un cambio de comportamiento, por eso queda para tu decisión.
-11. **Panel de coordinador** (P2-4, P2-5): ocultar la vista previa en las pestañas que no la usan y alinear siempre el estado a la derecha. Son cambios de diseño.
+1. **Manifiesto:** unificar el título (C-3) y cambiar "Seleccionar..." por "-- Selecciona --" (C-4). Son solo textos.
+2. **Logo:** servirlo desde `public/` en lugar de `effi.com.co` (C-5).
+3. **Tokens que faltan:** definir `--neutral-500` y `--neutral-700` en `tokens.css`, o cambiar sus 10 usos a tokens que existan.
+4. **Prueba de tokens:** agregar una comprobación de "tokens usados pero no definidos" al flujo de pruebas, para que una copia como la de Trazabilidad no vuelva a quedar incompleta.
+5. **Ajustes visuales de StockForge** (P2-8) y **botón "Volver"** (P2-9).
+6. **Decoración de temporada** (P2-6): que el lazo no cubra el botón "Imprimir" y que los copos no pasen sobre la barra lateral.
+7. **"Sesión restaurada"** (P2-7): mostrarlo solo cuando de verdad se renovó el token, no en cada carga. Es un cambio de comportamiento, por eso queda para tu decisión.
+8. **Panel de coordinador** (P2-4, P2-5): ocultar la vista previa en las pestañas que no la usan y alinear siempre el estado a la derecha. Son cambios de diseño.
 
 ## 7. Evidencia
 
@@ -208,8 +225,8 @@ Carpeta `docs/qa/fase5/`:
 | `f5_03_modulos_820_1024.png` | Los 10 módulos a 820 y 1024 px |
 | `f5_04_errores_api.png` | Generador, StockForge, Mercado, Conteos y Recepción con servidor 500 y sin red |
 | `f5_05_navegacion.png` | Reporte sin sesión y módulos cargados con la CSP de producción |
-| `f5_06_regresion_trazabilidad.png` | R1: antes y después de la Fase 4 |
+| `f5_06_regresion_trazabilidad.png` | R1: antes de la Fase 4, con la regresión y corregido |
 | `f5_07_pendientes.png` | Pendientes visuales de StockForge y del panel de coordinador |
-| `resultados.json` | Totales de todas las pruebas, controles menores de 24 px, fallos de navegación, puntuaciones de Lighthouse y orígenes externos por página |
+| `resultados.json` | Totales de todas las pruebas (la clave `correccion_final` tiene los resultados tras corregir R1 y D1), controles menores de 24 px, fallos de navegación, puntuaciones de Lighthouse y orígenes externos por página |
 
 La evidencia de las fases anteriores sigue en `docs/qa/fase3/`, `docs/qa/fase4/`, `QA_ACCESIBILIDAD.md` y `QA_CONSISTENCIA_VISUAL.md`.

@@ -238,5 +238,161 @@
    "https://effi.com.co",
    "https://fonts.gstatic.com"
   ]
+ },
+ "correccion_final": {
+  "commit_base": "73f0cda",
+  "archivo": "public/trazabilidad.html",
+  "botones_trazabilidad": [
+   {
+    "id": "baseBrowseBtn",
+    "alto": 32,
+    "ancho": 134,
+    "padding": "0px 12px",
+    "fontSize": "13px",
+    "fontWeight": "600",
+    "minHeight": "32px"
+   },
+   {
+    "id": "analyzeBtn",
+    "alto": 48,
+    "ancho": 222,
+    "padding": "0px 32px",
+    "fontSize": "15px",
+    "fontWeight": "600",
+    "minHeight": "48px"
+   },
+   {
+    "id": "exportBtn",
+    "alto": 48,
+    "ancho": 216,
+    "padding": "0px 32px",
+    "fontSize": "15px",
+    "fontWeight": "600",
+    "minHeight": "48px"
+   }
+  ],
+  "responsive": {
+   "escenarios": 72,
+   "scrollHorizontal": 0,
+   "controlesMenoresA24": [
+    "stockforge_1024: #ptoggle-lp(‹) 18x52",
+    "stockforge_1024: #ptoggle-rp(›) 18x52",
+    "stockforge_1440: #ptoggle-lp(‹) 18x52",
+    "stockforge_1440: #ptoggle-rp(›) 18x52",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1024: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15",
+    "devoluciones_1440: input.chk 15x15"
+   ]
+  },
+  "axe_estados_con_violaciones": 0,
+  "navegacion_consola_red_csp": {
+   "pass": 85,
+   "total": 85
+  },
+  "teclado": {
+   "pass": 98,
+   "total": 100
+  },
+  "errores_api_fase1": {
+   "pass": 52,
+   "total": 52
+  },
+  "confirmaciones": {
+   "pass": 26,
+   "total": 26
+  },
+  "foco_no_tapado": "paradas revisadas: 138 | tapadas o fuera de pantalla: 0",
+  "lighthouse_accesibilidad": {
+   "index.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "index.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "stockforge/almacen4.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "stockforge/almacen4.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "manifiesto/manifiesto.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "manifiesto/manifiesto.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "devoluciones/devoluciones.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "devoluciones/devoluciones.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "reporte/reporte_distribuidor_proveedor.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "reporte/reporte_distribuidor_proveedor.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "mercado/mercado.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "mercado/mercado.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "conteos/conteos.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "conteos/conteos.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "recepcion/recepcion.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "recepcion/recepcion.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "alistamiento/alistamiento.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "alistamiento/alistamiento.html|mobile": {
+    "score": 100,
+    "fails": []
+   },
+   "trazabilidad.html|desktop": {
+    "score": 100,
+    "fails": []
+   },
+   "trazabilidad.html|mobile": {
+    "score": 100,
+    "fails": []
+   }
+  },
+  "npm_test": "28 pass, 0 fail, 1 skip"
  }
 }

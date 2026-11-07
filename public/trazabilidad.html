@@ -42,6 +42,10 @@
 
     --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
     --transition: all .18s ease;
+
+    --text-base: 14px; --text-md: 15px; --weight-semibold: 600;
+    --space-3: 12px; --space-4: 16px; --space-8: 32px;
+    --control-h-sm: 32px; --control-h: 40px; --control-h-lg: 48px;
 }
 
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -743,6 +747,18 @@ tbody tr.row-warn:hover td { background: var(--warning-bg); filter: brightness(.
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
+/* ── VOLVER ── copia de goBackToApp() de shared/dom-utils.js (esta página
+ * no carga dom-utils.js porque debe funcionar desde file://). Si la pestaña
+ * la abrió la app, se cierra; si no, se navega a "/" como respaldo. */
+function goBackToApp() {
+  if (window.opener) {
+    window.close();
+    setTimeout(() => { if (!window.closed) window.location.href = '/'; }, 200);
+  } else {
+    window.location.href = '/';
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════
    MÓDULO TRAZABILIDAD DE INVENTARIO
    Archivo único, sin backend: SheetJS lee un Excel con 3 hojas (Base,
