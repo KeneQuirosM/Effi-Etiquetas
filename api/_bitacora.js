@@ -19,7 +19,8 @@ export const ACCIONES = [
   'usuario_crear', 'usuario_perfil', 'usuario_nombre', 'usuario_contrasena', 'usuario_borrar',
   'permisos_cambiar', 'inactividad_cambiar',
   'mercado_corte_crear', 'mercado_corte_asignar', 'mercado_corte_borrar',
-  'mercado_inventario', 'mercado_config', 'mercado_ubicaciones'
+  'mercado_inventario', 'mercado_config', 'mercado_ubicaciones',
+  'almacen_guardar'
 ];
 
 export async function registrar(user, accion, detalle, datos = null) {

@@ -22,6 +22,22 @@ export async function requireUser(req, res) {
   return user;
 }
 
+/**
+ * Sesión opcional, para lecturas públicas que muestran más datos con sesión
+ * (GET /api/stockforge devuelve costos solo con sesión). Nunca responde: sin
+ * token, con token inválido o vencido, o si Auth falla, devuelve null.
+ */
+export async function usuarioOpcional(req) {
+  const token = req.headers?.authorization?.replace('Bearer ', '');
+  if (!token) return null;
+  try {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    return error ? null : (data?.user || null);
+  } catch {
+    return null;
+  }
+}
+
 // Traduce el error de Supabase Auth a [status HTTP, mensaje]. Antes todo
 // error salía como 401 "Credenciales incorrectas", también con Supabase
 // caído o limitando intentos, y el usuario creía que la clave estaba mal.

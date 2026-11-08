@@ -857,6 +857,14 @@ async function save() {
       : 'No sincronizado con el servidor: toca "Reintentar" en el aviso de arriba antes de guardar', 'danger');
     return;
   }
+  // El servidor solo entrega los costos con sesión (SEC-08). Guardar un estado
+  // leído sin ellos pondría cost = 0 en todos los SKUs: se bloquea.
+  if (!estadoConCostos) {
+    showToast(currentLang === 'en'
+      ? 'Reload the page with your session started before saving'
+      : 'Recarga la página con tu sesión iniciada antes de guardar', 'warn');
+    return;
+  }
   try {
     const payload = {
       zones: state.zones,
@@ -880,6 +888,13 @@ async function save() {
     if (response.status === 401) {
       notif('Sesión expirada — inicia sesión nuevamente para guardar', 'err');
       desactivarCoordinador();
+      return;
+    }
+    // Sin permiso (almacen-editar, tab-add-tienda o tab-manage): se avisa y se
+    // bloquea la edición, sin cerrar la sesión y sin reintentar
+    if (response.status === 403) {
+      notif(currentLang === 'en' ? 'No permission to edit the warehouse' : 'Sin permiso para editar el almacén', 'err');
+      bloquearEdicionSinPermiso();
       return;
     }
     if (!response.ok) throw new Error('Error al guardar');
@@ -936,7 +951,9 @@ async function load() {
   // 2. Luego, en segundo plano, obtener datos frescos del servidor
   try {
     // Lectura: ante un fallo de red o del servidor se reintenta antes de rendirse
-    const data = await conReintentos(() => apiRequestJSON(API_URL));
+    // Con sesión se envía el token: el servidor solo incluye los costos con sesión
+    const data = await conReintentos(() => apiRequestJSON(API_URL, coordToken ? { token: coordToken } : undefined));
+    estadoConCostos = data.con_costos !== false;
     
     // Normalizar racks y zonas del servidor
     const racksNorm = (data.racks||[]).map(r=>({...r,zone:r.zone||r.zone_id||'',w:r.w||r.width||180,h:r.h||r.height||150}));
@@ -5680,6 +5697,39 @@ async function loadBrandFromStorage() {
 // ═══════════════ MODO COORDINADOR (SUPABASE) ═══════════════
 let coordToken = null;
 let coordUnlocked = false;
+// true solo si el último estado se leyó del servidor CON costos (ver save())
+let estadoConCostos = false;
+
+// Guardar el almacén exige estos tres permisos (los mismos que PERMISOS_GUARDAR
+// en api/stockforge.js). Sin ellos el mapa se ve en solo lectura.
+const PERMISOS_ALMACEN = ['almacen-editar', 'tab-add-tienda', 'tab-manage'];
+
+// true / false según el perfil; null si no se pudo comprobar (se trata como "no")
+async function puedeEditarAlmacen(token) {
+  try {
+    const yo = await apiRequestJSON('/api/users?accion=yo', { token });
+    return PERMISOS_ALMACEN.every(p => yo?.permisos?.[p] === true);
+  } catch (e) {
+    return null;
+  }
+}
+
+// Tras un 403 al guardar: edición bloqueada, pero la sesión se conserva
+function bloquearEdicionSinPermiso() {
+  coordUnlocked = false;
+  const btn = document.getElementById('lock-btn');
+  if (btn) {
+    btn.innerHTML = iconoCandado(false);
+    btn.setAttribute('aria-label', currentLang==='en' ? 'No permission to edit the warehouse' : 'Sin permiso para editar el almacén');
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.title = currentLang==='en' ? 'No permission to edit the warehouse' : 'Sin permiso para editar el almacén';
+  }
+  document.querySelectorAll('.hbtn.guard-btn').forEach(b => {
+    b.style.opacity = '0.45';
+    b.style.cursor = 'not-allowed';
+  });
+}
 
 function guardarSesion(token) {
   sessionStorage.setItem('sf_coord_token', token);
@@ -5749,8 +5799,18 @@ function desactivarCoordinador() {
 async function loginCoordinador(email, password) {
   try {
     const data = await apiRequestJSON('/api/auth', { method: 'POST', body: { email, password } });
+    const permiso = await puedeEditarAlmacen(data.token);
+    if (!permiso) {
+      // Sin permiso (o sin poder comprobarlo): el mapa sigue en solo lectura
+      return permiso === null
+        ? 'No se pudo comprobar tu permiso para editar el almacén. Intenta de nuevo.'
+        : 'Tu perfil no tiene permiso para editar el almacén. Puedes ver el mapa en solo lectura.';
+    }
     activarCoordinador(data.token, data.refresh_token);
     notif('Sesión iniciada como coordinador', 'ok');
+    // El estado en pantalla pudo leerse sin sesión (sin costos): se vuelve a
+    // pedir con el token antes de editar, para no guardar costos en 0
+    await load();
     return null;
   } catch(e) {
     return mensajeErrorLogin(e);
@@ -5900,8 +5960,13 @@ document.addEventListener('keydown',function(e){
   try {
   const token = restaurarSesion();
   if (token && !tokenExpirado(token)) {
-    activarCoordinador(token);
-    notif('Sesión restaurada', 'ok');
+    if (await puedeEditarAlmacen(token)) {
+      activarCoordinador(token);
+      notif('Sesión restaurada', 'ok');
+    } else {
+      // Perfil sin permiso (o no se pudo comprobar): solo lectura
+      cerrarSesion();
+    }
   }
 } catch(e) {}
   try {

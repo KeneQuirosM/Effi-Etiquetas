@@ -1,6 +1,17 @@
 import { supabase, selectAll } from './_supabase.js';
 import { setCors } from './_cors.js';
-import { requireUser } from './_auth.js';
+import { usuarioOpcional } from './_auth.js';
+import { requirePermisos } from './_permisos.js';
+import { registrar } from './_bitacora.js';
+
+// Guardar el almacén exige los TRES permisos (SEC-06, NH-01): además de editar
+// StockForge, replace_warehouse_state crea tiendas por nombre (tab-add-tienda,
+// replace_warehouse_state.sql:63-68) y reescribe productos.ubicacion de cada SKU
+// vinculado (tab-manage, :175-188). No se detecta antes de llamar si el payload
+// va a hacer esas dos cosas: entre la comprobación y la función otra petición
+// puede crear o borrar tiendas, y la ubicación se reescribe en cada guardado
+// para todo SKU con producto_id. Ver REMEDIACION/etapa2a/RESUMEN.md.
+const PERMISOS_GUARDAR = ['almacen-editar', 'tab-add-tienda', 'tab-manage'];
 
 export default async function handler(req, res) {
   setCors(req, res, 'GET, POST, OPTIONS');
@@ -11,6 +22,9 @@ export default async function handler(req, res) {
     // ── GET: Obtener todo el estado ────────────────────────────────
     if (req.method === 'GET') {
       console.log('GET /api/stockforge');
+      // Costos de los SKUs solo con sesión válida (SEC-08). Sin sesión, o con un
+      // token vencido, el mapa se devuelve igual pero sin el campo cost.
+      const conCostos = !!(await usuarioOpcional(req));
 
       // Las 9 lecturas son independientes entre sí — se piden en paralelo
       // en vez de 9 round-trips secuenciales.
@@ -122,7 +136,7 @@ export default async function handler(req, res) {
             unit: s.unidad || 'pcs',
             expiry: s.expiry || null,
             minStock: s.min_stock || '',
-            cost: s.cost || 0,
+            ...(conCostos ? { cost: s.cost || 0 } : {}),
             producto_id: s.producto_id || null
           })),
           audits: (c.audits || []).map(a => ({
@@ -165,6 +179,9 @@ export default async function handler(req, res) {
       }
 
       return res.status(200).json({
+        // El navegador no debe guardar un estado leído sin costos: el guardado
+        // pondría cost = 0 en todos los SKUs (ver save() en almacen4.js)
+        con_costos: conCostos,
         zonas: zonasMapped,
         racks: racksConRelaciones,
         cells: cellsObj,
@@ -179,8 +196,9 @@ export default async function handler(req, res) {
 
     // ── POST: Guardar todo el estado ─────────────────────────────
     if (req.method === 'POST') {
-      // Validar token antes de cualquier operación destructiva
-      const user = await requireUser(req, res);
+      // Sesión + los tres permisos antes de cualquier operación destructiva.
+      // Sin permiso: 403 y no se toca Supabase más allá de leer la sesión y los permisos.
+      const user = await requirePermisos(req, res, PERMISOS_GUARDAR);
       if (!user) return;
 
       const { zones, racks, cells, people, tiendas, movements, bodega } = req.body;
@@ -206,6 +224,15 @@ export default async function handler(req, res) {
       }
 
       console.log(`Estado guardado — celdas:${data.celdas}, ubicaciones:${data.ubicaciones}`);
+
+      // Bitácora: solo un resumen, nunca el payload completo
+      const celdas = Object.values(cells || {}).reduce((n, arr) => n + (Array.isArray(arr) ? arr.length : 0), 0);
+      const skus = Object.values(cells || {}).reduce((n, arr) =>
+        n + (Array.isArray(arr) ? arr.reduce((m, c) => m + (Array.isArray(c?.skus) ? c.skus.length : 0), 0) : 0), 0);
+      const resumen = { zonas: zones.length, racks: racks.length, celdas, skus, ubicaciones: data?.ubicaciones ?? 0 };
+      await registrar(user, 'almacen_guardar',
+        `Guardó el almacén (StockForge): ${resumen.zonas} zonas, ${resumen.racks} racks, ${resumen.celdas} celdas, ${resumen.skus} SKUs; ${resumen.ubicaciones} ubicaciones de productos actualizadas`,
+        resumen);
       return res.status(200).json(data);
     }
 

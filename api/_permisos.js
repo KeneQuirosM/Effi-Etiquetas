@@ -54,7 +54,11 @@ export const PERMISOS = {
   'nav-mercado':      [true, true, 'Menú: Mercado y Alistamiento'],
   // Mercado y Alistamiento: subir cortes, asignar, borrar y configurar
   // (con solo nav-mercado se ve el mercado y se marcan artículos alistados)
-  'mercado-gestion':  [true, false, 'Mercado: subir cortes, asignar y configurar']
+  'mercado-gestion':  [true, false, 'Mercado: subir cortes, asignar y configurar'],
+  // StockForge: guardar el almacén (POST /api/stockforge). Sin él, el mapa se ve
+  // en solo lectura. Si permisos_roles ya guardado no trae esta clave, vale el
+  // valor por defecto de aquí (coordinador sí, bodeguero no): ver resolverPermisos.
+  'almacen-editar':   [true, false, 'Almacén: editar y guardar (StockForge)']
 };
 
 // Nombre visible (user_metadata.nombre); sin nombre se usa el correo
@@ -154,6 +158,23 @@ export async function requirePermiso(req, res, permiso) {
     if (lista.some(p => permisos[p])) return user;
   }
   res.status(403).json({ error: 'Tu perfil no tiene permiso para esta acción', codigo: 'sin_permiso' });
+  return null;
+}
+
+/**
+ * Como requirePermiso, pero exige TODOS los permisos de la lista (no uno de
+ * ellos). Lo usa POST /api/stockforge, que además de editar el almacén crea
+ * tiendas y reescribe productos.ubicacion. Si falta alguno responde 403 con
+ * la lista de los que faltan y devuelve null.
+ */
+export async function requirePermisos(req, res, lista) {
+  const user = await requireUser(req, res);
+  if (!user) return null;
+  if (rolDe(user) === 'administrador') return user;
+  const permisos = await permisosDe(user);
+  const faltan = lista.filter(p => !permisos[p]);
+  if (!faltan.length) return user;
+  res.status(403).json({ error: 'Tu perfil no tiene permiso para esta acción', codigo: 'sin_permiso', faltan });
   return null;
 }
 

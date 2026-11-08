@@ -20,7 +20,8 @@ const GRUPOS_BITACORA = {
   config:       ['config_'],
   dispositivos: ['dispositivo_'],
   usuarios:     ['usuario_', 'permisos_', 'inactividad_'],
-  mercado:      ['mercado_']
+  mercado:      ['mercado_'],
+  almacen:      ['almacen_']
 };
 
 // Correo/nombre de un usuario para la bitácora

@@ -2944,6 +2944,11 @@ function permisosUI() {
       Object.entries(NAV_BOTONES).map(([k, b]) => [`nav-${k}`, b.nombre]) },
     { titulo: 'Mercado y Alistamiento', items: [
       ['mercado-gestion', 'Subir cortes, asignar y configurar']
+    ] },
+    // Guardar en StockForge exige además "Nueva Tienda" y "Gestionar Inventario"
+    // (el guardado crea tiendas y cambia la ubicación de los productos)
+    { titulo: 'Gestión de Almacén (StockForge)', items: [
+      ['almacen-editar', 'Editar y guardar el almacén']
     ] }
   ];
 }
@@ -3050,7 +3055,8 @@ const BITACORA_ACCIONES = {
   mercado_corte_borrar:    ['Mercado', 'del'],
   mercado_inventario:      ['Mercado', 'edit'],
   mercado_config:          ['Mercado', 'edit'],
-  mercado_ubicaciones:     ['Mercado', 'edit']
+  mercado_ubicaciones:     ['Mercado', 'edit'],
+  almacen_guardar:         ['Almacén', 'edit']
 };
 let bitacoraAbierta = false;
 let bitacoraUltimoId = null;
