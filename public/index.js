@@ -729,7 +729,7 @@ function lockCoord(motivo) {
   document.getElementById('conteo-list').innerHTML = '';
   document.getElementById('conteo-resumen').innerHTML = '';
   document.getElementById('rc-lista').innerHTML = '';
-  document.getElementById('rc-resumen').innerHTML = '';
+  { const el = document.getElementById('rc-resumen'); el.innerHTML = ''; el._rcHtml = ''; }
   const btn = document.getElementById('btn-coord-toggle');
   btn.classList.remove('active');
   document.getElementById('coord-icon').textContent = '';
@@ -3571,6 +3571,7 @@ const RC_RIESGO_HORAS = 8;          // quedan menos de esto: "por vencer"
 const RC_TZ = 'America/Costa_Rica';
 let recepciones = null;
 let rcEstadoActual = 'abiertas';
+let rcFiltroTono = '';               // '' | espera | ok | riesgo | vencida (solo abiertas)
 let rcRelojDesfase = 0;              // hora del servidor - hora del navegador (ms)
 let rcCargadasEn = 0;
 let rcTimer = null;
@@ -3589,6 +3590,7 @@ function populateRcTiendas() {
 
 function rcEstado(estado) {
   rcEstadoActual = estado;
+  rcFiltroTono = '';
   document.querySelectorAll('.rc-estados [data-estado]').forEach(b => b.classList.toggle('active', b.dataset.estado === estado));
   document.querySelectorAll('.rc-fecha').forEach(el => { el.hidden = estado === 'abiertas'; });
   if (estado !== 'abiertas' && !document.getElementById('rc-desde').value) {
@@ -3621,7 +3623,7 @@ async function cargarRecepciones() {
     iniciarRelojRecepciones();
   } catch (e) {
     recepciones = null;
-    document.getElementById('rc-resumen').innerHTML = '';
+    { const el = document.getElementById('rc-resumen'); el.innerHTML = ''; el._rcHtml = ''; }
     lista.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--danger)">${esc(e.message || 'Error al cargar recepciones')}</span></div>`;
   }
 }
@@ -3693,22 +3695,20 @@ function rcCorto(h) {
   return `${h < 0 && min > 0 ? '−' : ''}${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}m`;
 }
 
-// Bloque que cambia con el tiempo (anillo, datos, barra y pausa). Se vuelve a
+// Bloque que cambia con el tiempo (anillo, datos y nota). Se vuelve a
 // pintar cada 30 s sin tocar el ajuste ni los botones.
 function rcMedidorHTML(r, ahora) {
   const c = rcCalculo(r, ahora);
   const HL = HorarioLaboral;
-  const pausa = !c.finalizada && !HL.enHorario(ahora);
   const etiqueta = c.finalizada ? 'Finalizada' : { espera: 'Sin ajuste', ok: 'En plazo', riesgo: 'Alerta', vencida: 'Vencido' }[c.tono];
   const chip = c.finalizada && c.tono !== 'vencida' ? 'fin' : c.tono;
   const filas = [['Recibida', rcFechaCorta(c.recibido)]];
-  let rotulo, valor, sub, anillo, barra, nota = '';
+  let rotulo, valor, sub, anillo, nota = '';
   if (!r.ajuste_en) {
     rotulo = 'SIN AJUSTE';
     valor = rcCorto(c.desdeRecepcion);
     sub = 'desde que llegó';
     anillo = 0;
-    barra = 0;
     filas.push(['Vence', '—'], ['Consumido', `0h 00m / ${HL.PLAZO_HORAS}h`]);
     nota = `El plazo de ${HL.PLAZO_HORAS} h empieza al registrar el ajuste de inventario.`;
   } else {
@@ -3717,7 +3717,6 @@ function rcMedidorHTML(r, ahora) {
     valor = rcCorto(c.restan);
     sub = `${usado}% de ${HL.PLAZO_HORAS}h`;
     anillo = c.restan < 0 ? 100 : Math.max(0, 100 - usado);
-    barra = Math.min(100, usado);
     filas.push(['Vence', rcFechaCorta(c.vence)], ['Consumido', `${rcCorto(c.usadas)} / ${HL.PLAZO_HORAS}h`],
       ['Desde llegada', rcCorto(c.desdeRecepcion)]);
     if (c.finalizada) filas.push(['Finalizada', rcFechaCorta(c.fin)]);
@@ -3736,12 +3735,7 @@ function rcMedidorHTML(r, ahora) {
         <dl class="rc-filas">${filas.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
       </div>
     </div>
-    <div class="rc-barra rc-${c.tono}" aria-hidden="true"><div style="width:${barra}%"></div></div>
-    ${nota ? `<p class="rc-nota">${esc(nota)}</p>` : ''}
-    ${pausa ? `<div class="rc-pausa">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 5v14"/><path d="M15 5v14"/></svg>
-      <span>En pausa (fuera de horario) · sigue ${esc(rcFechaCorta(HL.proximaApertura(ahora), true))}</span>
-    </div>` : ''}`;
+    ${nota ? `<p class="rc-nota">${esc(nota)}</p>` : ''}`;
 }
 
 const RC_ICONO_COPIAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></svg>';
@@ -3772,8 +3766,25 @@ function rcAccionesHTML(r) {
     </div>`;
 }
 
-const RC_PAIS = 'CR Costa Rica';
 const RC_BODEGA = 'Efficommerce Costa Rica';
+
+// Abiertas: primero las vencidas (la más pasada arriba), luego por vencer, en
+// plazo y, al final, las que aún no tienen ajuste (la más antigua primero).
+const RC_ORDEN = { vencida: 0, riesgo: 1, ok: 2, espera: 3 };
+function rcVisibles(ahora) {
+  if (rcEstadoActual !== 'abiertas') return recepciones;
+  const items = recepciones.map(r => ({ r, c: rcCalculo(r, ahora) }))
+    .filter(x => !rcFiltroTono || x.c.tono === rcFiltroTono);
+  items.sort((a, b) => (RC_ORDEN[a.c.tono] - RC_ORDEN[b.c.tono]) ||
+    (a.c.tono === 'espera' ? b.c.desdeRecepcion - a.c.desdeRecepcion : a.c.restan - b.c.restan));
+  return items.map(x => x.r);
+}
+
+// Los contadores de arriba filtran la lista; otro clic quita el filtro
+function rcFiltrar(tono) {
+  rcFiltroTono = rcFiltroTono === tono ? '' : tono;
+  renderRecepciones();
+}
 
 function renderRecepciones() {
   const lista = document.getElementById('rc-lista');
@@ -3784,7 +3795,13 @@ function renderRecepciones() {
     return;
   }
   const ahora = rcAhora();
-  lista.innerHTML = recepciones.map(r => {
+  const visibles = rcVisibles(ahora);
+  if (!visibles.length) {
+    lista.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">No hay recepciones con ese estado</span></div>';
+    actualizarMedidores();
+    return;
+  }
+  lista.innerHTML = visibles.map(r => {
     const id = Number(r.id), cajas = Number(r.cajas);
     return `
     <article class="rc-card" data-id="${id}">
@@ -3800,8 +3817,6 @@ function renderRecepciones() {
             </button>
           </div>
           <div class="rc-tags">
-            <span class="rc-tag rc-tag-pais">${esc(RC_PAIS)}</span>
-            <span class="rc-tag rc-tag-bodega">${esc(RC_BODEGA)}</span>
             <span class="rc-tag rc-tag-num">#${id}</span>
           </div>
           <p class="rc-sub">${cajas.toLocaleString('es-CR')} caja${cajas === 1 ? '' : 's'} · recibió ${esc(r.recibido_por)}</p>
@@ -3837,12 +3852,16 @@ function actualizarMedidores() {
   const calc = recepciones.map(r => rcCalculo(r, ahora));
   const abiertas = calc.filter(c => !c.finalizada), fin = calc.filter(c => c.finalizada && c.ajuste);
   const tarjeta = (n, txt, tono) => `<div class="rc-res rc-res-${tono}"><strong>${n}</strong><span>${esc(txt)}</span></div>`;
+  const filtro = (n, txt, tono) => {
+    const on = rcFiltroTono === tono;
+    return `<button type="button" class="rc-res rc-res-${tono}${on ? ' activo' : ''}" aria-pressed="${on}" onclick="rcFiltrar('${tono}')"><strong>${n}</strong><span>${esc(txt)}</span></button>`;
+  };
   let html = '';
   if (abiertas.length || rcEstadoActual === 'abiertas') {
-    html += tarjeta(abiertas.filter(c => c.tono === 'espera').length, 'Sin ajuste', 'espera') +
-      tarjeta(abiertas.filter(c => c.tono === 'ok').length, 'En plazo', 'ok') +
-      tarjeta(abiertas.filter(c => c.tono === 'riesgo').length, `Por vencer (< ${RC_RIESGO_HORAS} h)`, 'riesgo') +
-      tarjeta(abiertas.filter(c => c.tono === 'vencida').length, 'Vencidas', 'vencida');
+    html += filtro(abiertas.filter(c => c.tono === 'espera').length, 'Sin ajuste', 'espera') +
+      filtro(abiertas.filter(c => c.tono === 'ok').length, 'En plazo', 'ok') +
+      filtro(abiertas.filter(c => c.tono === 'riesgo').length, `Por vencer (< ${RC_RIESGO_HORAS} h)`, 'riesgo') +
+      filtro(abiertas.filter(c => c.tono === 'vencida').length, 'Vencidas', 'vencida');
   }
   if (fin.length) {
     const aTiempo = fin.filter(c => c.restan >= 0).length;
@@ -3850,7 +3869,9 @@ function actualizarMedidores() {
     html += tarjeta(`${aTiempo}/${fin.length}`, 'Finalizadas a tiempo', aTiempo === fin.length ? 'ok' : 'riesgo') +
       tarjeta(rcHoras(prom), 'Promedio tras el ajuste', 'fin');
   }
-  document.getElementById('rc-resumen').innerHTML = html;
+  // Solo se vuelve a pintar si cambió, para no quitarle el foco al botón activo
+  const resumen = document.getElementById('rc-resumen');
+  if (resumen._rcHtml !== html) { resumen.innerHTML = html; resumen._rcHtml = html; }
 }
 
 function rcReemplazar(r, ahora) {
