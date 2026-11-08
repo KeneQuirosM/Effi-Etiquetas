@@ -1,4 +1,13 @@
 -- =============================================
+-- ADVERTENCIA: antes de ejecutar cualquier .sql en producción:
+-- respaldo + supabase/remediacion/etapa1/06_VERIFICACION.sql antes y
+-- después (todo OK). Estado aplicado: supabase/ESTADO_PRODUCCION.md.
+-- Este archivo deja las tablas cerradas (RLS sin políticas y sin
+-- escritura para anon/authenticated) y las funciones sin EXECUTE
+-- público: volver a ejecutarlo NO reabre lo cerrado el 2026-11-07.
+-- =============================================
+
+-- =============================================
 -- CONTEOS — registro de conteos de mercancía (módulo /conteos)
 -- Ejecutar manualmente en Supabase SQL Editor (no hay migraciones).
 --
@@ -64,13 +73,10 @@ CREATE INDEX IF NOT EXISTS idx_conteos_cola_impresion ON conteos(imprimir_solici
 
 ALTER TABLE conteos ENABLE ROW LEVEL SECURITY;
 
+-- RLS sin políticas: solo la API (service role) lee y escribe (SEC-02, S3/S3b)
 DROP POLICY IF EXISTS "lectura_publica_conteos" ON conteos;
-CREATE POLICY "lectura_publica_conteos"
-  ON conteos FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "escritura_coordinador_conteos" ON conteos;
-CREATE POLICY "escritura_coordinador_conteos"
-  ON conteos FOR ALL USING (auth.role() = 'authenticated');
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON conteos FROM anon, authenticated;
 
 -- Historial de traslados (panel de coordinador → Conteos → Trasladar):
 -- una fila por conteo movido de tienda y/o ID, con quién lo hizo.
@@ -94,13 +100,10 @@ CREATE INDEX IF NOT EXISTS idx_conteos_traslados_conteo ON conteos_traslados(con
 
 ALTER TABLE conteos_traslados ENABLE ROW LEVEL SECURITY;
 
+-- RLS sin políticas (trasladado_por guarda correos de coordinadores)
 DROP POLICY IF EXISTS "lectura_publica_conteos_traslados" ON conteos_traslados;
-CREATE POLICY "lectura_publica_conteos_traslados"
-  ON conteos_traslados FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "escritura_coordinador_conteos_traslados" ON conteos_traslados;
-CREATE POLICY "escritura_coordinador_conteos_traslados"
-  ON conteos_traslados FOR ALL USING (auth.role() = 'authenticated');
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON conteos_traslados FROM anon, authenticated;
 
 -- Traslado PARCIAL: divide un conteo en una sola transacción. El original
 -- se queda con (cantidad - p_cantidad) y (cajas - p_cajas, mínimo 1); se
@@ -155,7 +158,11 @@ BEGIN
 
   RETURN nuevo_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
+
+-- Solo la API (service role) puede ejecutarla (SEC-01/SEC-02)
+REVOKE ALL ON FUNCTION trasladar_parcial_conteo(bigint, integer, integer, integer, text, text, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION trasladar_parcial_conteo(bigint, integer, integer, integer, text, text, text, text) TO service_role;
 
 -- Bucket privado para las fotos. La API sube y firma con la service role
 -- key, así que no hacen falta políticas de storage para el público.

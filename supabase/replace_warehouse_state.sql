@@ -1,4 +1,13 @@
 -- =============================================
+-- ADVERTENCIA: antes de ejecutar cualquier .sql en producción:
+-- respaldo + supabase/remediacion/etapa1/06_VERIFICACION.sql antes y
+-- después (todo OK). Estado aplicado: supabase/ESTADO_PRODUCCION.md.
+-- Este archivo deja las tablas cerradas (RLS sin políticas y sin
+-- escritura para anon/authenticated) y las funciones sin EXECUTE
+-- público: volver a ejecutarlo NO reabre lo cerrado el 2026-11-07.
+-- =============================================
+
+-- =============================================
 -- replace_warehouse_state(payload jsonb)
 -- Reemplaza en una única transacción todo el estado de STOCKFORGE
 -- (zonas, racks, celdas y sus tablas hijas, movimientos) a partir
@@ -17,6 +26,7 @@ CREATE OR REPLACE FUNCTION replace_warehouse_state(payload jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_celdas_ok      integer := 0;
@@ -202,4 +212,7 @@ BEGIN
 END;
 $$;
 
+-- Solo la API (service role) puede ejecutarla (SEC-01). Sin el REVOKE, el
+-- EXECUTE por defecto de PUBLIC dejaba vaciar el almacén con la anon key.
+REVOKE ALL ON FUNCTION replace_warehouse_state(jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION replace_warehouse_state(jsonb) TO service_role;

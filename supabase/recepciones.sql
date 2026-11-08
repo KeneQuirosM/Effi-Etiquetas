@@ -1,4 +1,13 @@
 -- =============================================
+-- ADVERTENCIA: antes de ejecutar cualquier .sql en producción:
+-- respaldo + supabase/remediacion/etapa1/06_VERIFICACION.sql antes y
+-- después (todo OK). Estado aplicado: supabase/ESTADO_PRODUCCION.md.
+-- Este archivo deja las tablas cerradas (RLS sin políticas y sin
+-- escritura para anon/authenticated) y las funciones sin EXECUTE
+-- público: volver a ejecutarlo NO reabre lo cerrado el 2026-11-07.
+-- =============================================
+
+-- =============================================
 -- RECEPCIONES — recepción de mercancía (módulo /recepcion)
 -- Ejecutar manualmente en Supabase SQL Editor (no hay migraciones).
 --
@@ -38,10 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_recepciones_abiertas ON recepciones(creado_en) WH
 
 ALTER TABLE recepciones ENABLE ROW LEVEL SECURITY;
 
+-- RLS sin políticas: solo la API (service role) lee y escribe (SEC-02, S3/S3b)
 DROP POLICY IF EXISTS "lectura_publica_recepciones" ON recepciones;
-CREATE POLICY "lectura_publica_recepciones"
-  ON recepciones FOR SELECT USING (true);
-
 DROP POLICY IF EXISTS "escritura_coordinador_recepciones" ON recepciones;
-CREATE POLICY "escritura_coordinador_recepciones"
-  ON recepciones FOR ALL USING (auth.role() = 'authenticated');
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON recepciones FROM anon, authenticated;
