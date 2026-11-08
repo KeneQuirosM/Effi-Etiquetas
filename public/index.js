@@ -3677,69 +3677,103 @@ function rcCalculo(r, ahora) {
   return c;
 }
 
+// Formato corto de las tarjetas: "sáb 7 nov 9:07a"; con larga, "lun 9 nov, 7:30 a. m."
+function rcFechaCorta(ms, larga) {
+  const p = {};
+  new Intl.DateTimeFormat('es-CR', {
+    timeZone: RC_TZ, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true
+  }).formatToParts(new Date(ms)).forEach(x => { p[x.type] = x.value; });
+  const dia = `${(p.weekday || '').replace('.', '')} ${p.day} ${(p.month || '').replace('.', '')}`;
+  const pm = /p/i.test(p.dayPeriod || '');
+  return larga ? `${dia}, ${p.hour}:${p.minute}\u00a0${pm ? 'p.\u00a0m.' : 'a.\u00a0m.'}` : `${dia} ${p.hour}:${p.minute}${pm ? 'p' : 'a'}`;
+}
+// Horas en formato de reloj: "21h 54m"; negativo con signo menos: "−1h 12m"
+function rcCorto(h) {
+  const min = Math.round(Math.abs(h) * 60);
+  return `${h < 0 && min > 0 ? '−' : ''}${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}m`;
+}
+
+// Bloque que cambia con el tiempo (anillo, datos, barra y pausa). Se vuelve a
+// pintar cada 30 s sin tocar el ajuste ni los botones.
 function rcMedidorHTML(r, ahora) {
   const c = rcCalculo(r, ahora);
   const HL = HorarioLaboral;
   const pausa = !c.finalizada && !HL.enHorario(ahora);
-  let centro, sub, lineas = [];
+  const etiqueta = c.finalizada ? 'Finalizada' : { espera: 'Sin ajuste', ok: 'En plazo', riesgo: 'Alerta', vencida: 'Vencido' }[c.tono];
+  const chip = c.finalizada && c.tono !== 'vencida' ? 'fin' : c.tono;
+  const filas = [['Recibida', rcFechaCorta(c.recibido)]];
+  let rotulo, valor, sub, anillo, barra, nota = '';
   if (!r.ajuste_en) {
-    centro = rcHoras(c.desdeRecepcion);
+    rotulo = 'SIN AJUSTE';
+    valor = rcCorto(c.desdeRecepcion);
     sub = 'desde que llegó';
-    lineas.push('<b>Esperando el ajuste de inventario.</b> El plazo de 24 h empieza al registrarlo.');
+    anillo = 0;
+    barra = 0;
+    filas.push(['Vence', '—'], ['Consumido', `0h 00m / ${HL.PLAZO_HORAS}h`]);
+    nota = `El plazo de ${HL.PLAZO_HORAS} h empieza al registrar el ajuste de inventario.`;
   } else {
-    centro = rcHoras(c.usadas);
-    sub = `usadas de ${HL.PLAZO_HORAS} h`;
-    if (c.finalizada) {
-      lineas.push(c.restan >= 0
-        ? `<b>Terminada ${esc(rcHoras(c.usadas))} laborables después del ajuste</b>, a tiempo (sobraron ${esc(rcHoras(c.restan))}).`
-        : `<b>Terminada ${esc(rcHoras(c.usadas))} laborables después del ajuste</b>, ${esc(rcHoras(-c.restan))} fuera del plazo.`);
-    } else if (c.restan >= 0) {
-      lineas.push(`<b>Quedan ${esc(rcHoras(c.restan))} laborables.</b> Vence el ${esc(rcFecha(c.vence, true))}`);
-    } else {
-      lineas.push(`<b>Vencida hace ${esc(rcHoras(-c.restan))} laborables</b> (venció ${esc(rcFecha(c.vence, true))}).`);
-    }
+    const usado = Math.round(c.usadas / HL.PLAZO_HORAS * 100);
+    rotulo = c.finalizada ? (c.restan >= 0 ? 'SOBRARON' : 'EXCEDIDO') : (c.restan < 0 ? 'VENCIDO' : 'RESTANTE');
+    valor = rcCorto(c.restan);
+    sub = `${usado}% de ${HL.PLAZO_HORAS}h`;
+    anillo = c.restan < 0 ? 100 : Math.max(0, 100 - usado);
+    barra = Math.min(100, usado);
+    filas.push(['Vence', rcFechaCorta(c.vence)], ['Consumido', `${rcCorto(c.usadas)} / ${HL.PLAZO_HORAS}h`],
+      ['Desde llegada', rcCorto(c.desdeRecepcion)]);
+    if (c.finalizada) filas.push(['Finalizada', rcFechaCorta(c.fin)]);
   }
-  if (r.ajuste_en) lineas.push(`Desde la recepción: ${esc(rcHoras(c.desdeRecepcion))} laborables.`);
-  if (pausa) lineas.push(`<span class="rc-pausa">En pausa (fuera de horario), sigue el ${esc(rcFecha(HL.proximaApertura(ahora), true))}</span>`);
-
-  const etiqueta = c.finalizada ? 'Finalizada' : { espera: 'Sin ajuste', ok: 'En plazo', riesgo: 'Por vencer', vencida: 'Vencida' }[c.tono];
-  const pct = Math.round(c.pct * 1000) / 10;
   return `
-    <div class="rc-gauge rc-${c.tono}" role="img" aria-label="${esc(`${centro} ${sub}`)}">
-      <svg viewBox="0 0 120 68" aria-hidden="true">
-        <path class="rc-gauge-pista" d="M10 62 A50 50 0 0 1 110 62" pathLength="100"/>
-        ${pct > 0 ? `<path class="rc-gauge-valor" d="M10 62 A50 50 0 0 1 110 62" pathLength="100" stroke-dasharray="${pct} 100"/>` : ''}
-      </svg>
-      <div class="rc-gauge-txt"><strong>${esc(centro)}</strong><span>${esc(sub)}</span></div>
+    <div class="rc-tiempo rc-${c.tono}">
+      <div class="rc-anillo" style="--rc-pct:${anillo}%" role="img" aria-label="${esc(`${rotulo.toLowerCase()}: ${valor}, ${sub}`)}">
+        <div class="rc-anillo-centro" aria-hidden="true">
+          <span class="rc-anillo-rotulo">${esc(rotulo)}</span>
+          <span class="rc-anillo-valor">${esc(valor)}</span>
+          <span class="rc-anillo-sub">${esc(sub)}</span>
+        </div>
+      </div>
+      <div class="rc-datos">
+        <span class="rc-chip rc-chip-${chip}">${esc(etiqueta)}</span>
+        <dl class="rc-filas">${filas.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+      </div>
     </div>
-    <div class="rc-estado-txt">
-      <span class="rc-chip rc-chip-${c.finalizada && c.tono !== 'vencida' ? 'fin' : c.tono}">${esc(etiqueta)}</span>
-      ${lineas.map(l => `<p>${l}</p>`).join('')}
-    </div>`;
+    <div class="rc-barra rc-${c.tono}" aria-hidden="true"><div style="width:${barra}%"></div></div>
+    ${nota ? `<p class="rc-nota">${esc(nota)}</p>` : ''}
+    ${pausa ? `<div class="rc-pausa">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 5v14"/><path d="M15 5v14"/></svg>
+      <span>En pausa (fuera de horario) · sigue ${esc(rcFechaCorta(HL.proximaApertura(ahora), true))}</span>
+    </div>` : ''}`;
 }
+
+const RC_ICONO_COPIAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></svg>';
 
 function rcAccionesHTML(r) {
   const id = Number(r.id);
   if (r.finalizado_en) {
-    return `<p class="rc-meta">Finalizada ${esc(rcFecha(Date.parse(r.finalizado_en)))}${r.finalizado_por ? ` por ${esc(r.finalizado_por)}` : ''}.</p>
-      <div class="rc-botones"><button type="button" class="btn-action btn-ghost" onclick="rcFinalizar(${id}, false)">Reabrir</button></div>`;
+    return `<div class="rc-ajuste">
+        <p class="rc-meta">Finalizada ${esc(rcFecha(Date.parse(r.finalizado_en)))}${r.finalizado_por ? ` por ${esc(r.finalizado_por)}` : ''}.</p>
+      </div>
+      <div class="rc-pie"><button type="button" class="rc-btn rc-btn-sec rc-btn-lg rc-btn-ancho" onclick="rcFinalizar(${id}, false)">Reabrir</button></div>`;
   }
   const max = rcValorLocal(rcAhora());
   const valor = r.ajuste_en ? rcValorLocal(Date.parse(r.ajuste_en)) : max;
   return `
     <div class="rc-ajuste">
-      <label for="rc-aj-${id}">${r.ajuste_en ? 'Ajuste de inventario recibido' : 'Llegó el ajuste de inventario'}</label>
+      <label for="rc-aj-${id}">Ajuste de inventario recibido</label>
       <div class="rc-ajuste-fila">
         <input type="datetime-local" id="rc-aj-${id}" value="${esc(valor)}" max="${esc(max)}">
-        <button type="button" class="btn-action ${r.ajuste_en ? 'btn-ghost' : 'btn-primary'}" onclick="rcGuardarAjuste(${id})">${r.ajuste_en ? 'Cambiar' : 'Registrar ajuste'}</button>
-        ${r.ajuste_en ? `<button type="button" class="btn-action btn-ghost" onclick="rcQuitarAjuste(${id})">Quitar</button>` : ''}
+        <button type="button" class="rc-btn ${r.ajuste_en ? 'rc-btn-sec' : 'rc-btn-pri'}" onclick="rcGuardarAjuste(${id})">${r.ajuste_en ? 'Cambiar' : 'Registrar'}</button>
+        ${r.ajuste_en ? `<button type="button" class="rc-btn rc-btn-txt" onclick="rcQuitarAjuste(${id})">Quitar</button>` : ''}
       </div>
-      ${r.ajuste_en && r.ajuste_por ? `<p class="rc-meta">Registrado por ${esc(r.ajuste_por)}.</p>` : ''}
+      <p class="rc-meta">${r.ajuste_en ? `Registrado por ${esc(r.ajuste_por || '—')}` : 'Sin registrar todavía'}</p>
     </div>
-    <div class="rc-botones">
-      <button type="button" class="btn-action btn-primary" onclick="rcFinalizar(${id}, true)" ${r.ajuste_en ? '' : 'disabled title="Registra primero el ajuste de inventario"'}>Dar por contado y finalizar</button>
+    <div class="rc-pie">
+      <button type="button" class="rc-btn rc-btn-sec rc-btn-lg" onclick="rcCopiarAlerta(${id})">${RC_ICONO_COPIAR}Copiar alerta</button>
+      <button type="button" class="rc-btn rc-btn-pri rc-btn-lg rc-btn-ancho" onclick="rcFinalizar(${id}, true)" ${r.ajuste_en ? '' : 'disabled title="Registra primero el ajuste de inventario"'}>Dar por contado y finalizar</button>
     </div>`;
 }
+
+const RC_PAIS = 'CR Costa Rica';
+const RC_BODEGA = 'Efficommerce Costa Rica';
 
 function renderRecepciones() {
   const lista = document.getElementById('rc-lista');
@@ -3750,26 +3784,35 @@ function renderRecepciones() {
     return;
   }
   const ahora = rcAhora();
-  lista.innerHTML = recepciones.map(r => `
-    <article class="rc-card" data-id="${Number(r.id)}">
+  lista.innerHTML = recepciones.map(r => {
+    const id = Number(r.id), cajas = Number(r.cajas);
+    return `
+    <article class="rc-card" data-id="${id}">
       <div class="rc-cab">
-        <a class="rc-foto" ${r.foto_url ? `href="${esc(r.foto_url)}" target="_blank" rel="noopener"` : ''} aria-label="Foto de la recepción">
-          ${r.foto_url ? `<img src="${esc(r.foto_url)}" alt="" loading="lazy">` : '<span>Sin foto</span>'}
-        </a>
+        ${r.foto_url
+          ? `<a class="rc-foto" href="${esc(r.foto_url)}" target="_blank" rel="noopener" aria-label="Ver la foto de la recepción #${id}"><img src="${esc(r.foto_url)}" alt="" loading="lazy"></a>`
+          : `<div class="rc-foto" role="img" aria-label="Sin foto"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></div>`}
         <div class="rc-info">
-          <strong class="rc-tienda">${esc(r.tienda_nombre)}</strong>
-          <span>${Number(r.cajas).toLocaleString('es-CR')} caja${Number(r.cajas) === 1 ? '' : 's'} · recibió ${esc(r.recibido_por)}</span>
-          <span class="rc-meta">Recibida ${esc(rcFecha(rcRecibido(r)))} · #${Number(r.id)}</span>
+          <div class="rc-titulo">
+            <h3 class="rc-tienda">${esc(r.tienda_nombre)}</h3>
+            <button type="button" class="rc-borrar" onclick="rcBorrar(${id})" aria-label="Eliminar la recepción #${id}" title="Eliminar recepción">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+            </button>
+          </div>
+          <div class="rc-tags">
+            <span class="rc-tag rc-tag-pais">${esc(RC_PAIS)}</span>
+            <span class="rc-tag rc-tag-bodega">${esc(RC_BODEGA)}</span>
+            <span class="rc-tag rc-tag-num">#${id}</span>
+          </div>
+          <p class="rc-sub">${cajas.toLocaleString('es-CR')} caja${cajas === 1 ? '' : 's'} · recibió ${esc(r.recibido_por)}</p>
           ${r.recibido_en && Math.abs(Date.parse(r.recibido_en) - Date.parse(r.creado_en)) > 10 * 60000
-            ? `<span class="rc-meta">Hora cambiada en el celular; se registró ${esc(rcFecha(Date.parse(r.creado_en)))}</span>` : ''}
+            ? `<p class="rc-meta">Hora cambiada en el celular; se registró ${esc(rcFecha(Date.parse(r.creado_en)))}</p>` : ''}
         </div>
-        <button type="button" class="rc-borrar" onclick="rcBorrar(${Number(r.id)})" aria-label="Eliminar la recepción #${Number(r.id)}" title="Eliminar recepción">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-        </button>
       </div>
       <div class="rc-medidor">${rcMedidorHTML(r, ahora)}</div>
       ${rcAccionesHTML(r)}
-    </article>`).join('');
+    </article>`;
+  }).join('');
   actualizarMedidores();
 }
 
@@ -3855,6 +3898,37 @@ async function rcFinalizar(id, finalizar) {
       : 'Recepción reabierta', finalizar && c.restan < 0 ? 'warn' : 'success');
     rcReemplazar(res.recepcion, res.ahora);
   } catch (e) { notify(e.message || 'No se pudo guardar', 'error'); }
+}
+
+// Copia al portapapeles un aviso para mandar por chat (cliente, bodega,
+// tiempo restante y vencimiento).
+async function rcCopiarAlerta(id) {
+  const r = recepciones?.find(x => Number(x.id) === id);
+  if (!r) return;
+  const c = rcCalculo(r, rcAhora());
+  const lineas = ['Alerta de recepción', `Cliente: ${r.tienda_nombre}`, `Bodega: ${RC_BODEGA}`,
+    `Cajas: ${Number(r.cajas)} · recibió ${r.recibido_por}`];
+  if (!r.ajuste_en) {
+    lineas.push(`Recibida: ${rcFechaCorta(c.recibido, true)}`,
+      `Sin ajuste de inventario: el plazo de ${HorarioLaboral.PLAZO_HORAS} h no ha empezado`);
+  } else {
+    lineas.push(c.restan >= 0 ? `Tiempo restante: ${rcCorto(c.restan)} laborables` : `Vencida hace ${rcCorto(-c.restan)} laborables`,
+      `Vence: ${rcFechaCorta(c.vence, true)}`);
+  }
+  const texto = lineas.join('\n');
+  let ok = false;
+  try { await navigator.clipboard.writeText(texto); ok = true; } catch { /* sin permiso o sin HTTPS: plan B */ }
+  if (!ok) {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    ta.remove();
+  }
+  notify(ok ? 'Alerta copiada al portapapeles' : 'No se pudo copiar la alerta', ok ? 'success' : 'error');
 }
 
 /* ── FERIADOS ─────────────────────────────────────────────
@@ -3977,7 +4051,11 @@ async function rcBorrar(id) {
   const r = recepciones?.find(x => Number(x.id) === id);
   if (!r) return;
   const desc = `${r.tienda_nombre}, ${Number(r.cajas)} caja${Number(r.cajas) === 1 ? '' : 's'}, recibida ${rcFecha(rcRecibido(r))} por ${r.recibido_por}`;
-  if (!confirm(`¿Eliminar la recepción #${id}?\n\n${desc}${r.finalizado_en ? '\n\nYa está finalizada: se pierde también su registro de cierre.' : ''}\n\nSe borran el registro y su foto. No se puede deshacer.`)) return;
+  if (!(await confirmar({
+    titulo: `Eliminar la recepción #${id}`,
+    mensaje: `${desc}.${r.finalizado_en ? ' Ya está finalizada: se pierde también su registro de cierre.' : ''} Se borran el registro y su foto. No se puede deshacer.`,
+    aceptar: 'Eliminar', peligro: true
+  }))) return;
   try {
     await apiDelete('/api/conteos?accion=recepcion', { id });
     recepciones = recepciones.filter(x => Number(x.id) !== id);
