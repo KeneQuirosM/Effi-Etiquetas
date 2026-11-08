@@ -1764,8 +1764,8 @@ button.rc-res.activo { background: var(--brand-50); border-color: var(--brand-50
   --rc-late: #d92d20;    --rc-late-ink: #a8221a;    --rc-late-bg: #fde7e5;
   --rc-wait: var(--brand-500); --rc-wait-ink: var(--brand-800); --rc-wait-bg: var(--brand-50);
   --rc-pista: #eceff3;
-  --rc-tinta: #1c2030;   --rc-tenue: #5a6072;       --rc-sec: #4a5064;
-  --rc-linea: #d5d9e3;   --rc-primario: #1b2280;
+  --rc-tinta: var(--neutral-800); --rc-tenue: var(--neutral-600); --rc-sec: var(--neutral-600);
+  --rc-linea: var(--neutral-300); --rc-primario: var(--brand-800);
 }
 .rc-lista {
   /* Columnas según el ancho real de la lista (no de la ventana): 2 en el
@@ -1797,10 +1797,10 @@ button.rc-res.activo { background: var(--brand-50); border-color: var(--brand-50
 }
 .rc-borrar {
   flex: none; width: 32px; height: 32px; margin: 0; padding: 0; border: 0; border-radius: 8px;
-  background: transparent; color: #c0392b; cursor: pointer;
+  background: transparent; color: var(--rc-tenue); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.rc-borrar:hover, .rc-borrar:focus-visible { background: var(--rc-late-bg); }
+.rc-borrar:hover, .rc-borrar:focus-visible { background: var(--rc-late-bg); color: var(--rc-late-ink); }
 .rc-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .rc-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; }
 .rc-tag-num    { background: #f0f1f5; color: var(--rc-sec); }
@@ -1858,7 +1858,7 @@ button.rc-res.activo { background: var(--brand-50); border-color: var(--brand-50
 .rc-btn-sec { border: 1px solid var(--rc-linea); background: #fff; color: var(--rc-tinta); }
 .rc-btn-sec:hover { background: var(--neutral-50); }
 .rc-btn-pri { border: 0; background: var(--rc-primario); color: #fff; font-weight: 700; }
-.rc-btn-pri:hover { background: #10155a; }
+.rc-btn-pri:hover { background: var(--brand-700); }
 .rc-btn-txt { border: 0; background: transparent; color: var(--rc-tenue); padding: 0 12px; }
 .rc-btn-txt:hover { color: var(--rc-tinta); background: var(--neutral-100); }
 .rc-btn:disabled { opacity: .5; cursor: not-allowed; }

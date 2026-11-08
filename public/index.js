@@ -3641,13 +3641,7 @@ function iniciarRelojRecepciones() {
   }, 30000);
 }
 
-/* Formatos */
-function rcFecha(ms, conDia) {
-  return new Intl.DateTimeFormat('es-CR', {
-    timeZone: RC_TZ, weekday: conDia ? 'short' : undefined, day: '2-digit', month: '2-digit',
-    year: conDia ? undefined : 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
-  }).format(new Date(ms));
-}
+/* Formatos: todas las fechas de la pestaña salen como "sáb 7 nov, 9:07 a. m." */
 function rcHoras(h) {
   const min = Math.round(Math.abs(h) * 60);
   if (min < 60) return `${min} min`;
@@ -3679,15 +3673,14 @@ function rcCalculo(r, ahora) {
   return c;
 }
 
-// Formato corto de las tarjetas: "sáb 7 nov 9:07a"; con larga, "lun 9 nov, 7:30 a. m."
-function rcFechaCorta(ms, larga) {
+function rcFechaCorta(ms) {
   const p = {};
   new Intl.DateTimeFormat('es-CR', {
     timeZone: RC_TZ, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true
   }).formatToParts(new Date(ms)).forEach(x => { p[x.type] = x.value; });
   const dia = `${(p.weekday || '').replace('.', '')} ${p.day} ${(p.month || '').replace('.', '')}`;
   const pm = /p/i.test(p.dayPeriod || '');
-  return larga ? `${dia}, ${p.hour}:${p.minute}\u00a0${pm ? 'p.\u00a0m.' : 'a.\u00a0m.'}` : `${dia} ${p.hour}:${p.minute}${pm ? 'p' : 'a'}`;
+  return `${dia}, ${p.hour}:${p.minute}\u00a0${pm ? 'p.\u00a0m.' : 'a.\u00a0m.'}`;
 }
 // Horas en formato de reloj: "21h 54m"; negativo con signo menos: "−1h 12m"
 function rcCorto(h) {
@@ -3744,7 +3737,7 @@ function rcAccionesHTML(r) {
   const id = Number(r.id);
   if (r.finalizado_en) {
     return `<div class="rc-ajuste">
-        <p class="rc-meta">Finalizada ${esc(rcFecha(Date.parse(r.finalizado_en)))}${r.finalizado_por ? ` por ${esc(r.finalizado_por)}` : ''}.</p>
+        <p class="rc-meta">Finalizada ${esc(rcFechaCorta(Date.parse(r.finalizado_en)))}${r.finalizado_por ? ` por ${esc(r.finalizado_por)}` : ''}.</p>
       </div>
       <div class="rc-pie"><button type="button" class="rc-btn rc-btn-sec rc-btn-lg rc-btn-ancho" onclick="rcFinalizar(${id}, false)">Reabrir</button></div>`;
   }
@@ -3758,7 +3751,7 @@ function rcAccionesHTML(r) {
         <button type="button" class="rc-btn ${r.ajuste_en ? 'rc-btn-sec' : 'rc-btn-pri'}" onclick="rcGuardarAjuste(${id})">${r.ajuste_en ? 'Cambiar' : 'Registrar'}</button>
         ${r.ajuste_en ? `<button type="button" class="rc-btn rc-btn-txt" onclick="rcQuitarAjuste(${id})">Quitar</button>` : ''}
       </div>
-      <p class="rc-meta">${r.ajuste_en ? `Registrado por ${esc(r.ajuste_por || '—')}` : 'Sin registrar todavía'}</p>
+      <p class="rc-meta">${r.ajuste_en ? `Registrado por ${esc(r.ajuste_por || '—')} · ${esc(rcFechaCorta(Date.parse(r.ajuste_en)))}` : 'Sin registrar todavía'}</p>
     </div>
     <div class="rc-pie">
       <button type="button" class="rc-btn rc-btn-sec rc-btn-lg" onclick="rcCopiarAlerta(${id})">${RC_ICONO_COPIAR}Copiar alerta</button>
@@ -3821,7 +3814,7 @@ function renderRecepciones() {
           </div>
           <p class="rc-sub">${cajas.toLocaleString('es-CR')} caja${cajas === 1 ? '' : 's'} · recibió ${esc(r.recibido_por)}</p>
           ${r.recibido_en && Math.abs(Date.parse(r.recibido_en) - Date.parse(r.creado_en)) > 10 * 60000
-            ? `<p class="rc-meta">Hora cambiada en el celular; se registró ${esc(rcFecha(Date.parse(r.creado_en)))}</p>` : ''}
+            ? `<p class="rc-meta">Hora cambiada en el celular; se registró ${esc(rcFechaCorta(Date.parse(r.creado_en)))}</p>` : ''}
         </div>
       </div>
       <div class="rc-medidor">${rcMedidorHTML(r, ahora)}</div>
@@ -3847,7 +3840,7 @@ function actualizarMedidores() {
   const feriadoHoy = HL.esFeriado(hoyCR) ? feriadosLista.find(f => f.fecha === hoyCR) : null;
   reloj.textContent = HL.enHorario(ahora)
     ? 'En horario laboral: los plazos están corriendo.'
-    : `${feriadoHoy ? `Hoy es feriado (${feriadoHoy.nombre || 'Feriado'})` : 'Fuera de horario'}: los plazos están en pausa hasta el ${rcFecha(HL.proximaApertura(ahora), true)}`;
+    : `${feriadoHoy ? `Hoy es feriado (${feriadoHoy.nombre || 'Feriado'})` : 'Fuera de horario'}: los plazos están en pausa hasta el ${rcFechaCorta(HL.proximaApertura(ahora))}`;
 
   const calc = recepciones.map(r => rcCalculo(r, ahora));
   const abiertas = calc.filter(c => !c.finalizada), fin = calc.filter(c => c.finalizada && c.ajuste);
@@ -3930,11 +3923,11 @@ async function rcCopiarAlerta(id) {
   const lineas = ['Alerta de recepción', `Cliente: ${r.tienda_nombre}`, `Bodega: ${RC_BODEGA}`,
     `Cajas: ${Number(r.cajas)} · recibió ${r.recibido_por}`];
   if (!r.ajuste_en) {
-    lineas.push(`Recibida: ${rcFechaCorta(c.recibido, true)}`,
+    lineas.push(`Recibida: ${rcFechaCorta(c.recibido)}`,
       `Sin ajuste de inventario: el plazo de ${HorarioLaboral.PLAZO_HORAS} h no ha empezado`);
   } else {
     lineas.push(c.restan >= 0 ? `Tiempo restante: ${rcCorto(c.restan)} laborables` : `Vencida hace ${rcCorto(-c.restan)} laborables`,
-      `Vence: ${rcFechaCorta(c.vence, true)}`);
+      `Vence: ${rcFechaCorta(c.vence)}`);
   }
   const texto = lineas.join('\n');
   let ok = false;
@@ -4071,7 +4064,7 @@ async function guardarFeriados() {
 async function rcBorrar(id) {
   const r = recepciones?.find(x => Number(x.id) === id);
   if (!r) return;
-  const desc = `${r.tienda_nombre}, ${Number(r.cajas)} caja${Number(r.cajas) === 1 ? '' : 's'}, recibida ${rcFecha(rcRecibido(r))} por ${r.recibido_por}`;
+  const desc = `${r.tienda_nombre}, ${Number(r.cajas)} caja${Number(r.cajas) === 1 ? '' : 's'}, recibida ${rcFechaCorta(rcRecibido(r))} por ${r.recibido_por}`;
   if (!(await confirmar({
     titulo: `Eliminar la recepción #${id}`,
     mensaje: `${desc}.${r.finalizado_en ? ' Ya está finalizada: se pierde también su registro de cierre.' : ''} Se borran el registro y su foto. No se puede deshacer.`,
