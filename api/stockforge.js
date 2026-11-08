@@ -13,6 +13,52 @@ import { registrar } from './_bitacora.js';
 // para todo SKU con producto_id. Ver REMEDIACION/etapa2a/RESUMEN.md.
 const PERMISOS_GUARDAR = ['almacen-editar', 'tab-add-tienda', 'tab-manage'];
 
+// 22P02: replace_warehouse_state hace COALESCE((campo)::numeric, defecto) en 6
+// campos, y PostgreSQL rechaza ''::numeric antes del COALESCE. El editor de
+// celda envía cost: "" cuando la casilla está vacía (y un costo 0 se pinta
+// vacío). Aquí: "" o solo espacios → null (la función pone su valor por
+// defecto); número o texto numérico → sin cambios; cualquier otra cosa → 400.
+// Ver REMEDIACION/etapa2a/DIAGNOSTICO_22P02.md.
+const TEXTO_NUMERICO = /^\s*[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\s*$/;
+
+// Normaliza obj[clave] en el sitio. Devuelve null si es válido o la ruta del campo si no.
+function normalizarNumero(obj, clave, ruta) {
+  if (!obj || typeof obj !== 'object' || !(clave in obj)) return null;
+  const v = obj[clave];
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? null : ruta;
+  if (typeof v === 'string') {
+    if (v.trim() === '') { obj[clave] = null; return null; }
+    return TEXTO_NUMERICO.test(v) ? null : ruta;
+  }
+  return ruta;   // booleano, objeto, array…
+}
+
+// Los 6 campos numéricos de la función. Devuelve la ruta del primer campo inválido o null.
+function normalizarNumericos({ zones, racks, cells, bodega }) {
+  const revisar = [];
+  zones.forEach((z, i) => revisar.push([z, 'area_m2', `zones[${i}].area_m2`]));
+  racks.forEach((r, i) => {
+    revisar.push([r, 'largo_m', `racks[${i}].largo_m`]);
+    revisar.push([r, 'ancho_m', `racks[${i}].ancho_m`]);
+  });
+  if (cells && typeof cells === 'object') {
+    for (const [rack, celdas] of Object.entries(cells)) {
+      if (!Array.isArray(celdas)) continue;
+      celdas.forEach((c, i) => {
+        if (Array.isArray(c?.skus)) c.skus.forEach((sku, j) => revisar.push([sku, 'cost', `cells.${rack}[${i}].skus[${j}].cost`]));
+      });
+    }
+  }
+  revisar.push([bodega, 'area_total_m2', 'bodega.area_total_m2']);
+  revisar.push([bodega, 'area_pasillos_m2', 'bodega.area_pasillos_m2']);
+  for (const [obj, clave, ruta] of revisar) {
+    const invalido = normalizarNumero(obj, clave, ruta);
+    if (invalido) return invalido;
+  }
+  return null;
+}
+
 export default async function handler(req, res) {
   setCors(req, res, 'GET, POST, OPTIONS');
 
@@ -207,6 +253,15 @@ export default async function handler(req, res) {
       if (!Array.isArray(zones) || !Array.isArray(racks) || typeof cells !== 'object') {
         return res.status(400).json({
           error: 'Body inválido: se requieren zones (array), racks (array) y cells (object)'
+        });
+      }
+
+      // Numéricos vacíos → null; texto no numérico → 400 sin llamar a la función (22P02)
+      const campoInvalido = normalizarNumericos({ zones, racks, cells, bodega });
+      if (campoInvalido) {
+        return res.status(400).json({
+          error: `Valor numérico inválido en ${campoInvalido}: escribe un número o deja la casilla vacía`,
+          campo: campoInvalido
         });
       }
 
