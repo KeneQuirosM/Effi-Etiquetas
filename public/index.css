@@ -1796,11 +1796,15 @@ button.rc-res.activo { background: var(--brand-50); border-color: var(--brand-50
   text-transform: uppercase; overflow-wrap: anywhere; padding-top: 5px;
 }
 .rc-borrar {
-  flex: none; width: 32px; height: 32px; margin: 0; padding: 0; border: 0; border-radius: 8px;
-  background: transparent; color: var(--rc-tenue); cursor: pointer;
+  position: relative; flex: none; width: 34px; height: 34px; margin: -2px 0 -6px; padding: 0;
+  border: 1px solid var(--neutral-200); border-radius: 10px; background: #fff; color: var(--rc-tenue); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 2px rgba(20, 24, 40, .05);
+  transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s, transform .1s;
 }
-.rc-borrar:hover, .rc-borrar:focus-visible { background: var(--rc-late-bg); color: var(--rc-late-ink); }
+.rc-borrar::after { content: ''; position: absolute; inset: -5px; }   /* área de toque de 44 px */
+.rc-borrar:hover { background: var(--rc-late-bg); border-color: #f1b5af; color: var(--rc-late-ink); box-shadow: none; }
+.rc-borrar:active { transform: scale(.94); background: #fbd5d1; }
 .rc-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .rc-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; }
 .rc-tag-num    { background: #f0f1f5; color: var(--rc-sec); }
@@ -1852,17 +1856,23 @@ button.rc-res.activo { background: var(--brand-50); border-color: var(--brand-50
 
 /* Botones */
 .rc-btn {
-  height: 40px; padding: 0 14px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600;
-  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+  height: 40px; padding: 0 14px; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap;
+  transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s, transform .1s;
 }
-.rc-btn-sec { border: 1px solid var(--rc-linea); background: #fff; color: var(--rc-tinta); }
-.rc-btn-sec:hover { background: var(--neutral-50); }
-.rc-btn-pri { border: 0; background: var(--rc-primario); color: #fff; font-weight: 700; }
-.rc-btn-pri:hover { background: var(--brand-700); }
-.rc-btn-txt { border: 0; background: transparent; color: var(--rc-tenue); padding: 0 12px; }
-.rc-btn-txt:hover { color: var(--rc-tinta); background: var(--neutral-100); }
+.rc-btn svg { flex: none; }
+.rc-btn:active:not(:disabled) { transform: translateY(1px); }
+.rc-btn-sec { border: 1px solid var(--rc-linea); background: #fff; color: var(--rc-tinta); box-shadow: 0 1px 2px rgba(20, 24, 40, .05); }
+.rc-btn-sec:hover:not(:disabled) { background: var(--brand-50); border-color: var(--brand-300); color: var(--brand-800); }
+.rc-btn-sec:active:not(:disabled) { background: var(--brand-100); box-shadow: none; }
+.rc-btn-pri { border: 1px solid transparent; background: var(--rc-primario); color: #fff; font-weight: 700; box-shadow: 0 1px 2px rgba(13, 27, 110, .25); }
+.rc-btn-pri:hover:not(:disabled) { background: var(--brand-700); }
+/* Quitar: acción que deshace; neutra en reposo y roja solo al señalarla */
+.rc-btn-txt { border: 1px solid transparent; background: transparent; color: var(--rc-tenue); padding: 0 12px; }
+.rc-btn-txt:hover:not(:disabled) { background: var(--rc-late-bg); border-color: #f1b5af; color: var(--rc-late-ink); }
+.rc-btn-txt:active:not(:disabled) { background: #fbd5d1; }
 .rc-btn:disabled { opacity: .5; cursor: not-allowed; }
-.rc-btn-lg { height: 44px; border-radius: 10px; }
+.rc-btn-lg { height: 44px; }
 .rc-btn-ancho { flex: 1; min-width: 0; white-space: normal; line-height: 1.2; }
 .rc-pie { display: flex; gap: 8px; }
 
