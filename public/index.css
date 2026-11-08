@@ -1751,6 +1751,9 @@ body {
 
 /* Tarjetas de recepción. Colores de estado propios de esta vista
    (no redefinen tokens): en plazo, alerta, vencido y sin ajuste. */
+/* El panel mide 700 px; con Recepciones abierta se ensancha para que
+   quepan 2 tarjetas lado a lado. */
+#coord-panel:has(#tab-recepciones.active) { max-width: 1240px; }
 #tab-recepciones {
   --rc-ok: #22a565;      --rc-ok-ink: #14663f;      --rc-ok-bg: #e3f4ea;
   --rc-warn: #e8a317;    --rc-warn-ink: #8a5200;    --rc-warn-bg: #fdf0d5;
@@ -1761,7 +1764,9 @@ body {
   --rc-linea: #d5d9e3;   --rc-primario: #1b2280;
 }
 .rc-lista {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start;
+  /* Columnas según el ancho real de la lista (no de la ventana): 2 en el
+     panel ancho, 1 en pantallas más angostas. */
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 20px; align-items: start;
   background: #f4f5f8; padding: 20px; border-radius: var(--radius-lg);
 }
 .rc-lista > .inv-item { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff; }
@@ -1770,6 +1775,7 @@ body {
   background: #fff; border: 1px solid #e3e6ee; border-radius: 16px; padding: 18px;
   box-shadow: 0 1px 2px rgba(20, 24, 40, .04);
   font-family: var(--font-sans); color: var(--rc-tinta);
+  container-type: inline-size;
 }
 
 /* Encabezado */
@@ -1829,8 +1835,8 @@ body {
   margin: 0; display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 5px;
   font-size: 12px; align-items: baseline;
 }
-.rc-filas dt { color: var(--rc-tenue); }
-.rc-filas dd { margin: 0; text-align: right; font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+.rc-filas dt { color: var(--rc-tenue); white-space: nowrap; }
+.rc-filas dd { margin: 0; text-align: right; font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rc-barra { height: 6px; border-radius: 99px; background: var(--rc-pista); overflow: hidden; }
 .rc-barra > div { height: 100%; border-radius: 99px; background: var(--rc-c); transition: width .4s ease; }
 .rc-nota { margin: 0; font-size: 12px; color: var(--rc-sec); }
@@ -1865,13 +1871,11 @@ body {
 .rc-btn-ancho { flex: 1; min-width: 0; white-space: normal; line-height: 1.2; }
 .rc-pie { display: flex; gap: 8px; }
 
-@media (max-width: 1100px) {
-  .rc-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (max-width: 720px) {
-  .rc-lista { grid-template-columns: 1fr; padding: 12px; gap: 14px; }
+  .rc-lista { padding: 0; gap: 14px; background: none; }
 }
-@media (max-width: 480px) {
+/* Tarjeta angosta: anillo arriba y datos a todo el ancho */
+@container (max-width: 420px) {
   .rc-tiempo { flex-direction: column; align-items: stretch; }
   .rc-anillo { align-self: center; }
   .rc-chip { align-self: center; }
