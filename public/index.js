@@ -3731,6 +3731,9 @@ function rcMedidorHTML(r, ahora) {
     ${nota ? `<p class="rc-nota">${esc(nota)}</p>` : ''}`;
 }
 
+const RC_ICONO_EDITAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const RC_ICONO_QUITAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+const RC_ICONO_BASURA = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
 const RC_ICONO_COPIAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></svg>';
 
 function rcAccionesHTML(r) {
@@ -3748,8 +3751,8 @@ function rcAccionesHTML(r) {
       <label for="rc-aj-${id}">Ajuste de inventario recibido</label>
       <div class="rc-ajuste-fila">
         <input type="datetime-local" id="rc-aj-${id}" value="${esc(valor)}" max="${esc(max)}">
-        <button type="button" class="rc-btn ${r.ajuste_en ? 'rc-btn-sec' : 'rc-btn-pri'}" onclick="rcGuardarAjuste(${id})">${r.ajuste_en ? 'Cambiar' : 'Registrar'}</button>
-        ${r.ajuste_en ? `<button type="button" class="rc-btn rc-btn-txt" onclick="rcQuitarAjuste(${id})">Quitar</button>` : ''}
+        <button type="button" class="rc-btn ${r.ajuste_en ? 'rc-btn-sec' : 'rc-btn-pri'}" onclick="rcGuardarAjuste(${id})">${r.ajuste_en ? `${RC_ICONO_EDITAR}Cambiar` : 'Registrar'}</button>
+        ${r.ajuste_en ? `<button type="button" class="rc-btn rc-btn-txt" onclick="rcQuitarAjuste(${id})" aria-label="Quitar la hora del ajuste">${RC_ICONO_QUITAR}Quitar</button>` : ''}
       </div>
       <p class="rc-meta">${r.ajuste_en ? `Registrado por ${esc(r.ajuste_por || '—')} · ${esc(rcFechaCorta(Date.parse(r.ajuste_en)))}` : 'Sin registrar todavía'}</p>
     </div>
@@ -3805,9 +3808,7 @@ function renderRecepciones() {
         <div class="rc-info">
           <div class="rc-titulo">
             <h3 class="rc-tienda">${esc(r.tienda_nombre)}</h3>
-            <button type="button" class="rc-borrar" onclick="rcBorrar(${id})" aria-label="Eliminar la recepción #${id}" title="Eliminar recepción">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
-            </button>
+            <button type="button" class="rc-borrar" onclick="rcBorrar(${id})" aria-label="Eliminar la recepción #${id}" title="Eliminar recepción">${RC_ICONO_BASURA}</button>
           </div>
           <div class="rc-tags">
             <span class="rc-tag rc-tag-num">#${id}</span>
