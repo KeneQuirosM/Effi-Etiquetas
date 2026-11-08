@@ -4,7 +4,7 @@ Suite web para gestión de inventario, etiquetas de bodega, almacén físico, ma
 
 **Frontend**: HTML/CSS/JS vanilla (sin frameworks, sin build ni bundler)
 **Backend**: Vercel Serverless Functions (Node.js ESM)
-**Base de datos**: Supabase PostgreSQL (20 tablas) + Supabase Storage (fotos de conteos y recepciones)
+**Base de datos**: Supabase PostgreSQL (30 tablas) + Supabase Storage (fotos de conteos y recepciones)
 **Deploy**: Vercel (producción automática desde `main`)
 
 ---
@@ -38,7 +38,9 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 - Traslados de SKU entre celdas con registro de movimientos
 - Reportes por SKU, celda, zona, responsable, vencimiento y movimientos
 - Snapshots del inventario (hasta 7 rotantes)
-- Modo Coordinador con login por email/contraseña (mismo usuario que el generador de etiquetas, pero sesión independiente)
+- Modo Coordinador con login por email/contraseña (mismo usuario que el generador de etiquetas, pero sesión independiente). **Editar y guardar** exige el permiso "Editar y guardar el almacén" más "Nueva Tienda" y "Gestionar Inventario" (por defecto: administrador y coordinador sí, bodeguero no); sin ellos el mapa se ve en solo lectura. Cada guardado queda en la bitácora
+- Sin sesión, el mapa se muestra sin los costos de los SKUs
+- **Defectos conocidos, pendientes de rework** antes de un uso intensivo: el historial guarda solo los últimos 500 movimientos, el último guardado borra los cambios de otros usuarios, una tienda creada desde StockForge y asignada antes de recargar bloquea los guardados, y dos guardados seguidos desde el mismo navegador pueden aplicarse en orden inverso
 - Botón **Limpiar Cantidades** para resetear stock sin borrar productos
 - Soporte bilingüe (ES / EN) y tres temas visuales (Oscuro, Claro, Daltónico)
 - Importación masiva desde Excel/CSV
@@ -107,7 +109,7 @@ Cada módulo es una página independiente (HTML + JS + CSS propios). Solo compar
 
 ## Base de datos
 
-La BD tiene 20 tablas en Supabase PostgreSQL. Todas siguen el mismo patrón de RLS: lectura pública y escritura solo para usuarios autenticados.
+La BD tiene 30 tablas en Supabase PostgreSQL. **Todas tienen RLS activado y ninguna política**: con la anon key o el JWT de un usuario no se puede leer ni escribir ninguna tabla ni ejecutar ninguna función directamente. Toda lectura y escritura pasa por la API (`api/*.js`), que usa la service role y aplica perfiles y permisos. Las tablas principales tampoco conceden INSERT/UPDATE/DELETE/TRUNCATE a `anon` ni `authenticated`, y las funciones solo las ejecuta `service_role` (con `search_path` fijo). El estado aplicado en producción y la regla para cambios están en [`supabase/ESTADO_PRODUCCION.md`](supabase/ESTADO_PRODUCCION.md).
 
 **Core (etiquetas e inventario)** — `supabase-schema.sql`:
 - `tiendas` — catálogo de tiendas
@@ -149,7 +151,7 @@ El guardado del almacén reemplaza el estado completo en una sola transacción c
 
 El campo `skus.producto_id` vincula STOCKFORGE con el catálogo de etiquetas. Cuando un SKU tiene `producto_id`, al guardar el almacén se actualiza automáticamente `productos.ubicacion` con la posición física.
 
-No hay sistema de migraciones: todos los `.sql` se ejecutan a mano en el SQL Editor de Supabase. Si se modifica uno, hay que volver a ejecutarlo.
+No hay sistema de migraciones: todos los `.sql` se ejecutan a mano en el SQL Editor de Supabase. Si se modifica uno, hay que volver a ejecutarlo; todos se pueden ejecutar varias veces sin reabrir nada. **Antes de ejecutar cualquier `.sql` en producción: respaldo + `supabase/remediacion/etapa1/06_VERIFICACION.sql` antes y después.**
 
 ---
 
@@ -204,7 +206,9 @@ effi-etiquetas/
 │   ├── replace_warehouse_state.sql  # función de guardado completo de STOCKFORGE
 │   ├── devoluciones_registro.sql    # tabla + función devoluciones_por_dia
 │   ├── conteos.sql                  # tablas, bucket y trasladar_parcial_conteo
-│   └── dispositivos.sql             # dispositivos vinculados por QR
+│   ├── dispositivos.sql             # dispositivos vinculados por QR
+│   ├── ESTADO_PRODUCCION.md         # estado de seguridad aplicado y regla para cambios
+│   └── remediacion/etapa1/          # scripts de referencia, reversión y 06_VERIFICACION.sql
 ├── google/
 │   ├── conteos-sheets.gs     # Apps Script receptor de conteos
 │   └── README.md             # instalación de la copia a Google Sheets
@@ -221,7 +225,9 @@ effi-etiquetas/
 | Rol | Acceso | Puede |
 |-----|--------|-------|
 | **Usuario** | Sin login | Ver inventario, imprimir etiquetas, usar Manifiestos, Alistamiento, Devoluciones, Trazabilidad y registrar Conteos |
-| **Coordinador** | Login email + contraseña | Todo lo anterior, más: crear/editar/eliminar tiendas y productos, subir logos, configuración, gestionar coordinadores, cambiar contraseña, ver devoluciones y conteos, trasladar conteos, estación de impresión, Reporte Distribuidor y STOCKFORGE completo |
+| **Coordinador** | Login email + contraseña | Todo lo anterior, más: crear/editar/eliminar tiendas y productos, subir logos, configuración, gestionar coordinadores, cambiar contraseña, ver devoluciones y conteos, trasladar conteos, estación de impresión, Reporte Distribuidor y editar STOCKFORGE, según los permisos de su perfil |
+
+Cada cuenta del modo coordinador tiene un perfil: **administrador** (todo), **coordinador** o **bodeguero**. El administrador decide en "Usuarios y permisos" qué puede hacer cada perfil; la API lo comprueba en cada petición.
 
 El coordinador usa el mismo usuario en el generador de etiquetas y en STOCKFORGE, pero cada uno mantiene su propia sesión: iniciar sesión en uno no inicia sesión en el otro. El generador guarda la sesión en `localStorage` (persiste entre pestañas); STOCKFORGE en `sessionStorage` (se borra al cerrar la pestaña). En ambos el token JWT se auto-renueva al expirar sin cerrar sesión.
 
@@ -301,7 +307,7 @@ Usan exports reales sin datos personales en `tests/fixtures/` y comparan contra 
 - El generador de etiquetas tiene caché offline en `localStorage`. Si no hay conexión, muestra el último inventario conocido.
 - El QR de ubicación en etiquetas es generado offline (librería embebida en `index.js`, sin CDN).
 - STOCKFORGE guarda el estado completo en Supabase y en `localStorage` como caché. Carga desde caché primero y luego sincroniza con el servidor en segundo plano.
-- El POST de STOCKFORGE requiere token de coordinador. Valida el body antes de reemplazar el estado y lo hace en una sola transacción (`replace_warehouse_state`).
+- El POST de STOCKFORGE requiere sesión con los permisos "Editar y guardar el almacén", "Nueva Tienda" y "Gestionar Inventario" (el guardado crea tiendas y cambia `productos.ubicacion`). Valida el body antes de reemplazar el estado, lo hace en una sola transacción (`replace_warehouse_state`) y deja el guardado en la bitácora.
 - Manifiestos, Alistamiento, Devoluciones y Trazabilidad procesan los Excel y PDF en el navegador (SheetJS, PDF.js, pdf-lib, Tesseract.js); no suben los archivos al servidor.
 - Los endpoints públicos (`auth`, `refresh`, `devoluciones`, `conteos`) tienen rate limit en memoria por instancia: es una primera barrera, no un límite garantizado.
 - Las fotos de conteos están en un bucket privado; el panel las muestra con URLs firmadas de 1 hora.
