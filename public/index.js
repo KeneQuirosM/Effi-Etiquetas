@@ -3635,7 +3635,9 @@ function iniciarRelojRecepciones() {
   rcTimer = setInterval(() => {
     const tab = document.getElementById('tab-recepciones');
     if (!tab || !tab.classList.contains('active') || document.hidden || !coordUnlocked) return;
-    const escribiendo = tab.contains(document.activeElement) && document.activeElement.matches('input');
+    // No recargar (re-pintar) mientras alguien escribe o dejó una hora de cierre elegida a mano
+    const escribiendo = (tab.contains(document.activeElement) && document.activeElement.matches('input')) ||
+      !!tab.querySelector('input[data-editada]');
     if (Date.now() - rcCargadasEn > 2 * 60000 && !escribiendo) cargarRecepciones();
     else actualizarMedidores();
   }, 30000);
@@ -3756,6 +3758,14 @@ function rcAccionesHTML(r) {
       </div>
       <p class="rc-meta">${r.ajuste_en ? `Registrado por ${esc(r.ajuste_por || '—')} · ${esc(rcFechaCorta(Date.parse(r.ajuste_en)))}` : 'Sin registrar todavía'}</p>
     </div>
+    ${r.ajuste_en ? `<div class="rc-ajuste">
+      <label for="rc-fin-${id}">Hora de finalización</label>
+      <div class="rc-ajuste-fila">
+        <input type="datetime-local" id="rc-fin-${id}" value="${esc(max)}" max="${esc(max)}" min="${esc(rcValorLocal(Date.parse(r.ajuste_en)))}"
+          oninput="this.dataset.editada = '1'; document.getElementById('rc-fin-nota-${id}').textContent = 'Hora elegida a mano'">
+      </div>
+      <p class="rc-meta" id="rc-fin-nota-${id}">Si la dejas así, se usa la hora del momento en que finalices</p>
+    </div>` : ''}
     <div class="rc-pie">
       <button type="button" class="rc-btn rc-btn-sec rc-btn-lg" onclick="rcCopiarAlerta(${id})">${RC_ICONO_COPIAR}Copiar alerta</button>
       <button type="button" class="rc-btn rc-btn-pri rc-btn-lg rc-btn-ancho" onclick="rcFinalizar(${id}, true)" ${r.ajuste_en ? '' : 'disabled title="Registra primero el ajuste de inventario"'}>Dar por contado y finalizar</button>
@@ -3901,12 +3911,29 @@ async function rcQuitarAjuste(id) {
 
 async function rcFinalizar(id, finalizar) {
   const r = recepciones?.find(x => Number(x.id) === id);
-  const msg = finalizar
-    ? `¿Dar por contada y finalizar la recepción de ${r ? r.tienda_nombre : ''}? Se guarda la hora actual como cierre.`
-    : '¿Reabrir esta recepción? Se borra la hora de cierre y el plazo vuelve a correr.';
+  // Hora de cierre elegida a mano (si no se tocó el campo, la del servidor)
+  let finalizadoEn = null;
+  const inp = document.getElementById(`rc-fin-${id}`);
+  if (finalizar && inp && inp.dataset.editada) {
+    if (!inp.value) return notify('Indica la fecha y la hora de finalización', 'warn');
+    const t = Date.parse(`${inp.value}:00-06:00`);   // lo escrito es hora de Costa Rica
+    if (t > rcAhora() + 60000) return notify('La finalización no puede ser en el futuro', 'warn');
+    if (r?.ajuste_en && t < Date.parse(r.ajuste_en)) return notify('La finalización no puede ser antes del ajuste de inventario', 'warn');
+    finalizadoEn = new Date(t).toISOString();
+  }
+  let msg = '¿Reabrir esta recepción? Se borra la hora de cierre y el plazo vuelve a correr.';
+  if (finalizar) {
+    const tCierre = finalizadoEn ? Date.parse(finalizadoEn) : rcAhora();
+    const usadas = r?.ajuste_en ? HorarioLaboral.horasLaborables(Date.parse(r.ajuste_en), tCierre) : null;
+    msg = `¿Dar por contada y finalizar la recepción de ${r ? r.tienda_nombre : ''}? ` +
+      (finalizadoEn ? `Hora de cierre: ${rcFechaCorta(tCierre)}` : 'Se guarda la hora actual como cierre') +
+      (usadas !== null ? ` (${rcHoras(usadas)} laborables después del ajuste).` : '.');
+  }
   if (!(await confirmar({ titulo: finalizar ? 'Finalizar recepción' : 'Reabrir recepción', mensaje: msg, aceptar: finalizar ? 'Finalizar' : 'Reabrir' }))) return;
   try {
-    const res = await apiPost('/api/conteos?accion=recepcion_finalizar', { id, finalizar });
+    const body = { id, finalizar };
+    if (finalizadoEn) body.finalizado_en = finalizadoEn;
+    const res = await apiPost('/api/conteos?accion=recepcion_finalizar', body);
     const c = rcCalculo(res.recepcion, rcAhora());
     notify(finalizar
       ? `Recepción finalizada ${rcHoras(c.usadas)} laborables después del ajuste${c.restan >= 0 ? ', a tiempo' : ', fuera del plazo'}`

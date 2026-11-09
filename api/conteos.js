@@ -467,7 +467,7 @@ export default async function handler(req, res) {
     //   GET  ?accion=recepciones&estado=abiertas            -> todas las no finalizadas
     //   GET  ?accion=recepciones&estado=finalizadas|todas&desde&hasta[&tienda_id]
     //   POST ?accion=recepcion_ajuste    { id, ajuste_en: ISO | null }
-    //   POST ?accion=recepcion_finalizar { id, finalizar: true | false }
+    //   POST ?accion=recepcion_finalizar { id, finalizar: true | false, finalizado_en?: ISO }
     // Las horas laborables (24 h desde el ajuste, con pausa fuera de horario)
     // las calcula el navegador con public/shared/horario-laboral.js; acá solo
     // se guardan los instantes. "ahora" permite corregir el reloj del navegador.
@@ -584,9 +584,20 @@ export default async function handler(req, res) {
       } else if (b.finalizar === true) {
         if (r.finalizado_en) return res.status(409).json({ error: 'La recepción ya estaba finalizada' });
         if (!r.ajuste_en) return res.status(400).json({ error: 'Registra primero la hora del ajuste de inventario' });
-        cambios = { finalizado_en: new Date().toISOString(), finalizado_por: quien };
+        // Hora de cierre: la elegida en el panel (a veces se da por terminada
+        // después) o, si no se manda, la del servidor
+        let finEn = new Date().toISOString();
+        if (b.finalizado_en != null && b.finalizado_en !== '') {
+          const t = Date.parse(String(b.finalizado_en));
+          if (!Number.isFinite(t)) return res.status(400).json({ error: 'Fecha y hora de finalización inválidas' });
+          if (t > Date.now() + 5 * 60000) return res.status(400).json({ error: 'La finalización no puede ser en el futuro' });
+          if (t < Date.parse(r.ajuste_en)) return res.status(400).json({ error: 'La finalización no puede ser antes del ajuste de inventario' });
+          finEn = new Date(t).toISOString();
+        }
+        cambios = { finalizado_en: finEn, finalizado_por: quien };
         accion = 'recepcion_finalizar';
-        detalle = `Dio por contada y finalizó la recepción ${desc}`;
+        detalle = `Dio por contada y finalizó la recepción ${desc}` +
+          (b.finalizado_en ? ` con hora de cierre ${fmt(finEn)}` : '');
       } else if (b.finalizar === false) {
         if (!r.finalizado_en) return res.status(409).json({ error: 'La recepción no está finalizada' });
         cambios = { finalizado_en: null, finalizado_por: null };
