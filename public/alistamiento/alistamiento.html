@@ -138,6 +138,11 @@
                     <div class="results-block-title"><i class="fas fa-list-check"></i> Detalle de guías</div>
                     <div class="results-block-count" id="guidesTableCount">0 guías</div>
                 </div>
+                <div class="sel-bar">
+                    <label class="sel-bar-all"><input type="checkbox" class="sel-all" disabled> Seleccionar todas</label>
+                    <button type="button" class="print-guide-btn sel-print-btn" disabled><i class="fas fa-print"></i> Imprimir seleccionadas<span class="sel-n"></span></button>
+                    <button type="button" class="sel-reset-btn" disabled>Quitar marcas de impresas</button>
+                </div>
                 <div class="tbl-wrap">
                     <table id="guidesTable">
                         <thead>
@@ -166,6 +171,11 @@
                         <option value="byProduct">Agrupar por producto</option>
                     </select>
                     <span class="sort-order-hint" id="sortOrderHint">Misma secuencia que en el PDF original</span>
+                </div>
+                <div class="sel-bar">
+                    <label class="sel-bar-all"><input type="checkbox" class="sel-all" disabled> Seleccionar todas</label>
+                    <button type="button" class="print-guide-btn sel-print-btn" disabled><i class="fas fa-print"></i> Imprimir seleccionadas<span class="sel-n"></span></button>
+                    <button type="button" class="sel-reset-btn" disabled>Quitar marcas de impresas</button>
                 </div>
                 <div class="product-groups-summary" id="productGroupsSummary"></div>
             </div>

@@ -32,6 +32,10 @@ let auditLog = [];
 let guidePagesMap = new Map();
 let srcPdfLibDoc = null;
 let sortMode = 'original';
+// Selección para imprimir y marcas de "ya impresa" (por número de guía).
+// Se reinician en cada comparación; las marcas solo viven en esta pantalla.
+let guiasSel = new Set();
+let guiasImpresas = new Set();
 
 /* ── AUDITORÍA ────────────────────────────────────────── */
 function saveLogs() { localStorage.setItem(LOG_KEY, JSON.stringify(auditLog.slice(-200))); }
@@ -437,6 +441,8 @@ async function runCompareAndFilter() {
                 guidePagesMap.get(g).push(i - 1); // pdf-lib usa índices 0-based
             }
         }
+        guiasSel.clear();
+        guiasImpresas.clear();
         const foundGuides = [...guidePagesMap.keys()];
         const notFoundGuides = guideList.filter(g => !guidePagesMap.has(g));
 
@@ -497,8 +503,81 @@ function renderGuidesTable(guideList, notFoundGuides) {
         const accion = found
             ? `<button type="button" class="print-guide-btn" data-guia="${esc(gid)}"><i class="fas fa-print"></i> Imprimir</button>`
             : '<span class="action-none">—</span>';
-        return `<tr><td><span class="guide-id-pill">${esc(gid)}</span></td><td>${estado}</td><td style="text-align:center;">${accion}</td></tr>`;
+        const check = found
+            ? `<input type="checkbox" class="guia-chk" data-sel-guia="${esc(gid)}" aria-label="Seleccionar guía ${esc(gid)}"> `
+            : '';
+        const impresa = found ? ' <span class="badge-printed" hidden><i class="fas fa-check"></i> Impresa</span>' : '';
+        return `<tr data-guia-row="${esc(gid)}"><td>${check}<span class="guide-id-pill">${esc(gid)}</span></td><td>${estado}${impresa}</td><td style="text-align:center;">${accion}</td></tr>`;
     }).join('');
+    refreshMarks();
+}
+
+/* ── SELECCIÓN Y MARCAS DE IMPRESIÓN ───────────────────────────────────
+ * guiasSel: guías con el check puesto (de la tabla o de un grupo).
+ * guiasImpresas: guías ya enviadas a imprimir (individual, grupo o
+ * selección). Solo actualiza lo que ya está en pantalla.
+ */
+function refreshMarks() {
+    document.querySelectorAll('[data-guia-row]').forEach(tr => {
+        const g = tr.getAttribute('data-guia-row');
+        const imp = guiasImpresas.has(g);
+        tr.classList.toggle('is-printed', imp);
+        const chk = tr.querySelector('.guia-chk');
+        if (chk) chk.checked = guiasSel.has(g);
+        const badge = tr.querySelector('.badge-printed');
+        if (badge) badge.hidden = !imp;
+    });
+    document.querySelectorAll('.product-group-row').forEach(row => {
+        const g = productGroups[Number(row.getAttribute('data-group-row'))];
+        if (!g) return;
+        const sel = g.guias.filter(x => guiasSel.has(x)).length;
+        const chk = row.querySelector('.grp-chk');
+        chk.checked = sel === g.guias.length;
+        chk.indeterminate = sel > 0 && sel < g.guias.length;
+        row.classList.toggle('is-printed', g.guias.every(x => guiasImpresas.has(x)));
+        row.querySelector('.badge-printed').hidden = !g.guias.every(x => guiasImpresas.has(x));
+    });
+    const n = guiasSel.size;
+    const total = guidePagesMap.size;
+    document.querySelectorAll('.sel-all').forEach(c => {
+        c.checked = total > 0 && n === total;
+        c.indeterminate = n > 0 && n < total;
+        c.disabled = !total;
+    });
+    document.querySelectorAll('.sel-print-btn').forEach(b => {
+        b.disabled = !n;
+        b.querySelector('.sel-n').textContent = n ? ` (${n})` : '';
+    });
+    document.querySelectorAll('.sel-reset-btn').forEach(b => { b.disabled = !guiasImpresas.size; });
+}
+
+function marcarImpresas(guias) {
+    guias.forEach(g => guiasImpresas.add(g));
+    refreshMarks();
+}
+
+// Guías seleccionadas en el orden de impresión vigente.
+function guiasSeleccionadasOrdenadas() {
+    const lista = sortMode === 'byProduct'
+        ? getProductGroups().flatMap(g => g.guias)
+        : [...guidePagesMap.keys()].sort((a, b) => guidePagesMap.get(a)[0] - guidePagesMap.get(b)[0]);
+    return lista.filter(g => guiasSel.has(g));
+}
+
+async function printSelected() {
+    const guias = guiasSeleccionadasOrdenadas();
+    if (!guias.length || !srcPdfLibDoc) { notify('Selecciona al menos una guía', 'warn'); return; }
+    try {
+        const pages = guias.flatMap(g => guidePagesMap.get(g));
+        const blob = await buildOutputPdf(pages);
+        window.open(URL.createObjectURL(blob), '_blank');
+        addLog('IMPRESIÓN SELECCIONADAS', `${guias.length} guía(s) · ${pages.length} página(s)`);
+        marcarImpresas(guias);
+        guiasSel.clear();
+        refreshMarks();
+    } catch (err) {
+        notify(`Error al preparar la impresión: ${err.message}`, 'err');
+    }
 }
 
 /* ── ORDEN DE IMPRESIÓN (original / agrupado por producto) ─────────────
@@ -558,13 +637,16 @@ function renderProductGroupsSummary() {
 
     productGroups = getProductGroups();
     container.innerHTML = productGroups.map((g, i) => `
-        <div class="product-group-row">
+        <div class="product-group-row" data-group-row="${i}">
+            <input type="checkbox" class="grp-chk" data-sel-grupo="${i}" aria-label="Seleccionar ${esc(g.name)}">
             <i class="fas fa-box"></i>
             <span class="product-group-name">${esc(g.name)}</span>
+            <span class="badge-printed" hidden><i class="fas fa-check"></i> Impreso</span>
             <span class="product-group-count">${g.guias.length} ${g.guias.length === 1 ? 'guía' : 'guías'}</span>
             <button type="button" class="print-guide-btn print-group-btn" data-group="${i}"><i class="fas fa-print"></i> Imprimir</button>
         </div>`).join('');
     updateGroupPrintAccess();
+    refreshMarks();
 }
 
 // La impresión por grupo se habilita o deshabilita desde el panel de
@@ -613,6 +695,7 @@ async function printSingleGuide(guideId) {
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
         addLog('IMPRESIÓN INDIVIDUAL', `Guía ${guideId} · ${pages.length} página(s)`);
+        marcarImpresas([guideId]);
     } catch (err) {
         notify(`Error al preparar la impresión: ${err.message}`, 'err');
     }
@@ -630,6 +713,7 @@ async function printProductGroup(idx) {
         const blob = await buildOutputPdf(pages);
         window.open(URL.createObjectURL(blob), '_blank');
         addLog('IMPRESIÓN POR PRODUCTO', `${group.name} · ${group.guias.length} guía(s) · ${pages.length} página(s)`);
+        marcarImpresas(group.guias);
     } catch (err) {
         notify(`Error al preparar la impresión: ${err.message}`, 'err');
     }
@@ -657,6 +741,33 @@ document.getElementById('productGroupsSummary').addEventListener('click', (e) =>
     if (!btn) return;
     printProductGroup(Number(btn.getAttribute('data-group')));
 });
+
+// Checks de guías (tabla) y de grupos de producto
+document.getElementById('guidesTableBody').addEventListener('change', (e) => {
+    const chk = e.target.closest('.guia-chk');
+    if (!chk) return;
+    const g = chk.getAttribute('data-sel-guia');
+    if (chk.checked) guiasSel.add(g); else guiasSel.delete(g);
+    refreshMarks();
+});
+document.getElementById('productGroupsSummary').addEventListener('change', (e) => {
+    const chk = e.target.closest('.grp-chk');
+    if (!chk) return;
+    const group = productGroups[Number(chk.getAttribute('data-sel-grupo'))];
+    if (!group) return;
+    group.guias.forEach(g => { if (chk.checked) guiasSel.add(g); else guiasSel.delete(g); });
+    refreshMarks();
+});
+// Barras de selección (una sobre la tabla y otra sobre los grupos)
+document.querySelectorAll('.sel-all').forEach(c => c.addEventListener('change', () => {
+    if (c.checked) guidePagesMap.forEach((_, g) => guiasSel.add(g)); else guiasSel.clear();
+    refreshMarks();
+}));
+document.querySelectorAll('.sel-print-btn').forEach(b => b.addEventListener('click', printSelected));
+document.querySelectorAll('.sel-reset-btn').forEach(b => b.addEventListener('click', () => {
+    guiasImpresas.clear();
+    refreshMarks();
+}));
 
 document.getElementById('sortModeSelect').addEventListener('change', async (e) => {
     sortMode = e.target.value;

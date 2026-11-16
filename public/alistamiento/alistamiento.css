@@ -377,6 +377,35 @@ tbody tr:nth-child(even):hover td { background: var(--brand-50); }
     padding: 2px 8px; border-radius: 999px;
 }
 
+/* ══ SELECCIÓN Y MARCA DE IMPRESAS ══ */
+.sel-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin: 10px 0;
+    font-size: .78rem;
+}
+.sel-bar-all { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--neutral-800); }
+.sel-reset-btn {
+    background: none; border: none; padding: 4px 6px;
+    font-family: var(--sans); font-size: .72rem;
+    color: var(--neutral-600); text-decoration: underline; cursor: pointer;
+}
+.sel-reset-btn:disabled { color: var(--neutral-400); text-decoration: none; cursor: not-allowed; }
+.guia-chk, .grp-chk, .sel-all { width: 16px; height: 16px; accent-color: var(--brand-500); cursor: pointer; flex-shrink: 0; vertical-align: middle; margin-right: 6px; }
+.grp-chk { margin-right: 0; }
+.badge-printed {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: .68rem; font-weight: 600;
+    background: var(--success-bg); color: var(--success-text);
+    border: 1px solid var(--success-border);
+    flex-shrink: 0;
+}
+.badge-printed[hidden] { display: none; }
+tr.is-printed td { background: var(--success-bg); }
+tr.is-printed .guide-id-pill { opacity: .7; }
+.product-group-row.is-printed { background: var(--success-bg); border-color: var(--success-border); }
+.product-group-row.is-printed .product-group-name { color: var(--neutral-600); }
+
 /* ══ IMPRIMIR ══ */
 .print-action { display: flex; justify-content: center; padding-top: 4px; }
 
