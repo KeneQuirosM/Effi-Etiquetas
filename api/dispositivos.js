@@ -37,7 +37,14 @@ export default async function handler(req, res) {
 
     // ── Público: ¿este dispositivo está vinculado? ──
     if (req.method === 'GET' && accion === 'estado') {
-      const [d, exigir] = await Promise.all([dispositivoDeLaPeticion(req), exigirActivo()]);
+      let d, exigir;
+      try {
+        [d, exigir] = await Promise.all([dispositivoDeLaPeticion(req), exigirActivo()]);
+      } catch (e) {
+        // No decir "vinculado: false" ante un fallo: el navegador borraría su credencial
+        console.error('Error verificando el dispositivo:', e);
+        return res.status(503).json({ error: 'No se pudo verificar el dispositivo', codigo: 'dispositivo_no_verificado' });
+      }
       return res.status(200).json({ vinculado: !!d, nombre: d?.nombre || null, exigir });
     }
 

@@ -85,3 +85,11 @@ test('exigirActivo() (solo para mostrar el estado) sigue devolviendo false ante 
   simular(interruptor('true'));
   assert.equal(await exigirActivo(), true);
 });
+
+test('error de base al validar la credencial → 503 (no 403), para no desvincular el equipo', async () => {
+  instalarSimulacion(supabaseAdmin, { tablas: { configuracion: interruptor('true'), dispositivos: { error: { message: 'timeout' } } } });
+  const { sigue, res } = await llamar({ 'x-dispositivo': `${ID}.${SECRETO}` });
+  assert.equal(sigue, false);
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.body.codigo, 'dispositivo_no_verificado');
+});

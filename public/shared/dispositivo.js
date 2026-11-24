@@ -33,7 +33,11 @@ async function vincularDesdeURL() {
   history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash);
   try {
     const r = await apiRequestJSON('/api/dispositivos?accion=vincular', { method: 'POST', body: { token } });
-    try { localStorage.setItem(CLAVE_DISPOSITIVO, r.credencial); } catch (_) {
+    try {
+      localStorage.setItem(CLAVE_DISPOSITIVO, r.credencial);
+      // Pide al navegador que no borre este almacenamiento por falta de espacio o inactividad
+      if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
+    } catch (_) {
       notify('No se pudo guardar el vínculo en este navegador (¿modo privado?)', 'error', 8000);
       return null;
     }

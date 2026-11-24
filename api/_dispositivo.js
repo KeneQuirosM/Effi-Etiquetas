@@ -36,16 +36,21 @@ export async function exigirActivo() {
   return activo;
 }
 
-// Devuelve { id, nombre } si el header trae una credencial válida, o null
+// Devuelve { id, nombre } si el header trae una credencial válida, o null si
+// no hay credencial o no coincide. Si la base falla LANZA: un error transitorio
+// no debe confundirse con "no vinculado", porque el navegador borraba su
+// credencial ante ese 403 y el dispositivo quedaba desvinculado para siempre.
 export async function dispositivoDeLaPeticion(req) {
   const m = String(req.headers?.['x-dispositivo'] || '').match(CREDENCIAL_RE);
   if (!m) return null;
   const { data, error } = await supabaseAdmin
     .from('dispositivos').select('id, nombre, secreto_hash').eq('id', m[1].toLowerCase()).maybeSingle();
-  if (error || !data?.secreto_hash) return null;
+  if (error) throw error;
+  if (!data?.secreto_hash) return null;
   const a = Buffer.from(sha256(m[2])), b = Buffer.from(data.secreto_hash);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  await supabaseAdmin.from('dispositivos').update({ ultimo_uso: new Date().toISOString() }).eq('id', data.id);
+  // ultimo_uso es informativo: si falla no se rechaza un dispositivo válido
+  try { await supabaseAdmin.from('dispositivos').update({ ultimo_uso: new Date().toISOString() }).eq('id', data.id); } catch (_) {}
   return { id: data.id, nombre: data.nombre };
 }
 
@@ -67,7 +72,18 @@ export async function exigirDispositivo(req, res) {
     return false;
   }
   if (!activo) return true;
-  if (await dispositivoDeLaPeticion(req)) return true;
+  let valido = null;
+  try {
+    valido = await dispositivoDeLaPeticion(req);
+  } catch (e) {
+    console.error('Error verificando el dispositivo (se rechaza la petición, sin desvincular):', e);
+    res.status(503).json({
+      error: 'No se pudo verificar el dispositivo; intenta de nuevo',
+      codigo: 'dispositivo_no_verificado'
+    });
+    return false;
+  }
+  if (valido) return true;
   res.status(403).json({
     error: 'Este dispositivo no está vinculado. Pide al coordinador el QR de vinculación (Configuración > Dispositivos vinculados).',
     codigo: 'dispositivo_no_vinculado'
