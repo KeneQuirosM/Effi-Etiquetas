@@ -873,38 +873,178 @@
 
 <!-- RÓTULO MODAL -->
 <div id="rotulo-overlay">
-  <div class="rotulo-modal">
+  <div class="rotulo-modal" role="dialog" aria-modal="true" aria-labelledby="rotulo-titulo">
     <div class="rotulo-modal-header">
-      <h2>Rótulo A4 Horizontal</h2>
-      <button class="btn-action btn-sm btn-ghost" style="color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeRotulo()">✕</button>
+      <h2 id="rotulo-titulo">Rótulo A4</h2>
+      <button class="btn-action btn-sm btn-ghost" style="color:white;border-color:rgba(255,255,255,.2);background:transparent" onclick="closeRotulo()" aria-label="Cerrar">✕</button>
     </div>
     <div class="rotulo-modal-body">
-      <div class="form-row single" style="margin-bottom:12px">
-        <div class="form-group">
-          <label for="rotulo-input-name">Nombre (texto grande)</label>
-          <input type="text" id="rotulo-input-name" placeholder="Ej: SICOMMER"
-            oninput="updateRotuloPreview()"
-            style="text-transform:uppercase">
+      <div class="rotulo-col-preview">
+        <div class="rotulo-preview" id="rotulo-preview-box" aria-label="Vista previa del rótulo">
+          <div class="rotulo-hoja" id="rotulo-hoja"></div>
+        </div>
+        <div class="rotulo-slider-principal">
+          <div class="rotulo-slider-cab">
+            <label for="rotulo-tam-nombre">Tamaño del nombre</label>
+            <output data-rc-out="tamNombre" for="rotulo-tam-nombre"></output>
+          </div>
+          <input type="range" id="rotulo-tam-nombre" data-rc="tamNombre" min="12" max="400" step="1">
+          <label class="rotulo-check">
+            <input type="checkbox" data-rc="autoAjuste"> Ajustar automáticamente al espacio
+          </label>
+          <p class="rotulo-aviso" id="rotulo-aviso" role="status" hidden>El texto no cabe en la hoja: baja el tamaño o activa el ajuste automático.</p>
         </div>
       </div>
-      <div class="form-row single" style="margin-bottom:4px">
-        <div class="form-group">
-          <label for="rotulo-input-id">ID <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
-          <input type="text" id="rotulo-input-id" placeholder="Ej: 39753" oninput="updateRotuloPreview()">
-        </div>
-      </div>
-      <div class="rotulo-preview" id="rotulo-preview-box">
-        <div class="rotulo-preview-border"></div>
-        <div class="rotulo-preview-logo" id="rotulo-prev-logo">
-          <div class="brand-text" style="font-family:var(--sans);font-size:9px;font-weight:700;color:var(--primary)">Effi<span style="color:var(--accent)">commerce</span></div>
-        </div>
-        <div class="rotulo-preview-name" id="rotulo-prev-name">NOMBRE</div>
-        <div class="rotulo-preview-id" id="rotulo-prev-id" style="display:none"></div>
+
+      <div class="rotulo-col-controles">
+        <fieldset class="rotulo-grupo">
+          <legend>Texto</legend>
+          <div class="form-group">
+            <label for="rotulo-input-name">Nombre (texto grande)</label>
+            <textarea id="rotulo-input-name" rows="2" placeholder="Ej: SICOMMER"></textarea>
+            <span class="rotulo-ayuda">Enter agrega otra línea.</span>
+          </div>
+          <div class="form-group">
+            <label for="rotulo-input-sub">Texto secundario <span class="rotulo-opc">(opcional)</span></label>
+            <input type="text" id="rotulo-input-sub" placeholder="Ej: Pasillo 3 · Rack B">
+          </div>
+          <div class="form-group">
+            <label for="rotulo-input-id">ID <span class="rotulo-opc">(opcional)</span></label>
+            <input type="text" id="rotulo-input-id" placeholder="Ej: 39753">
+          </div>
+        </fieldset>
+
+        <fieldset class="rotulo-grupo">
+          <legend>Letra</legend>
+          <div class="rotulo-fila2">
+            <div class="form-group">
+              <label for="rotulo-fuente">Fuente</label>
+              <select id="rotulo-fuente" data-rc="fuente">
+                <option value="arial">Arial</option>
+                <option value="black">Arial Black</option>
+                <option value="impact">Impact</option>
+                <option value="condensada">Condensada</option>
+                <option value="verdana">Verdana</option>
+                <option value="georgia">Georgia</option>
+                <option value="mono">Courier (monoespaciada)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="rotulo-peso">Grosor</label>
+              <select id="rotulo-peso" data-rc="peso">
+                <option value="400">Normal</option>
+                <option value="700">Negrita</option>
+                <option value="900">Extra negrita</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="rotulo-alin-h">Alineación</label>
+              <select id="rotulo-alin-h" data-rc="alinH">
+                <option value="left">Izquierda</option>
+                <option value="center">Centro</option>
+                <option value="right">Derecha</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="rotulo-alin-v">Posición vertical</label>
+              <select id="rotulo-alin-v" data-rc="alinV">
+                <option value="flex-start">Arriba</option>
+                <option value="center">Centro</option>
+                <option value="flex-end">Abajo</option>
+              </select>
+            </div>
+          </div>
+          <div class="rotulo-rango">
+            <label for="rotulo-espaciado">Espacio entre letras</label>
+            <output data-rc-out="espaciado" for="rotulo-espaciado"></output>
+            <input type="range" id="rotulo-espaciado" data-rc="espaciado" min="-5" max="30" step="1">
+          </div>
+          <div class="rotulo-rango">
+            <label for="rotulo-interlineado">Espacio entre líneas</label>
+            <output data-rc-out="interlineado" for="rotulo-interlineado"></output>
+            <input type="range" id="rotulo-interlineado" data-rc="interlineado" min="0.8" max="1.6" step="0.05">
+          </div>
+          <div class="rotulo-fila2">
+            <label class="rotulo-check"><input type="checkbox" data-rc="mayusculas"> Todo en mayúsculas</label>
+            <label class="rotulo-color">Color del texto <input type="color" data-rc="colorTexto"></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="rotulo-grupo">
+          <legend>Texto secundario, ID y logo</legend>
+          <div class="rotulo-rango">
+            <label for="rotulo-tam-sub">Tamaño del texto secundario</label>
+            <output data-rc-out="tamSub" for="rotulo-tam-sub"></output>
+            <input type="range" id="rotulo-tam-sub" data-rc="tamSub" min="8" max="200" step="1">
+          </div>
+          <div class="rotulo-rango">
+            <label for="rotulo-tam-id">Tamaño del ID</label>
+            <output data-rc-out="tamId" for="rotulo-tam-id"></output>
+            <input type="range" id="rotulo-tam-id" data-rc="tamId" min="8" max="120" step="1">
+          </div>
+          <div class="rotulo-rango">
+            <label for="rotulo-tam-logo">Tamaño del logo</label>
+            <output data-rc-out="tamLogo" for="rotulo-tam-logo"></output>
+            <input type="range" id="rotulo-tam-logo" data-rc="tamLogo" min="8" max="80" step="1">
+          </div>
+          <div class="rotulo-fila2">
+            <div class="form-group">
+              <label for="rotulo-pos-id">Ubicación del ID</label>
+              <select id="rotulo-pos-id" data-rc="posId">
+                <option value="inf-der">Abajo a la derecha</option>
+                <option value="inf-izq">Abajo a la izquierda</option>
+                <option value="sup-der">Arriba a la derecha</option>
+                <option value="bajo">Debajo del nombre</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="rotulo-logo-pos">Logo</label>
+              <select id="rotulo-logo-pos" data-rc="logo">
+                <option value="sup-izq">Arriba a la izquierda</option>
+                <option value="sup-centro">Arriba al centro</option>
+                <option value="sup-der">Arriba a la derecha</option>
+                <option value="oculto">Sin logo</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="rotulo-grupo">
+          <legend>Hoja y borde</legend>
+          <div class="rotulo-fila2">
+            <div class="form-group">
+              <label for="rotulo-hoja-tam">Tamaño de hoja</label>
+              <select id="rotulo-hoja-tam" data-rc="hoja">
+                <option value="carta">Carta</option>
+                <option value="a4">A4</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="rotulo-orient">Orientación</label>
+              <select id="rotulo-orient" data-rc="orientacion">
+                <option value="horizontal">Horizontal</option>
+                <option value="vertical">Vertical</option>
+              </select>
+            </div>
+          </div>
+          <div class="rotulo-rango">
+            <label for="rotulo-borde">Grosor del borde</label>
+            <output data-rc-out="borde" for="rotulo-borde"></output>
+            <input type="range" id="rotulo-borde" data-rc="borde" min="0" max="8" step="0.1">
+          </div>
+          <div class="rotulo-rango">
+            <label for="rotulo-margen">Distancia del borde a la orilla</label>
+            <output data-rc-out="margen" for="rotulo-margen"></output>
+            <input type="range" id="rotulo-margen" data-rc="margen" min="0" max="20" step="0.5">
+          </div>
+          <label class="rotulo-color">Color del borde <input type="color" data-rc="colorBorde"></label>
+        </fieldset>
       </div>
     </div>
     <div class="rotulo-modal-footer">
+      <button class="btn-action btn-ghost rotulo-restablecer" onclick="restablecerRotulo()">Restablecer diseño</button>
       <button class="btn-action btn-ghost" onclick="closeRotulo()">Cancelar</button>
-      <button class="btn-action btn-primary" onclick="printRotulo()">Imprimir A4</button>
+      <button class="btn-action btn-primary" id="rotulo-btn-imprimir" onclick="printRotulo()">Imprimir</button>
     </div>
   </div>
 </div>

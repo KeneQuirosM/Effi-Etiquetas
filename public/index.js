@@ -2407,14 +2407,235 @@ function printBulk() {
   document.getElementById('bulk-print-area').innerHTML = '';
 }
 
-/* ── RÓTULO A4 ──────────────────────────────────────── */
+/* ── RÓTULO A4 ────────────────────────────────────────
+ * La vista previa es la hoja a tamaño real (px a 96 dpi) escalada con
+ * transform, y la impresión usa el mismo marcado (rotuloMarcado), así lo
+ * que se ve es lo que sale. El diseño se recuerda en este navegador
+ * (STORAGE_KEYS.ROTULO_AJUSTES); los textos se limpian al abrir.
+ */
+const MM_PX = 96 / 25.4, PT_PX = 96 / 72;
+const ROTULO_HOJAS = {
+  carta: { w: 279.4, h: 215.9, css: 'letter' },
+  a4:    { w: 297,   h: 210,   css: 'A4' }
+};
+const ROTULO_FUENTES = {
+  arial:      'Arial, Helvetica, sans-serif',
+  black:      '"Arial Black", "Arial Bold", Gadget, sans-serif',
+  impact:     'Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif',
+  condensada: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif',
+  verdana:    'Verdana, Geneva, sans-serif',
+  georgia:    'Georgia, "Times New Roman", serif',
+  mono:       '"Courier New", Courier, monospace'
+};
+const ROTULO_DEFECTO = {
+  hoja: 'carta', orientacion: 'horizontal',
+  autoAjuste: false, tamNombre: 105,
+  fuente: 'arial', peso: '900', mayusculas: true,
+  alinH: 'center', alinV: 'center', espaciado: 0, interlineado: 1,
+  colorTexto: '#000000',
+  tamSub: 36, tamId: 20, posId: 'inf-der',
+  logo: 'sup-izq', tamLogo: 23,
+  borde: 1.3, margen: 1.3, colorBorde: '#000000'
+};
+// [mínimo, máximo, unidad que se muestra junto al deslizador]
+const ROTULO_RANGOS = {
+  tamNombre: [12, 400, 'pt'], tamSub: [8, 200, 'pt'], tamId: [8, 120, 'pt'],
+  tamLogo: [8, 80, 'mm'], borde: [0, 8, 'mm'], margen: [0, 20, 'mm'],
+  espaciado: [-5, 30, ''], interlineado: [0.8, 1.6, '']
+};
+const ROTULO_OPCIONES = {
+  hoja: Object.keys(ROTULO_HOJAS), orientacion: ['horizontal', 'vertical'],
+  fuente: Object.keys(ROTULO_FUENTES), peso: ['400', '700', '900'],
+  alinH: ['left', 'center', 'right'], alinV: ['flex-start', 'center', 'flex-end'],
+  posId: ['inf-der', 'inf-izq', 'sup-der', 'bajo'],
+  logo: ['sup-izq', 'sup-centro', 'sup-der', 'oculto']
+};
+const ROTULO_BOOLEANOS = ['autoAjuste', 'mayusculas'];
+const ROTULO_COLORES = ['colorTexto', 'colorBorde'];
+
+function rotuloNormalizar(c) {
+  const r = { ...ROTULO_DEFECTO };
+  if (!c || typeof c !== 'object') return r;
+  for (const [k, [min, max]] of Object.entries(ROTULO_RANGOS)) {
+    const n = Number(c[k]);
+    if (Number.isFinite(n)) r[k] = Math.min(max, Math.max(min, n));
+  }
+  for (const [k, ops] of Object.entries(ROTULO_OPCIONES)) if (ops.includes(String(c[k]))) r[k] = String(c[k]);
+  ROTULO_BOOLEANOS.forEach(k => { if (typeof c[k] === 'boolean') r[k] = c[k]; });
+  ROTULO_COLORES.forEach(k => { if (/^#[0-9a-f]{6}$/i.test(c[k] || '')) r[k] = c[k]; });
+  return r;
+}
+
+let rotuloCfg = (() => {
+  try { return rotuloNormalizar(JSON.parse(localStorage.getItem(STORAGE_KEYS.ROTULO_AJUSTES))); }
+  catch { return rotuloNormalizar(null); }
+})();
+let rotuloTamActual = rotuloCfg.tamNombre;
+
+function rotuloGuardar() {
+  try { localStorage.setItem(STORAGE_KEYS.ROTULO_AJUSTES, JSON.stringify(rotuloCfg)); } catch {}
+}
+
+function rotuloHojaPx(c) {
+  const h = ROTULO_HOJAS[c.hoja];
+  const largo = Math.round(Math.max(h.w, h.h) * MM_PX), corto = Math.round(Math.min(h.w, h.h) * MM_PX);
+  return c.orientacion === 'vertical' ? { w: corto, h: largo } : { w: largo, h: corto };
+}
+
+function rotuloTextos() {
+  return {
+    nombre: document.getElementById('rotulo-input-name').value.trim(),
+    sub: document.getElementById('rotulo-input-sub').value.trim(),
+    id: document.getElementById('rotulo-input-id').value.trim()
+  };
+}
+
+// HTML de la hoja (contenido de .rotulo-hoja / .page). Todo texto pasa por esc().
+function rotuloMarcado(c, t) {
+  const { w } = rotuloHojaPx(c);
+  const m = c.margen * MM_PX, b = c.borde * MM_PX, pad = 8 * MM_PX, sep = 4 * MM_PX;
+  const ins = m + b + pad;
+  const fuente = ROTULO_FUENTES[c.fuente];
+  const transf = c.mayusculas ? 'uppercase' : 'none';
+  const logoH = c.tamLogo * MM_PX;
+  const idPx = c.tamId * PT_PX;
+  const idEsquina = t.id && c.posId !== 'bajo';
+
+  let arriba = ins, abajo = ins;
+  if (c.logo !== 'oculto') arriba = Math.max(arriba, ins + logoH + sep);
+  if (idEsquina && c.posId === 'sup-der') arriba = Math.max(arriba, ins + idPx * 1.2 + sep);
+  if (idEsquina && c.posId.startsWith('inf')) abajo = Math.max(abajo, ins + idPx * 1.2 + sep);
+  if (c.alinV === 'center') arriba = abajo = Math.max(arriba, abajo);
+
+  const alinItems = { left: 'flex-start', center: 'center', right: 'flex-end' }[c.alinH];
+  const base = `font-family:${fuente};color:${c.colorTexto};text-transform:${transf};`;
+
+  let logoHTML = '';
+  if (c.logo !== 'oculto') {
+    const logo = localStorage.getItem(ROTULO_LOGO_KEY) || localStorage.getItem(LOGO_KEY);
+    const x = c.logo === 'sup-izq' ? `left:${ins}px` : c.logo === 'sup-der' ? `right:${ins}px`
+      : `left:50%;transform:translateX(-50%)`;
+    const dentro = logo
+      ? `<img src="${esc(logo)}" alt="" style="height:100%;max-width:100%;object-fit:contain;display:block">`
+      : `<span style="font-family:Arial,sans-serif;font-size:${logoH * 0.45}px;font-weight:700;color:#1a2a6c;white-space:nowrap">Effi<span style="color:#f2a900">commerce</span></span>`;
+    logoHTML = `<div class="rn-logo" style="position:absolute;top:${ins}px;${x};height:${logoH}px;max-width:${w * 0.45}px;display:flex;align-items:center">${dentro}</div>`;
+  }
+
+  const idEstilo = `${base}font-size:${idPx}px;font-weight:700;line-height:1.1;white-space:nowrap`;
+  let idHTML = '';
+  if (idEsquina) {
+    const pos = { 'inf-der': `right:${ins}px;bottom:${ins}px;text-align:right`,
+                  'inf-izq': `left:${ins}px;bottom:${ins}px`,
+                  'sup-der': `right:${ins}px;top:${ins}px;text-align:right` }[c.posId];
+    idHTML = `<div class="rn-id" style="position:absolute;${pos};${idEstilo}">${esc(t.id)}</div>`;
+  }
+
+  return `
+<div style="position:absolute;inset:${m}px;border:${b}px solid ${c.colorBorde};${b ? '' : 'border:none;'}"></div>
+${logoHTML}
+<div class="rn-area" style="position:absolute;left:${ins}px;right:${ins}px;top:${arriba}px;bottom:${abajo}px;display:flex;flex-direction:column;justify-content:${c.alinV};align-items:${alinItems};text-align:${c.alinH};overflow:hidden">
+  <div class="rn-nombre" style="${base}max-width:100%;font-size:${rotuloTamActual * PT_PX}px;font-weight:${c.peso};letter-spacing:${c.espaciado / 100}em;line-height:${c.interlineado};white-space:pre-wrap;overflow-wrap:normal">${esc(t.nombre)}</div>
+  ${t.sub ? `<div class="rn-sub" style="${base}max-width:100%;font-size:${c.tamSub * PT_PX}px;font-weight:700;line-height:1.15;margin-top:${sep / 2}px;white-space:pre-wrap">${esc(t.sub)}</div>` : ''}
+  ${t.id && c.posId === 'bajo' ? `<div class="rn-id" style="${idEstilo};margin-top:${sep / 2}px">${esc(t.id)}</div>` : ''}
+</div>
+${idHTML}`;
+}
+
+// ¿El contenido cabe en el área? (medidas de layout, no afectadas por el transform)
+function rotuloCabe(hoja) {
+  const area = hoja.querySelector('.rn-area');
+  if (!area) return true;
+  if (area.scrollHeight > area.clientHeight + 1) return false;
+  return [...area.children].every(el => el.scrollWidth <= el.clientWidth + 1);
+}
+
+// Mayor tamaño (pt, entero) con el que el nombre cabe
+function rotuloAjustar(hoja) {
+  const el = hoja.querySelector('.rn-nombre');
+  let [lo, hi] = ROTULO_RANGOS.tamNombre;
+  const probar = pt => { el.style.fontSize = (pt * PT_PX) + 'px'; return rotuloCabe(hoja); };
+  if (!probar(lo)) return lo;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (probar(mid)) lo = mid; else hi = mid - 1;
+  }
+  probar(lo);
+  return lo;
+}
+
+function rotuloEscalar() {
+  const caja = document.getElementById('rotulo-preview-box');
+  const hoja = document.getElementById('rotulo-hoja');
+  if (!caja || !hoja || !caja.clientWidth) return;
+  hoja.style.transform = `scale(${caja.clientWidth / rotuloHojaPx(rotuloCfg).w})`;
+}
+
+function rotuloFormato(k, v) {
+  const u = ROTULO_RANGOS[k][2];
+  const n = k === 'interlineado' ? Number(v).toFixed(2) : (Number.isInteger(v) ? v : Number(v).toFixed(1));
+  return u ? `${n} ${u}` : String(n);
+}
+
+function rotuloSincronizarControles() {
+  document.querySelectorAll('#rotulo-overlay [data-rc]').forEach(el => {
+    const k = el.dataset.rc;
+    if (el.type === 'checkbox') el.checked = !!rotuloCfg[k];
+    else el.value = k === 'tamNombre' ? rotuloTamActual : rotuloCfg[k];
+  });
+  document.querySelectorAll('#rotulo-overlay [data-rc-out]').forEach(o => {
+    const k = o.dataset.rcOut;
+    o.textContent = rotuloFormato(k, k === 'tamNombre' ? rotuloTamActual : rotuloCfg[k]);
+  });
+}
+
+function rotuloActualizar() {
+  const c = rotuloCfg;
+  const t = rotuloTextos();
+  const hoja = document.getElementById('rotulo-hoja');
+  const caja = document.getElementById('rotulo-preview-box');
+  const { w, h } = rotuloHojaPx(c);
+  caja.style.aspectRatio = `${w} / ${h}`;
+  hoja.style.width = w + 'px';
+  hoja.style.height = h + 'px';
+  rotuloTamActual = c.tamNombre;
+  hoja.innerHTML = rotuloMarcado(c, { ...t, nombre: t.nombre || 'NOMBRE' });
+  rotuloEscalar();
+  if (c.autoAjuste) rotuloTamActual = rotuloAjustar(hoja);
+  document.getElementById('rotulo-aviso').hidden = rotuloCabe(hoja);
+  document.getElementById('rotulo-input-name').style.textTransform = c.mayusculas ? 'uppercase' : 'none';
+  document.getElementById('rotulo-input-sub').style.textTransform = c.mayusculas ? 'uppercase' : 'none';
+  document.getElementById('rotulo-btn-imprimir').textContent =
+    `Imprimir ${c.hoja === 'a4' ? 'A4' : 'Carta'}`;
+  rotuloSincronizarControles();
+}
+
+(function rotuloControles() {
+  const capa = document.getElementById('rotulo-overlay');
+  if (!capa) return;
+  const alCambiar = e => {
+    const el = e.target;
+    const k = el.dataset?.rc;
+    if (k) {
+      let v = el.type === 'checkbox' ? el.checked : el.value;
+      if (ROTULO_RANGOS[k]) v = parseFloat(v);
+      // Mover el deslizador del nombre apaga el ajuste automático
+      if (k === 'tamNombre') rotuloCfg.autoAjuste = false;
+      rotuloCfg = rotuloNormalizar({ ...rotuloCfg, [k]: v });
+      rotuloGuardar();
+    } else if (!el.id?.startsWith('rotulo-input-')) return;
+    rotuloActualizar();
+  };
+  capa.addEventListener('input', alCambiar);
+  capa.addEventListener('change', e => { if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT') alCambiar(e); });
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(rotuloEscalar).observe(document.getElementById('rotulo-preview-box'));
+  }
+})();
+
 function openRotulo() {
-  document.getElementById('rotulo-input-name').value = '';
-  document.getElementById('rotulo-input-id').value = '';
-  document.getElementById('rotulo-prev-name').textContent = 'NOMBRE';
-  document.getElementById('rotulo-prev-id').style.display = 'none';
-  updateRotuloPrevLogo();
+  ['rotulo-input-name', 'rotulo-input-sub', 'rotulo-input-id'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('rotulo-overlay').classList.add('show');
+  rotuloActualizar();
   setTimeout(() => document.getElementById('rotulo-input-name').focus(), 150);
 }
 
@@ -2422,56 +2643,25 @@ function closeRotulo() {
   document.getElementById('rotulo-overlay').classList.remove('show');
 }
 
-function updateRotuloPreview() {
-  const nombre = document.getElementById('rotulo-input-name').value.trim().toUpperCase();
-  const id = document.getElementById('rotulo-input-id').value.trim();
-  const prevName = document.getElementById('rotulo-prev-name');
-  const prevId = document.getElementById('rotulo-prev-id');
-  prevName.textContent = nombre || 'NOMBRE';
-  if (id) {
-    prevId.textContent = id;
-    prevId.style.display = 'block';
-  } else {
-    prevId.style.display = 'none';
-  }
+function restablecerRotulo() {
+  rotuloCfg = rotuloNormalizar(null);
+  rotuloGuardar();
+  rotuloActualizar();
+  notify('Diseño del rótulo restablecido', 'info');
 }
 
+// Se llama al cambiar el logo del rótulo en Configuración
 function updateRotuloPrevLogo() {
-  const logo = localStorage.getItem(ROTULO_LOGO_KEY) || localStorage.getItem(LOGO_KEY);
-  const logoDiv = document.getElementById('rotulo-prev-logo');
-  if (logo) {
-    logoDiv.innerHTML = `<img src="${esc(logo)}" style="height:100%;object-fit:contain">`;
-  } else {
-    logoDiv.innerHTML = '<div class="brand-text">Effi<span>commerce</span></div>';
-  }
+  if (document.getElementById('rotulo-overlay')?.classList.contains('show')) rotuloActualizar();
 }
 
 function printRotulo() {
-  const nombre = document.getElementById('rotulo-input-name').value.trim().toUpperCase();
-  const id = document.getElementById('rotulo-input-id').value.trim();
-  if (!nombre) return notify('Escribe el nombre del rótulo', 'danger');
-
-  const logo = localStorage.getItem(ROTULO_LOGO_KEY) || localStorage.getItem(LOGO_KEY);
-  const logoHTML = logo
-    ? `<img src="${esc(logo)}" style="height:100%;max-width:100%;object-fit:contain;display:block">`
-    : `<span style="font-family:monospace;font-size:22pt;font-weight:700;color:#1a2a6c">Effi<span style="color:#f2a900">commerce</span></span>`;
-
-  // All measurements at 96dpi (1in = 96px)
-  // Page: 11 x 8.5in = 1056 x 816px
-  // Rectangle border: pos(0.341in, 0.584in) size(10.413 x 7.378in)
-  //   = pos(33, 56) size(1000 x 709)
-  // Logo (Imagen1): pos(0.430in, ~0.45in) size(1.726 x 1.622in)
-  //   = pos(41, 43) size(166 x 156)
-  // Name textbox: center at 5.53in horiz, vertically centered on page
-  //   textbox x=-1.190in w=13.44in -> left=-114px, width=1290px
-  //   textbox y offset=1.545in from para (MAR_T=1.181in) -> abs_y=2.726in -> 262px
-  //   textbox height=4.024in -> 386px
-  // ID textbox: pos(7.988in, ~6.0in) size(2.56 x 1.54in)
-  //   bottom-right corner: right=0.246in from right edge, bottom=0.538in from bottom
-
-  const idHTML = id
-    ? `<div style="position:absolute;right:24px;bottom:52px;font-family:Arial,sans-serif;font-size:27px;font-weight:700;color:#000;text-align:right">${esc(id)}</div>`
-    : '';
+  const t = rotuloTextos();
+  if (!t.nombre) return notify('Escribe el nombre del rótulo', 'danger');
+  rotuloActualizar();
+  const c = rotuloCfg;
+  const { w, h } = rotuloHojaPx(c);
+  const orient = c.orientacion === 'vertical' ? 'portrait' : 'landscape';
 
   const html = `<!DOCTYPE html>
 <html>
@@ -2480,45 +2670,13 @@ function printRotulo() {
 <title>Rotulo</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  @page { size: letter landscape; margin: 0; }
-  html, body { width:100vw; height:100vh; overflow:hidden; background:white; }
-  .page { width:100vw; height:100vh; position:relative; background:white; }
-  .borde {
-    position:absolute;
-    top:5px; left:5px; right:5px; bottom:5px;
-    border:5px solid #000;
-  }
-  .logo {
-    position:absolute;
-    top:43px; left:41px;
-    height:86px; max-width:200px;
-    display:flex; align-items:center;
-  }
-  .nombre {
-    position:absolute;
-    left:0; right:0;
-    top:0; bottom:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    font-family:Arial,sans-serif;
-    font-size:140px;
-    font-weight:900;
-    color:#000;
-    line-height:1;
-    padding:0 40px;
-    word-break:break-word;
-  }
+  @page { size: ${ROTULO_HOJAS[c.hoja].css} ${orient}; margin: 0; }
+  html, body { background:white; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .page { width:${w}px; height:${h}px; position:relative; overflow:hidden; background:white; }
 </style>
 </head>
 <body>
-<div class="page">
-  <div class="borde"></div>
-  <div class="logo">${logoHTML}</div>
-  <div class="nombre">${esc(nombre)}</div>
-  ${idHTML}
-</div>
+<div class="page">${rotuloMarcado(c, t)}</div>
 <script>
 window.onload = function() {
   window.print();
@@ -2531,7 +2689,7 @@ window.onload = function() {
   closeRotulo();
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const blobUrl = URL.createObjectURL(blob);
-  window.open(blobUrl, '_blank', 'width=1056,height=816');
+  window.open(blobUrl, '_blank', `width=${w},height=${h}`);
   setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 }
 
