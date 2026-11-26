@@ -46,6 +46,7 @@ export const PERMISOS = {
   'nav-almacen':      [true, true, 'Menú: Gestión de Almacén'],
   'nav-devoluciones': [true, true, 'Menú: Gestión de Devoluciones'],
   'nav-manifiestos':  [true, true, 'Menú: Gestión de Manifiestos'],
+  'nav-rotulo':       [true, true, 'Menú: Rótulo A4'],
   'nav-alistamiento': [true, true, 'Menú: Alistamiento'],
   'nav-conteos':      [true, true, 'Menú: Conteos'],
   'nav-recepcion':    [true, true, 'Menú: Recepción de Mercancía'],

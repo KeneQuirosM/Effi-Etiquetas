@@ -2760,6 +2760,7 @@ const NAV_BOTONES = {
   almacen:      { clave: 'mostrar_btn_almacen',      nombre: 'Gestión de Almacén',      defecto: true },
   devoluciones: { clave: 'mostrar_btn_devoluciones', nombre: 'Gestión de Devoluciones', defecto: false },
   manifiestos:  { clave: 'mostrar_btn_manifiestos',  nombre: 'Gestión de Manifiestos',  defecto: true },
+  rotulo:       { clave: 'mostrar_btn_rotulo',       nombre: 'Rótulo A4',               defecto: true },
   alistamiento: { clave: 'mostrar_btn_alistamiento', nombre: 'Alistamiento',            defecto: true },
   conteos:      { clave: 'mostrar_btn_conteos',      nombre: 'Conteos',                 defecto: true },
   recepcion:    { clave: 'mostrar_btn_recepcion',    nombre: 'Recepción de Mercancía',  defecto: true },
