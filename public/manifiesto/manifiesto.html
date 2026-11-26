@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" integrity="sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F" crossorigin="anonymous"></script>
 <!-- Capa visual Dock (solo pantalla; ver shared/dock.css) -->
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/shared/dock.css?v=20261126">
+<link rel="stylesheet" href="/shared/dock.css?v=20261126b">
 </head>
 
 <!-- Modal para no manifestadas -->
@@ -155,7 +155,7 @@
   </div>
 </div>
 
-<body class="dock dock-floor dock-man">
+<body class="dock dock-floor dock-shell dock-man" data-dock-modulo="manifiestos">
   <div class="app-container">
 
     <!-- Header -->
@@ -404,6 +404,7 @@
   </div>
 
   <!-- Librerías externas -->
+<script src="/shared/dock-shell.js?v=20261126b"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
 
   <!-- Lógica principal -->

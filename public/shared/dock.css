@@ -12,6 +12,9 @@
  *  - Cada página activa su parte con una clase en <body>:
  *      dock + dock-index | dock-man | dock-dev | dock-ali | dock-tra |
  *      dock-rep | dock-con | dock-rec | dock-mer
+ *    y "dock-shell" (+ data-dock-modulo) en las que llevan el casco con
+ *    menú lateral. La estructura la arma shared/dock-shell.js, que solo
+ *    mueve nodos existentes; este archivo la pinta.
  *  - Se carga al final (después del CSS del módulo y de la decoración de
  *    temporada) para poder ajustar sin tocar los archivos de cada módulo.
  *
@@ -108,88 +111,79 @@ body.dock .estado-vacio-titulo { font-weight: 800; color: var(--dock-ink); }
 
 /* ════════════════════════════════════════════════════════════════════
  * 1. GENERADOR DE ETIQUETAS Y PANEL DE COORDINADOR (index.html)
- *    Barra lateral sobre el piso navy; el área de trabajo es un casco
- *    claro redondeado que flota a la derecha.
+ *    Barra lateral clara con el menú de módulos; el área de trabajo es un
+ *    casco claro con la tarjeta "Arma la etiqueta" (los mismos controles,
+ *    movidos por dock-shell.js) junto a la vista previa 4x6.
  * ════════════════════════════════════════════════════════════════════ */
-body.dock-index { background-color: var(--dock-floor); background-image: var(--dock-grid); background-size: 48px 48px; }
-
-body.dock-index .sidebar { background: transparent; }
-body.dock-index .sidebar::before { display: none; }
-body.dock-index.navidad .sidebar, body.dock-index.halloween .sidebar { background: transparent; }
-
-body.dock-index .brand {
-  margin: 16px 16px 0;
-  padding: 14px 14px;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 18px;
-  background: rgba(255,255,255,.05);
+body.dock-index {
+  background-color: var(--dock-floor);
+  background-image: var(--dock-grid);
+  background-size: 48px 48px;
+  padding: 14px;
+  gap: 14px;
 }
-body.dock-index .brand-logo-pill { border-radius: 12px; }
+
+/* Barra lateral */
+body.dock-index .sidebar,
+body.dock-index.navidad .sidebar,
+body.dock-index.halloween .sidebar {
+  width: 264px;
+  min-height: calc(100vh - 28px);
+  background: #f7f8fb;
+  border: 1px solid var(--dock-line);
+  border-radius: 22px;
+  box-shadow: var(--dock-shadow-shell);
+}
+body.dock-index .sidebar::before { display: none; }
+body.dock-index .brand {
+  margin: 14px 14px 0;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 16px;
+  background: var(--brand-800);
+  background-image: var(--dock-grid);
+  background-size: 24px 24px;
+}
+body.dock-index .brand-logo-pill { border-radius: 10px; }
+body.dock-index .brand-sep { display: none; }
 body.dock-index .brand-status {
-  margin: 10px 16px 0;
-  padding: 6px 12px;
-  border: 1px solid rgba(255,255,255,.08);
+  margin: 10px 14px 0;
+  padding: 5px 12px;
+  border: 1px solid var(--dock-line);
   border-radius: 999px;
-  background: rgba(0,0,0,.18);
+  background: #fff;
   width: fit-content;
 }
-body.dock-index .brand-status-dot { box-shadow: 0 0 0 4px rgba(74,222,128,.16); }
+body.dock-index .brand-status-text { color: var(--dock-ink-2); font-weight: 600; }
+body.dock-index .brand-status-dot { box-shadow: 0 0 0 4px rgba(74,222,128,.18); }
+body.dock-index .sidebar-body { padding: 8px 14px 0; }
 
-body.dock-index .sidebar-body { padding-top: 20px; }
-body.dock-index .field label { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #b9c6f7; }
-body.dock-index .field select,
-body.dock-index .field input[type="text"] {
-  border-radius: 12px;
-  border-color: rgba(255,255,255,.18);
-  background-color: rgba(255,255,255,.06);
-  font-size: 14px;
-  font-weight: 500;
-}
-body.dock-index .field select:hover,
-body.dock-index .field input[type="text"]:hover:not(:disabled) { border-color: rgba(255,255,255,.32); }
-body.dock-index .field input[type="text"]:disabled { opacity: .55; }
-body.dock-index .field select option { background: var(--dock-floor); }
-
-/* Imprimir: el botón principal de la pantalla, en ámbar (la decoración de
-   temporada conserva su propio color) */
-body.dock-index .btn-print {
-  border-radius: 14px;
-  padding: 14px;
-  font-size: 15px;
+.dock-nav-sec {
+  margin: 18px 10px 6px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #5a6482;
 }
-body.dock-index:not(.navidad):not(.halloween) .btn-print {
-  background: var(--dock-amber);
-  color: var(--dock-ink);
-  box-shadow: 0 6px 18px rgba(245,165,36,.28);
-}
-body.dock-index:not(.navidad):not(.halloween) .btn-print:hover {
-  background: #ffb73d;
-  box-shadow: 0 8px 22px rgba(245,165,36,.36);
-}
-body.dock-index:not(.navidad):not(.halloween) .btn-print:disabled,
-body.dock-index:not(.navidad):not(.halloween) .btn-print:disabled:hover {
-  background: var(--dock-amber); box-shadow: none; opacity: .4;
-}
-body.dock-index .print-hint { color: #b9c6f7; }
 
-/* Módulos: lista de navegación con la cinta de seguridad al pasar */
+/* Botones de módulos como menú */
 body.dock-index .btn-bulk {
   position: relative;
-  margin-bottom: 4px;
+  width: 100%;
+  margin: 0 0 2px;
   padding: 10px 12px;
+  min-height: 42px;
   border: 1px solid transparent;
   border-radius: 12px;
-  color: #dde3ff;
+  background: transparent;
+  color: var(--dock-ink-2);
   font-size: 14px;
   font-weight: 600;
 }
-body.dock-index .sidebar-body .btn-print + .print-hint + .btn-bulk,
-body.dock-index .sidebar-body .btn-print + .print-hint:empty + .btn-bulk { margin-top: 16px; }
 body.dock-index .btn-bulk::before {
   content: '';
-  position: absolute; left: -20px; top: 9px; bottom: 9px;
+  position: absolute; left: -14px; top: 9px; bottom: 9px;
   width: 5px;
   border-radius: 0 4px 4px 0;
   background: var(--dock-tape);
@@ -198,49 +192,155 @@ body.dock-index .btn-bulk::before {
 }
 body.dock-index .btn-bulk:hover,
 body.dock-index .btn-bulk:focus-visible {
-  background: rgba(255,255,255,.08);
-  border-color: rgba(255,255,255,.08);
-  color: #fff;
+  background: #fff;
+  border-color: var(--dock-line);
+  color: var(--brand-800);
+  box-shadow: 0 1px 2px rgba(13,27,110,.06), 0 4px 14px rgba(13,27,110,.06);
 }
 body.dock-index .btn-bulk:hover::before,
 body.dock-index .btn-bulk:focus-visible::before { opacity: 1; }
-body.dock-index .btn-bulk .nav-ico { color: #7a9df3; }
-body.dock-index .btn-bulk:hover .nav-ico { color: var(--dock-amber); }
+body.dock-index .btn-bulk .nav-ico { color: var(--brand-500); }
 
-body.dock-index .sidebar-footer { border-top-color: rgba(255,255,255,.08); padding: 16px 20px 20px; }
+body.dock-index .sidebar-footer { border-top: 1px solid var(--dock-line); padding: 14px; }
 body.dock-index .btn-coord {
-  min-height: 44px;
+  min-height: 48px;
+  border: none;
   border-radius: 14px;
-  border-color: rgba(255,255,255,.16);
-  background: rgba(255,255,255,.05);
-  color: #dde3ff;
-  font-size: 12px;
-  letter-spacing: .08em;
+  background: var(--brand-800);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: 0 6px 16px rgba(13,27,110,.25);
 }
-body.dock-index .btn-coord:hover { background: rgba(255,255,255,.1); color: #fff; }
-body.dock-index .btn-coord.active {
-  background: var(--dock-amber);
-  border-color: var(--dock-amber);
-  color: var(--dock-ink);
-}
+body.dock-index .btn-coord:hover { background: var(--brand-700); color: #fff; }
+body.dock-index .btn-coord.active { background: var(--dock-amber); color: var(--dock-ink); box-shadow: 0 6px 16px rgba(245,165,36,.3); }
 
-/* Área de trabajo: casco claro */
+/* Área de trabajo */
 body.dock-index .main {
-  margin: 14px 14px 14px 0;
+  margin: 0;
+  min-width: 0;
   min-height: calc(100vh - 28px);
   border-radius: var(--dock-r-shell);
   box-shadow: var(--dock-shadow-shell);
-  min-width: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  justify-content: center;
+  gap: 24px 28px;
+  padding: 28px 32px 40px;
 }
-body.dock-index:not(.navidad):not(.halloween) .main {
-  background-color: var(--dock-shell);
-  background-image: radial-gradient(rgba(13,27,110,.07) 1px, transparent 1.2px);
-  background-size: 22px 22px;
+body.dock-index:not(.navidad):not(.halloween) .main { background: var(--dock-shell); }
+body.dock-index.navidad .main { padding-top: 84px; }
+
+.dock-pagehead { order: 0; flex: 1 1 100%; display: flex; align-items: flex-end; gap: 12px; }
+.dock-pagehead-txt { display: flex; flex-direction: column; gap: 2px; }
+.dock-pagehead-sub { font-size: 13px; font-weight: 600; color: #5a6482; }
+.dock-pagehead-t { font-size: 30px; font-weight: 800; letter-spacing: -.025em; color: var(--dock-ink); line-height: 1.15; }
+body.dock-index #coord-panel { order: 1; }
+body.dock-index #coord-panel.visible { flex: 1 1 100%; max-width: 1100px; }
+body.dock-index:has(#tab-recepciones.active) #coord-panel.visible { max-width: 1240px; }
+body.dock-index .xmas-greeting { order: 2; flex: 1 1 100%; }
+body.dock-index .dock-gen { order: 3; }
+body.dock-index #etiqueta { order: 4; flex: none; }
+
+/* Tarjeta "Arma la etiqueta" */
+.dock-gen {
+  flex: 1 1 380px;
+  max-width: 520px;
+  background: #fff;
+  border: 1px solid var(--dock-line);
+  border-radius: 22px;
+  box-shadow: var(--dock-shadow-card);
+  padding: 22px;
+  position: relative;
 }
-/* Vista previa: la etiqueta se apoya sobre una base, como en la impresora */
+.dock-gen-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.dock-gen-head h2 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -.015em; color: var(--dock-ink); }
+.dock-gen-fmt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brand-800);
+  background: var(--brand-50);
+  border: 1px solid var(--brand-100);
+  border-radius: 8px;
+  padding: 3px 8px;
+}
+.dock-gen-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.dock-gen-campos > .field { margin: 0; min-width: 0; }
+.dock-gen-campos > .field:nth-child(3) { grid-column: 1 / -1; }
+body.dock-index .dock-gen .field label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--dock-ink-2);
+}
+body.dock-index .dock-gen .field select,
+body.dock-index .dock-gen .field input[type="text"] {
+  min-height: 42px;
+  height: auto;
+  border: 1px solid var(--dock-line-2);
+  border-radius: 12px;
+  background-color: #fff;
+  color: var(--dock-ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+body.dock-index .dock-gen .field select {
+  padding: 0 36px 0 12px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235a6482' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+}
+body.dock-index .dock-gen .field input[type="text"]::placeholder { color: #8a93ad; }
+body.dock-index .dock-gen .field input[type="text"]:disabled { background: #f4f6fa; opacity: 1; color: #8a93ad; cursor: not-allowed; }
+body.dock-index .dock-gen .field select:focus,
+body.dock-index .dock-gen .field input[type="text"]:focus {
+  border-color: var(--brand-500);
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(42,71,212,.12);
+}
+body.dock-index .dock-gen .field select option { background: #fff; color: var(--dock-ink); }
+
+/* Borde perforado tipo ticket entre los campos y el botón */
+.dock-gen-perf { position: relative; border-top: 2px dashed #dde3ee; margin: 20px -22px 18px; }
+.dock-gen-perf::before, .dock-gen-perf::after {
+  content: ''; position: absolute; top: -11px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--dock-shell); border: 1px solid var(--dock-line);
+}
+.dock-gen-perf::before { left: -11px; }
+.dock-gen-perf::after { right: -11px; }
+
+body.dock-index .dock-gen .btn-print {
+  width: 100%;
+  margin: 0;
+  min-height: 50px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+body.dock-index:not(.navidad):not(.halloween) .dock-gen .btn-print {
+  background: var(--brand-800);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(13,27,110,.22);
+}
+body.dock-index:not(.navidad):not(.halloween) .dock-gen .btn-print:hover { background: var(--brand-700); }
+body.dock-index:not(.navidad):not(.halloween) .dock-gen .btn-print:disabled,
+body.dock-index:not(.navidad):not(.halloween) .dock-gen .btn-print:disabled:hover { background: var(--brand-800); box-shadow: none; opacity: .35; }
+body.dock-index .dock-gen .print-hint { margin: 10px 0 0; color: #5a6482; font-weight: 500; }
+
+/* Vista previa: la etiqueta se apoya sobre la mesa, ligeramente girada */
 body.dock-index #etiqueta {
   border-radius: 6px;
-  box-shadow: 0 1px 0 rgba(11,18,51,.04), 0 18px 40px rgba(11,18,51,.16);
+  box-shadow: 0 1px 0 rgba(11,18,51,.04), 0 22px 44px rgba(11,18,51,.18);
 }
 
 /* Panel de coordinador */
@@ -250,7 +350,7 @@ body.dock-index #coord-panel {
   box-shadow: var(--dock-shadow-card);
   padding: 28px;
 }
-body.dock-index .coord-header h2 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--dock-ink); }
+body.dock-index .coord-header h2 { font-size: 24px; font-weight: 800; letter-spacing: -.02em; color: var(--dock-ink); }
 body.dock-index .coord-badge {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -261,16 +361,16 @@ body.dock-index .coord-badge {
   padding: 3px 9px;
 }
 body.dock-index .coord-saludo { font-weight: 600; }
-
 body.dock-index .coord-tabs {
   gap: 4px;
-  padding: 5px;
+  padding: 6px;
   border: 1px solid var(--dock-line);
   border-radius: 16px;
-  background: #f4f6fa;
+  background: #fff;
+  box-shadow: var(--dock-shadow-card);
 }
 body.dock-index .tab-btn {
-  padding: 8px 14px;
+  padding: 9px 14px;
   margin: 0;
   border: none;
   border-radius: 11px;
@@ -278,46 +378,30 @@ body.dock-index .tab-btn {
   font-weight: 600;
   color: var(--dock-ink-2);
 }
-body.dock-index .tab-btn:hover:not(.active) { background: #fff; color: var(--dock-ink); }
+body.dock-index .tab-btn:hover:not(.active) { background: #f0f2f7; color: var(--dock-ink); }
 body.dock-index .tab-btn.active {
   background: var(--brand-800);
   color: #fff;
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(13,27,110,.25);
 }
-
 body.dock-index .form-group label { font-weight: 700; color: var(--dock-ink-2); }
 body.dock-index #coord-panel input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 body.dock-index #coord-panel select,
 body.dock-index #coord-panel textarea { border-radius: 10px; }
 body.dock-index .btn-action { border-radius: 10px; font-weight: 700; }
 body.dock-index .section-label { font-weight: 800; letter-spacing: .08em; color: var(--dock-ink-2); }
-
 body.dock-index .inv-list { border-radius: 14px; border-color: var(--dock-line); }
-body.dock-index .inv-item .item-id,
-body.dock-index .bulk-item .b-id,
-body.dock-index .conteo-id { font-family: var(--font-mono); }
-
+body.dock-index :is(.inv-item .item-id, .bulk-item .b-id, .conteo-id) { font-family: var(--font-mono); }
 body.dock-index #tab-config .cfg-acc { border-radius: 16px; border-color: var(--dock-line); overflow: hidden; }
 body.dock-index #tab-config .cfg-title { font-weight: 700; }
-
-/* Resúmenes y listas del panel */
-body.dock-index .devol-stat,
-body.dock-index .rc-res { border-radius: 14px; }
-body.dock-index .devol-stat-val,
-body.dock-index .rc-res strong,
-body.dock-index .conteo-qty { font-family: var(--font-mono); font-weight: 700; }
-body.dock-index .conteo-card,
-body.dock-index .rc-card,
-body.dock-index .estacion-box { border-radius: 18px; }
+body.dock-index :is(.devol-stat, .rc-res) { border-radius: 14px; }
+body.dock-index :is(.devol-stat-val, .rc-res strong, .conteo-qty) { font-family: var(--font-mono); font-weight: 700; }
+body.dock-index :is(.conteo-card, .rc-card, .estacion-box) { border-radius: 18px; }
 
 /* Modales del generador */
-body.dock-index .pin-modal,
-body.dock-index .bulk-modal,
-body.dock-index .rotulo-modal,
-body.dock-index .traslado-modal { border-radius: 24px; }
-body.dock-index .bulk-modal-header,
-body.dock-index .rotulo-modal-header {
+body.dock-index :is(.pin-modal, .bulk-modal, .rotulo-modal, .traslado-modal) { border-radius: 24px; }
+body.dock-index :is(.bulk-modal-header, .rotulo-modal-header) {
   background-color: var(--dock-floor);
   background-image: var(--dock-grid);
   background-size: 32px 32px;
@@ -325,73 +409,196 @@ body.dock-index .rotulo-modal-header {
 body.dock-index .pin-modal h2 { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
 
 @media (max-width: 900px) {
-  body.dock-index .main { margin: 0 12px 12px; min-height: 0; border-radius: 24px; }
+  body.dock-index { padding: 10px; gap: 10px; }
+  body.dock-index .sidebar,
+  body.dock-index.navidad .sidebar,
+  body.dock-index.halloween .sidebar { width: 100%; min-height: 0; }
+  /* El menú de módulos pasa a una fila deslizable, como en las demás pantallas */
+  body.dock-index .sidebar-body {
+    display: flex; flex-wrap: nowrap; gap: 6px;
+    overflow-x: auto; scrollbar-width: none;
+    padding: 10px 14px;
+  }
+  body.dock-index .sidebar-body::-webkit-scrollbar { display: none; }
+  body.dock-index .sidebar-body .dock-nav-sec,
+  body.dock-index .brand-status { display: none; }
+  body.dock-index .sidebar-body .btn-bulk { flex: none; width: auto; margin: 0; min-height: 40px; border-color: var(--dock-line); background: #fff; white-space: nowrap; }
   body.dock-index .btn-bulk::before { display: none; }
-  body.dock-index .btn-bulk { border-color: rgba(255,255,255,.1); }
+  body.dock-index .brand { margin: 10px 10px 0; }
+  body.dock-index .sidebar-footer { padding: 0 14px 12px; border-top: none; }
+  body.dock-index .btn-coord { min-height: 44px; }
+  body.dock-index .main { min-height: 0; padding: 20px 14px 32px; border-radius: 22px; }
+  body.dock-index.navidad .main { padding-top: 80px; }
+  .dock-gen { max-width: none; flex-basis: 100%; }
+  .dock-pagehead-t { font-size: 24px; }
 }
 @media (max-width: 640px) {
+  .dock-gen { padding: 18px; }
+  .dock-gen-perf { margin-left: -18px; margin-right: -18px; }
+  .dock-gen-campos { grid-template-columns: 1fr; }
   body.dock-index #coord-panel { padding: 18px 14px; border-radius: 20px; }
-  body.dock-index .coord-tabs { border-radius: 14px; margin-left: 0; margin-right: 0; }
+  body.dock-index .coord-tabs { margin-left: 0; margin-right: 0; border-radius: 14px; }
+  body.dock-index .dock-gen .field select,
+  body.dock-index .dock-gen .field input[type="text"] { min-height: 44px; font-size: 15px; }
 }
 
 
 /* ════════════════════════════════════════════════════════════════════
- * 2. PANTALLAS CON .app-container
- *    Manifiestos, Devoluciones, Alistamiento y Trazabilidad comparten la
- *    misma estructura: cabecera, encabezado de sección y contenido.
+ * 2. CASCO CON MENÚ LATERAL (body.dock-shell)
+ *    Manifiestos, Devoluciones, Alistamiento, Trazabilidad, Reporte y
+ *    Mercado. dock-shell.js envuelve el contenido en .dock-frame.
  * ════════════════════════════════════════════════════════════════════ */
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .app-container {
+body.dock-shell { padding: 16px !important; }
+.dock-frame {
+  max-width: 1640px;
+  min-height: calc(100vh - 32px);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px;
   background: var(--dock-shell);
-  border: none;
   border-radius: var(--dock-r-shell);
   box-shadow: var(--dock-shadow-shell);
 }
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header {
-  background: transparent;
-  border-bottom: none;
-  padding: 26px 28px 6px;
-  gap: 14px;
+.dock-side {
+  flex: 1 1 220px;
+  max-width: 236px;
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px;
+  background: #f7f8fb;
+  border: 1px solid var(--dock-line);
+  border-radius: 20px;
 }
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header i {
-  width: 40px; height: 40px;
-  flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 12px;
+.dock-content { flex: 999 1 560px; min-width: 0; display: block; padding: 6px 6px 10px; }
+
+.dock-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px;
+  margin-bottom: 4px;
+  background: #fff;
+  border: 1px solid var(--dock-line);
+  border-radius: 14px;
+}
+.dock-brand-mark {
+  width: 36px; height: 36px; flex-shrink: 0;
+  display: grid; place-items: center;
+  border-radius: 10px;
   background: var(--brand-800);
   color: var(--dock-amber);
-  font-size: 18px;
 }
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header h2 {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -.02em;
-  color: var(--dock-ink);
+.dock-brand-txt { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.dock-brand-txt strong { font-size: 15px; font-weight: 800; color: var(--dock-ink); }
+.dock-brand-txt span { font-size: 12px; color: #5a6482; }
+.dock-ico { width: 18px; height: 18px; flex-shrink: 0; }
+
+.dock-nav {
+  position: relative;
+  display: flex; align-items: center; gap: 11px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  color: var(--dock-ink-2);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+.dock-nav .dock-ico { color: var(--brand-500); }
+.dock-nav:hover { background: #fff; color: var(--brand-800); }
+.dock-nav.on {
+  background: #fff;
+  color: var(--brand-800);
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(13,27,110,.08), 0 4px 14px rgba(13,27,110,.06);
+}
+.dock-nav.on::before {
+  content: '';
+  position: absolute; left: -14px; top: 8px; bottom: 8px;
+  width: 5px;
+  border-radius: 0 4px 4px 0;
+  background: var(--dock-tape);
 }
 
+/* Contenedor original: sin caja propia, el casco ya la pone */
+body.dock-shell .app-container {
+  max-width: none;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* Cabecera de módulo como encabezado de página claro */
+body.dock-shell .app-header,
+body.dock-shell .mk-header { --focus-ring: #1d4ed8; }
+body.dock-shell .app-header {
+  background: transparent;
+  color: var(--dock-ink);
+}
+body.dock-shell .app-header::after { display: none; }
+body.dock-shell .app-header > .header-main-row,
+body.dock-shell .app-header:not(:has(> .header-main-row)) {
+  max-width: none;
+  min-height: 0;
+  padding: 4px 4px 6px;
+}
+body.dock-shell .header-logo-pill,
+body.dock-shell .header-divider { display: none; }
+body.dock-shell .header-titles { flex-direction: column-reverse; gap: 2px; }
+body.dock-shell .header-titles h1 {
+  color: var(--dock-ink);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -.025em;
+  line-height: 1.15;
+}
+body.dock-shell :is(.header-sub, .header-titles p) { color: #5a6482; font-size: 13px; font-weight: 600; }
+body.dock-shell .header-back {
+  width: 40px; height: 40px;
+  background: #fff;
+  color: var(--dock-ink);
+  border: 1px solid var(--dock-line-2);
+  border-radius: 12px;
+}
+body.dock-shell .header-back:hover { background: #fff; border-color: var(--brand-300); color: var(--brand-800); }
+
+/* El título "Panel de Control — ..." repite la cabecera: solo para lectores */
+body.dock-shell .section-header {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+body.dock-shell :is(.dashboard-content, .section-content) { padding: 10px 0 0; }
+
 /* Tarjetas */
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) :is(.input-card, .progress-container, .results-block) {
+body.dock-shell :is(.input-card, .progress-container, .results-block) {
   background: var(--dock-card);
   border: 1px solid var(--dock-line);
   border-radius: var(--dock-r-card);
   box-shadow: var(--dock-shadow-card);
 }
-
-/* Campos y etiquetas */
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .input-group label { font-weight: 700; color: var(--dock-ink-2); }
+body.dock-shell .log-wrap { border-radius: 16px; }
+body.dock-shell .input-group label { font-weight: 700; color: var(--dock-ink-2); }
 body:is(.dock-man, .dock-dev, .dock-ali) :is(input[type="text"], select) {
   border-color: var(--dock-line-2);
   border-width: 1px;
   border-radius: 12px;
 }
 
-/* Métricas: cifra grande en mono */
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .metric-card { border-radius: 18px; }
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .metric-value {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  letter-spacing: -.03em;
-}
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .metric-label { font-weight: 600; }
+/* Métricas */
+body.dock-shell .metric-card { border-radius: 18px; }
+body.dock-shell .metric-value { font-family: var(--font-mono); font-weight: 700; letter-spacing: -.03em; }
+body.dock-shell .metric-label { font-weight: 600; }
 body:is(.dock-man, .dock-dev, .dock-ali) .metric-card.total,
 body:is(.dock-man, .dock-dev, .dock-ali) .metric-card.repeat {
   background: var(--dock-card);
@@ -405,122 +612,112 @@ body:is(.dock-man, .dock-dev, .dock-ali) .progress-bar { height: 12px; border-ra
 body:is(.dock-man, .dock-dev, .dock-ali) .progress-fill { border-radius: 8px; }
 body:is(.dock-man, .dock-dev, .dock-ali) .progress-title { font-weight: 700; }
 
-/* Tablas */
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) th {
-  font-weight: 700;
-  letter-spacing: .02em;
-}
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .tbl-wrap { border-radius: 14px; }
-
-/* Modales */
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .modal-content { border-radius: 24px; overflow: hidden; }
-body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .modal-header {
+/* Tablas y modales */
+body.dock-shell th { font-weight: 700; letter-spacing: .02em; }
+body.dock-shell .tbl-wrap { border-radius: 14px; }
+body.dock-shell .modal-content { border-radius: 24px; overflow: hidden; }
+body.dock-shell .modal-header {
   background-color: var(--dock-floor);
   background-image: var(--dock-grid);
   background-size: 32px 32px;
 }
 
-@media (max-width: 600px) {
-  body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .app-container { border-radius: 22px; }
-  body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header { padding: 18px 16px 4px; }
-  body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header h2 { font-size: 18px; }
-}
-
-/* ── Manifiestos: el campo de escaneo es el protagonista ── */
+/* Manifiestos: el campo de escaneo es el protagonista, en una franja oscura */
 body.dock-man .input-card { padding: 24px; }
 body.dock-man .scan-field #scanInput {
-  height: 60px;
+  height: 64px;
   border: 2px solid var(--brand-500);
   border-radius: 14px;
   font-family: var(--font-mono);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: .04em;
-  background: #f7f9ff;
-}
-body.dock-man .scan-field #scanInput::placeholder { font-family: var(--font-sans); font-weight: 500; letter-spacing: 0; font-size: 16px; }
-body.dock-man .scan-field.is-idle #scanInput {
-  border: 2px dashed #e67e00;
-  background: #fff8ee;
-}
-body.dock-man .scan-banner-guia { font-family: var(--font-mono); }
-body.dock-man .metric-card.total {
-  background: var(--brand-800);
-  border-color: var(--brand-800);
+  letter-spacing: .05em;
+  background: var(--dock-floor-2);
   color: #fff;
 }
-body.dock-man .metric-card.total .metric-label,
-body.dock-man .metric-card.total .metric-icon { color: #b9c6f7; }
+body.dock-man .scan-field #scanInput::placeholder { color: #8f9ccc; font-family: var(--font-sans); font-weight: 500; letter-spacing: 0; font-size: 16px; }
+body.dock-man .scan-field .scan-status { color: #7ee2a8; }
+body.dock-man .scan-field.is-idle #scanInput { border: 2px dashed var(--dock-amber); background: var(--dock-floor-2); }
+body.dock-man .scan-field.is-idle .scan-idle-hint,
+body.dock-man .scan-field.is-idle .scan-status { color: #f5c76a; }
+body.dock-man .scan-banner-guia { font-family: var(--font-mono); }
+body.dock-man .metric-card.total { background: var(--brand-800); border-color: var(--brand-800); color: #fff; }
+body.dock-man .metric-card.total :is(.metric-label, .metric-icon) { color: #b9c6f7; }
 body.dock-man :is(.faltante-number, .historial-datos) { font-family: var(--font-mono); }
 body.dock-man .action-btn { border-radius: 12px; font-weight: 700; }
 
-/* ── Devoluciones ── */
+/* Devoluciones */
 body.dock-dev .scan-input { font-family: var(--font-mono); font-weight: 700; letter-spacing: .03em; }
 body.dock-dev .sf-value { font-family: var(--font-mono); }
 body.dock-dev .btn { border-radius: 12px; font-weight: 700; }
+body.dock-dev .tabla-section {
+  background: var(--dock-card);
+  border: 1px solid var(--dock-line);
+  border-radius: var(--dock-r-card);
+  box-shadow: var(--dock-shadow-card);
+  padding: 16px;
+}
 
-/* ── Alistamiento ── */
+/* Alistamiento */
 body.dock-ali .dropzone { border-radius: 16px; border-width: 2px; background: var(--dock-card); }
-body:is(.dock-ali, .dock-dev, .dock-tra) .log-wrap { border-radius: 16px; }
 body.dock-ali .dropzone.has-file { border-style: solid; border-color: var(--brand-800); }
 body.dock-ali :is(.guide-id-pill, .log-gu) { font-family: var(--font-mono); }
 body.dock-ali .btn { border-radius: 12px; font-weight: 700; }
 body.dock-ali .print-guide-btn { border-radius: 10px; }
 
-/* ── Trazabilidad: tarjetas de color propio, solo se suavizan ── */
+/* Trazabilidad: tarjetas de color propio, solo se suavizan */
 body.dock-tra .metric-card { box-shadow: 0 10px 24px rgba(11,18,51,.14); }
 body.dock-tra .btn { border-radius: 12px; font-weight: 700; }
 body.dock-tra .dropzone { border-radius: 16px; background: var(--dock-card); }
 body.dock-tra td.num { font-family: var(--font-mono); }
 
-
-/* ════════════════════════════════════════════════════════════════════
- * 3. REPORTE POR DISTRIBUIDOR
- * ════════════════════════════════════════════════════════════════════ */
-body.dock-rep .app-header::after { display: none; }
-body.dock-rep .app-header { background: transparent; }
-body.dock-rep .report-shell {
-  margin: 0 auto 24px;
-  width: calc(100% - 28px);
-  background: var(--dock-shell);
-  border-radius: var(--dock-r-shell);
-  box-shadow: var(--dock-shadow-shell);
-  overflow: hidden;
-  padding-bottom: 4px;
-  position: relative;
-}
-body.dock-rep .report-shell::before {
-  content: '';
-  display: block;
-  height: 6px;
-  background: var(--dock-tape);
-}
+/* Reporte */
+body.dock-rep .report-shell { max-width: none; }
 body.dock-rep .file-zone {
+  margin: 0;
   background: var(--dock-card);
   border: 2px dashed #b9c6f7;
   border-radius: var(--dock-r-card);
 }
 body.dock-rep .file-label { border-radius: 12px; font-weight: 700; }
-body.dock-rep :is(.stat, .controls, .group, .exclusion-panel) {
-  border-radius: var(--dock-r-card) !important;
-  border-color: var(--dock-line);
-}
+body.dock-rep .stats-bar { padding-left: 0; padding-right: 0; }
+body.dock-rep :is(.stat, .controls, .group, .exclusion-panel) { border-radius: var(--dock-r-card) !important; border-color: var(--dock-line); }
 body.dock-rep .stat { background: var(--dock-card); box-shadow: var(--dock-shadow-card); }
 body.dock-rep .stat-val { font-family: var(--font-mono); font-weight: 700; letter-spacing: -.03em; }
 body.dock-rep .controls { background: var(--dock-card); }
-body.dock-rep .controls input[type="text"],
-body.dock-rep .controls select { border-radius: 12px; }
+body.dock-rep .controls :is(input[type="text"], select) { border-radius: 12px; }
 body.dock-rep .toggle-btn { border-radius: 12px; font-weight: 700; }
+body.dock-rep .main { padding-left: 0; padding-right: 0; }
 body.dock-rep .group { overflow: hidden; box-shadow: var(--dock-shadow-card); }
 body.dock-rep .group-name { font-weight: 700; }
-body.dock-rep .group-meta .total,
-body.dock-rep .qty-num,
-body.dock-rep .id-pill { font-family: var(--font-mono); }
+body.dock-rep :is(.group-meta .total, .qty-num, .id-pill) { font-family: var(--font-mono); }
 body.dock-rep .bar-bg { height: 8px; border-radius: 6px; }
 body.dock-rep .bar-fill { border-radius: 6px; }
-body.dock-rep .footer-note { color: var(--dock-ink-2); }
-@media (max-width: 600px) {
-  body.dock-rep .report-shell { width: calc(100% - 16px); border-radius: 22px; }
+body.dock-rep .footer-note { color: var(--dock-ink-2); background: transparent; border: none; }
+body.dock-rep .exclusion-panel { margin-left: 0; margin-right: 0; }
+
+/* Celular y tablet: el menú lateral pasa a una fila deslizable arriba */
+@media (max-width: 900px) {
+  body.dock-shell { padding: 8px !important; }
+  .dock-frame { padding: 10px; gap: 10px; border-radius: 22px; min-height: calc(100vh - 16px); }
+  .dock-side {
+    flex: 1 1 100%;
+    max-width: none;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .dock-side::-webkit-scrollbar { display: none; }
+  .dock-side .dock-brand { margin: 0 6px 0 0; padding: 4px; border: none; background: transparent; }
+  .dock-side .dock-brand-txt, .dock-side .dock-nav-sec { display: none; }
+  .dock-nav { flex: none; min-height: 40px; }
+  .dock-nav.on::before { left: 8px; right: 8px; top: auto; bottom: -2px; width: auto; height: 4px; border-radius: 3px; }
+  .dock-content { padding: 4px 2px 8px; }
+  body.dock-shell .header-titles h1 { font-size: 22px; }
 }
 
 
@@ -593,55 +790,103 @@ body:is(.dock-con, .dock-rec) .ok-msg {
 
 
 /* ════════════════════════════════════════════════════════════════════
- * 5. MERCADO Y ALISTAMIENTO
+ * 5. MERCADO Y ALISTAMIENTO (dentro del casco)
  * ════════════════════════════════════════════════════════════════════ */
-body.dock-mer { background: var(--dock-shell); }
 body.dock-mer .mk-header {
-  position: relative;
-  background-color: var(--dock-floor);
-  background-image: var(--dock-grid);
-  background-size: 32px 32px;
-  padding-bottom: 4px;
+  position: static;
+  background: transparent;
+  color: var(--dock-ink);
+  box-shadow: none;
 }
-body.dock-mer .mk-header::after {
-  content: '';
-  position: absolute; left: 0; right: 0; bottom: 0;
-  height: 4px;
-  background: var(--dock-tape);
-  pointer-events: none;
+body.dock-mer .mk-header-row { min-height: 0; padding: 4px 4px 8px; }
+body.dock-mer .mk-titles h1 { font-size: 28px; font-weight: 800; letter-spacing: -.025em; color: var(--dock-ink); }
+body.dock-mer .mk-sub { color: #5a6482; font-size: 13px; font-weight: 600; }
+body.dock-mer .mk-back {
+  width: 40px; height: 40px;
+  background: #fff;
+  color: var(--dock-ink);
+  border: 1px solid var(--dock-line-2);
+  border-radius: 12px;
 }
-body.dock-mer .mk-titles h1 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
-body.dock-mer .mk-back { border-radius: 12px; }
-body.dock-mer .mk-quien { border-radius: 999px; font-weight: 600; }
-body.dock-mer .mk-tabs { gap: 4px; padding: 6px 12px 10px; }
+body.dock-mer .mk-back:hover { background: #fff; border-color: var(--brand-300); }
+body.dock-mer .mk-quien {
+  min-height: 40px;
+  background: #fff;
+  color: var(--dock-ink);
+  border: 1px solid var(--dock-line-2);
+  border-radius: 999px;
+  font-weight: 600;
+}
+body.dock-mer .mk-quien:hover { background: var(--brand-50); }
+body.dock-mer .mk-quien-lbl { color: #5a6482; }
+body.dock-mer .mk-quien.falta { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning-border); }
+body.dock-mer .mk-corte-bar {
+  margin: 0 4px 10px;
+  padding: 8px 14px;
+  background: var(--dock-ink);
+  border-radius: 14px;
+  font-size: 13px;
+}
+body.dock-mer .mk-corte-txt { color: #dde3ff; font-weight: 600; }
+body.dock-mer .mk-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 4px;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid var(--dock-line);
+  border-radius: 14px;
+  box-shadow: var(--dock-shadow-card);
+  max-width: calc(100% - 8px);
+}
 body.dock-mer .mk-tab {
+  min-height: 36px;
+  padding: 0 14px;
   border: none;
   border-radius: 10px;
-  padding-left: 14px; padding-right: 14px;
+  color: var(--dock-ink-2);
   font-weight: 600;
-  color: #c7cdf5;
 }
-body.dock-mer .mk-tab:hover { background: rgba(255,255,255,.08); color: #fff; }
-body.dock-mer .mk-tab.active {
-  background: #fff;
-  color: var(--brand-800);
-  font-weight: 800;
-  border-bottom-color: transparent;
-}
-body.dock-mer .mk-main { padding-top: 20px; }
-body.dock-mer .mk-card {
-  border-color: var(--dock-line);
-  border-radius: var(--dock-r-card);
-  box-shadow: var(--dock-shadow-card);
-}
+body.dock-mer .mk-tab:hover { background: #f0f2f7; color: var(--dock-ink); }
+body.dock-mer .mk-tab.active { background: var(--brand-800); color: #fff; font-weight: 700; border-bottom-color: transparent; }
+body.dock-mer .mk-main { max-width: none; padding: 14px 0 0; }
+body.dock-mer .mk-card { border-color: var(--dock-line); border-radius: var(--dock-r-card); box-shadow: var(--dock-shadow-card); }
 body.dock-mer .mk-h2 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
 body.dock-mer .mk-btn { border-radius: 10px; font-weight: 700; }
 body.dock-mer :is(input[type="text"], input[type="date"], input[type="search"], select) { border-radius: 10px; }
-body.dock-mer .mk-drop { border-radius: var(--dock-r-card); border-width: 2px; }
-body.dock-mer .mk-stat { border-radius: 16px; }
+body.dock-mer .mk-drop { border-radius: var(--dock-r-card); border-width: 2px; background: #fff; }
+body.dock-mer .mk-stat { border-radius: 16px; background: #fff; }
 body.dock-mer .mk-stat-v { font-family: var(--font-mono); letter-spacing: -.03em; }
 body.dock-mer .mk-seg { border-radius: 12px; overflow: hidden; }
 body.dock-mer .mk-chip { border-radius: 999px; }
 body.dock-mer .mk-chip-n { font-family: var(--font-mono); }
+@media (max-width: 900px) {
+  body.dock-mer .mk-titles h1 { font-size: 22px; }
+  body.dock-mer .mk-tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; }
+  body.dock-mer .mk-tab { flex: none; }
+}
+@media (max-width: 600px) {
+  body.dock-mer .mk-header-row { flex-wrap: wrap; row-gap: 10px; }
+  body.dock-mer .mk-titles { flex: 1 1 0; min-width: 0; }
+  body.dock-mer .mk-quien { flex: 1 1 100%; max-width: none; margin-left: 0; justify-content: center; }
+}
 
 } /* fin @media screen */
+
+/* ── IMPRESIÓN ───────────────────────────────────────────────────────
+ * El menú lateral y el casco no existen en papel: cada módulo imprime con
+ * sus propias reglas, como antes. */
+@media print {
+  .dock-side, .dock-pagehead, .dock-gen-head, .dock-gen-perf { display: none !important; }
+  .dock-frame, .dock-content {
+    display: block !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}
