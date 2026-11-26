@@ -1,0 +1,647 @@
+/* ══ DOCK — capa visual de la suite (rework 2026-11) ═══════════════════
+ * Piel común de todas las pantallas menos StockForge. Solo cambia cómo se
+ * ven las cosas: no agrega ni quita controles, ids ni eventos, así que la
+ * lógica de cada módulo sigue igual.
+ *
+ * Reglas de la casa:
+ *  - Todo va dentro de @media screen: la impresión (etiqueta 4x6, rótulo
+ *    A4, hojas del mercado, PDF del reporte) sale exactamente como antes.
+ *  - La etiqueta (#etiqueta) y la vista previa del rótulo conservan su
+ *    tipografía y estilo estandarizados (Inter), aunque la interfaz use
+ *    Manrope.
+ *  - Cada página activa su parte con una clase en <body>:
+ *      dock + dock-index | dock-man | dock-dev | dock-ali | dock-tra |
+ *      dock-rep | dock-con | dock-rec | dock-mer
+ *  - Se carga al final (después del CSS del módulo y de la decoración de
+ *    temporada) para poder ajustar sin tocar los archivos de cada módulo.
+ *
+ * Lenguaje visual:
+ *  - "Piso de bodega": fondo navy con retícula de plano.
+ *  - Cinta de seguridad ámbar/negra para lo activo o lo que pide atención.
+ *  - Tarjetas blancas de radio amplio sobre un casco gris claro.
+ *  - Cifras, guías e IDs en JetBrains Mono.
+ */
+
+@media screen {
+
+/* ── TOKENS DEL DOCK ─────────────────────────────────────────────── */
+:root {
+  --font-sans: 'Manrope', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --dock-floor:   #0a1240;
+  --dock-floor-2: #121b4d;
+  --dock-shell:   #eef1f7;
+  --dock-card:    #ffffff;
+  --dock-line:    #e3e7f0;
+  --dock-line-2:  #d5dbe8;
+  --dock-ink:     #0b1233;
+  --dock-ink-2:   #3d4766;
+  --dock-amber:   #f5a524;
+  --dock-amber-ink: #8a5300;
+  --dock-grid: linear-gradient(rgba(122,157,243,.08) 1px, transparent 1px),
+               linear-gradient(90deg, rgba(122,157,243,.08) 1px, transparent 1px);
+  --dock-tape: repeating-linear-gradient(-45deg, #f5a524 0 7px, #0b1233 7px 14px);
+  --dock-r-card:  20px;
+  --dock-r-shell: 28px;
+  --dock-shadow-card:  0 1px 2px rgba(13,27,110,.05), 0 6px 20px rgba(13,27,110,.05);
+  --dock-shadow-shell: 0 30px 80px rgba(0,0,0,.42);
+}
+
+/* La etiqueta y el rótulo no cambian: misma tipografía estandarizada */
+#etiqueta, .rotulo-preview {
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  letter-spacing: normal;
+}
+
+body.dock { -webkit-font-smoothing: antialiased; }
+body.dock :is(input, select, textarea, button) { font-family: inherit; }
+
+/* Piso de bodega (fondo de página) */
+body.dock-floor {
+  background-color: var(--dock-floor);
+  background-image: var(--dock-grid);
+  background-size: 48px 48px;
+  background-attachment: fixed;
+}
+
+/* ── CABECERA COMPARTIDA (.app-header) ───────────────────────────── */
+body.dock .app-header {
+  position: relative;
+  background-color: var(--dock-floor);
+  background-image: var(--dock-grid);
+  background-size: 32px 32px;
+}
+body.dock .app-header::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: var(--dock-tape);
+  opacity: .9;
+  pointer-events: none;
+}
+body.dock .app-header:not(:has(> .header-main-row)),
+body.dock .app-header > .header-main-row { min-height: 72px; padding-top: 14px; padding-bottom: 18px; }
+body.dock .header-titles h1 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+body.dock .header-sub, body.dock .header-titles p { color: #b9c6f7; font-weight: 500; }
+body.dock .header-back {
+  border-radius: 12px;
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.06);
+}
+body.dock .header-back:hover { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.4); }
+body.dock .header-logo-pill { border-radius: 10px; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.16); }
+body.dock .header-divider { background: rgba(255,255,255,.14); }
+
+/* ── COMPONENTES COMPARTIDOS ─────────────────────────────────────── */
+body.dock .ui-btn { border-radius: 12px; font-weight: 700; }
+body.dock .ui-confirm { border-radius: 24px; }
+body.dock .ui-confirm-titulo { font-size: 19px; font-weight: 800; letter-spacing: -.01em; }
+body.dock .ui-confirm::backdrop { background: rgba(10,18,64,.6); backdrop-filter: blur(2px); }
+body.dock .estado-vacio svg { color: #b9c6f7; }
+body.dock .estado-vacio-titulo { font-weight: 800; color: var(--dock-ink); }
+
+
+/* ════════════════════════════════════════════════════════════════════
+ * 1. GENERADOR DE ETIQUETAS Y PANEL DE COORDINADOR (index.html)
+ *    Barra lateral sobre el piso navy; el área de trabajo es un casco
+ *    claro redondeado que flota a la derecha.
+ * ════════════════════════════════════════════════════════════════════ */
+body.dock-index { background-color: var(--dock-floor); background-image: var(--dock-grid); background-size: 48px 48px; }
+
+body.dock-index .sidebar { background: transparent; }
+body.dock-index .sidebar::before { display: none; }
+body.dock-index.navidad .sidebar, body.dock-index.halloween .sidebar { background: transparent; }
+
+body.dock-index .brand {
+  margin: 16px 16px 0;
+  padding: 14px 14px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 18px;
+  background: rgba(255,255,255,.05);
+}
+body.dock-index .brand-logo-pill { border-radius: 12px; }
+body.dock-index .brand-status {
+  margin: 10px 16px 0;
+  padding: 6px 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  background: rgba(0,0,0,.18);
+  width: fit-content;
+}
+body.dock-index .brand-status-dot { box-shadow: 0 0 0 4px rgba(74,222,128,.16); }
+
+body.dock-index .sidebar-body { padding-top: 20px; }
+body.dock-index .field label { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #b9c6f7; }
+body.dock-index .field select,
+body.dock-index .field input[type="text"] {
+  border-radius: 12px;
+  border-color: rgba(255,255,255,.18);
+  background-color: rgba(255,255,255,.06);
+  font-size: 14px;
+  font-weight: 500;
+}
+body.dock-index .field select:hover,
+body.dock-index .field input[type="text"]:hover:not(:disabled) { border-color: rgba(255,255,255,.32); }
+body.dock-index .field input[type="text"]:disabled { opacity: .55; }
+body.dock-index .field select option { background: var(--dock-floor); }
+
+/* Imprimir: el botón principal de la pantalla, en ámbar (la decoración de
+   temporada conserva su propio color) */
+body.dock-index .btn-print {
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+body.dock-index:not(.navidad):not(.halloween) .btn-print {
+  background: var(--dock-amber);
+  color: var(--dock-ink);
+  box-shadow: 0 6px 18px rgba(245,165,36,.28);
+}
+body.dock-index:not(.navidad):not(.halloween) .btn-print:hover {
+  background: #ffb73d;
+  box-shadow: 0 8px 22px rgba(245,165,36,.36);
+}
+body.dock-index:not(.navidad):not(.halloween) .btn-print:disabled,
+body.dock-index:not(.navidad):not(.halloween) .btn-print:disabled:hover {
+  background: var(--dock-amber); box-shadow: none; opacity: .4;
+}
+body.dock-index .print-hint { color: #b9c6f7; }
+
+/* Módulos: lista de navegación con la cinta de seguridad al pasar */
+body.dock-index .btn-bulk {
+  position: relative;
+  margin-bottom: 4px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: #dde3ff;
+  font-size: 14px;
+  font-weight: 600;
+}
+body.dock-index .sidebar-body .btn-print + .print-hint + .btn-bulk,
+body.dock-index .sidebar-body .btn-print + .print-hint:empty + .btn-bulk { margin-top: 16px; }
+body.dock-index .btn-bulk::before {
+  content: '';
+  position: absolute; left: -20px; top: 9px; bottom: 9px;
+  width: 5px;
+  border-radius: 0 4px 4px 0;
+  background: var(--dock-tape);
+  opacity: 0;
+  transition: opacity .15s;
+}
+body.dock-index .btn-bulk:hover,
+body.dock-index .btn-bulk:focus-visible {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.08);
+  color: #fff;
+}
+body.dock-index .btn-bulk:hover::before,
+body.dock-index .btn-bulk:focus-visible::before { opacity: 1; }
+body.dock-index .btn-bulk .nav-ico { color: #7a9df3; }
+body.dock-index .btn-bulk:hover .nav-ico { color: var(--dock-amber); }
+
+body.dock-index .sidebar-footer { border-top-color: rgba(255,255,255,.08); padding: 16px 20px 20px; }
+body.dock-index .btn-coord {
+  min-height: 44px;
+  border-radius: 14px;
+  border-color: rgba(255,255,255,.16);
+  background: rgba(255,255,255,.05);
+  color: #dde3ff;
+  font-size: 12px;
+  letter-spacing: .08em;
+}
+body.dock-index .btn-coord:hover { background: rgba(255,255,255,.1); color: #fff; }
+body.dock-index .btn-coord.active {
+  background: var(--dock-amber);
+  border-color: var(--dock-amber);
+  color: var(--dock-ink);
+}
+
+/* Área de trabajo: casco claro */
+body.dock-index .main {
+  margin: 14px 14px 14px 0;
+  min-height: calc(100vh - 28px);
+  border-radius: var(--dock-r-shell);
+  box-shadow: var(--dock-shadow-shell);
+  min-width: 0;
+}
+body.dock-index:not(.navidad):not(.halloween) .main {
+  background-color: var(--dock-shell);
+  background-image: radial-gradient(rgba(13,27,110,.07) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+/* Vista previa: la etiqueta se apoya sobre una base, como en la impresora */
+body.dock-index #etiqueta {
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(11,18,51,.04), 0 18px 40px rgba(11,18,51,.16);
+}
+
+/* Panel de coordinador */
+body.dock-index #coord-panel {
+  border-radius: 24px;
+  border-color: var(--dock-line);
+  box-shadow: var(--dock-shadow-card);
+  padding: 28px;
+}
+body.dock-index .coord-header h2 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--dock-ink); }
+body.dock-index .coord-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--dock-ink);
+  color: #f5c76a;
+  border-color: var(--dock-ink);
+  border-radius: 8px;
+  padding: 3px 9px;
+}
+body.dock-index .coord-saludo { font-weight: 600; }
+
+body.dock-index .coord-tabs {
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--dock-line);
+  border-radius: 16px;
+  background: #f4f6fa;
+}
+body.dock-index .tab-btn {
+  padding: 8px 14px;
+  margin: 0;
+  border: none;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dock-ink-2);
+}
+body.dock-index .tab-btn:hover:not(.active) { background: #fff; color: var(--dock-ink); }
+body.dock-index .tab-btn.active {
+  background: var(--brand-800);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(13,27,110,.25);
+}
+
+body.dock-index .form-group label { font-weight: 700; color: var(--dock-ink-2); }
+body.dock-index #coord-panel input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+body.dock-index #coord-panel select,
+body.dock-index #coord-panel textarea { border-radius: 10px; }
+body.dock-index .btn-action { border-radius: 10px; font-weight: 700; }
+body.dock-index .section-label { font-weight: 800; letter-spacing: .08em; color: var(--dock-ink-2); }
+
+body.dock-index .inv-list { border-radius: 14px; border-color: var(--dock-line); }
+body.dock-index .inv-item .item-id,
+body.dock-index .bulk-item .b-id,
+body.dock-index .conteo-id { font-family: var(--font-mono); }
+
+body.dock-index #tab-config .cfg-acc { border-radius: 16px; border-color: var(--dock-line); overflow: hidden; }
+body.dock-index #tab-config .cfg-title { font-weight: 700; }
+
+/* Resúmenes y listas del panel */
+body.dock-index .devol-stat,
+body.dock-index .rc-res { border-radius: 14px; }
+body.dock-index .devol-stat-val,
+body.dock-index .rc-res strong,
+body.dock-index .conteo-qty { font-family: var(--font-mono); font-weight: 700; }
+body.dock-index .conteo-card,
+body.dock-index .rc-card,
+body.dock-index .estacion-box { border-radius: 18px; }
+
+/* Modales del generador */
+body.dock-index .pin-modal,
+body.dock-index .bulk-modal,
+body.dock-index .rotulo-modal,
+body.dock-index .traslado-modal { border-radius: 24px; }
+body.dock-index .bulk-modal-header,
+body.dock-index .rotulo-modal-header {
+  background-color: var(--dock-floor);
+  background-image: var(--dock-grid);
+  background-size: 32px 32px;
+}
+body.dock-index .pin-modal h2 { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+
+@media (max-width: 900px) {
+  body.dock-index .main { margin: 0 12px 12px; min-height: 0; border-radius: 24px; }
+  body.dock-index .btn-bulk::before { display: none; }
+  body.dock-index .btn-bulk { border-color: rgba(255,255,255,.1); }
+}
+@media (max-width: 640px) {
+  body.dock-index #coord-panel { padding: 18px 14px; border-radius: 20px; }
+  body.dock-index .coord-tabs { border-radius: 14px; margin-left: 0; margin-right: 0; }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+ * 2. PANTALLAS CON .app-container
+ *    Manifiestos, Devoluciones, Alistamiento y Trazabilidad comparten la
+ *    misma estructura: cabecera, encabezado de sección y contenido.
+ * ════════════════════════════════════════════════════════════════════ */
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .app-container {
+  background: var(--dock-shell);
+  border: none;
+  border-radius: var(--dock-r-shell);
+  box-shadow: var(--dock-shadow-shell);
+}
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header {
+  background: transparent;
+  border-bottom: none;
+  padding: 26px 28px 6px;
+  gap: 14px;
+}
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header i {
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  background: var(--brand-800);
+  color: var(--dock-amber);
+  font-size: 18px;
+}
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header h2 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--dock-ink);
+}
+
+/* Tarjetas */
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) :is(.input-card, .progress-container, .results-block) {
+  background: var(--dock-card);
+  border: 1px solid var(--dock-line);
+  border-radius: var(--dock-r-card);
+  box-shadow: var(--dock-shadow-card);
+}
+
+/* Campos y etiquetas */
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .input-group label { font-weight: 700; color: var(--dock-ink-2); }
+body:is(.dock-man, .dock-dev, .dock-ali) :is(input[type="text"], select) {
+  border-color: var(--dock-line-2);
+  border-width: 1px;
+  border-radius: 12px;
+}
+
+/* Métricas: cifra grande en mono */
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .metric-card { border-radius: 18px; }
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .metric-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: -.03em;
+}
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .metric-label { font-weight: 600; }
+body:is(.dock-man, .dock-dev, .dock-ali) .metric-card.total,
+body:is(.dock-man, .dock-dev, .dock-ali) .metric-card.repeat {
+  background: var(--dock-card);
+  border-color: var(--dock-line);
+  box-shadow: var(--dock-shadow-card);
+}
+
+/* Progreso */
+body:is(.dock-man, .dock-dev, .dock-ali) .progress-percentage { font-family: var(--font-mono); font-weight: 700; color: var(--brand-500); }
+body:is(.dock-man, .dock-dev, .dock-ali) .progress-bar { height: 12px; border-radius: 8px; background: #e6eaf3; }
+body:is(.dock-man, .dock-dev, .dock-ali) .progress-fill { border-radius: 8px; }
+body:is(.dock-man, .dock-dev, .dock-ali) .progress-title { font-weight: 700; }
+
+/* Tablas */
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) th {
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .tbl-wrap { border-radius: 14px; }
+
+/* Modales */
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .modal-content { border-radius: 24px; overflow: hidden; }
+body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .modal-header {
+  background-color: var(--dock-floor);
+  background-image: var(--dock-grid);
+  background-size: 32px 32px;
+}
+
+@media (max-width: 600px) {
+  body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .app-container { border-radius: 22px; }
+  body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header { padding: 18px 16px 4px; }
+  body:is(.dock-man, .dock-dev, .dock-ali, .dock-tra) .section-header h2 { font-size: 18px; }
+}
+
+/* ── Manifiestos: el campo de escaneo es el protagonista ── */
+body.dock-man .input-card { padding: 24px; }
+body.dock-man .scan-field #scanInput {
+  height: 60px;
+  border: 2px solid var(--brand-500);
+  border-radius: 14px;
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: #f7f9ff;
+}
+body.dock-man .scan-field #scanInput::placeholder { font-family: var(--font-sans); font-weight: 500; letter-spacing: 0; font-size: 16px; }
+body.dock-man .scan-field.is-idle #scanInput {
+  border: 2px dashed #e67e00;
+  background: #fff8ee;
+}
+body.dock-man .scan-banner-guia { font-family: var(--font-mono); }
+body.dock-man .metric-card.total {
+  background: var(--brand-800);
+  border-color: var(--brand-800);
+  color: #fff;
+}
+body.dock-man .metric-card.total .metric-label,
+body.dock-man .metric-card.total .metric-icon { color: #b9c6f7; }
+body.dock-man :is(.faltante-number, .historial-datos) { font-family: var(--font-mono); }
+body.dock-man .action-btn { border-radius: 12px; font-weight: 700; }
+
+/* ── Devoluciones ── */
+body.dock-dev .scan-input { font-family: var(--font-mono); font-weight: 700; letter-spacing: .03em; }
+body.dock-dev .sf-value { font-family: var(--font-mono); }
+body.dock-dev .btn { border-radius: 12px; font-weight: 700; }
+
+/* ── Alistamiento ── */
+body.dock-ali .dropzone { border-radius: 16px; border-width: 2px; background: var(--dock-card); }
+body:is(.dock-ali, .dock-dev, .dock-tra) .log-wrap { border-radius: 16px; }
+body.dock-ali .dropzone.has-file { border-style: solid; border-color: var(--brand-800); }
+body.dock-ali :is(.guide-id-pill, .log-gu) { font-family: var(--font-mono); }
+body.dock-ali .btn { border-radius: 12px; font-weight: 700; }
+body.dock-ali .print-guide-btn { border-radius: 10px; }
+
+/* ── Trazabilidad: tarjetas de color propio, solo se suavizan ── */
+body.dock-tra .metric-card { box-shadow: 0 10px 24px rgba(11,18,51,.14); }
+body.dock-tra .btn { border-radius: 12px; font-weight: 700; }
+body.dock-tra .dropzone { border-radius: 16px; background: var(--dock-card); }
+body.dock-tra td.num { font-family: var(--font-mono); }
+
+
+/* ════════════════════════════════════════════════════════════════════
+ * 3. REPORTE POR DISTRIBUIDOR
+ * ════════════════════════════════════════════════════════════════════ */
+body.dock-rep .app-header::after { display: none; }
+body.dock-rep .app-header { background: transparent; }
+body.dock-rep .report-shell {
+  margin: 0 auto 24px;
+  width: calc(100% - 28px);
+  background: var(--dock-shell);
+  border-radius: var(--dock-r-shell);
+  box-shadow: var(--dock-shadow-shell);
+  overflow: hidden;
+  padding-bottom: 4px;
+  position: relative;
+}
+body.dock-rep .report-shell::before {
+  content: '';
+  display: block;
+  height: 6px;
+  background: var(--dock-tape);
+}
+body.dock-rep .file-zone {
+  background: var(--dock-card);
+  border: 2px dashed #b9c6f7;
+  border-radius: var(--dock-r-card);
+}
+body.dock-rep .file-label { border-radius: 12px; font-weight: 700; }
+body.dock-rep :is(.stat, .controls, .group, .exclusion-panel) {
+  border-radius: var(--dock-r-card) !important;
+  border-color: var(--dock-line);
+}
+body.dock-rep .stat { background: var(--dock-card); box-shadow: var(--dock-shadow-card); }
+body.dock-rep .stat-val { font-family: var(--font-mono); font-weight: 700; letter-spacing: -.03em; }
+body.dock-rep .controls { background: var(--dock-card); }
+body.dock-rep .controls input[type="text"],
+body.dock-rep .controls select { border-radius: 12px; }
+body.dock-rep .toggle-btn { border-radius: 12px; font-weight: 700; }
+body.dock-rep .group { overflow: hidden; box-shadow: var(--dock-shadow-card); }
+body.dock-rep .group-name { font-weight: 700; }
+body.dock-rep .group-meta .total,
+body.dock-rep .qty-num,
+body.dock-rep .id-pill { font-family: var(--font-mono); }
+body.dock-rep .bar-bg { height: 8px; border-radius: 6px; }
+body.dock-rep .bar-fill { border-radius: 6px; }
+body.dock-rep .footer-note { color: var(--dock-ink-2); }
+@media (max-width: 600px) {
+  body.dock-rep .report-shell { width: calc(100% - 16px); border-radius: 22px; }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+ * 4. CONTEOS Y RECEPCIÓN (celular)
+ * ════════════════════════════════════════════════════════════════════ */
+body:is(.dock-con, .dock-rec) { background: var(--dock-shell); }
+body:is(.dock-con, .dock-rec) .app-header { box-shadow: 0 8px 24px rgba(10,18,64,.25); }
+body:is(.dock-con, .dock-rec) .card {
+  border-color: var(--dock-line);
+  border-radius: 20px;
+  box-shadow: var(--dock-shadow-card);
+  padding: 16px;
+}
+body:is(.dock-con, .dock-rec) .card-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  color: var(--dock-ink-2);
+  display: flex; align-items: center; gap: 8px;
+}
+body:is(.dock-con, .dock-rec) .card-title::before {
+  content: '';
+  width: 14px; height: 6px;
+  border-radius: 2px;
+  background: var(--dock-tape);
+  flex-shrink: 0;
+}
+body:is(.dock-con, .dock-rec) .field label { font-weight: 700; color: var(--dock-ink-2); }
+body:is(.dock-con, .dock-rec) .field input,
+body:is(.dock-con, .dock-rec) .field select {
+  border-radius: 12px;
+  border-color: var(--dock-line-2);
+  font-weight: 500;
+}
+body:is(.dock-con, .dock-rec) .field input[type="number"],
+body:is(.dock-con, .dock-rec) .field input[inputmode="numeric"] { font-family: var(--font-mono); font-weight: 700; }
+body:is(.dock-con, .dock-rec) .btn { border-radius: 14px; font-weight: 800; }
+body:is(.dock-con, .dock-rec) .bottom-bar {
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(8px);
+  border-top-color: var(--dock-line);
+}
+body:is(.dock-con, .dock-rec) .bottom-bar .btn-primary {
+  min-height: 56px;
+  font-size: 16px;
+  box-shadow: 0 8px 20px rgba(13,27,110,.25);
+}
+body:is(.dock-con, .dock-rec) .buscar-id { font-family: var(--font-mono); }
+/* Comprobante tras guardar: estilo ticket con perforación */
+body:is(.dock-con, .dock-rec) .ok-card {
+  position: relative;
+  border: none;
+  box-shadow: 0 14px 34px rgba(13,27,110,.14);
+}
+body:is(.dock-con, .dock-rec) .ok-card::after {
+  content: '';
+  position: absolute; left: 18px; right: 18px; top: 0;
+  height: 5px;
+  border-radius: 0 0 4px 4px;
+  background: var(--dock-tape);
+}
+body:is(.dock-con, .dock-rec) .ok-head h2 { font-weight: 800; letter-spacing: -.01em; }
+body:is(.dock-con, .dock-rec) .ok-msg {
+  border-radius: 14px;
+  border-style: dashed;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+ * 5. MERCADO Y ALISTAMIENTO
+ * ════════════════════════════════════════════════════════════════════ */
+body.dock-mer { background: var(--dock-shell); }
+body.dock-mer .mk-header {
+  position: relative;
+  background-color: var(--dock-floor);
+  background-image: var(--dock-grid);
+  background-size: 32px 32px;
+  padding-bottom: 4px;
+}
+body.dock-mer .mk-header::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: var(--dock-tape);
+  pointer-events: none;
+}
+body.dock-mer .mk-titles h1 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+body.dock-mer .mk-back { border-radius: 12px; }
+body.dock-mer .mk-quien { border-radius: 999px; font-weight: 600; }
+body.dock-mer .mk-tabs { gap: 4px; padding: 6px 12px 10px; }
+body.dock-mer .mk-tab {
+  border: none;
+  border-radius: 10px;
+  padding-left: 14px; padding-right: 14px;
+  font-weight: 600;
+  color: #c7cdf5;
+}
+body.dock-mer .mk-tab:hover { background: rgba(255,255,255,.08); color: #fff; }
+body.dock-mer .mk-tab.active {
+  background: #fff;
+  color: var(--brand-800);
+  font-weight: 800;
+  border-bottom-color: transparent;
+}
+body.dock-mer .mk-main { padding-top: 20px; }
+body.dock-mer .mk-card {
+  border-color: var(--dock-line);
+  border-radius: var(--dock-r-card);
+  box-shadow: var(--dock-shadow-card);
+}
+body.dock-mer .mk-h2 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+body.dock-mer .mk-btn { border-radius: 10px; font-weight: 700; }
+body.dock-mer :is(input[type="text"], input[type="date"], input[type="search"], select) { border-radius: 10px; }
+body.dock-mer .mk-drop { border-radius: var(--dock-r-card); border-width: 2px; }
+body.dock-mer .mk-stat { border-radius: 16px; }
+body.dock-mer .mk-stat-v { font-family: var(--font-mono); letter-spacing: -.03em; }
+body.dock-mer .mk-seg { border-radius: 12px; overflow: hidden; }
+body.dock-mer .mk-chip { border-radius: 999px; }
+body.dock-mer .mk-chip-n { font-family: var(--font-mono); }
+
+} /* fin @media screen */
