@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" href="/icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/icons/site.webmanifest">
+    <meta name="theme-color" content="#0d1b6e">
+    <title>Efficommerce | Cierre de bodega</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/shared/tokens.css">
+<link rel="stylesheet" href="/shared/componentes.css">
+    <link rel="stylesheet" href="cierre.css?v=20261127">
+</head>
+<body>
+
+<header class="app-header">
+    <button type="button" class="header-back" onclick="goBackToApp()" aria-label="Volver" title="Volver"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>
+    <div class="header-titles">
+        <h1>Cierre de Bodega</h1>
+        <span class="header-sub">Checklist diario</span>
+    </div>
+</header>
+
+<main class="page">
+
+    <!-- RESUMEN: anillo de avance + fecha elegida -->
+    <section class="hero" aria-live="polite">
+        <div class="ring" id="ring" role="img" aria-label="Avance del checklist">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="ring-track" cx="60" cy="60" r="52"/>
+                <circle class="ring-bar" id="ring-bar" cx="60" cy="60" r="52"/>
+            </svg>
+            <div class="ring-text">
+                <strong id="ring-num">0</strong>
+                <span id="ring-de">de 26</span>
+            </div>
+        </div>
+        <div class="hero-info">
+            <p class="hero-dia" id="hero-dia">Hoy</p>
+            <p class="hero-fecha" id="hero-fecha"></p>
+            <span class="pill" id="hero-estado">Pendiente</span>
+            <p class="hero-sub" id="hero-sub">Revisa cada punto antes de salir.</p>
+        </div>
+    </section>
+
+    <!-- DÍAS: últimos días con su estado; se puede elegir otro -->
+    <section class="dias-card">
+        <div class="dias-head">
+            <p class="card-title">Días</p>
+            <div class="dias-leyenda" aria-hidden="true">
+                <span><i class="dot ok"></i>Hecho</span>
+                <span><i class="dot warn"></i>Con fallas</span>
+                <span><i class="dot falta"></i>Falta</span>
+            </div>
+        </div>
+        <div class="dias-strip" id="dias-strip" role="listbox" aria-label="Elige el día del cierre"></div>
+        <label class="otra-fecha">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <span>Otra fecha</span>
+            <input type="date" id="f-fecha" aria-label="Fecha del cierre">
+        </label>
+    </section>
+
+    <!-- YA REGISTRADO: resumen del cierre existente de ese día -->
+    <section class="card existente" id="existente" hidden>
+        <div class="existente-head">
+            <span class="sello" id="ex-sello" aria-hidden="true">✓</span>
+            <div>
+                <h2 id="ex-titulo">Cierre registrado</h2>
+                <p class="hint" id="ex-sub"></p>
+            </div>
+        </div>
+        <ul class="ex-fallas" id="ex-fallas"></ul>
+        <p class="ex-obs" id="ex-obs" hidden></p>
+        <button type="button" class="btn btn-ghost btn-block" id="btn-rehacer">Rehacer el cierre de este día</button>
+    </section>
+
+    <form id="form-cierre" novalidate autocomplete="off">
+
+        <div class="aviso-rehacer" id="aviso-rehacer" hidden>
+            <span>Estás rehaciendo un cierre ya guardado. Al guardar reemplaza al anterior.</span>
+            <button type="button" class="link-btn" id="btn-cancelar-rehacer">Cancelar</button>
+        </div>
+
+        <section class="card">
+            <div class="row-2">
+                <div class="field">
+                    <label for="f-bodega">Bodega <span class="req">*</span></label>
+                    <input type="text" id="f-bodega" maxlength="60" list="bodegas-lista" placeholder="Ej: Bodega principal" autocapitalize="sentences" required>
+                    <datalist id="bodegas-lista"></datalist>
+                </div>
+                <div class="field">
+                    <label for="f-responsable">Responsable de cierre <span class="req">*</span></label>
+                    <!-- Lista: Panel de coordinador > Configuración > Conteos (personas de bodega) -->
+                    <select id="f-responsable" required>
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <div id="secciones"></div>
+
+        <section class="card">
+            <div class="field" id="campo-obs">
+                <div class="label-row">
+                    <label for="f-obs">Observaciones <span class="req" id="obs-req" hidden>*</span></label>
+                    <span class="contador" id="obs-cont">0/1000</span>
+                </div>
+                <textarea id="f-obs" rows="3" maxlength="1000" placeholder="Algo fuera de lo normal, fallas reportadas, a quién se avisó..."></textarea>
+                <p class="hint" id="obs-hint"></p>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="label-row">
+                <p class="card-title">Firma del responsable <span class="req">*</span></p>
+                <button type="button" class="link-btn" id="btn-limpiar-firma">Limpiar</button>
+            </div>
+            <div class="firma" id="firma-caja">
+                <canvas id="firma" aria-label="Firma con el dedo"></canvas>
+                <div class="firma-guia" id="firma-guia" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                    <span>Firma aquí con el dedo</span>
+                </div>
+                <div class="firma-linea" aria-hidden="true"></div>
+            </div>
+        </section>
+
+        <section class="card error-guardar" id="error-guardar" hidden>
+            <p><strong>No se pudo guardar el cierre.</strong> <span id="error-guardar-txt"></span></p>
+            <p class="hint">Lo que marcaste queda guardado en este celular. Intenta otra vez en un momento.</p>
+        </section>
+
+        <div class="bottom-bar">
+            <div class="bottom-inner">
+                <div class="mini-progreso" aria-hidden="true"><span id="mini-barra"></span></div>
+                <button type="submit" class="btn btn-primary btn-block" id="btn-guardar">
+                    <span id="btn-guardar-txt">Guardar cierre</span>
+                    <span class="btn-badge" id="btn-guardar-badge">0/26</span>
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- CONFIRMACIÓN -->
+    <section id="vista-ok" class="ok-vista" hidden>
+        <div class="ok-sello">
+            <svg viewBox="0 0 96 96" aria-hidden="true">
+                <circle class="ok-circulo" cx="48" cy="48" r="42"/>
+                <path class="ok-check" d="M30 49 l12 12 l24 -26"/>
+            </svg>
+        </div>
+        <h2 id="ok-titulo">Bodega cerrada</h2>
+        <p class="hint" id="ok-sub"></p>
+        <div class="ok-resumen" id="ok-resumen"></div>
+        <pre class="ok-msg" id="ok-msg"></pre>
+        <button type="button" class="btn btn-wa btn-block" onclick="compartirWhatsApp()">Compartir en WhatsApp</button>
+        <button type="button" class="btn btn-ghost btn-block" onclick="copiarMensaje()">Copiar mensaje</button>
+        <button type="button" class="btn btn-primary btn-block" onclick="volverAlInicio()">Listo</button>
+    </section>
+
+</main>
+
+<canvas id="confeti" aria-hidden="true"></canvas>
+
+<script src="/shared/dom-utils.js"></script>
+<script src="/shared/api.js"></script>
+<script src="/shared/confirmar.js"></script>
+<script src="/shared/dispositivo.js"></script>
+<script src="cierre.js?v=20261127"></script>
+</body>
+</html>

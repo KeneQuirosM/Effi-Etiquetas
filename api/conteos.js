@@ -32,6 +32,24 @@ const MESAS_MAX = 50;
 const VENC_ANIO_MIN = 2000, VENC_ANIO_MAX = 2100;
 const RECEPCION_MAX_ATRAS_DIAS = 30;       // fecha de recepción editable: hasta 30 días atrás   // fuera de esto es un error de tipeo (p. ej. 0202)
 
+// Checklist de cierre de bodega (cierre/cierre.html). Mismas claves y orden que
+// SECCIONES en public/cierre/cierre.js (tests/cierre.test.js lo verifica).
+export const CIERRE_ITEMS = [
+  'electricos.tomas', 'electricos.ventiladores', 'electricos.extractores', 'electricos.aires',
+  'electricos.luces', 'electricos.cargadores', 'electricos.televisores', 'electricos.microondas', 'electricos.otros',
+  'hidricas.lavamanos', 'hidricas.grifos', 'hidricas.pocetas', 'hidricas.lavaplatos',
+  'infra.puertas', 'infra.rejas', 'infra.ventanas', 'infra.portones', 'infra.vehiculos', 'infra.perimetro',
+  'recorrido.areas', 'recorrido.personal', 'recorrido.equipos', 'recorrido.orden',
+  'seguridad.alarma', 'seguridad.camaras', 'seguridad.fallas'
+];
+const CIERRE_MAX_ATRAS_DIAS = 60;          // se puede registrar un cierre olvidado hasta 60 días atrás
+const CIERRE_FIRMA_MAX_BYTES = 300 * 1024;
+
+// AAAA-MM-DD del instante en Costa Rica
+function fechaCR(ms) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Costa_Rica' }).format(new Date(ms));
+}
+
 async function leerOpciones() {
   const opciones = { mesas: MESAS_DEFECTO, personas: PERSONAS_DEFECTO };
   const { data, error } = await supabaseAdmin
@@ -362,6 +380,118 @@ export default async function handler(req, res) {
         return res.status(502).json({ error: 'Google Sheets no respondió. Intenta más tarde.', pendientes: count ?? null });
       }
       return res.status(200).json({ enviados, pendientes: count ?? 0 });
+    }
+
+    // ── CIERRE DE BODEGA (cierre/cierre.html, público como el conteo) ──
+    //   GET  ?accion=cierres[&dias=N]  -> { hoy, cierres: [...] } de los últimos N días (sin la firma)
+    //   POST ?accion=cierre { fecha, bodega, responsable, items, observaciones?, firma, reemplazar? }
+    // Un cierre por día y bodega: si ya existe responde 409 codigo 'cierre_existe'
+    // y el celular pregunta antes de mandar reemplazar: true.
+    if (req.method === 'GET' && req.query?.accion === 'cierres') {
+      if (!rateLimit(req, res, { max: 60, windowMs: 60000 })) return;
+      const dias = Math.min(CIERRE_MAX_ATRAS_DIAS, Math.max(1, Number(req.query.dias) || 21));
+      const hoy = fechaCR(Date.now());
+      const desde = fechaCR(Date.now() - dias * 86400000);
+      const { data, error } = await supabaseAdmin
+        .from('cierres_bodega')
+        .select('id, fecha, bodega, responsable, items, cumplidos, total, observaciones, creado_en, actualizado_en')
+        .gte('fecha', desde).lte('fecha', hoy)
+        .order('fecha', { ascending: false }).order('id', { ascending: false })
+        .limit(MAX_FILAS);
+      if (error) {
+        console.error('Error consultando cierres de bodega:', error);
+        const falta = /cierres_bodega/.test(error.message || '') && /exist|relation|schema/i.test(error.message || '');
+        return res.status(500).json({ error: falta ? 'Falta ejecutar supabase/cierres_bodega.sql' : 'No se pudieron cargar los cierres' });
+      }
+      return res.status(200).json({ hoy, cierres: data || [] });
+    }
+
+    if (req.method === 'POST' && req.query?.accion === 'cierre') {
+      if (!rateLimit(req, res, { max: 20, windowMs: 60000 })) return;
+      if (!(await exigirDispositivo(req, res))) return;
+
+      const b = req.body || {};
+      const hoy = fechaCR(Date.now());
+      const minimo = fechaCR(Date.now() - CIERRE_MAX_ATRAS_DIAS * 86400000);
+      if (!esFechaValida(b.fecha)) return res.status(400).json({ error: 'Elige la fecha del cierre' });
+      if (b.fecha > hoy) return res.status(400).json({ error: 'La fecha del cierre no puede ser en el futuro' });
+      if (b.fecha < minimo) return res.status(400).json({ error: `La fecha del cierre no puede ser de hace más de ${CIERRE_MAX_ATRAS_DIAS} días` });
+
+      const bodega = texto(String(b.bodega ?? '').replace(/\s+/g, ' '), 60);
+      if (!bodega) return res.status(400).json({ error: 'Indica la bodega (máximo 60 caracteres)' });
+      const personas = await leerPersonas();
+      const responsable = personas.find(p => normalizarNombre(p) === normalizarNombre(b.responsable)) || null;
+      if (!responsable) return res.status(400).json({ error: 'Elige el responsable de la lista' });
+
+      const entrada = b.items && typeof b.items === 'object' && !Array.isArray(b.items) ? b.items : null;
+      if (!entrada) return res.status(400).json({ error: 'Falta el checklist' });
+      const items = {};
+      for (const clave of CIERRE_ITEMS) {
+        if (typeof entrada[clave] !== 'boolean') return res.status(400).json({ error: 'El checklist está incompleto; recarga la página' });
+        items[clave] = entrada[clave];
+      }
+      const cumplidos = Object.values(items).filter(Boolean).length;
+      const observaciones = String(b.observaciones ?? '').trim();
+      if (observaciones.length > 1000) return res.status(400).json({ error: 'Las observaciones son muy largas (máximo 1000 caracteres)' });
+      if (cumplidos < CIERRE_ITEMS.length && !observaciones) {
+        return res.status(400).json({ error: 'Explica en observaciones lo que no se cumplió' });
+      }
+
+      const m = typeof b.firma === 'string' && b.firma.match(FOTO_RE);
+      if (!m || m[1] !== 'image/png') return res.status(400).json({ error: 'Falta la firma del responsable' });
+      const firma = Buffer.from(m[2], 'base64');
+      if (!firma.length || firma.length > CIERRE_FIRMA_MAX_BYTES) return res.status(400).json({ error: 'La firma no es válida' });
+
+      const { data: previo, error: pErr } = await supabaseAdmin
+        .from('cierres_bodega').select('id, responsable, firma_path, creado_en, actualizado_en')
+        .eq('fecha', b.fecha).ilike('bodega', bodega.replace(/[\\%_]/g, c => '\\' + c)).maybeSingle();
+      if (pErr) {
+        console.error('Error buscando cierre previo:', pErr);
+        const falta = /cierres_bodega/.test(pErr.message || '') && /exist|relation|schema/i.test(pErr.message || '');
+        return res.status(500).json({ error: falta ? 'Falta ejecutar supabase/cierres_bodega.sql' : 'No se pudo revisar si ya había un cierre' });
+      }
+      if (previo && b.reemplazar !== true) {
+        return res.status(409).json({
+          error: `Ya hay un cierre de ese día, hecho por ${previo.responsable}`,
+          codigo: 'cierre_existe',
+          cierre: { id: previo.id, responsable: previo.responsable, creado_en: previo.actualizado_en || previo.creado_en }
+        });
+      }
+
+      const mes = b.fecha.slice(0, 7);
+      let firmaPath = `cierres/${mes}/${randomUUID()}.png`;
+      let avisoFirma = null;
+      let timer;
+      const { error: upErr } = await Promise.race([
+        supabaseAdmin.storage.from(BUCKET).upload(firmaPath, firma, { contentType: 'image/png', upsert: false }),
+        new Promise(resolve => { timer = setTimeout(() => resolve({ error: { message: 'el almacenamiento no respondió a tiempo' } }), FOTO_TIMEOUT_MS); })
+      ]).finally(() => clearTimeout(timer));
+      if (upErr) {
+        console.error('Error subiendo firma de cierre:', upErr);
+        avisoFirma = 'La firma no se pudo guardar; el cierre quedó registrado sin ella.';
+        firmaPath = null;
+      }
+
+      const fila = { fecha: b.fecha, bodega, responsable, items, cumplidos, total: CIERRE_ITEMS.length, observaciones: observaciones || null, firma_path: firmaPath };
+      const consulta = previo
+        ? supabaseAdmin.from('cierres_bodega').update({ ...fila, actualizado_en: new Date().toISOString() }).eq('id', previo.id)
+        : supabaseAdmin.from('cierres_bodega').insert(fila);
+      const { data, error } = await consulta.select('id, fecha, bodega, responsable, cumplidos, total, creado_en, actualizado_en').single();
+      if (error) {
+        console.error('Error guardando cierre de bodega:', error);
+        if (firmaPath) await supabaseAdmin.storage.from(BUCKET).remove([firmaPath]);
+        if (error.code === '23505') {
+          return res.status(409).json({ error: 'Alguien acaba de guardar el cierre de ese día', codigo: 'cierre_existe', cierre: null });
+        }
+        const falta = /cierres_bodega/.test(error.message || '') && /exist|relation|schema/i.test(error.message || '');
+        return res.status(500).json({ error: falta ? 'Falta ejecutar supabase/cierres_bodega.sql' : 'No se pudo guardar el cierre' });
+      }
+      if (previo?.firma_path) await supabaseAdmin.storage.from(BUCKET).remove([previo.firma_path]);
+
+      const hora = new Intl.DateTimeFormat('es-CR', {
+        timeZone: 'America/Costa_Rica', hour: '2-digit', minute: '2-digit', hour12: true
+      }).format(new Date(data.actualizado_en || data.creado_en));
+      return res.status(previo ? 200 : 201).json({ cierre: { ...data, hora }, reemplazado: !!previo, aviso_firma: avisoFirma });
     }
 
     // ── POST ?accion=recepcion: registrar una recepción de mercancía ──

@@ -2922,6 +2922,7 @@ const NAV_BOTONES = {
   alistamiento: { clave: 'mostrar_btn_alistamiento', nombre: 'Alistamiento',            defecto: true },
   conteos:      { clave: 'mostrar_btn_conteos',      nombre: 'Conteos',                 defecto: true },
   recepcion:    { clave: 'mostrar_btn_recepcion',    nombre: 'Recepción de Mercancía',  defecto: true },
+  cierre:       { clave: 'mostrar_btn_cierre',       nombre: 'Cierre de Bodega',        defecto: true },
   trazabilidad: { clave: 'mostrar_btn_trazabilidad', nombre: 'Trazabilidad',            defecto: false },
   reporte:      { clave: 'mostrar_btn_reporte',      nombre: 'Reporte',                 defecto: true },
   // Público como Conteos (sin sesión); se puede ocultar en Configuración > Botones del menú

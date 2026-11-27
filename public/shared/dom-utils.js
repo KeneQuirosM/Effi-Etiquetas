@@ -15,6 +15,8 @@ const STORAGE_KEYS = {
   CONTEOS_PREFS: 'effi_conteos_prefs_v1',
   CONTEOS_BORRADOR: 'effi_conteos_borrador_v1',
   RECEPCION_PREFS: 'effi_recepcion_prefs_v1',
+  CIERRE_PREFS: 'effi_cierre_prefs_v1',
+  CIERRE_BORRADOR: 'effi_cierre_borrador_v1',
   DECORACION: 'effi_decoracion_v1'
 };
 

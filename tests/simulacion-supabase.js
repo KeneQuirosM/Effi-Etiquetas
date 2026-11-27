@@ -48,6 +48,10 @@ export function instalarSimulacion(cliente, { usuarios = {}, tablas = {}, rpc = 
     llamadas.from.push(tabla);
     const estado = { op: 'select', filtros: [], rango: null, unico: false };
     const resolver = () => {
+      // insert/update con .select().single(): devuelve la fila escrita (con id)
+      if ((estado.op === 'insert' || estado.op === 'update') && estado.unico) {
+        return { data: { id: 1, creado_en: '2026-01-01T00:00:00Z', ...estado.fila }, error: null };
+      }
       if (estado.op !== 'select') return { data: null, error: null };
       const def = tablas[tabla];
       if (def && !Array.isArray(def) && def.error) return { data: null, error: def.error };
@@ -58,14 +62,14 @@ export function instalarSimulacion(cliente, { usuarios = {}, tablas = {}, rpc = 
       return { data: filas, error: null, count: filas.length };
     };
     const q = {
-      select: () => q, order: () => q, in: () => q, is: () => q, lt: () => q, gte: () => q, or: () => q, ilike: () => q,
+      select: () => q, order: () => q, in: () => q, is: () => q, lt: () => q, lte: () => q, gte: () => q, or: () => q, ilike: () => q,
       limit: () => q,
       eq: (c, v) => { estado.filtros.push([c, v]); return q; },
       range: (a, b) => { estado.rango = [a, b]; return q; },
       maybeSingle: () => { estado.unico = true; return q; },
       single: () => { estado.unico = true; return q; },
-      insert: fila => { estado.op = 'insert'; llamadas.insert.push({ tabla, fila }); return q; },
-      update: fila => { estado.op = 'update'; llamadas.update.push({ tabla, fila }); return q; },
+      insert: fila => { estado.op = 'insert'; estado.fila = fila; llamadas.insert.push({ tabla, fila }); return q; },
+      update: fila => { estado.op = 'update'; estado.fila = fila; llamadas.update.push({ tabla, fila }); return q; },
       delete: () => { estado.op = 'delete'; return q; },
       upsert: () => { estado.op = 'upsert'; return q; },
       then: (ok, err) => Promise.resolve(resolver()).then(ok, err)
