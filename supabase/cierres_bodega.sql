@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS cierres_bodega (
   fecha          DATE NOT NULL,                 -- día del cierre (Costa Rica); se puede elegir uno pasado
   bodega         TEXT NOT NULL CHECK (length(trim(bodega)) BETWEEN 1 AND 60),
   responsable    TEXT NOT NULL,                 -- de la lista de personas de bodega (conteos_personas)
-  items          JSONB NOT NULL,                -- { clave: true (cumple) | false (no cumple) }
+  items          JSONB NOT NULL,                -- { clave: true (cumple) | false (no cumple) | null (no aplica) }
   cumplidos      INTEGER NOT NULL CHECK (cumplidos >= 0),
-  total          INTEGER NOT NULL CHECK (total >= 1),
+  total          INTEGER NOT NULL CHECK (total >= 1),   -- puntos que aplican (sin los null)
   observaciones  TEXT,
   firma_path     TEXT,                          -- ruta del PNG dentro del bucket "conteos"
   creado_en      TIMESTAMPTZ NOT NULL DEFAULT NOW(),  -- cuándo se registró

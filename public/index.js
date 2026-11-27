@@ -4328,11 +4328,14 @@ function ciCardHTML(c) {
   const fallas = ciFallasDe(c);
   const ok = !fallas.length && c.cumplidos === c.total;
   const pct = Math.round((c.cumplidos / c.total) * 100);
+  // Puntos en null = "No aplica" (esa bodega no lo tiene): no cuentan
   const secciones = CierreChecklist.SECCIONES.map(s => {
-    const n = s.items.length;
+    const n = s.items.filter(([k]) => c.items?.[`${s.id}.${k}`] !== null).length;
     const si = s.items.filter(([k]) => c.items?.[`${s.id}.${k}`] === true).length;
+    if (!n) return `<span class="ci-sec na" title="${esc(s.titulo)}: no aplica">${esc(s.titulo)} <b>N/A</b></span>`;
     return `<span class="ci-sec ${si === n ? 'ok' : 'warn'}" title="${esc(s.titulo)}: ${si}/${n}">${esc(s.titulo)} <b>${si}/${n}</b></span>`;
   }).join('');
+  const noAplica = CierreChecklist.ITEMS.filter(i => c.items?.[i.clave] === null);
   return `
     <article class="ci-card ${ok ? 'ci-card-ok' : 'ci-card-warn'}" data-fecha="${c.fecha}" data-id="${esc(c.id)}">
       <div class="ci-card-cab">
@@ -4349,6 +4352,7 @@ function ciCardHTML(c) {
       <div class="ci-secs">${secciones}</div>
       ${fallas.length ? `<ul class="ci-fallas">${fallas.map(i => `<li><span aria-hidden="true">✕</span> ${esc(i.texto)} <small>${esc(i.seccion.titulo)}</small></li>`).join('')}</ul>` : ''}
       ${c.observaciones ? `<p class="ci-obs">${esc(c.observaciones)}</p>` : ''}
+      ${noAplica.length ? `<p class="ci-na" title="${esc(noAplica.map(i => i.texto).join(', '))}">No aplica (${noAplica.length}): ${esc(noAplica.map(i => i.texto).join(', '))}</p>` : ''}
       <div class="ci-firma">${c.firma_url
         ? `<img src="${esc(c.firma_url)}" alt="Firma de ${esc(c.responsable)}" loading="lazy">`
         : '<span>Sin firma guardada</span>'}<small>Firma de ${esc(c.responsable)}</small></div>
@@ -4445,6 +4449,7 @@ async function exportarCierresExcel() {
       { header: 'Total', key: 'total', width: 8 },
       { header: '% cumplido', key: 'pct', width: 11, style: { numFmt: '0%' } },
       { header: 'Sin cumplir', key: 'fallas', width: 44 },
+      { header: 'No aplica', key: 'na', width: 30 },
       { header: 'Observaciones', key: 'obs', width: 44 },
       { header: 'Registrado', key: 'reg', width: 18, style: { numFmt: 'dd/mm/yyyy hh:mm' } },
       { header: 'Firma', key: 'firma', width: 24 }
@@ -4457,6 +4462,7 @@ async function exportarCierresExcel() {
         bodega: c.bodega, resp: c.responsable,
         cumplen: c.cumplidos, total: c.total, pct: c.cumplidos / c.total,
         fallas: ciFallasDe(c).map(x => x.texto).join('\n'),
+        na: CierreChecklist.ITEMS.filter(x => c.items?.[x.clave] === null).map(x => x.texto).join('\n'),
         obs: c.observaciones || '',
         reg: fechaLocalParaExcel(c.actualizado_en || c.creado_en),
         firma: firmas[i] ? '' : 'Sin firma'
@@ -4468,13 +4474,13 @@ async function exportarCierresExcel() {
         row.height = Math.max(row.height || 0, 50);
         const k = Math.min(160 / f.w, 60 / f.h);
         ws.addImage(wb.addImage({ base64: f.base64, extension: 'png' }), {
-          tl: { col: 10.05, row: row.number - 1 + 0.05 },
+          tl: { col: 11.05, row: row.number - 1 + 0.05 },
           ext: { width: Math.round(f.w * k), height: Math.round(f.h * k) },
           editAs: 'oneCell'
         });
       }
     });
-    ws.autoFilter = { from: 'A1', to: 'K1' };
+    ws.autoFilter = { from: 'A1', to: 'L1' };
 
     // Hoja 2: matriz punto por punto, como la hoja impresa
     const wm = wb.addWorksheet('Checklist', { views: [{ state: 'frozen', xSplit: 2, ySplit: 1 }] });
@@ -4487,13 +4493,14 @@ async function exportarCierresExcel() {
     wm.getRow(1).height = 34;
     for (const it of CierreChecklist.ITEMS) {
       const datos = { sec: it.seccion.titulo, punto: it.texto };
-      filas.forEach((c, i) => { datos['c' + i] = c.items?.[it.clave] === true ? '✓' : c.items?.[it.clave] === false ? '✕' : ''; });
+      filas.forEach((c, i) => { const v = c.items?.[it.clave]; datos['c' + i] = v === true ? '✓' : v === false ? '✕' : v === null ? 'N/A' : ''; });
       const row = wm.addRow(datos);
       filas.forEach((c, i) => {
         const cell = row.getCell(3 + i);
         cell.alignment = { horizontal: 'center' };
         if (cell.value === '✓') { cell.fill = VERDE; cell.font = { color: { argb: 'FF13693A' }, bold: true }; }
         if (cell.value === '✕') { cell.fill = ROJO; cell.font = { color: { argb: 'FFA3241A' }, bold: true }; }
+        if (cell.value === 'N/A') cell.font = { color: { argb: 'FF5A6482' }, italic: true };
       });
     }
     const tot = wm.addRow({ sec: 'Total', punto: 'Puntos cumplidos', ...Object.fromEntries(filas.map((c, i) => ['c' + i, `${c.cumplidos}/${c.total}`])) });
@@ -4552,7 +4559,7 @@ async function exportarCierresPDF() {
           <tr><th>Fecha</th><td>${esc(c.fecha.split('-').reverse().join('/'))}</td><th>Registrado</th><td>${esc(ciRegistrado(c))}${c.actualizado_en ? ' (rehecho)' : ''}</td></tr></table>
         <div class="secs">${CierreChecklist.SECCIONES.map((s, n) => `
           <table class="sec"><thead><tr><th>${n + 1}. ${esc(s.titulo)}</th><th class="c">Cumple</th></tr></thead><tbody>
-          ${s.items.map(([k, t]) => { const v = c.items?.[`${s.id}.${k}`]; return `<tr class="${v === false ? 'no' : ''}"><td>${esc(t)}</td><td class="c">${v === true ? '<span class="si">✓</span>' : v === false ? '<span class="x">✕</span>' : '—'}</td></tr>`; }).join('')}
+          ${s.items.map(([k, t]) => { const v = c.items?.[`${s.id}.${k}`]; return `<tr class="${v === false ? 'no' : v === null ? 'nap' : ''}"><td>${esc(t)}</td><td class="c">${v === true ? '<span class="si">✓</span>' : v === false ? '<span class="x">✕</span>' : v === null ? '<span class="na">N/A</span>' : '—'}</td></tr>`; }).join('')}
           </tbody></table>`).join('')}</div>
         ${c.observaciones ? `<div class="obs"><b>Observaciones</b><p>${esc(c.observaciones)}</p></div>` : ''}
         <div class="firma">${c.firma_url ? `<img src="${esc(c.firma_url)}" alt="">` : '<i>Sin firma guardada</i>'}<span>Firma: ${esc(c.responsable)}</span></div>
@@ -4591,6 +4598,8 @@ async function exportarCierresPDF() {
         .sec td { padding: 3.5px 6px; border-bottom: 1px solid #eef0f5; }
         .sec .c { text-align: center; width: 54px; }
         .sec tr.no td { background: #fdecea; color: #a3241a; font-weight: 600; }
+        .sec tr.nap td { color: #8a90a2; }
+        .na { color: #5a6482; font-size: 9px; font-weight: 700; }
         .si { color: #1f9d55; font-weight: 700; font-size: 13px; } .x { color: #d93025; font-weight: 700; font-size: 13px; }
         .obs { border: 1px solid #e2e6ef; border-radius: 8px; padding: 8px 10px; margin: 6px 0 10px; break-inside: avoid; }
         .obs p { margin: 4px 0 0; white-space: pre-wrap; }

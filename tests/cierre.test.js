@@ -155,3 +155,21 @@ test('DELETE cierre: coordinador borra, quita la firma y deja bitácora', async 
   assert.ok(ll.insert.some(i => i.tabla === 'bitacora' && i.fila.accion === 'cierre_borrar'));
   assert.equal((await llamar('DELETE', 'cierre', { id: 5 }, {}, 'tok-bodega')).statusCode, 403);
 });
+
+test('POST con puntos "No aplica" (null): el total cuenta solo los que aplican', async () => {
+  const ll = simular();
+  const items = todo(true);
+  items['electricos.aires'] = null; items['electricos.televisores'] = null; items['infra.vehiculos'] = null;
+  const res = await llamar('POST', 'cierre', cuerpo({ items }));
+  assert.equal(res.statusCode, 201, JSON.stringify(res.body));
+  const fila = ll.insert.find(i => i.tabla === 'cierres_bodega').fila;
+  assert.equal(fila.total, CIERRE_ITEMS.length - 3);
+  assert.equal(fila.cumplidos, CIERRE_ITEMS.length - 3);
+  assert.equal(fila.items['electricos.aires'], null);
+});
+
+test('POST con todo en "No aplica" → 400', async () => {
+  simular();
+  const res = await llamar('POST', 'cierre', cuerpo({ items: todo(null) }));
+  assert.equal(res.statusCode, 400);
+});

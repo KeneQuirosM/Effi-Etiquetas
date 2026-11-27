@@ -425,15 +425,19 @@ export default async function handler(req, res) {
 
       const entrada = b.items && typeof b.items === 'object' && !Array.isArray(b.items) ? b.items : null;
       if (!entrada) return res.status(400).json({ error: 'Falta el checklist' });
+      // true = cumple, false = no cumple, null = no aplica (esa bodega no lo tiene)
       const items = {};
       for (const clave of CIERRE_ITEMS) {
-        if (typeof entrada[clave] !== 'boolean') return res.status(400).json({ error: 'El checklist está incompleto; recarga la página' });
-        items[clave] = entrada[clave];
+        const v = entrada[clave];
+        if (typeof v !== 'boolean' && v !== null) return res.status(400).json({ error: 'El checklist está incompleto; recarga la página' });
+        items[clave] = v;
       }
-      const cumplidos = Object.values(items).filter(Boolean).length;
+      const total = Object.values(items).filter(v => v !== null).length;
+      const cumplidos = Object.values(items).filter(v => v === true).length;
+      if (!total) return res.status(400).json({ error: 'Todos los puntos están en "No aplica"' });
       const observaciones = String(b.observaciones ?? '').trim();
       if (observaciones.length > 1000) return res.status(400).json({ error: 'Las observaciones son muy largas (máximo 1000 caracteres)' });
-      if (cumplidos < CIERRE_ITEMS.length && !observaciones) {
+      if (cumplidos < total && !observaciones) {
         return res.status(400).json({ error: 'Explica en observaciones lo que no se cumplió' });
       }
 
@@ -472,7 +476,7 @@ export default async function handler(req, res) {
         firmaPath = null;
       }
 
-      const fila = { fecha: b.fecha, bodega, responsable, items, cumplidos, total: CIERRE_ITEMS.length, observaciones: observaciones || null, firma_path: firmaPath };
+      const fila = { fecha: b.fecha, bodega, responsable, items, cumplidos, total, observaciones: observaciones || null, firma_path: firmaPath };
       const consulta = previo
         ? supabaseAdmin.from('cierres_bodega').update({ ...fila, actualizado_en: new Date().toISOString() }).eq('id', previo.id)
         : supabaseAdmin.from('cierres_bodega').insert(fila);

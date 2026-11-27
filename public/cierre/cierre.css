@@ -373,6 +373,22 @@ body {
 .seg-si[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #fff; box-shadow: 0 4px 10px -4px rgba(31,157,85,.7); }
 .seg-no[aria-pressed="true"] { background: var(--no); border-color: var(--no); color: #fff; box-shadow: 0 4px 10px -4px rgba(217,48,37,.7); }
 .item.si .seg-no, .item.no .seg-si { opacity: .55; }
+/* No aplica: la bodega no tiene ese equipo; no cuenta en el total */
+.seg .seg-na {
+    width: 42px;
+    font: inherit; font-size: 11.5px; font-weight: 700; letter-spacing: .2px;
+    color: var(--neutral-600);
+}
+.seg-na[aria-pressed="true"] { background: var(--neutral-600); border-color: var(--neutral-600); color: #fff; }
+.item.na { background: repeating-linear-gradient(135deg, transparent 0 8px, rgba(90,100,130,.05) 8px 16px); }
+.item.na .item-texto { color: var(--neutral-600); text-decoration: line-through; text-decoration-color: rgba(90,100,130,.5); }
+.item.na .seg-si, .item.na .seg-no { opacity: .45; }
+.item.si .seg-na, .item.no .seg-na { opacity: .55; }
+@media (max-width: 380px) {
+    .seg { gap: 4px; }
+    .seg button { width: 40px; }
+    .seg .seg-na { width: 38px; }
+}
 .item.pop .seg button[aria-pressed="true"] { animation: pop .32s var(--ease); }
 
 .todo-ok {
@@ -510,6 +526,7 @@ body {
     background: var(--ok-suave); color: #13693a;
 }
 .ok-fila.warn { background: var(--no-suave); color: #a3241a; }
+.ok-fila.na { background: var(--neutral-100); color: var(--neutral-600); }
 .ok-fila b { font-variant-numeric: tabular-nums; }
 .ok-msg {
     width: 100%;

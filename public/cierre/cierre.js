@@ -29,7 +29,7 @@ const $ = id => document.getElementById(id);
 const estado = {
   hoy: fechaLocalISO(),          // se corrige con la fecha del servidor (Costa Rica)
   fecha: fechaLocalISO(),
-  marcas: {},                    // clave -> true | false (sin clave = sin revisar)
+  marcas: {},                    // clave -> true | false | NA (sin clave = sin revisar)
   abiertas: new Set(['electricos']),
   cierres: [],                   // historial del servidor
   rehaciendo: false,
@@ -62,13 +62,42 @@ function nombreDia(f) {
   return mayus(FMT_SEMANA.format(aUTC(f)));
 }
 
-/* ── CONTEO ── */
+/* ── CONTEO ──
+ * Cada punto: true (cumple), false (no cumple) o NA (no aplica: esa bodega
+ * no tiene ese equipo). Los NA no cuentan en el total; al servidor van
+ * como null. */
+const NA = 'na';
+const esOk = v => v === true || v === NA;       // no bloquea el cierre
 function conteo() {
-  let revisados = 0, cumplidos = 0;
+  let revisados = 0, cumplidos = 0, noAplica = 0, fallas = 0;
   for (const { clave } of ITEMS) {
-    if (clave in estado.marcas) { revisados++; if (estado.marcas[clave]) cumplidos++; }
+    const v = estado.marcas[clave];
+    if (v === undefined) continue;
+    revisados++;
+    if (v === true) cumplidos++;
+    else if (v === NA) noAplica++;
+    else fallas++;
   }
-  return { revisados, cumplidos, fallas: revisados - cumplidos };
+  return { revisados, cumplidos, fallas, noAplica, aplican: TOTAL - noAplica };
+}
+
+/* ── NO APLICA RECORDADO POR BODEGA ──
+ * Lo que fue "No aplica" en el último cierre de la bodega (historial del
+ * servidor, así sirve en cualquier celular) o, si no hay, en el último
+ * guardado desde este celular, se marca solo al empezar un cierre nuevo. */
+function noAplicaDeBodega() {
+  const b = normalizar(bodegaActual());
+  if (!b) return [];
+  const ultimo = estado.cierres
+    .filter(c => normalizar(c.bodega) === b && c.items)
+    .sort((x, y) => y.fecha.localeCompare(x.fecha))[0];
+  if (ultimo) return ITEMS.filter(i => ultimo.items[i.clave] === null).map(i => i.clave);
+  const guardados = leerJSON(CLAVE_PREFS)?.noAplica?.[b];
+  return Array.isArray(guardados) ? guardados.filter(k => ITEMS.some(i => i.clave === k)) : [];
+}
+function aplicarNoAplica() {
+  if (estado.rehaciendo || cierreDe(estado.fecha)) return;
+  for (const k of noAplicaDeBodega()) if (!(k in estado.marcas)) estado.marcas[k] = NA;
 }
 
 function bodegaActual() { return $('f-bodega').value.replace(/\s+/g, ' ').trim(); }
@@ -106,6 +135,7 @@ function renderSecciones() {
                   <button type="button" class="seg-no" data-valor="0" aria-pressed="false" aria-label="No cumple">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
                   </button>
+                  <button type="button" class="seg-na" data-valor="na" aria-pressed="false" aria-label="No aplica: no hay en esta bodega">N/A</button>
                 </span>
               </li>`;
             }).join('')}
@@ -131,13 +161,17 @@ function pintar() {
       const li = el.querySelector(`[data-clave="${clave}"]`);
       li.classList.toggle('si', v === true);
       li.classList.toggle('no', v === false);
+      li.classList.toggle('na', v === NA);
       li.querySelector('.seg-si').setAttribute('aria-pressed', v === true);
       li.querySelector('.seg-no').setAttribute('aria-pressed', v === false);
+      li.querySelector('.seg-na').setAttribute('aria-pressed', v === NA);
       if (v !== undefined) rev++;
       if (v === false) mal++;
     }
     const n = s.items.length;
-    el.querySelector('.seccion-cont').textContent = mal ? `${mal} falla${mal > 1 ? 's' : ''}` : `${rev}/${n}`;
+    const nNa = s.items.filter(([k]) => estado.marcas[`${s.id}.${k}`] === NA).length;
+    el.querySelector('.seccion-cont').textContent = mal ? `${mal} falla${mal > 1 ? 's' : ''}`
+      : nNa === n ? 'No aplica' : `${rev}/${n}`;
     el.querySelector('.seccion-barra span').style.width = `${(rev / n) * 100}%`;
     el.classList.toggle('completa', rev === n && !mal);
     el.classList.toggle('con-fallas', mal > 0);
@@ -159,7 +193,7 @@ function pintar() {
   bar.style.strokeDashoffset = C * (1 - anilloN / anilloTotal);
   bar.style.opacity = anilloN ? 1 : 0;      // con 0 el extremo redondeado dejaría un punto
   const ring = $('ring');
-  ring.classList.toggle('lleno', anilloN === anilloTotal && !anilloFallas);
+  ring.classList.toggle('lleno', ex ? anilloN === anilloTotal : revisados === TOTAL && !fallas);
   ring.classList.toggle('fallas', anilloFallas > 0);
   $('ring-num').textContent = anilloN;
   $('ring-de').textContent = `de ${anilloTotal}`;
@@ -205,7 +239,8 @@ function pintarHero() {
     sub = `Faltan ${TOTAL - revisados} punto${TOTAL - revisados > 1 ? 's' : ''}${fallas ? ` · ${fallas} sin cumplir` : ''}`;
   } else {
     texto = fallas ? 'Listo con fallas' : 'Listo para firmar'; clase = fallas ? 'warn' : 'ok';
-    sub = fallas ? 'Explica las fallas y firma.' : 'Todo en orden. Solo falta tu firma.';
+    const { noAplica } = conteo();
+    sub = (fallas ? 'Explica las fallas y firma.' : 'Todo en orden. Solo falta tu firma.') + (noAplica ? ` (${noAplica} no aplica${noAplica > 1 ? 'n' : ''})` : '');
   }
   pill.textContent = texto;
   pill.className = 'pill ' + clase;
@@ -216,13 +251,13 @@ function marcar(clave, valor) {
   const antes = estado.marcas[clave];
   if (antes === valor) delete estado.marcas[clave];     // tocar de nuevo desmarca
   else estado.marcas[clave] = valor;
-  vibrar(valor ? 8 : 20);
+  vibrar(valor === false ? 20 : 8);
   const li = document.querySelector(`[data-clave="${CSS.escape(clave)}"]`);
   if (li && !reducirMovimiento) { li.classList.remove('pop'); void li.offsetWidth; li.classList.add('pop'); }
 
   const s = ITEMS.find(i => i.clave === clave).seccion;
-  const completa = s.items.every(([k]) => estado.marcas[`${s.id}.${k}`] === true);
-  if (completa && antes !== true && valor === true) avanzarDesde(s.id);
+  const completa = s.items.every(([k]) => esOk(estado.marcas[`${s.id}.${k}`]));
+  if (completa && !esOk(antes) && esOk(valor)) avanzarDesde(s.id);
   pintar();
   guardarBorrador();
 }
@@ -248,7 +283,7 @@ function todoCumple(id) {
     if (!(clave in estado.marcas)) estado.marcas[clave] = true;
   }
   vibrar(15);
-  if (s.items.every(([k]) => estado.marcas[`${id}.${k}`])) avanzarDesde(id);
+  if (s.items.every(([k]) => esOk(estado.marcas[`${id}.${k}`]))) avanzarDesde(id);
   pintar();
   guardarBorrador();
 }
@@ -309,6 +344,7 @@ function elegirFecha(f) {
   estado.marcas = b && !b.rehaciendo ? { ...b.marcas } : {};
   $('f-obs').value = b && !b.rehaciendo ? (b.obs || '') : '';
   actualizarContadorObs();
+  aplicarNoAplica();
   estado.abiertas = new Set([primeraPendiente() || 'electricos']);
   limpiarFirma();
   vibrar(6);
@@ -353,7 +389,11 @@ function rehacer() {
     $('f-obs').value = b.obs || '';
   } else {
     estado.marcas = {};
-    for (const { clave } of ITEMS) if (typeof ex.items?.[clave] === 'boolean') estado.marcas[clave] = ex.items[clave];
+    for (const { clave } of ITEMS) {
+      const v = ex.items?.[clave];
+      if (typeof v === 'boolean') estado.marcas[clave] = v;
+      else if (v === null) estado.marcas[clave] = NA;
+    }
     $('f-obs').value = ex.observaciones || '';
   }
   actualizarContadorObs();
@@ -373,6 +413,7 @@ function cancelarRehacer() {
   $('f-obs').value = '';
   actualizarContadorObs();
   borrarBorrador();
+  aplicarNoAplica();
   mostrarModo();
 }
 
@@ -393,6 +434,8 @@ async function cargarHistorial() {
   } catch (e) {
     notify(mensajeErrorCarga(e, 'los cierres anteriores'), 'warn', 0, { texto: 'Reintentar', alHacer: cargarHistorial });
   }
+  aplicarNoAplica();
+  if (!estado.rehaciendo) estado.abiertas = new Set([primeraPendiente() || 'electricos']);
   renderDias();
   mostrarModo();
 }
@@ -509,7 +552,7 @@ async function guardar(e) {
   if (estado.guardando) return;
   document.querySelectorAll('.invalid').forEach(x => x.classList.remove('invalid'));
 
-  const { revisados, cumplidos, fallas } = conteo();
+  const { revisados, cumplidos, fallas, aplican } = conteo();
   const bodega = bodegaActual();
   const responsable = $('f-responsable').value;
   const obs = $('f-obs').value.trim();
@@ -535,6 +578,10 @@ async function guardar(e) {
     vibrar([20, 40, 20]);
     return;
   }
+  if (!aplican) {
+    notify('Todos los puntos están en "No aplica": revisa el checklist', 'warn');
+    return;
+  }
   if (fallas && !obs) return problema('f-obs', 'Explica en observaciones lo que no se cumplió');
   if (!firma.trazos) return problema('firma-caja', 'Falta la firma del responsable');
 
@@ -550,7 +597,7 @@ async function guardar(e) {
 
   const body = {
     fecha: estado.fecha, bodega, responsable,
-    items: Object.fromEntries(ITEMS.map(i => [i.clave, estado.marcas[i.clave] === true])),
+    items: Object.fromEntries(ITEMS.map(i => [i.clave, estado.marcas[i.clave] === NA ? null : estado.marcas[i.clave] === true])),
     observaciones: obs,
     firma: firmaPNG(),
     reemplazar: estado.rehaciendo
@@ -565,7 +612,9 @@ async function enviar(body, resumen) {
   $('btn-guardar-txt').textContent = 'Guardando...';
   try {
     const res = await apiRequestJSON('/api/conteos?accion=cierre', { method: 'POST', body, headers: headersDispositivo() });
-    guardarJSON(CLAVE_PREFS, { responsable: body.responsable, bodega: body.bodega });
+    const prefs = leerJSON(CLAVE_PREFS) || {};
+    const noAplica = { ...(prefs.noAplica || {}), [normalizar(body.bodega)]: ITEMS.filter(i => body.items[i.clave] === null).map(i => i.clave) };
+    guardarJSON(CLAVE_PREFS, { responsable: body.responsable, bodega: body.bodega, noAplica });
     borrarBorrador();
     $('error-guardar').hidden = true;
     if (res.aviso_firma) notify(res.aviso_firma, 'warn', 10000);
@@ -611,6 +660,8 @@ function armarMensaje(body, c) {
     `*Responsable:* ${body.responsable}`,
     `*Resultado:* ${c.cumplidos}/${c.total} puntos cumplen`
   ];
+  const na = ITEMS.filter(i => body.items[i.clave] === null).length;
+  if (na) lineas[lineas.length - 1] += ` (${na} no aplica${na > 1 ? 'n' : ''})`;
   if (fallas.length) {
     lineas.push('', '*Sin cumplir:*', ...fallas.map(i => `- ${i.texto}`));
   } else {
@@ -626,8 +677,9 @@ function mostrarOk(body, c, resumen, reemplazado) {
   $('ok-titulo').textContent = todo ? 'Bodega cerrada' : 'Cierre guardado';
   $('ok-sub').textContent = `${reemplazado ? 'Reemplazó al anterior · ' : ''}${nombreDia(body.fecha)} · ${c.hora || ''}`;
   $('ok-resumen').innerHTML = SECCIONES.map(s => {
-    const n = s.items.length;
-    const ok = s.items.filter(([k]) => body.items[`${s.id}.${k}`]).length;
+    const n = s.items.filter(([k]) => body.items[`${s.id}.${k}`] !== null).length;
+    const ok = s.items.filter(([k]) => body.items[`${s.id}.${k}`] === true).length;
+    if (!n) return `<div class="ok-fila na"><span>${esc(s.titulo)}</span><b>No aplica</b></div>`;
     return `<div class="ok-fila ${ok === n ? 'ok' : 'warn'}"><span>${esc(s.titulo)}</span><b>${ok}/${n}</b></div>`;
   }).join('');
   $('ok-msg').textContent = estado.ultimoMensaje;
@@ -648,7 +700,8 @@ function volverAlInicio() {
   $('f-obs').value = '';
   actualizarContadorObs();
   limpiarFirma();
-  estado.abiertas = new Set(['electricos']);
+  aplicarNoAplica();
+  estado.abiertas = new Set([primeraPendiente() || 'electricos']);
   $('vista-ok').hidden = true;
   document.querySelector('.hero').hidden = false;
   document.querySelector('.dias-card').hidden = false;
@@ -735,12 +788,12 @@ function confeti() {
 
   $('secciones').addEventListener('click', e => {
     const seg = e.target.closest('.seg button');
-    if (seg) return marcar(seg.closest('.item').dataset.clave, seg.dataset.valor === '1');
+    if (seg) return marcar(seg.closest('.item').dataset.clave, seg.dataset.valor === 'na' ? NA : seg.dataset.valor === '1');
     const todo = e.target.closest('[data-todo]');
     if (todo) return todoCumple(todo.dataset.todo);
     // Tocar el texto del punto marca "Cumple" (lo más común)
     const item = e.target.closest('.item');
-    if (item) return marcar(item.dataset.clave, true);
+    if (item && estado.marcas[item.dataset.clave] !== NA) return marcar(item.dataset.clave, true);
     const head = e.target.closest('.seccion-head');
     if (head) {
       const id = head.closest('.seccion').dataset.seccion;
@@ -755,7 +808,7 @@ function confeti() {
     if (d) elegirFecha(d.dataset.fecha);
   });
   $('f-fecha').addEventListener('change', e => elegirFecha(e.target.value));
-  $('f-bodega').addEventListener('change', () => { renderDias(); mostrarModo(); });
+  $('f-bodega').addEventListener('change', () => { aplicarNoAplica(); renderDias(); mostrarModo(); });
   $('f-obs').addEventListener('input', () => { actualizarContadorObs(); guardarBorrador(); $('campo-obs').classList.remove('invalid'); });
   $('form-cierre').addEventListener('change', e => e.target.closest('.field')?.classList.remove('invalid'));
   $('btn-rehacer').addEventListener('click', rehacer);
