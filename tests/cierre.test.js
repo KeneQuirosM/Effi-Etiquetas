@@ -1,10 +1,10 @@
 // Pruebas del cierre de bodega: POST/GET /api/conteos?accion=cierre(s) y
 // que el checklist del celular (public/cierre/cierre.js) tenga las mismas
-// claves que valida el servidor (CIERRE_ITEMS en api/conteos.js).
+// claves que valida el servidor (CIERRE_ITEMS en api/conteos.js), y la
+// consulta/borrado del panel de coordinador (pestaña Cierres).
 // Sin red: el cliente de Supabase se reemplaza con tests/simulacion-supabase.js.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { prepararEntorno, crearRespuesta, instalarSimulacion } from './simulacion-supabase.js';
 
 prepararEntorno();
@@ -17,7 +17,8 @@ Object.defineProperty(supabaseAdmin, 'storage', {
   configurable: true,
   value: { from: () => ({
     upload: async path => { subidas.push(path); return { error: null }; },
-    remove: async paths => { borradas.push(...paths); return { error: null }; }
+    remove: async paths => { borradas.push(...paths); return { error: null }; },
+    createSignedUrls: async paths => ({ data: paths.map(p => ({ path: p, signedUrl: `https://firmada/${p}` })), error: null })
   }) }
 });
 
@@ -26,8 +27,14 @@ const FIRMA = 'data:image/png;base64,' + Buffer.from('firma-de-prueba').toString
 const hoyCR = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Costa_Rica' }).format(new Date());
 const todo = v => Object.fromEntries(CIERRE_ITEMS.map(k => [k, v]));
 
+const USUARIOS = {
+  'tok-coord':  { id: 'u-coord',  app_metadata: { rol: 'coordinador' }, user_metadata: { nombre: 'Coord prueba' } },
+  'tok-bodega': { id: 'u-bodega', app_metadata: { rol: 'bodeguero' },   user_metadata: { nombre: 'Bodega prueba' } }
+};
+
 function simular(cierres = []) {
   return instalarSimulacion(supabaseAdmin, {
+    usuarios: USUARIOS,
     tablas: {
       configuracion: [{ clave: 'conteos_personas', valor: JSON.stringify(PERSONAS) }],
       cierres_bodega: cierres
@@ -36,9 +43,11 @@ function simular(cierres = []) {
 }
 
 let ip = 0;
-async function llamar(method, accion, body, query = {}) {
+async function llamar(method, accion, body, query = {}, token = null) {
   const res = crearRespuesta();
-  await handler({ method, headers: { 'x-forwarded-for': `10.0.0.${++ip}` }, body, query: { accion, ...query } }, res);
+  const headers = { 'x-forwarded-for': `10.0.0.${++ip}` };
+  if (token) headers.authorization = `Bearer ${token}`;
+  await handler({ method, headers, body, query: { accion, ...query } }, res);
   return res;
 }
 const cuerpo = (extra = {}) => ({
@@ -46,14 +55,9 @@ const cuerpo = (extra = {}) => ({
   items: todo(true), observaciones: '', firma: FIRMA, ...extra
 });
 
-test('el checklist del celular tiene las mismas claves y orden que el servidor', () => {
-  const js = readFileSync(new URL('../public/cierre/cierre.js', import.meta.url), 'utf8');
-  const bloque = js.slice(js.indexOf('const SECCIONES'), js.indexOf('const ITEMS'));
-  const claves = [];
-  let seccion = null;
-  for (const m of bloque.matchAll(/\{ id: '(\w+)'|\['(\w+)', '/g)) {
-    if (m[1]) seccion = m[1]; else claves.push(`${seccion}.${m[2]}`);
-  }
+test('el checklist compartido tiene las mismas claves y orden que el servidor', async () => {
+  await import('../public/shared/cierre-checklist.js');
+  const claves = globalThis.CierreChecklist.ITEMS.map(i => i.clave);
   assert.deepEqual(claves, CIERRE_ITEMS);
   assert.equal(new Set(CIERRE_ITEMS).size, CIERRE_ITEMS.length);
 });
@@ -126,4 +130,28 @@ test('GET cierres → lista con la fecha de hoy en Costa Rica', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.hoy, hoyCR());
   assert.equal(res.body.cierres.length, 1);
+});
+
+test('GET cierres_panel: sin sesión 401, bodeguero 403, coordinador ve la firma firmada', async () => {
+  const fila = { id: 3, fecha: '2026-11-20', bodega: 'B', responsable: 'Persona Uno', cumplidos: 26, total: 26, firma_path: 'cierres/2026-11/x.png' };
+  simular([fila]);
+  const q = { desde: '2026-11-01', hasta: '2026-11-30' };
+  assert.equal((await llamar('GET', 'cierres_panel', undefined, q)).statusCode, 401);
+  assert.equal((await llamar('GET', 'cierres_panel', undefined, q, 'tok-bodega')).statusCode, 403);
+  const res = await llamar('GET', 'cierres_panel', undefined, q, 'tok-coord');
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.cierres[0].firma_url, 'https://firmada/cierres/2026-11/x.png');
+  assert.equal('firma_path' in res.body.cierres[0], false);
+  assert.equal((await llamar('GET', 'cierres_panel', undefined, { desde: '2026-11-30', hasta: '2026-11-01' }, 'tok-coord')).statusCode, 400);
+});
+
+test('DELETE cierre: coordinador borra, quita la firma y deja bitácora', async () => {
+  // La simulación devuelve la fila encontrada por eq('id') en la consulta del delete
+  const fila = { id: 5, fecha: '2026-11-20', bodega: 'B', responsable: 'Persona Uno', cumplidos: 25, total: 26, firma_path: 'cierres/2026-11/y.png' };
+  const ll = simular([fila]);
+  const res = await llamar('DELETE', 'cierre', { id: 5 }, {}, 'tok-coord');
+  assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+  assert.ok(borradas.includes('cierres/2026-11/y.png'));
+  assert.ok(ll.insert.some(i => i.tabla === 'bitacora' && i.fila.accion === 'cierre_borrar'));
+  assert.equal((await llamar('DELETE', 'cierre', { id: 5 }, {}, 'tok-bodega')).statusCode, 403);
 });

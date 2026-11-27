@@ -148,6 +148,7 @@
       <button class="tab-btn" data-tab="tab-conteos" data-permiso="tab-conteos" onclick="switchTab('tab-conteos')">Conteos</button>
       <button class="tab-btn" data-tab="tab-impresion" data-permiso="tab-impresion" onclick="switchTab('tab-impresion')">Impresión</button>
       <button class="tab-btn" data-tab="tab-recepciones" data-permiso="tab-recepciones" onclick="switchTab('tab-recepciones')">Recepciones</button>
+      <button class="tab-btn" data-tab="tab-cierres" data-permiso="tab-cierres" onclick="switchTab('tab-cierres')">Cierres</button>
     </div>
 
     <!-- TAB: Agregar Producto -->
@@ -616,6 +617,7 @@
             <option value="tiendas">Tiendas</option>
             <option value="conteos">Conteos</option>
             <option value="recepciones">Recepciones</option>
+            <option value="cierres">Cierres de bodega</option>
             <option value="config">Configuración</option>
             <option value="dispositivos">Dispositivos</option>
             <option value="mercado">Mercado</option>
@@ -734,6 +736,52 @@
         <div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>
       </div>
       <p style="font-size:11px;color:var(--muted);margin-top:8px">Las recepciones se registran desde la pantalla "Recepción de Mercancía" (abierta para todos, pensada para el celular). Los feriados se configuran en Configuración &gt; Feriados. Las fotos se abren con un enlace temporal de 1 hora.</p>
+    </div>
+
+    <!-- TAB: Cierres de bodega registrados desde cierre/cierre.html (celular) -->
+    <div id="tab-cierres" class="tab-content">
+      <p class="section-label" style="margin-bottom:10px">Cierres de bodega</p>
+      <div class="devol-presets ci-presets" role="group" aria-label="Rangos rápidos">
+        <button type="button" class="btn-action btn-ghost" data-preset="semana" onclick="ciPreset('semana')">Últimos 7 días</button>
+        <button type="button" class="btn-action btn-ghost" data-preset="mes" onclick="ciPreset('mes')">Este mes</button>
+        <button type="button" class="btn-action btn-ghost" data-preset="30" onclick="ciPreset('30')">Últimos 30 días</button>
+        <button type="button" class="btn-action btn-ghost" data-preset="anterior" onclick="ciPreset('anterior')">Mes anterior</button>
+      </div>
+      <div class="devol-filtros">
+        <div class="form-group">
+          <label for="ci-desde">Desde</label>
+          <input type="date" id="ci-desde">
+        </div>
+        <div class="form-group">
+          <label for="ci-hasta">Hasta</label>
+          <input type="date" id="ci-hasta">
+        </div>
+        <div class="form-group">
+          <label for="ci-bodega">Bodega</label>
+          <select id="ci-bodega" onchange="renderCierres()"><option value="">Todas</option></select>
+        </div>
+        <button type="button" class="btn-action btn-primary" onclick="cargarCierres()">Consultar</button>
+      </div>
+      <div class="ci-toolbar">
+        <div class="ci-filtro" role="group" aria-label="Mostrar">
+          <button type="button" class="ci-chip active" data-ver="todos" onclick="ciVer('todos')">Todos</button>
+          <button type="button" class="ci-chip" data-ver="fallas" onclick="ciVer('fallas')">Con fallas</button>
+        </div>
+        <div class="ci-export">
+          <button type="button" class="btn-action btn-ghost" onclick="exportarCierresExcel()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="m9 13 4 5M13 13l-4 5"/></svg> Excel</button>
+          <button type="button" class="btn-action btn-ghost" onclick="exportarCierresPDF()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg> PDF</button>
+        </div>
+      </div>
+      <div class="ci-kpis" id="ci-kpis"></div>
+      <div class="ci-cal-wrap" id="ci-cal-wrap" hidden>
+        <p class="ci-subtitulo">Calendario</p>
+        <div class="ci-cal" id="ci-cal"></div>
+      </div>
+      <div class="ci-top" id="ci-top" hidden></div>
+      <div class="ci-lista" id="ci-lista">
+        <div class="inv-item"><span class="item-name" style="color:var(--muted)">Elige un rango y consulta.</span></div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">Los cierres se registran desde la pantalla "Cierre de Bodega" (abierta para todos, pensada para el celular). Las firmas se abren con un enlace temporal de 1 hora. El PDF se genera con la ventana de impresión: elige "Guardar como PDF".</p>
     </div>
 
     <!-- TAB: Conteos registrados desde conteos.html (pantalla móvil pública) -->
@@ -1128,6 +1176,7 @@
 <script src="/shared/api.js"></script>
 <script src="/shared/a11y.js"></script>
 <script src="/shared/horario-laboral.js"></script>
+<script src="/shared/cierre-checklist.js"></script>
 <script src="/index.js"></script>
 <script src="/decoracion.js"></script>
 </body>

@@ -52,7 +52,8 @@ export function instalarSimulacion(cliente, { usuarios = {}, tablas = {}, rpc = 
       if ((estado.op === 'insert' || estado.op === 'update') && estado.unico) {
         return { data: { id: 1, creado_en: '2026-01-01T00:00:00Z', ...estado.fila }, error: null };
       }
-      if (estado.op !== 'select') return { data: null, error: null };
+      // delete devuelve las filas que coinciden (como .delete().select())
+      if (estado.op !== 'select' && estado.op !== 'delete') return { data: null, error: null };
       const def = tablas[tabla];
       if (def && !Array.isArray(def) && def.error) return { data: null, error: def.error };
       let filas = Array.isArray(def) ? def : [];

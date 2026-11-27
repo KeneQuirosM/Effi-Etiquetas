@@ -14,6 +14,7 @@ export const ACCIONES = [
   'tienda_crear', 'tienda_renombrar', 'tienda_borrar',
   'conteo_trasladar', 'conteo_borrar',
   'recepcion_ajuste', 'recepcion_finalizar', 'recepcion_reabrir', 'recepcion_borrar',
+  'cierre_borrar',
   'config_cambiar',
   'dispositivo_vincular', 'dispositivo_desvincular',
   'usuario_crear', 'usuario_perfil', 'usuario_nombre', 'usuario_contrasena', 'usuario_borrar',

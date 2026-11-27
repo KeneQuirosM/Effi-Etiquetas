@@ -33,7 +33,7 @@ const VENC_ANIO_MIN = 2000, VENC_ANIO_MAX = 2100;
 const RECEPCION_MAX_ATRAS_DIAS = 30;       // fecha de recepción editable: hasta 30 días atrás   // fuera de esto es un error de tipeo (p. ej. 0202)
 
 // Checklist de cierre de bodega (cierre/cierre.html). Mismas claves y orden que
-// SECCIONES en public/cierre/cierre.js (tests/cierre.test.js lo verifica).
+// public/shared/cierre-checklist.js (tests/cierre.test.js lo verifica).
 export const CIERRE_ITEMS = [
   'electricos.tomas', 'electricos.ventiladores', 'electricos.extractores', 'electricos.aires',
   'electricos.luces', 'electricos.cargadores', 'electricos.televisores', 'electricos.microondas', 'electricos.otros',
@@ -492,6 +492,66 @@ export default async function handler(req, res) {
         timeZone: 'America/Costa_Rica', hour: '2-digit', minute: '2-digit', hour12: true
       }).format(new Date(data.actualizado_en || data.creado_en));
       return res.status(previo ? 200 : 201).json({ cierre: { ...data, hora }, reemplazado: !!previo, aviso_firma: avisoFirma });
+    }
+
+    // ── CIERRES DE BODEGA: pestaña "Cierres" del panel (coordinador) ──
+    //   GET    ?accion=cierres_panel&desde&hasta[&bodega]  -> con la firma (URL firmada 1 h)
+    //   DELETE ?accion=cierre { id }                       -> borra el cierre y su firma
+    if (req.method === 'GET' && req.query?.accion === 'cierres_panel') {
+      const user = await requirePermiso(req, res, 'tab-cierres');
+      if (!user) return;
+      const { desde, hasta } = req.query;
+      if (!esFechaValida(desde) || !esFechaValida(hasta) || desde > hasta) {
+        return res.status(400).json({ error: 'Fechas inválidas (formato AAAA-MM-DD)' });
+      }
+      if ((Date.parse(hasta) - Date.parse(desde)) / 86400000 > MAX_RANGO_DIAS) {
+        return res.status(400).json({ error: `El rango máximo es de ${MAX_RANGO_DIAS} días` });
+      }
+      const { data, error } = await supabaseAdmin
+        .from('cierres_bodega').select('*')
+        .gte('fecha', desde).lte('fecha', hasta)
+        .order('fecha', { ascending: false }).order('id', { ascending: false })
+        .limit(MAX_FILAS);
+      if (error) {
+        console.error('Error consultando cierres (panel):', error);
+        const falta = /cierres_bodega/.test(error.message || '') && /exist|relation|schema/i.test(error.message || '');
+        return res.status(500).json({ error: falta ? 'Falta ejecutar supabase/cierres_bodega.sql' : 'No se pudieron cargar los cierres' });
+      }
+      const paths = data.map(c => c.firma_path).filter(Boolean);
+      const urls = new Map();
+      if (paths.length) {
+        const { data: firmadas, error: sErr } = await supabaseAdmin.storage.from(BUCKET).createSignedUrls(paths, URL_FIRMADA_SEG);
+        if (sErr) console.error('Error firmando firmas de cierres:', sErr);
+        (firmadas || []).forEach(f => { if (f.signedUrl) urls.set(f.path, f.signedUrl); });
+      }
+      return res.status(200).json({
+        hoy: fechaCR(Date.now()),
+        cierres: data.map(({ firma_path, ...c }) => ({ ...c, firma_url: urls.get(firma_path) || null })),
+        truncado: data.length === MAX_FILAS
+      });
+    }
+
+    if (req.method === 'DELETE' && req.query?.accion === 'cierre') {
+      const user = await requirePermiso(req, res, 'tab-cierres');
+      if (!user) return;
+      const id = Number((req.body || {}).id);
+      if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido' });
+      const { data, error } = await supabaseAdmin
+        .from('cierres_bodega').delete().eq('id', id)
+        .select('*').maybeSingle();
+      if (error) {
+        console.error('Error borrando cierre de bodega:', error);
+        return res.status(500).json({ error: 'No se pudo borrar el cierre' });
+      }
+      if (!data) return res.status(404).json({ error: 'El cierre ya no existe' });
+      if (data.firma_path) {
+        const { error: rmErr } = await supabaseAdmin.storage.from(BUCKET).remove([data.firma_path]);
+        if (rmErr) console.error('Error borrando firma de cierre:', rmErr);
+      }
+      await registrar(user, 'cierre_borrar',
+        `Borró el cierre de bodega #${id}: ${data.bodega}, ${data.fecha}, de ${data.responsable} (${data.cumplidos}/${data.total} cumplían)`,
+        { cierre_id: id });
+      return res.status(200).json({ ok: true });
     }
 
     // ── POST ?accion=recepcion: registrar una recepción de mercancía ──

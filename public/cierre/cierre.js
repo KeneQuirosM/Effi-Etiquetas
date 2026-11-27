@@ -12,51 +12,12 @@
  *   GET  /api/conteos?accion=cierres&dias=N  -> historial de los últimos días
  *   POST /api/conteos?accion=cierre          -> guarda (409 'cierre_existe'
  *        si ya hay uno ese día; se reenvía con reemplazar: true)
- * Tabla: supabase/cierres_bodega.sql. Las claves de SECCIONES deben ser las
- * mismas y en el mismo orden que CIERRE_ITEMS en api/conteos.js
- * (tests/cierre.test.js lo comprueba).
+ * Tabla: supabase/cierres_bodega.sql. El catálogo de puntos está en
+ * shared/cierre-checklist.js (compartido con la pestaña Cierres del panel).
  */
 
-const SECCIONES = [
-  { id: 'electricos', titulo: 'Equipos eléctricos', icono: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>', items: [
-    ['tomas', 'Tomas eléctricas desconectadas'],
-    ['ventiladores', 'Ventiladores apagados'],
-    ['extractores', 'Extractores apagados'],
-    ['aires', 'Aires acondicionados apagados'],
-    ['luces', 'Luces apagadas'],
-    ['cargadores', 'Cargadores desconectados'],
-    ['televisores', 'Televisores apagados/desconectados'],
-    ['microondas', 'Microondas desconectado'],
-    ['otros', 'Otros equipos apagados']
-  ] },
-  { id: 'hidricas', titulo: 'Redes hídricas', icono: '<path d="M12 2.7s6 6.3 6 11.3a6 6 0 0 1-12 0c0-5 6-11.3 6-11.3z"/>', items: [
-    ['lavamanos', 'Lavamanos cerrados'],
-    ['grifos', 'Grifos de baños cerrados'],
-    ['pocetas', 'Pocetas sin fuga'],
-    ['lavaplatos', 'Lavaplatos cerrado']
-  ] },
-  { id: 'infra', titulo: 'Infraestructura y accesos', icono: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', items: [
-    ['puertas', 'Puertas principales cerradas'],
-    ['rejas', 'Rejas aseguradas'],
-    ['ventanas', 'Ventanas cerradas'],
-    ['portones', 'Portones bloqueados'],
-    ['vehiculos', 'Vehículos cerrados'],
-    ['perimetro', 'Perímetro verificado']
-  ] },
-  { id: 'recorrido', titulo: 'Recorrido final', icono: '<circle cx="12" cy="5" r="2"/><path d="m9 22 2-7 3 3v4"/><path d="m6 12 3-4 4 1 3 4"/>', items: [
-    ['areas', 'Recorrido completo por áreas'],
-    ['personal', 'Confirmación de ausencia de personal'],
-    ['equipos', 'Equipos apagados'],
-    ['orden', 'Orden general adecuado']
-  ] },
-  { id: 'seguridad', titulo: 'Sistema de seguridad', icono: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', items: [
-    ['alarma', 'Activación de alarma'],
-    ['camaras', 'Cámaras funcionando'],
-    ['fallas', 'Reporte de fallas realizado']
-  ] }
-];
-const ITEMS = SECCIONES.flatMap(s => s.items.map(([k, texto]) => ({ clave: `${s.id}.${k}`, texto, seccion: s })));
-const TOTAL = ITEMS.length;
+const { SECCIONES, ITEMS, TOTAL } = CierreChecklist;
+
 
 const CIERRE_MAX_ATRAS_DIAS = 60;     // igual que en api/conteos.js
 const DIAS_TIRA = 14;                 // días que se muestran en la tira

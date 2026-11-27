@@ -443,6 +443,7 @@ function switchTab(id) {
   if (id === 'tab-devol' && !devolDias) devolPreset('semana');
   if (id === 'tab-conteos') { populateConteoTiendas(); if (!conteos) conteoPreset('semana'); }
   if (id === 'tab-recepciones') { populateRcTiendas(); cargarRecepciones(); }
+  if (id === 'tab-cierres' && !cierresPanel) ciPreset('semana');
   if (id === 'tab-config') {
     if (puede('cfg-conteos')) cargarOpcionesConteos();
     if (puede('cfg-disp')) cargarDispositivos();
@@ -3091,7 +3092,8 @@ function permisosUI() {
     { titulo: 'Pestañas del panel', items: [
       ['tab-add-item', 'Agregar Producto'], ['tab-add-tienda', 'Nueva Tienda'],
       ['tab-manage', 'Gestionar Inventario'], ['tab-devol', 'Devoluciones'],
-      ['tab-conteos', 'Conteos'], ['tab-impresion', 'Impresión'], ['tab-recepciones', 'Recepciones']
+      ['tab-conteos', 'Conteos'], ['tab-impresion', 'Impresión'], ['tab-recepciones', 'Recepciones'],
+      ['tab-cierres', 'Cierres de bodega']
     ] },
     { titulo: 'Secciones de Configuración', items: [
       ['cfg-logos', 'Logos'], ['cfg-qr', 'QR de ubicación'], ['cfg-grupo', 'Imprimir por grupo (Alistamiento)'],
@@ -3200,6 +3202,7 @@ const BITACORA_ACCIONES = {
   recepcion_finalizar:     ['Recepción', 'ok'],
   recepcion_reabrir:       ['Recepción', 'edit'],
   recepcion_borrar:        ['Recepción', 'del'],
+  cierre_borrar:           ['Cierre de bodega', 'del'],
   config_cambiar:          ['Configuración', 'edit'],
   dispositivo_vincular:    ['Dispositivo', 'ok'],
   dispositivo_desvincular: ['Dispositivo', 'del'],
@@ -4131,6 +4134,509 @@ async function rcCopiarAlerta(id) {
     ta.remove();
   }
   notify(ok ? 'Alerta copiada al portapapeles' : 'No se pudo copiar la alerta', ok ? 'success' : 'error');
+}
+
+/* ── CIERRES DE BODEGA ───────────────────────────────────
+ * Vista del coordinador de lo registrado en cierre/cierre.html (checklist
+ * diario de cierre, uno por día y bodega). GET /api/conteos?accion=
+ * cierres_panel trae los cierres del rango con la firma (URL firmada 1 h);
+ * DELETE ?accion=cierre borra uno. El catálogo de puntos es el mismo del
+ * celular: shared/cierre-checklist.js (CierreChecklist).
+ * Exporta a Excel (ExcelJS, con la firma incrustada y una hoja con la
+ * matriz de puntos) y a PDF por la ventana de impresión (sin librerías:
+ * se imprime un iframe con el informe y se elige "Guardar como PDF").
+ */
+let cierresPanel = null;        // null = sin consultar
+let ciHoy = null;               // fecha de hoy en Costa Rica según el servidor
+let ciRango = null;             // { desde, hasta } de la última consulta
+let ciCargadoEn = 0;
+let ciFiltroVer = 'todos';
+let ciExportando = false;
+
+const CI_FMT_LARGA = new Intl.DateTimeFormat('es-CR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const CI_FMT_CORTA = new Intl.DateTimeFormat('es-CR', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
+const CI_FMT_HORA = new Intl.DateTimeFormat('es-CR', { timeZone: 'America/Costa_Rica', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
+const ciUTC = f => new Date(f + 'T12:00:00Z');
+const ciSumar = (f, n) => { const d = ciUTC(f); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const ciMayus = s => s.charAt(0).toUpperCase() + s.slice(1);
+const ciNorm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const ciFechaLarga = f => ciMayus(CI_FMT_LARGA.format(ciUTC(f)));
+const ciRegistrado = c => CI_FMT_HORA.format(new Date(c.actualizado_en || c.creado_en));
+
+function ciPreset(p) {
+  const hoy = ciHoy || fechaLocalISO();
+  let desde = hoy, hasta = hoy;
+  if (p === 'semana') desde = ciSumar(hoy, -6);
+  else if (p === '30') desde = ciSumar(hoy, -29);
+  else if (p === 'mes') desde = hoy.slice(0, 8) + '01';
+  else if (p === 'anterior') {
+    const ini = ciUTC(hoy.slice(0, 8) + '01'); ini.setUTCMonth(ini.getUTCMonth() - 1);
+    desde = ini.toISOString().slice(0, 10);
+    hasta = ciSumar(hoy.slice(0, 8) + '01', -1);
+  }
+  document.getElementById('ci-desde').value = desde;
+  document.getElementById('ci-hasta').value = hasta;
+  document.querySelectorAll('.ci-presets [data-preset]').forEach(b => b.classList.toggle('active', b.dataset.preset === p));
+  cargarCierres();
+}
+
+function ciVer(v) {
+  ciFiltroVer = v;
+  document.querySelectorAll('.ci-filtro .ci-chip').forEach(b => b.classList.toggle('active', b.dataset.ver === v));
+  renderCierres();
+}
+
+async function cargarCierres() {
+  const desde = document.getElementById('ci-desde').value;
+  const hasta = document.getElementById('ci-hasta').value;
+  if (!desde || !hasta || desde > hasta) return notify('Revisa el rango de fechas', 'warn');
+  const lista = document.getElementById('ci-lista');
+  if (!cierresPanel) lista.innerHTML = '<div class="inv-item"><span class="item-name" style="color:var(--muted)">Cargando...</span></div>';
+  try {
+    const data = await apiFetch('GET', `/api/conteos?accion=cierres_panel&desde=${desde}&hasta=${hasta}`);
+    cierresPanel = data.cierres || [];
+    ciHoy = data.hoy || ciHoy;
+    ciRango = { desde, hasta };
+    ciCargadoEn = Date.now();
+    if (data.truncado) notify('Se muestran solo los 1000 cierres más recientes del rango', 'warn');
+    // Bodegas del rango para el filtro (conserva la elegida si sigue)
+    const sel = document.getElementById('ci-bodega');
+    const actual = sel.value;
+    const bodegas = [...new Map(cierresPanel.map(c => [ciNorm(c.bodega), c.bodega])).values()].sort((a, b) => a.localeCompare(b, 'es'));
+    sel.innerHTML = '<option value="">Todas</option>' + bodegas.map(b => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
+    if (bodegas.some(b => b === actual)) sel.value = actual;
+    else if (bodegas.length === 1) sel.value = bodegas[0];
+    renderCierres();
+  } catch (e) {
+    cierresPanel = null;
+    lista.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--danger)">${esc(e.message || 'Error al cargar los cierres')}</span></div>`;
+    ['ci-kpis', 'ci-top'].forEach(id => { document.getElementById(id).innerHTML = ''; });
+    document.getElementById('ci-cal-wrap').hidden = true;
+  }
+}
+
+// Cierres del rango con el filtro de bodega (sin el de "con fallas")
+function ciDelRango() {
+  const b = ciNorm(document.getElementById('ci-bodega').value);
+  return (cierresPanel || []).filter(c => !b || ciNorm(c.bodega) === b);
+}
+function ciVisibles() {
+  const base = ciDelRango();
+  return ciFiltroVer === 'fallas' ? base.filter(c => c.cumplidos < c.total) : base;
+}
+// Días del rango (hasta hoy) sin ningún cierre de la bodega elegida
+function ciDiasRango() {
+  if (!ciRango) return [];
+  const dias = [];
+  for (let f = ciRango.desde; f <= ciRango.hasta && dias.length < 400; f = ciSumar(f, 1)) dias.push(f);
+  return dias;
+}
+function ciFaltantes() {
+  const hechos = new Set(ciDelRango().map(c => c.fecha));
+  const tope = ciHoy || fechaLocalISO();
+  return ciDiasRango().filter(f => f <= tope && !hechos.has(f));
+}
+// Días faltantes agrupados en tramos seguidos: [{ desde, hasta, dias }]
+function ciTramos(fechas) {
+  const tramos = [];
+  for (const f of fechas.slice().sort()) {
+    const t = tramos[tramos.length - 1];
+    if (t && ciSumar(t.hasta, 1) === f) { t.hasta = f; t.dias++; }
+    else tramos.push({ desde: f, hasta: f, dias: 1 });
+  }
+  return tramos;
+}
+const ciTramoTexto = t => t.dias === 1
+  ? ciFechaLarga(t.desde)
+  : `${CI_FMT_CORTA.format(ciUTC(t.desde))} al ${CI_FMT_CORTA.format(ciUTC(t.hasta))}`;
+
+function ciFallasDe(c) {
+  return CierreChecklist.ITEMS.filter(i => c.items?.[i.clave] === false);
+}
+
+function renderCierres() {
+  if (!cierresPanel) return;
+  const base = ciDelRango();
+  const visibles = ciVisibles();
+  const faltan = ciFaltantes();
+  const conFallas = base.filter(c => c.cumplidos < c.total).length;
+  const puntos = base.reduce((a, c) => a + c.total, 0);
+  const cumplidos = base.reduce((a, c) => a + c.cumplidos, 0);
+  const pct = puntos ? Math.round((cumplidos / puntos) * 1000) / 10 : null;
+
+  document.getElementById('ci-kpis').innerHTML = [
+    ['ok', base.length, base.length === 1 ? 'cierre registrado' : 'cierres registrados'],
+    ['warn', conFallas, conFallas === 1 ? 'con fallas' : 'con fallas'],
+    ['falta', faltan.length, faltan.length === 1 ? 'día sin cierre' : 'días sin cierre'],
+    ['pct', pct === null ? '—' : `${pct}%`, 'de puntos cumplidos']
+  ].map(([t, n, l]) => `<div class="ci-kpi ci-kpi-${t}"><strong>${esc(n)}</strong><span>${esc(l)}</span></div>`).join('');
+
+  // Calendario: un cuadro por día del rango
+  const porDia = new Map();
+  for (const c of base) { if (!porDia.has(c.fecha)) porDia.set(c.fecha, []); porDia.get(c.fecha).push(c); }
+  const dias = ciDiasRango();
+  const tope = ciHoy || fechaLocalISO();
+  const wrap = document.getElementById('ci-cal-wrap');
+  wrap.hidden = !dias.length || dias.length > 120;
+  if (!wrap.hidden) {
+    const pad = (ciUTC(dias[0]).getUTCDay() + 6) % 7;   // lunes primero
+    document.getElementById('ci-cal').innerHTML =
+      ['L', 'K', 'M', 'J', 'V', 'S', 'D'].map(d => `<span class="ci-cal-cab">${d}</span>`).join('') +
+      '<span class="ci-cal-vacio"></span>'.repeat(pad) +
+      dias.map(f => {
+        const cs = porDia.get(f) || [];
+        const st = f > tope ? 'futuro' : !cs.length ? 'falta' : cs.every(c => c.cumplidos === c.total) ? 'ok' : 'warn';
+        const txt = st === 'futuro' ? '' : st === 'falta' ? 'sin cierre' : cs.map(c => `${c.bodega}: ${c.cumplidos}/${c.total}`).join(', ');
+        const etiqueta = `${ciFechaLarga(f)}${txt ? ': ' + txt : ''}`;
+        return `<button type="button" class="ci-dia ci-dia-${st}" data-fecha="${f}" title="${esc(etiqueta)}" aria-label="${esc(etiqueta)}" ${st === 'futuro' ? 'disabled' : ''}>${ciUTC(f).getUTCDate()}</button>`;
+      }).join('');
+  }
+
+  // Puntos que más fallan
+  const conteo = new Map();
+  for (const c of base) for (const i of ciFallasDe(c)) conteo.set(i.clave, (conteo.get(i.clave) || 0) + 1);
+  const top = [...conteo.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const topEl = document.getElementById('ci-top');
+  topEl.hidden = !top.length;
+  if (top.length) {
+    const max = top[0][1];
+    topEl.innerHTML = `<p class="ci-subtitulo">Puntos que más fallan</p>` + top.map(([clave, n]) => {
+      const i = CierreChecklist.ITEMS.find(x => x.clave === clave);
+      return `<div class="ci-top-fila"><span class="ci-top-txt">${esc(i?.texto || clave)} <small>${esc(i?.seccion.titulo || '')}</small></span>
+        <span class="ci-top-barra"><span style="width:${(n / max) * 100}%"></span></span><b>${n}</b></div>`;
+    }).join('');
+  }
+
+  // Lista: cierres y, en "Todos", los días que faltan intercalados por fecha
+  const lista = document.getElementById('ci-lista');
+  const filas = visibles.map(c => ({ fecha: c.fecha, c }));
+  if (ciFiltroVer === 'todos') ciTramos(faltan).forEach(t => filas.push({ fecha: t.hasta, falta: t }));
+  filas.sort((a, b) => b.fecha.localeCompare(a.fecha) || (a.falta ? 1 : -1));
+  if (!filas.length) {
+    lista.innerHTML = `<div class="inv-item"><span class="item-name" style="color:var(--muted)">${ciFiltroVer === 'fallas' ? 'No hay cierres con fallas en ese rango' : 'No hay cierres en ese rango'}</span></div>`;
+    return;
+  }
+  const enBodega = document.getElementById('ci-bodega').value;
+  lista.innerHTML = filas.map(f => f.falta ? `
+    <div class="ci-card ci-card-falta" data-desde="${f.falta.desde}" data-hasta="${f.falta.hasta}">
+      <span class="ci-sello ci-sello-falta" aria-hidden="true">${f.falta.dias > 1 ? f.falta.dias : '!'}</span>
+      <div class="ci-card-info"><p class="ci-card-fecha">${esc(ciMayus(ciTramoTexto(f.falta)))}</p><p class="ci-card-sub">${f.falta.dias > 1 ? `${f.falta.dias} días seguidos sin cierre` : 'Sin cierre registrado'}${enBodega ? ' en ' + esc(enBodega) : ''}</p></div>
+    </div>` : ciCardHTML(f.c)).join('');
+}
+
+function ciCardHTML(c) {
+  const fallas = ciFallasDe(c);
+  const ok = !fallas.length && c.cumplidos === c.total;
+  const pct = Math.round((c.cumplidos / c.total) * 100);
+  const secciones = CierreChecklist.SECCIONES.map(s => {
+    const n = s.items.length;
+    const si = s.items.filter(([k]) => c.items?.[`${s.id}.${k}`] === true).length;
+    return `<span class="ci-sec ${si === n ? 'ok' : 'warn'}" title="${esc(s.titulo)}: ${si}/${n}">${esc(s.titulo)} <b>${si}/${n}</b></span>`;
+  }).join('');
+  return `
+    <article class="ci-card ${ok ? 'ci-card-ok' : 'ci-card-warn'}" data-fecha="${c.fecha}" data-id="${esc(c.id)}">
+      <div class="ci-card-cab">
+        <div class="ci-anillo" style="--p:${pct}" aria-hidden="true"><span>${c.cumplidos}</span></div>
+        <div class="ci-card-info">
+          <p class="ci-card-fecha">${esc(ciFechaLarga(c.fecha))}</p>
+          <p class="ci-card-sub">${esc(c.bodega)} · ${esc(c.responsable)} · ${c.cumplidos}/${c.total} cumplen</p>
+          <p class="ci-card-reg">Registrado ${esc(ciRegistrado(c))}${c.actualizado_en ? ' · rehecho' : ''}</p>
+        </div>
+        <button type="button" class="ci-borrar" title="Borrar cierre" aria-label="Borrar el cierre del ${esc(ciFechaLarga(c.fecha))}" onclick="borrarCierre(${Number(c.id)})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        </button>
+      </div>
+      <div class="ci-secs">${secciones}</div>
+      ${fallas.length ? `<ul class="ci-fallas">${fallas.map(i => `<li><span aria-hidden="true">✕</span> ${esc(i.texto)} <small>${esc(i.seccion.titulo)}</small></li>`).join('')}</ul>` : ''}
+      ${c.observaciones ? `<p class="ci-obs">${esc(c.observaciones)}</p>` : ''}
+      <div class="ci-firma">${c.firma_url
+        ? `<img src="${esc(c.firma_url)}" alt="Firma de ${esc(c.responsable)}" loading="lazy">`
+        : '<span>Sin firma guardada</span>'}<small>Firma de ${esc(c.responsable)}</small></div>
+    </article>`;
+}
+
+// Tocar un día del calendario lleva a su tarjeta
+document.addEventListener('click', e => {
+  const d = e.target.closest('#ci-cal .ci-dia');
+  if (!d) return;
+  if (ciFiltroVer !== 'todos') ciVer('todos');
+  const f = d.dataset.fecha;
+  const card = document.querySelector(`#ci-lista [data-fecha="${CSS.escape(f)}"]`)
+    || [...document.querySelectorAll('#ci-lista [data-desde]')].find(x => x.dataset.desde <= f && f <= x.dataset.hasta);
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.classList.remove('ci-resaltar'); void card.offsetWidth; card.classList.add('ci-resaltar');
+});
+
+async function borrarCierre(id) {
+  const c = cierresPanel?.find(x => Number(x.id) === Number(id));
+  if (!c) return;
+  const ok = await confirmar({
+    titulo: 'Borrar cierre',
+    mensaje: `¿Borrar el cierre de ${c.bodega} del ${ciFechaLarga(c.fecha)} (${c.responsable})?\nTambién se borra su firma. No se puede deshacer.`,
+    aceptar: 'Borrar', peligro: true
+  });
+  if (!ok) return;
+  try {
+    await apiDelete('/api/conteos?accion=cierre', { id: Number(id) });
+    cierresPanel = cierresPanel.filter(x => Number(x.id) !== Number(id));
+    renderCierres();
+    notify('Cierre borrado', 'success');
+  } catch (e) {
+    notify(e.message || 'No se pudo borrar el cierre', 'error');
+  }
+}
+
+// Las URLs de las firmas vencen a la hora: si la consulta es vieja, se renueva
+async function ciDatosParaExportar() {
+  if (!cierresPanel) { notify('Consulta primero un rango', 'warn'); return null; }
+  if (Date.now() - ciCargadoEn > 50 * 60 * 1000) await cargarCierres();
+  const filas = ciVisibles().slice().sort((a, b) => a.fecha.localeCompare(b.fecha) || ciNorm(a.bodega).localeCompare(ciNorm(b.bodega)));
+  if (!filas.length) { notify('No hay cierres para exportar', 'warn'); return null; }
+  return filas;
+}
+
+// Firma como PNG en base64 (o null si no se pudo bajar)
+async function ciFirmaBase64(url) {
+  if (!url) return null;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const bmp = await createImageBitmap(await r.blob());
+    const canvas = document.createElement('canvas');
+    canvas.width = bmp.width; canvas.height = bmp.height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bmp, 0, 0);
+    bmp.close();
+    return { base64: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height };
+  } catch (_) { return null; }
+}
+
+async function exportarCierresExcel() {
+  if (ciExportando) return;
+  ciExportando = true;
+  try {
+    const filas = await ciDatosParaExportar();
+    if (!filas) return;
+    notify('Generando Excel...', 'info');
+    await cargarExcelJS();
+    const firmas = await Promise.all(filas.map(c => ciFirmaBase64(c.firma_url)));
+
+    const wb = new ExcelJS.Workbook();
+    const cabecera = ws => {
+      const head = ws.getRow(1);
+      head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D1B6E' } };
+      head.alignment = { vertical: 'middle', wrapText: true };
+      head.height = 22;
+    };
+    const VERDE = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5F6EC' } };
+    const ROJO = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDECEA' } };
+
+    // Hoja 1: resumen con la firma
+    const ws = wb.addWorksheet('Cierres', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws.columns = [
+      { header: 'Fecha', key: 'fecha', width: 12, style: { numFmt: 'dd/mm/yyyy' } },
+      { header: 'Día', key: 'dia', width: 11 },
+      { header: 'Bodega', key: 'bodega', width: 20 },
+      { header: 'Responsable', key: 'resp', width: 22 },
+      { header: 'Cumplen', key: 'cumplen', width: 10 },
+      { header: 'Total', key: 'total', width: 8 },
+      { header: '% cumplido', key: 'pct', width: 11, style: { numFmt: '0%' } },
+      { header: 'Sin cumplir', key: 'fallas', width: 44 },
+      { header: 'Observaciones', key: 'obs', width: 44 },
+      { header: 'Registrado', key: 'reg', width: 18, style: { numFmt: 'dd/mm/yyyy hh:mm' } },
+      { header: 'Firma', key: 'firma', width: 24 }
+    ];
+    cabecera(ws);
+    filas.forEach((c, i) => {
+      const row = ws.addRow({
+        fecha: new Date(c.fecha + 'T00:00:00Z'),
+        dia: ciMayus(new Intl.DateTimeFormat('es-CR', { timeZone: 'UTC', weekday: 'long' }).format(ciUTC(c.fecha))),
+        bodega: c.bodega, resp: c.responsable,
+        cumplen: c.cumplidos, total: c.total, pct: c.cumplidos / c.total,
+        fallas: ciFallasDe(c).map(x => x.texto).join('\n'),
+        obs: c.observaciones || '',
+        reg: fechaLocalParaExcel(c.actualizado_en || c.creado_en),
+        firma: firmas[i] ? '' : 'Sin firma'
+      });
+      row.alignment = { vertical: 'middle', wrapText: true };
+      row.getCell('pct').fill = c.cumplidos === c.total ? VERDE : ROJO;
+      const f = firmas[i];
+      if (f) {
+        row.height = Math.max(row.height || 0, 50);
+        const k = Math.min(160 / f.w, 60 / f.h);
+        ws.addImage(wb.addImage({ base64: f.base64, extension: 'png' }), {
+          tl: { col: 10.05, row: row.number - 1 + 0.05 },
+          ext: { width: Math.round(f.w * k), height: Math.round(f.h * k) },
+          editAs: 'oneCell'
+        });
+      }
+    });
+    ws.autoFilter = { from: 'A1', to: 'K1' };
+
+    // Hoja 2: matriz punto por punto, como la hoja impresa
+    const wm = wb.addWorksheet('Checklist', { views: [{ state: 'frozen', xSplit: 2, ySplit: 1 }] });
+    wm.columns = [
+      { header: 'Sección', key: 'sec', width: 24 },
+      { header: 'Punto', key: 'punto', width: 36 },
+      ...filas.map((c, i) => ({ header: `${c.fecha.slice(8, 10)}/${c.fecha.slice(5, 7)}\n${c.bodega}`, key: 'c' + i, width: 12 }))
+    ];
+    cabecera(wm);
+    wm.getRow(1).height = 34;
+    for (const it of CierreChecklist.ITEMS) {
+      const datos = { sec: it.seccion.titulo, punto: it.texto };
+      filas.forEach((c, i) => { datos['c' + i] = c.items?.[it.clave] === true ? '✓' : c.items?.[it.clave] === false ? '✕' : ''; });
+      const row = wm.addRow(datos);
+      filas.forEach((c, i) => {
+        const cell = row.getCell(3 + i);
+        cell.alignment = { horizontal: 'center' };
+        if (cell.value === '✓') { cell.fill = VERDE; cell.font = { color: { argb: 'FF13693A' }, bold: true }; }
+        if (cell.value === '✕') { cell.fill = ROJO; cell.font = { color: { argb: 'FFA3241A' }, bold: true }; }
+      });
+    }
+    const tot = wm.addRow({ sec: 'Total', punto: 'Puntos cumplidos', ...Object.fromEntries(filas.map((c, i) => ['c' + i, `${c.cumplidos}/${c.total}`])) });
+    tot.font = { bold: true };
+    tot.eachCell((cell, n) => { if (n > 2) cell.alignment = { horizontal: 'center' }; });
+
+    // Hoja 3: días sin cierre (solo con "Todos")
+    if (ciFiltroVer === 'todos') {
+      const faltan = ciFaltantes();
+      const wf = wb.addWorksheet('Días sin cierre');
+      wf.columns = [{ header: 'Fecha', key: 'f', width: 12, style: { numFmt: 'dd/mm/yyyy' } }, { header: 'Día', key: 'd', width: 30 }];
+      cabecera(wf);
+      faltan.forEach(f => wf.addRow({ f: new Date(f + 'T00:00:00Z'), d: ciFechaLarga(f) }));
+      if (!faltan.length) wf.addRow({ d: 'Ningún día sin cierre en el rango' });
+    }
+
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = `cierres_bodega_${ciRango.desde}_${ciRango.hasta}.xlsx`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    const sinFirma = filas.filter((c, i) => c.firma_url && !firmas[i]).length;
+    notify(sinFirma ? `Excel generado, pero ${sinFirma} firma(s) no se pudieron descargar` : 'Excel generado', sinFirma ? 'warn' : 'success');
+  } catch (e) {
+    notify(e.message || 'No se pudo generar el Excel', 'error');
+  } finally {
+    ciExportando = false;
+  }
+}
+
+/* PDF: informe en un iframe oculto que se imprime. Portada con resumen y
+ * tabla; luego una hoja por cierre con el checklist completo y la firma. */
+async function exportarCierresPDF() {
+  if (ciExportando) return;
+  ciExportando = true;
+  try {
+    const filas = await ciDatosParaExportar();
+    if (!filas) return;
+    const faltan = ciFiltroVer === 'todos' ? ciFaltantes() : [];
+    const puntos = filas.reduce((a, c) => a + c.total, 0);
+    const cumplidos = filas.reduce((a, c) => a + c.cumplidos, 0);
+    const conFallas = filas.filter(c => c.cumplidos < c.total).length;
+    const bodega = document.getElementById('ci-bodega').value;
+    const generado = new Intl.DateTimeFormat('es-CR', { timeZone: 'America/Costa_Rica', dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+    const rango = `${ciFechaLarga(ciRango.desde)} al ${ciFechaLarga(ciRango.hasta)}`;
+
+    const hojaCierre = c => {
+      const ok = c.cumplidos === c.total;
+      return `<section class="hoja">
+        <header class="h-cab">
+          <div><h2>Checklist de cierre de bodega</h2><p>${esc(ciFechaLarga(c.fecha))}</p></div>
+          <span class="res ${ok ? 'ok' : 'warn'}">${c.cumplidos}/${c.total} cumplen</span>
+        </header>
+        <table class="datos"><tr><th>Bodega</th><td>${esc(c.bodega)}</td><th>Responsable de cierre</th><td>${esc(c.responsable)}</td></tr>
+          <tr><th>Fecha</th><td>${esc(c.fecha.split('-').reverse().join('/'))}</td><th>Registrado</th><td>${esc(ciRegistrado(c))}${c.actualizado_en ? ' (rehecho)' : ''}</td></tr></table>
+        <div class="secs">${CierreChecklist.SECCIONES.map((s, n) => `
+          <table class="sec"><thead><tr><th>${n + 1}. ${esc(s.titulo)}</th><th class="c">Cumple</th></tr></thead><tbody>
+          ${s.items.map(([k, t]) => { const v = c.items?.[`${s.id}.${k}`]; return `<tr class="${v === false ? 'no' : ''}"><td>${esc(t)}</td><td class="c">${v === true ? '<span class="si">✓</span>' : v === false ? '<span class="x">✕</span>' : '—'}</td></tr>`; }).join('')}
+          </tbody></table>`).join('')}</div>
+        ${c.observaciones ? `<div class="obs"><b>Observaciones</b><p>${esc(c.observaciones)}</p></div>` : ''}
+        <div class="firma">${c.firma_url ? `<img src="${esc(c.firma_url)}" alt="">` : '<i>Sin firma guardada</i>'}<span>Firma: ${esc(c.responsable)}</span></div>
+      </section>`;
+    };
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Cierres de bodega ${esc(ciRango.desde)} a ${esc(ciRango.hasta)}</title>
+      <style>
+        @page { size: letter; margin: 14mm 12mm; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font: 11px/1.4 Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; color: #1e2540; margin: 0; }
+        h1 { font-size: 22px; margin: 0 0 2px; color: #0d1b6e; letter-spacing: -.3px; }
+        .marca { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #2a47d4; margin: 0 0 6px; }
+        .meta { color: #5a6482; margin: 0 0 14px; }
+        .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+        .kpi { border: 1px solid #e2e6ef; border-left: 4px solid #2a47d4; border-radius: 8px; padding: 8px 10px; }
+        .kpi b { display: block; font-size: 20px; }
+        .kpi span { color: #5a6482; font-size: 10px; }
+        .kpi.ok { border-left-color: #1f9d55; } .kpi.warn { border-left-color: #f59e0b; } .kpi.falta { border-left-color: #d93025; }
+        table { width: 100%; border-collapse: collapse; }
+        .resumen th { background: #0d1b6e; color: #fff; text-align: left; padding: 6px 8px; font-size: 10px; }
+        .resumen td { padding: 5px 8px; border-bottom: 1px solid #e2e6ef; vertical-align: top; }
+        .resumen tr.falta td { color: #a3241a; font-style: italic; }
+        .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-weight: 700; }
+        .pill.ok { background: #e5f6ec; color: #13693a; } .pill.warn { background: #fdecea; color: #a3241a; }
+        .hoja { break-before: page; }
+        .h-cab { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0d1b6e; padding-bottom: 6px; margin-bottom: 8px; }
+        .h-cab h2 { margin: 0; font-size: 16px; color: #0d1b6e; text-transform: uppercase; letter-spacing: .3px; }
+        .h-cab p { margin: 2px 0 0; color: #5a6482; }
+        .res { font-weight: 700; padding: 4px 10px; border-radius: 12px; }
+        .res.ok { background: #e5f6ec; color: #13693a; } .res.warn { background: #fdecea; color: #a3241a; }
+        .datos { margin-bottom: 10px; } .datos th { text-align: left; color: #5a6482; font-weight: 600; width: 18%; padding: 3px 6px; } .datos td { padding: 3px 6px; border-bottom: 1px solid #c9d0de; }
+        .secs { columns: 2; column-gap: 14px; }
+        .sec { break-inside: avoid; margin-bottom: 10px; }
+        .sec th { text-align: left; background: #f0f4fe; color: #0d1b6e; padding: 5px 6px; font-size: 11px; }
+        .sec td { padding: 3.5px 6px; border-bottom: 1px solid #eef0f5; }
+        .sec .c { text-align: center; width: 54px; }
+        .sec tr.no td { background: #fdecea; color: #a3241a; font-weight: 600; }
+        .si { color: #1f9d55; font-weight: 700; font-size: 13px; } .x { color: #d93025; font-weight: 700; font-size: 13px; }
+        .obs { border: 1px solid #e2e6ef; border-radius: 8px; padding: 8px 10px; margin: 6px 0 10px; break-inside: avoid; }
+        .obs p { margin: 4px 0 0; white-space: pre-wrap; }
+        .firma { display: flex; flex-direction: column; align-items: flex-start; margin-top: 8px; break-inside: avoid; }
+        .firma img { height: 70px; max-width: 260px; object-fit: contain; border-bottom: 1px solid #1e2540; }
+        .firma i { display: block; width: 260px; height: 40px; border-bottom: 1px solid #1e2540; color: #5a6482; }
+        .firma span { color: #5a6482; margin-top: 3px; }
+      </style></head><body>
+      <p class="marca">Efficommerce · Logística interna</p>
+      <h1>Cierres de bodega</h1>
+      <p class="meta">${esc(rango)}${bodega ? ' · ' + esc(bodega) : ''}${ciFiltroVer === 'fallas' ? ' · solo con fallas' : ''} · generado ${esc(generado)}</p>
+      <div class="kpis">
+        <div class="kpi ok"><b>${filas.length}</b><span>cierres</span></div>
+        <div class="kpi warn"><b>${conFallas}</b><span>con fallas</span></div>
+        <div class="kpi falta"><b>${ciFiltroVer === 'todos' ? faltan.length : '—'}</b><span>días sin cierre</span></div>
+        <div class="kpi"><b>${puntos ? Math.round((cumplidos / puntos) * 1000) / 10 : 0}%</b><span>puntos cumplidos</span></div>
+      </div>
+      <table class="resumen"><thead><tr><th>Fecha</th><th>Bodega</th><th>Responsable</th><th>Resultado</th><th>Sin cumplir</th></tr></thead><tbody>
+        ${[...filas.map(c => ({ f: c.fecha, c })), ...ciTramos(faltan).map(t => ({ f: t.desde, t }))].sort((a, b) => a.f.localeCompare(b.f)).map(({ f, c, t }) => c
+          ? `<tr><td>${esc(CI_FMT_CORTA.format(ciUTC(f)))}</td><td>${esc(c.bodega)}</td><td>${esc(c.responsable)}</td><td><span class="pill ${c.cumplidos === c.total ? 'ok' : 'warn'}">${c.cumplidos}/${c.total}</span></td><td>${esc(ciFallasDe(c).map(i => i.texto).join(', ') || '—')}</td></tr>`
+          : `<tr class="falta"><td>${esc(t.dias > 1 ? `${CI_FMT_CORTA.format(ciUTC(t.desde))} al ${CI_FMT_CORTA.format(ciUTC(t.hasta))}` : CI_FMT_CORTA.format(ciUTC(f)))}</td><td colspan="4">${t.dias > 1 ? `${t.dias} días seguidos sin cierre` : 'Sin cierre registrado'}</td></tr>`).join('')}
+      </tbody></table>
+      ${filas.map(hojaCierre).join('')}
+    </body></html>`;
+
+    document.getElementById('ci-print-frame')?.remove();
+    const frame = document.createElement('iframe');
+    frame.id = 'ci-print-frame';
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(frame);
+    const doc = frame.contentDocument;
+    doc.open(); doc.write(html); doc.close();
+    // Esperar las firmas (máximo 8 s) antes de abrir la impresión
+    await Promise.race([
+      Promise.all([...doc.images].map(img => img.complete ? null : new Promise(r => { img.onload = img.onerror = r; }))),
+      new Promise(r => setTimeout(r, 8000))
+    ]);
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    notify('En la ventana de impresión elige "Guardar como PDF"', 'info', 6000);
+  } catch (e) {
+    notify(e.message || 'No se pudo generar el PDF', 'error');
+  } finally {
+    ciExportando = false;
+  }
 }
 
 /* ── FERIADOS ─────────────────────────────────────────────
